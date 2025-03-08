@@ -46,6 +46,7 @@ NODE_CLASS_MAPPINGS = {
     # Lora stack nodes
     "Sage_LoraStack": Sage_LoraStack,
     "Sage_LoraStackRecent": Sage_LoraStackRecent,
+    "Sage_TripleLoraStack": Sage_TripleLoraStack,
     "Sage_LoraStackLoader": Sage_LoraStackLoader,
     "Sage_CollectKeywordsFromLoraStack": Sage_CollectKeywordsFromLoraStack,
     "Sage_LastLoraInfo": Sage_LastLoraInfo,
@@ -72,7 +73,10 @@ NODE_CLASS_MAPPINGS = {
     "Sage_ConstructMetadataLite": Sage_ConstructMetadataLite,
 
     # Utility nodes
-    "Sage_GetFileHash": Sage_GetFileHash
+    "Sage_GetFileHash": Sage_GetFileHash,
+    
+    # Test nodes
+    "Sage_Foobar": Sage_Foobar
 
 }
 
@@ -105,6 +109,7 @@ NODE_DISPLAY_NAME_MAPPINGS  = {
     # Lora stack nodes
     "Sage_LoraStack": "Simple Lora Stack",
     "Sage_LoraStackRecent": "Recent Lora Stack",
+    "Sage_TripleLoraStack": "Triple Lora Stack",
     "Sage_LoraStackLoader": "Lora Stack Loader",
     "Sage_CollectKeywordsFromLoraStack": "Lora Stack -> Keywords",
     "Sage_LastLoraInfo": "Last Lora Info",
@@ -131,7 +136,10 @@ NODE_DISPLAY_NAME_MAPPINGS  = {
     "Sage_ConstructMetadataLite": "Construct Metadata Lite",
 
     # Utility nodes
-    "Sage_GetFileHash": "Get Sha256 Hash"
+    "Sage_GetFileHash": "Get Sha256 Hash",
+    
+    # Test nodes
+    "Sage_Foobar": "Test Node (Do not use)"
 }
 
 __all__ = ['NODE_CLASS_MAPPINGS', 'NODE_DISPLAY_NAME_MAPPINGS', 'WEB_DIRECTORY']

@@ -8,23 +8,23 @@ class Sage_SetText(ComfyNodeABC):
     @classmethod
     def INPUT_TYPES(s):
         return {
-            "required": {
-                "str": ("STRING", {"defaultInput": False, "dynamicPrompts": True, "multiline": True})
-            },
             "optional": {
                 "prefix": ("STRING", {"defaultInput": True, "multiline": True}),
                 "suffix": ("STRING", {"defaultInput": True, "multiline": True})
+            },
+            "required": {
+                "str": ("STRING", {"forceInput": False, "dynamicPrompts": True, "multiline": True})
             }
         }
-    
+
     RETURN_TYPES = ("STRING",)
     RETURN_NAMES = ("str",)
-    
+
     FUNCTION = "pass_str"
-    
+
     CATEGORY = "Sage Utils/text"
     DESCRIPTION = "Sets some text."
-    
+
     def pass_str(self, str, prefix=None, suffix=None):
         return (f"{prefix or ''}{str}{suffix or ''}",)
 
@@ -38,15 +38,15 @@ class Sage_JoinText(ComfyNodeABC):
                 "str2": ("STRING", {"defaultInput": True, "multiline": True}),
             }
         }
-    
+
     RETURN_TYPES = ("STRING",)
     RETURN_NAMES = ("str",)
-    
+
     FUNCTION = "join_str"
-    
+
     CATEGORY = "Sage Utils/text"
     DESCRIPTION = "Joins two strings with a separator."
-    
+
     def join_str(self, separator, str1, str2):
         return (separator.join([str1, str2]),)
 
@@ -61,15 +61,15 @@ class Sage_TripleJoinText(ComfyNodeABC):
                 "str3": ("STRING", {"defaultInput": True, "multiline": True})
             }
         }
-    
+
     RETURN_TYPES = ("STRING",)
     RETURN_NAMES = ("str",)
-    
+
     FUNCTION = "join_str"
-    
+
     CATEGORY = "Sage Utils/text"
     DESCRIPTION = "Joins three strings with a separator."
-    
+
     def join_str(self, separator, str1, str2, str3):
         return (separator.join([str1, str2, str3]),)
 
@@ -109,15 +109,15 @@ class Sage_ViewText(ComfyNodeABC):
                 "text": ("STRING", {"forceInput": True, "multiline": True})
             }
         }
-    
+
     RETURN_TYPES = ("STRING",)
-    
+
     FUNCTION = "show_text"
-    
+
     CATEGORY = "Sage Utils/text"
     DESCRIPTION = "Shows some text."
     OUTPUT_NODE = True
-    
+
     def show_text(self, text):
         print(f"String is '{text}'")
         return { "ui": {"text": text}, "result" : (text,) }

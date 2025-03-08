@@ -8,6 +8,34 @@ from ..sage import *
 import folder_paths
 from comfy.comfy_types import IO, ComfyNodeABC, InputTypeDict
 
+class Sage_Foobar(ComfyNodeABC):
+    @classmethod
+    def INPUT_TYPES(s):
+        return {
+            "required": {
+                "separator": ("STRING", {"defaultInput": False, "default": ', '}),
+                "str1": ("STRING", {"defaultInput": True, "multiline": True}),
+                "str2": ("STRING", {"defaultInput": True, "multiline": True}),
+            }
+        }
+
+    RETURN_TYPES = ("STRING",)
+    RETURN_NAMES = ("output",)
+
+    FUNCTION = "process"
+
+    CATEGORY = "Sage Utils/Test"
+    DESCRIPTION = "This node is strictly for testing purposes, and will constantly be changing and broken, as I'll test things for other nodes here."
+
+    def process(self, separator, **args):
+        print(args.values())
+        print(vars(self))
+        print(dir(self))
+        print(self.__dict__)
+        ret = separator.join(args.values())
+        print(ret)
+        return (ret,)
+
 class Sage_ModelInfo(ComfyNodeABC):
     @classmethod
     def INPUT_TYPES(s):
