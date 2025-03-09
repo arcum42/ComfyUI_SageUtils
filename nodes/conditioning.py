@@ -85,7 +85,8 @@ class Sage_DualCLIPTextEncode(ComfyNodeABC):
     def INPUT_TYPES(s):
         return {
             "required": {
-                "clip": ("CLIP", {"defaultInput": True, "tooltip": "The CLIP model used for encoding the text."})
+                "clip": ("CLIP", {"defaultInput": True, "tooltip": "The CLIP model used for encoding the text."}),
+                "clean": ("BOOLEAN", {"defaultInput": True, "tooltip": "Whether to clean the text."}),
             },
             "optional": {
                 "pos": ("STRING", {"defaultInput": True, "multiline": True, "dynamicPrompts": True, "tooltip": "The positive prompt's text."}), 
@@ -119,8 +120,14 @@ class Sage_DualCLIPTextEncode(ComfyNodeABC):
             
         return [[cond, output]]
 
-    def encode(self, clip, pos=None, neg=None):
+    def encode(self, clip, clean, pos=None, neg=None):
         pbar = comfy.utils.ProgressBar(2)
+        
+        if pos is not None:
+            pos = clean_text(pos) if clean else pos
+        if neg is not None:
+            neg = clean_text(neg) if clean else neg
+        
         return (
             self.get_conditioning(pbar, clip, pos),
             self.get_conditioning(pbar, clip, neg),

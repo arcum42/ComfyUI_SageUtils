@@ -293,3 +293,14 @@ def civitai_sampler_name(sampler_name, scheduler_name):
         result += " Exponential"
     
     return result
+
+def clean_text(text):
+    ret_list = [x for x in text.split(" ") if x.strip()]
+    ret = " ".join(ret_list)
+
+    ret_list = [x for x in ret.split(",") if x.strip()]
+    ret = ", ".join([x.strip(" ") for x in ret_list])
+
+    ret_list = [x for x in ret.split("\n") if x.strip()]
+    ret = "\n".join([x.strip(" ") for x in ret_list])
+    return (ret)

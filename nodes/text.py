@@ -91,15 +91,7 @@ class Sage_CleanText(ComfyNodeABC):
     DESCRIPTION = "Cleans up the string given."
 
     def clean_str(self, str):
-        ret_list = [x for x in str.split(" ") if x.strip()]
-        ret = " ".join(ret_list)
-
-        ret_list = [x for x in ret.split(",") if x.strip()]
-        ret = ", ".join([x.strip(" ") for x in ret_list])
-
-        ret_list = [x for x in ret.split("\n") if x.strip()]
-        ret = "\n".join([x.strip(" ") for x in ret_list])
-        return (ret,)
+        return (clean_text(str),)
 
 class Sage_ViewText(ComfyNodeABC):
     @classmethod
