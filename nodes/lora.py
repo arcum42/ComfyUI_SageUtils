@@ -112,20 +112,15 @@ class Sage_TripleLoraStack(ComfyNodeABC):
     DESCRIPTION = "Choose three loras with weights, and add them to a lora_stack. Compatable with other node packs that have lora_stacks."
     
     def add_lora_to_stack(self, enabled_1, lora_1_name, model_1_weight, clip_1_weight, enabled_2, lora_2_name, model_2_weight, clip_2_weight, enabled_3, lora_3_name, model_3_weight, clip_3_weight, lora_stack = None):
+        stack = lora_stack
         if enabled_1 == True:
-            stack = add_lora_to_stack(lora_1_name, model_1_weight, clip_1_weight, lora_stack)
-        else:
-            stack = lora_stack
+            stack = add_lora_to_stack(lora_1_name, model_1_weight, clip_1_weight, stack)
 
         if enabled_2 == True:
-            stack = add_lora_to_stack(lora_2_name, model_2_weight, clip_2_weight, lora_stack)
-        else:
-            stack = lora_stack 
+            stack = add_lora_to_stack(lora_2_name, model_2_weight, clip_2_weight, stack)
 
         if enabled_3 == True:
-            stack = add_lora_to_stack(lora_3_name, model_3_weight, clip_3_weight, lora_stack)
-        else:
-            stack = lora_stack
+            stack = add_lora_to_stack(lora_3_name, model_3_weight, clip_3_weight, stack)
         return (stack,)
 
 class Sage_CollectKeywordsFromLoraStack(ComfyNodeABC):
