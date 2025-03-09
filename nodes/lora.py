@@ -141,28 +141,10 @@ class Sage_CollectKeywordsFromLoraStack(ComfyNodeABC):
     DESCRIPTION = "Go through each model in the lora stack, grab any keywords from civitai, and combine them into one string. Place at the end of a lora_stack, or you won't get keywords for the entire stack."
 
     def get_keywords(self, lora_stack):
-        lora_keywords = []
         if lora_stack is None:
             return ("",)
         
-        for lora in lora_stack:
-            print(f"Let's get keywords for {lora[0]}")
-            try:
-                lora_path = folder_paths.get_full_path_or_raise("loras", lora[0])
-                if cache.cache.data.get(lora_path, {}).get("trainedWords", None) is None:
-                    pull_metadata(lora_path, True)
-                
-                keywords = cache.cache.data.get(lora_path, {}).get("trainedWords", [])
-                print(keywords)
-                if keywords != []:
-                    lora_keywords.extend(keywords)
-            except:
-                print("Exception getting keywords!")
-                continue
-
-        ret = ", ".join(lora_keywords)
-        ret = ' '.join(ret.split('\n'))
-        return (ret,)
+        return (get_lora_stack_keywords(lora_stack),)
 
 # Modified version of the main lora loader.
 class Sage_LoraStackLoader(ComfyNodeABC):
@@ -181,8 +163,9 @@ class Sage_LoraStackLoader(ComfyNodeABC):
             }
         }
     
-    RETURN_TYPES = ("MODEL", "CLIP", "LORA_STACK")
-    OUTPUT_TOOLTIPS = ("The modified diffusion model.", "The modified CLIP model.", "The stack of loras.")
+    RETURN_TYPES = ("MODEL", "CLIP", "LORA_STACK", "STRING")
+    RETURN_NAMES = ("model", "clip", "lora_stack", "keywords")
+    OUTPUT_TOOLTIPS = ("The modified diffusion model.", "The modified CLIP model.", "The stack of loras.", "Keywords from the lora stack.")
     FUNCTION = "load_loras"
 
     CATEGORY = "Sage Utils/lora"
@@ -213,4 +196,4 @@ class Sage_LoraStackLoader(ComfyNodeABC):
             if lora:
                 model, clip = self.load_lora(model, clip, *lora)
             pbar.update(1)
-        return model, clip, lora_stack
+        return model, clip, lora_stack, get_lora_stack_keywords(lora_stack)
