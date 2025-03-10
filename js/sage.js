@@ -25,7 +25,7 @@ app.registerExtension({
           var arrLength = this.widgets.length;
           var nameOfInput = "str" + arrLength;
           var ww = this.addWidget("text", nameOfInput, "", () => {}, {
-            default: "farts",
+            default: "test",
             defaultInput: false,
             multiline: false,
           });

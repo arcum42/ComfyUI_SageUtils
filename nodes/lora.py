@@ -28,11 +28,11 @@ class Sage_LoraStackRecent(ComfyNodeABC):
 
     RETURN_TYPES = ("LORA_STACK",)
     RETURN_NAMES = ("lora_stack",)
-    
+
     FUNCTION = "add_lora_to_stack"
     CATEGORY = "Sage Utils/lora"
     DESCRIPTION = "Choose a lora with weights, and add it to a lora_stack. Compatable with other node packs that have lora_stacks."
-    
+
     def add_lora_to_stack(self, enabled, lora_name, model_weight, clip_weight, lora_stack = None):
         if enabled == True:
             stack = add_lora_to_stack(lora_name, model_weight, clip_weight, lora_stack)
@@ -40,7 +40,6 @@ class Sage_LoraStackRecent(ComfyNodeABC):
             stack = lora_stack
 
         return (stack,)
-
 
 class Sage_LoraStack(ComfyNodeABC):
     def __init__(self):
@@ -62,11 +61,11 @@ class Sage_LoraStack(ComfyNodeABC):
 
     RETURN_TYPES = ("LORA_STACK",)
     RETURN_NAMES = ("lora_stack",)
-    
+
     FUNCTION = "add_lora_to_stack"
     CATEGORY = "Sage Utils/lora"
     DESCRIPTION = "Choose a lora with weights, and add it to a lora_stack. Compatable with other node packs that have lora_stacks."
-    
+
     def add_lora_to_stack(self, enabled, lora_name, model_weight, clip_weight, lora_stack = None):
         if enabled == True:
             stack = add_lora_to_stack(lora_name, model_weight, clip_weight, lora_stack)
@@ -74,7 +73,6 @@ class Sage_LoraStack(ComfyNodeABC):
             stack = lora_stack
 
         return (stack,)
-
 
 class Sage_TripleLoraStack(ComfyNodeABC):
     def __init__(self):
@@ -88,12 +86,12 @@ class Sage_TripleLoraStack(ComfyNodeABC):
                 "lora_1_name": (folder_paths.get_filename_list("loras"), {"defaultInput": False, "tooltip": "The name of the LoRA."}),
                 "model_1_weight": ("FLOAT", {"defaultInput": False, "default": 1.0, "min": -100.0, "max": 100.0, "step": 0.01, "tooltip": "How strongly to modify the diffusion model. This value can be negative."}),
                 "clip_1_weight": ("FLOAT", {"defaultInput": False, "default": 1.0, "min": -100.0, "max": 100.0, "step": 0.01, "tooltip": "How strongly to modify the CLIP model. This value can be negative."}),
-                
+
                 "enabled_2": ("BOOLEAN", {"defaultInput": False, "default": True}),
                 "lora_2_name": (folder_paths.get_filename_list("loras"), {"defaultInput": False, "tooltip": "The name of the LoRA."}),
                 "model_2_weight": ("FLOAT", {"defaultInput": False, "default": 1.0, "min": -100.0, "max": 100.0, "step": 0.01, "tooltip": "How strongly to modify the diffusion model. This value can be negative."}),
                 "clip_2_weight": ("FLOAT", {"defaultInput": False, "default": 1.0, "min": -100.0, "max": 100.0, "step": 0.01, "tooltip": "How strongly to modify the CLIP model. This value can be negative."}),
-                
+
                 "enabled_3": ("BOOLEAN", {"defaultInput": False, "default": True}),
                 "lora_3_name": (folder_paths.get_filename_list("loras"), {"defaultInput": False, "tooltip": "The name of the LoRA."}),
                 "model_3_weight": ("FLOAT", {"defaultInput": False, "default": 1.0, "min": -100.0, "max": 100.0, "step": 0.01, "tooltip": "How strongly to modify the diffusion model. This value can be negative."}),
@@ -106,11 +104,11 @@ class Sage_TripleLoraStack(ComfyNodeABC):
 
     RETURN_TYPES = ("LORA_STACK",)
     RETURN_NAMES = ("lora_stack",)
-    
+
     FUNCTION = "add_lora_to_stack"
     CATEGORY = "Sage Utils/lora"
     DESCRIPTION = "Choose three loras with weights, and add them to a lora_stack. Compatable with other node packs that have lora_stacks."
-    
+
     def add_lora_to_stack(self, enabled_1, lora_1_name, model_1_weight, clip_1_weight, enabled_2, lora_2_name, model_2_weight, clip_2_weight, enabled_3, lora_3_name, model_3_weight, clip_3_weight, lora_stack = None):
         stack = lora_stack
         if enabled_1 == True:
@@ -131,7 +129,7 @@ class Sage_CollectKeywordsFromLoraStack(ComfyNodeABC):
                 "lora_stack": ("LORA_STACK", {"defaultInput": True})
             }
         }
-    
+
     RETURN_TYPES = ("STRING",)
     RETURN_NAMES = ("keywords",)
 
@@ -143,7 +141,7 @@ class Sage_CollectKeywordsFromLoraStack(ComfyNodeABC):
     def get_keywords(self, lora_stack):
         if lora_stack is None:
             return ("",)
-        
+
         return (get_lora_stack_keywords(lora_stack),)
 
 # Modified version of the main lora loader.
@@ -154,7 +152,7 @@ class Sage_LoraStackLoader(ComfyNodeABC):
     @classmethod
     def INPUT_TYPES(s):
         return {
-            "required": { 
+            "required": {
                 "model": ("MODEL", {"tooltip": "The diffusion model the LoRA will be applied to."}),
                 "clip": ("CLIP", {"tooltip": "The CLIP model the LoRA will be applied to."})
             },
@@ -162,7 +160,7 @@ class Sage_LoraStackLoader(ComfyNodeABC):
                 "lora_stack": ("LORA_STACK", {"defaultInput": True})
             }
         }
-    
+
     RETURN_TYPES = ("MODEL", "CLIP", "LORA_STACK", "STRING")
     RETURN_NAMES = ("model", "clip", "lora_stack", "keywords")
     OUTPUT_TOOLTIPS = ("The modified diffusion model.", "The modified CLIP model.", "The stack of loras.", "Keywords from the lora stack.")
@@ -176,7 +174,7 @@ class Sage_LoraStackLoader(ComfyNodeABC):
             return model, clip
 
         lora_path = folder_paths.get_full_path_or_raise("loras", lora_name)
-        
+
         if self.loaded_lora and self.loaded_lora[0] == lora_path:
             lora = self.loaded_lora[1]
         else:
@@ -185,7 +183,7 @@ class Sage_LoraStackLoader(ComfyNodeABC):
             self.loaded_lora = (lora_path, lora)
 
         return comfy.sd.load_lora_for_models(model, clip, lora, strength_model, strength_clip)
-    
+
     def load_loras(self, model, clip, lora_stack=None):
         if not lora_stack:
             print("No lora stacks found. Warning: Passing 'None' to lora_stack output.")

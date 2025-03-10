@@ -16,7 +16,7 @@ class Sage_ConditioningZeroOut(ComfyNodeABC):
             "clip": ("CLIP", {"defaultInput": True, "tooltip": "The CLIP model used for encoding."}),
             }
         }
-    
+
     RETURN_TYPES = ("CONDITIONING",)
     FUNCTION = "zero_out"
 
@@ -37,22 +37,22 @@ class Sage_ConditioningOneOut(ComfyNodeABC):
             "clip": ("CLIP", {"defaultInput": True, "tooltip": "The CLIP model used for encoding."}),
             }
         }
-    
+
     RETURN_TYPES = ("CONDITIONING",)
     FUNCTION = "one_out"
 
     CATEGORY = "Sage Utils/clip"
     DESCRIPTION = "Returns oned out conditioning."
-    
+
     EXPERIMENTAL = True
-    
+
     def zero_out(self, clip):
         tokens = clip.tokenize("")
         output = clip.encode_from_tokens(tokens, return_pooled=True, return_dict=True)
         output["pooled_output"] = torch.ones_like(output.get("pooled_output", torch.tensor([])))
         conditioning = torch.ones_like(output.pop("cond"))
         return [([conditioning, output],)]
-    
+
 class Sage_ConditioningRngOut(ComfyNodeABC):
     @classmethod
     def INPUT_TYPES(s):
@@ -62,23 +62,22 @@ class Sage_ConditioningRngOut(ComfyNodeABC):
             "seed": ("INT", {"default": 0, "min": 0, "max": 0xffffffffffffffff, "defaultInput": True, "tooltip": "The seed used to randomize the conditioning."})
             }
         }
-    
+
     RETURN_TYPES = ("CONDITIONING",)
     FUNCTION = "rng_out"
 
     CATEGORY = "Sage Utils/clip"
     DESCRIPTION = "Returns randomized conditioning."
-    
+
     EXPERIMENTAL = True
-    
+
     def rng_out(self, clip, seed):
         torch.manual_seed(seed)
         tokens = clip.tokenize("")
         output = clip.encode_from_tokens(tokens, return_pooled=True, return_dict=True)
         output["pooled_output"] = torch.rand_like(output.get("pooled_output", torch.tensor([])))
         conditioning = torch.rand_like(output.pop("cond"))
-        return [([conditioning, output],)]  
-
+        return [([conditioning, output],)]
 
 class Sage_DualCLIPTextEncode(ComfyNodeABC):
     @classmethod
@@ -89,13 +88,13 @@ class Sage_DualCLIPTextEncode(ComfyNodeABC):
                 "clean": ("BOOLEAN", {"defaultInput": True, "tooltip": "Whether to clean the text."}),
             },
             "optional": {
-                "pos": ("STRING", {"defaultInput": True, "multiline": True, "dynamicPrompts": True, "tooltip": "The positive prompt's text."}), 
+                "pos": ("STRING", {"defaultInput": True, "multiline": True, "dynamicPrompts": True, "tooltip": "The positive prompt's text."}),
                 "neg": ("STRING", {"defaultInput": True, "multiline": True, "dynamicPrompts": True, "tooltip": "The negative prompt's text."}),
             }
         }
     RETURN_TYPES = ("CONDITIONING", "CONDITIONING", "STRING", "STRING")
     RETURN_NAMES = ("pos_cond", "neg_cond", "pos_text", "neg_text")
-    
+
     OUTPUT_TOOLTIPS = ("A conditioning containing the embedded text used to guide the diffusion model. If neg is not hooked up, it'll be automatically zeroed.",)
     FUNCTION = "encode"
 
@@ -117,17 +116,17 @@ class Sage_DualCLIPTextEncode(ComfyNodeABC):
             if pooled_output is not None:
                 output["pooled_output"] = torch.zeros_like(pooled_output)
             return [[torch.zeros_like(cond), output]]
-            
+
         return [[cond, output]]
 
     def encode(self, clip, clean, pos=None, neg=None):
         pbar = comfy.utils.ProgressBar(2)
-        
+
         if pos is not None:
             pos = clean_text(pos) if clean else pos
         if neg is not None:
             neg = clean_text(neg) if clean else neg
-        
+
         return (
             self.get_conditioning(pbar, clip, pos),
             self.get_conditioning(pbar, clip, neg),
@@ -138,7 +137,7 @@ class Sage_DualCLIPTextEncode(ComfyNodeABC):
 class Sage_DualCLIPTextEncodeLumina2(ComfyNodeABC):
     SYSTEM_PROMPT = {
         "superior": "You are an assistant designed to generate superior images with the superior "\
-            "degree of image-text alignment based on textual prompts or user prompts.", 
+            "degree of image-text alignment based on textual prompts or user prompts.",
         "alignment": "You are an assistant designed to generate high-quality images with the "\
             "highest degree of image-text alignment based on textual prompts."
     }
@@ -154,16 +153,16 @@ class Sage_DualCLIPTextEncodeLumina2(ComfyNodeABC):
             "required": {
                 "clip": ("CLIP", {"defaultInput": True, "tooltip": "The CLIP model used for encoding the text."}),
                 "system_prompt": (list(Sage_CLIPTextEncodeLumina2.SYSTEM_PROMPT.keys()), {"tooltip": Sage_CLIPTextEncodeLumina2.SYSTEM_PROMPT_TIP}),
-                
+
             },
             "optional": {
-                "pos": ("STRING", {"defaultInput": True, "multiline": True, "dynamicPrompts": True, "tooltip": "The positive prompt's text."}), 
+                "pos": ("STRING", {"defaultInput": True, "multiline": True, "dynamicPrompts": True, "tooltip": "The positive prompt's text."}),
                 "neg": ("STRING", {"defaultInput": True, "multiline": True, "dynamicPrompts": True, "tooltip": "The negative prompt's text."}),
             }
         }
     RETURN_TYPES = ("CONDITIONING", "CONDITIONING", "STRING", "STRING")
     RETURN_NAMES = ("pos_cond", "neg_cond", "pos_text", "neg_text")
-    
+
     OUTPUT_TOOLTIPS = ("A conditioning containing the embedded text used to guide the diffusion model. If neg is not hooked up, it'll be automatically zeroed.",)
     FUNCTION = "encode"
 
@@ -185,7 +184,7 @@ class Sage_DualCLIPTextEncodeLumina2(ComfyNodeABC):
             if pooled_output is not None:
                 output["pooled_output"] = torch.zeros_like(pooled_output)
             return [[torch.zeros_like(cond), output]]
-            
+
         return [[cond, output]]
 
     def encode(self, clip, system_prompt, pos=None, neg=None):
@@ -200,7 +199,7 @@ class Sage_DualCLIPTextEncodeLumina2(ComfyNodeABC):
 class Sage_CLIPTextEncodeLumina2(ComfyNodeABC):
     SYSTEM_PROMPT = {
         "superior": "You are an assistant designed to generate superior images with the superior "\
-            "degree of image-text alignment based on textual prompts or user prompts.", 
+            "degree of image-text alignment based on textual prompts or user prompts.",
         "alignment": "You are an assistant designed to generate high-quality images with the "\
             "highest degree of image-text alignment based on textual prompts."
     }
@@ -233,4 +232,3 @@ class Sage_CLIPTextEncodeLumina2(ComfyNodeABC):
         prompt = f'{system_prompt} <Prompt Start> {user_prompt}'
         tokens = clip.tokenize(prompt)
         return (clip.encode_from_tokens_scheduled(tokens), )
-    

@@ -22,7 +22,7 @@ class Sage_EmptyLatentImagePassthrough(ComfyNodeABC):
     @classmethod
     def INPUT_TYPES(s):
         return {
-            "required": { 
+            "required": {
                 "width": ("INT", {"defaultInput": True, "default": 1024, "min": 16, "max": nodes.MAX_RESOLUTION, "step": 8, "tooltip": "The width of the latent images in pixels."}),
                 "height": ("INT", {"defaultInput": True, "default": 1024, "min": 16, "max": nodes.MAX_RESOLUTION, "step": 8, "tooltip": "The height of the latent images in pixels."}),
                 "batch_size": ("INT", {"default": 1, "min": 1, "max": 4096, "tooltip": "The number of latent images in the batch."}),
@@ -149,7 +149,6 @@ class Sage_SaveImageWithMetadata(ComfyNodeABC):
             if extra_metadata is not None:
                 result.add_text("Extra", extra_metadata)
         return result
-        
 
     def save_images(self, images, filename_prefix, include_node_metadata, include_extra_pnginfo_metadata, param_metadata = None, extra_metadata=None, prompt=None, extra_pnginfo=None):
         filename_prefix += self.prefix_append
@@ -162,7 +161,7 @@ class Sage_SaveImageWithMetadata(ComfyNodeABC):
 
             filename_with_batch_num = filename.replace("%batch_num%", str(batch_number))
             file = f"{filename_with_batch_num}_{counter:05}_.png"
-            
+
             img.save(os.path.join(full_output_folder, file), pnginfo=final_metadata, compress_level=self.compress_level)
             results.append({
                 "filename": file,

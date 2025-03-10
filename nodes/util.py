@@ -26,6 +26,8 @@ class Sage_Foobar(ComfyNodeABC):
 
     CATEGORY = "Sage Utils/Test"
     DESCRIPTION = "This node is strictly for testing purposes, and will constantly be changing and broken, as I'll test things for other nodes here."
+    EXPERIMENTAL = True
+    DEPRECATED = True
 
     def process(self, separator, **args):
         print(args.values())
