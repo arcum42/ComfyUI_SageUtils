@@ -304,3 +304,19 @@ def clean_text(text):
     ret_list = [x for x in ret.split("\n") if x.strip()]
     ret = "\n".join([x.strip(" ") for x in ret_list])
     return (ret)
+
+def condition_text(clip, text = None):
+    zero_text = text is None
+    text = text or ""
+    
+    tokens = clip.tokenize(text)
+    output = clip.encode_from_tokens(tokens, return_pooled=True, return_dict=True)
+    cond = output.pop("cond")
+    
+    if zero_text:
+        pooled_output = output.get("pooled_output")
+        if pooled_output is not None:
+            output["pooled_output"] = torch.zeros_like(pooled_output)
+        return [[torch.zeros_like(cond), output]]
+    
+    return [[cond, output]]

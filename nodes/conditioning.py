@@ -102,22 +102,8 @@ class Sage_DualCLIPTextEncode(ComfyNodeABC):
     DESCRIPTION = "Turns a positive and negative prompt into conditionings, and passes through the prompts. Saves space over two CLIP Text Encoders, and zeros any input not hooked up."
 
     def get_conditioning(self, pbar, clip, text=None):
-        zero_text = text is None
-        text = text or ""
-
-        tokens = clip.tokenize(text)
-        #print(f"tokens = {tokens['g'].size()}")
-        output = clip.encode_from_tokens(tokens, return_pooled=True, return_dict=True)
-        cond = output.pop("cond")
         pbar.update(1)
-
-        if zero_text:
-            pooled_output = output.get("pooled_output")
-            if pooled_output is not None:
-                output["pooled_output"] = torch.zeros_like(pooled_output)
-            return [[torch.zeros_like(cond), output]]
-
-        return [[cond, output]]
+        return condition_text(clip, text)
 
     def encode(self, clip, clean, pos=None, neg=None):
         pbar = comfy.utils.ProgressBar(2)
