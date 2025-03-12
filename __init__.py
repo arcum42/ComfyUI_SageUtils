@@ -60,6 +60,8 @@ NODE_CLASS_MAPPINGS = {
 
     # Sampler nodes
     "Sage_KSampler": Sage_KSampler,
+    "Sage_KSamplerDecoder": Sage_KSamplerDecoder,
+    "Sage_KSamplerTiledDecoder": Sage_KSamplerTiledDecoder,
 
     # Image nodes
     "Sage_LoadImage": Sage_LoadImage,
@@ -69,6 +71,7 @@ NODE_CLASS_MAPPINGS = {
     # Metadata nodes
     "Sage_SamplerInfo": Sage_SamplerInfo,
     "Sage_AdvSamplerInfo": Sage_AdvSamplerInfo,
+    "Sage_TilingInfo": Sage_TilingInfo,
     "Sage_ConstructMetadata": Sage_ConstructMetadata,
     "Sage_ConstructMetadataLite": Sage_ConstructMetadataLite,
 
@@ -123,6 +126,8 @@ NODE_DISPLAY_NAME_MAPPINGS  = {
 
     # Sampler nodes
     "Sage_KSampler": "KSampler w/ Sampler Info",
+    "Sage_KSamplerDecoder": "KSampler + Decoder",
+    "Sage_KSamplerTiledDecoder": "KSampler + Tiled Decoder",
 
     # Image nodes
     "Sage_EmptyLatentImagePassthrough": "Empty Latent Passthrough",
@@ -132,6 +137,7 @@ NODE_DISPLAY_NAME_MAPPINGS  = {
     # Metadata nodes
     "Sage_SamplerInfo": "Sampler Info",
     "Sage_AdvSamplerInfo": "Adv Sampler Info",
+    "Sage_TilingInfo": "Tiling Info",
     "Sage_ConstructMetadata": "Construct Metadata",
     "Sage_ConstructMetadataLite": "Construct Metadata Lite",
 
