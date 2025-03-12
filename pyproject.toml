@@ -1,7 +1,7 @@
 [project]
 name = "comfyui_sageutils"
 description = "A collection of custom nodes by arcum42. Currently focused on saving metadata in images so that Civitai picks it up, pulling Civitai information, and misc helper nodes."
-version = "0.6"
+version = "0.6.1"
 license = {file = "LICENSE"}
 
 [project.urls]
