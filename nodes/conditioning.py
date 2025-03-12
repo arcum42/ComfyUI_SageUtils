@@ -85,7 +85,7 @@ class Sage_DualCLIPTextEncode(ComfyNodeABC):
         return {
             "required": {
                 "clip": ("CLIP", {"defaultInput": True, "tooltip": "The CLIP model used for encoding the text."}),
-                "clean": ("BOOLEAN", {"defaultInput": True, "tooltip": "Whether to clean the text."}),
+                "clean": ("BOOLEAN", {"defaultInput": False, "tooltip": "Clean up the text, getting rid of extra spaces, commas, etc."}),
             },
             "optional": {
                 "pos": ("STRING", {"defaultInput": True, "multiline": True, "dynamicPrompts": True, "tooltip": "The positive prompt's text."}),
