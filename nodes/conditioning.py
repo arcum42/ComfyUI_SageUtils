@@ -139,6 +139,7 @@ class Sage_DualCLIPTextEncodeLumina2(ComfyNodeABC):
             "required": {
                 "clip": ("CLIP", {"defaultInput": True, "tooltip": "The CLIP model used for encoding the text."}),
                 "system_prompt": (list(Sage_CLIPTextEncodeLumina2.SYSTEM_PROMPT.keys()), {"tooltip": Sage_CLIPTextEncodeLumina2.SYSTEM_PROMPT_TIP}),
+                "clean": ("BOOLEAN", {"defaultInput": False, "tooltip": "Clean up the text, getting rid of extra spaces, commas, etc."}),
 
             },
             "optional": {
@@ -155,29 +156,25 @@ class Sage_DualCLIPTextEncodeLumina2(ComfyNodeABC):
     CATEGORY = "Sage Utils/lumina 2"
     DESCRIPTION = "Turns a positive and negative prompt into conditionings, and passes through the prompts. Saves space over two CLIP Text Encoders, and zeros any input not hooked up."
 
-    def get_conditioning(self, pbar, clip, system_prompt, text=None):
-        zero_text = text is None
-        system_prompt = Sage_DualCLIPTextEncodeLumina2.SYSTEM_PROMPT[system_prompt]
-        text = f'{system_prompt} <Prompt Start> {text}' or ""
-
-        tokens = clip.tokenize(text)
-        output = clip.encode_from_tokens(tokens, return_pooled=True, return_dict=True)
-        cond = output.pop("cond")
+    def get_conditioning(self, pbar, clip, text=None):
         pbar.update(1)
+        return condition_text(clip, text)
 
-        if zero_text:
-            pooled_output = output.get("pooled_output")
-            if pooled_output is not None:
-                output["pooled_output"] = torch.zeros_like(pooled_output)
-            return [[torch.zeros_like(cond), output]]
-
-        return [[cond, output]]
-
-    def encode(self, clip, system_prompt, pos=None, neg=None):
+    def encode(self, clip, system_prompt, clean, pos=None, neg=None):
         pbar = comfy.utils.ProgressBar(2)
+        system_prompt = Sage_DualCLIPTextEncodeLumina2.SYSTEM_PROMPT[system_prompt]
+        
+        if pos is not None:
+            pos = f'{system_prompt} <Prompt Start> {pos}'
+            pos = clean_text(pos) if clean else pos
+        
+        if neg is not None:
+            neg = f'{system_prompt} <Prompt Start> {neg}'
+            neg = clean_text(neg) if clean else neg
+
         return (
-            self.get_conditioning(pbar, clip, system_prompt, pos),
-            self.get_conditioning(pbar, clip, system_prompt, neg),
+            self.get_conditioning(pbar, clip, pos),
+            self.get_conditioning(pbar, clip, neg),
             pos or "",
             neg or ""
         )
