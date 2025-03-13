@@ -73,7 +73,6 @@ class Sage_TilingInfo(ComfyNodeABC):
                 "overlap": ("INT", {"default": 64, "min": 0, "max": 4096, "step": 32}),
                 "temporal_size": ("INT", {"default": 64, "min": 8, "max": 4096, "step": 4, "tooltip": "Only used for video VAEs: Amount of frames to decode at a time."}),
                 "temporal_overlap": ("INT", {"default": 8, "min": 4, "max": 4096, "step": 4, "tooltip": "Only used for video VAEs: Amount of frames to overlap."}),
-                            
             }
         }
     
@@ -214,30 +213,35 @@ class Sage_KSamplerTiledDecoder(ComfyNodeABC):
             if advanced_info["add_noise"] == False:
                 disable_noise = True
             latent_result = nodes.common_ksampler(model, sampler_info["seed"], sampler_info["steps"], sampler_info["cfg"], sampler_info["sampler"],  sampler_info["scheduler"], positive, negative, latent_image, denoise=denoise, disable_noise=disable_noise, start_step=advanced_info['start_at_step'], last_step=advanced_info['end_at_step'], force_full_denoise=force_full_denoise)
-
-        if tiling_info["tile_size"] < tiling_info["overlap"] * 4:
-            tiling_info["overlap"] = tiling_info["tile_size"] // 4
-        if tiling_info["temporal_size"] < tiling_info["temporal_overlap"] * 2:
-            tiling_info["temporal_overlap"] = tiling_info["temporal_overlap"] // 2
+        
+        t_info_tile_size = tiling_info["tile_size"]
+        t_info_overlap = tiling_info["overlap"]
+        t_info_temporal_size = tiling_info["temporal_size"]
+        t_info_temporal_overlap = tiling_info["temporal_overlap"]
+        
+        if t_info_tile_size < t_info_overlap * 4:
+            t_info_overlap = t_info_tile_size // 4
+        if t_info_temporal_size < t_info_temporal_overlap * 2:
+            t_info_temporal_overlap = t_info_temporal_overlap // 2
 
         temporal_compression = vae.temporal_compression_decode()
 
         if temporal_compression is not None:
-            tiling_info["temporal_size"] = max(2, tiling_info["temporal_size"] // tiling_info["temporal_overlap"])
-            tiling_info["temporal_overlap"] = max(1, min(tiling_info["temporal_size"] // 2, tiling_info["temporal_overlap"] // temporal_compression))
+            t_info_temporal_size = max(2, t_info_temporal_size // t_info_temporal_overlap)
+            t_info_temporal_overlap = max(1, min(t_info_temporal_size // 2, t_info_temporal_overlap // temporal_compression))
         else:
-            tiling_info["temporal_size"] = None
-            tiling_info["temporal_overlap"] = None
+            t_info_temporal_size = None
+            t_info_temporal_overlap = None
 
         compression = vae.spacial_compression_decode()
         
         images = vae.decode(latent_result[0]["samples"])
         images = vae.decode_tiled(
             latent_result[0]["samples"], 
-            tile_x=tiling_info["tile_size"] // compression, tile_y=tiling_info["tile_size"] // compression, 
-            overlap=tiling_info["overlap"] // compression, 
-            tile_t=tiling_info["temporal_size"], 
-            overlap_t=tiling_info["temporal_overlap"])
+            tile_x=t_info_tile_size // compression, tile_y=t_info_tile_size // compression, 
+            overlap=t_info_overlap // compression, 
+            tile_t=t_info_temporal_size, 
+            overlap_t=t_info_temporal_overlap)
         
         if len(images.shape) == 5: #Combine batches
             images = images.reshape(-1, images.shape[-3], images.shape[-2], images.shape[-1])
