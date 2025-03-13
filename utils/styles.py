@@ -2,11 +2,22 @@ import os
 import json
 import pathlib
 
-from ..sage import base_path
+from ..sage import base_path,sage_users_path
 
 sage_styles = {}
-style_path = pathlib.Path(base_path) / "sage_styles.json"
-style_user_path = pathlib.Path(base_path) / "sage_styles_user.json"
+if not (sage_users_path / "sage_styles.json").is_file():
+    print("No styles file found in user directory.")
+    if (pathlib.Path(base_path) / "sage_styles.json").is_file():
+        with open((pathlib.Path(base_path) / "sage_styles.json"), "r") as read_file:
+            temp = json.load(read_file)
+
+        with open((sage_users_path / "sage_styles.json"), "w") as write_file:
+            json.dump(temp, write_file, separators=(",", ":"), sort_keys=True, indent=4)
+
+        print(f"Copied old styles file to {str(sage_users_path)}.")
+
+style_path = pathlib.Path(sage_users_path) / "sage_styles.json"
+style_user_path = pathlib.Path(sage_users_path) / "sage_styles_user.json"
 
 def load_styles():
     global sage_styles

@@ -2,11 +2,22 @@ import os
 import json
 import pathlib
 
-from ..sage import base_path
+from ..sage import base_path,sage_users_path
 
 class SageCache:
     def __init__(self, path):
-        self.path = pathlib.Path(path) / "sage_cache.json"
+        if not (sage_users_path / "sage_cache.json").is_file():
+            print("No cache file found in user directory.")
+            if (pathlib.Path(path) / "sage_cache.json").is_file():
+                with open((pathlib.Path(path) / "sage_cache.json"), "r") as read_file:
+                    temp = json.load(read_file)
+
+                with open((sage_users_path / "sage_cache.json"), "w") as write_file:
+                    json.dump(temp, write_file, separators=(",", ":"), sort_keys=True, indent=4)
+                
+                print("Copied old cache file to {str(sage_users_path)}.")
+
+        self.path = sage_users_path / "sage_cache.json"
         self.data = {}
 
     def load(self):
