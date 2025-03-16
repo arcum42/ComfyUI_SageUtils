@@ -73,7 +73,7 @@ class Sage_CheckpointLoaderSimple(CheckpointLoaderSimple):
         model_info["hash"] = cache.cache.data[model_info["path"]]["hash"]
         ret = super().load_checkpoint(ckpt_name) + (model_info,)
         return ret
-
+    
 class Sage_UNETLoader(UNETLoader):
     @classmethod
     def INPUT_TYPES(s):
@@ -95,6 +95,29 @@ class Sage_UNETLoader(UNETLoader):
         model_info["hash"] = cache.cache.data[model_info["path"]]["hash"]
         ret = super().load_unet(unet_name, weight_dtype) + (model_info,)
         return ret
+
+class Sage_CheckpointInfoOnly(ComfyNodeABC):
+    @classmethod
+    def INPUT_TYPES(s):
+        return {
+                "required": {
+                    "ckpt_name": (folder_paths.get_filename_list("checkpoints"), {"tooltip": "The name of the checkpoint (model) to load."})
+                }
+            }
+
+    RETURN_TYPES = ("MODEL_INFO",)
+    RETURN_NAMES = ("model_info",)
+
+    OUTPUT_TOOLTIPS = ("The model path and hash, all in one output.")
+    FUNCTION = "get_checkpoint_info"
+
+    CATEGORY  =  "Sage Utils/model"
+    DESCRIPTION = "Returns a model_info output to pass to the construct metadata node, and the hash. (And hashes and pulls civitai info for the file.)"
+    def get_checkpoint_info(self, ckpt_name):
+        model_info = { "path": folder_paths.get_full_path_or_raise("checkpoints", ckpt_name) }
+        pull_metadata(model_info["path"], True)
+        model_info["hash"] = cache.cache.data[model_info["path"]]["hash"]
+        return (model_info,)
 
 class Sage_CacheMaintenance(ComfyNodeABC):
     @classmethod

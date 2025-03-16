@@ -77,6 +77,7 @@ NODE_CLASS_MAPPINGS = {
 
     # Utility nodes
     "Sage_GetFileHash": Sage_GetFileHash,
+    "Sage_CheckpointInfoOnly": Sage_CheckpointInfoOnly, #
     
     # Test nodes
     "Sage_Foobar": Sage_Foobar
@@ -143,6 +144,7 @@ NODE_DISPLAY_NAME_MAPPINGS  = {
 
     # Utility nodes
     "Sage_GetFileHash": "Get Sha256 Hash",
+    "Sage_CheckpointInfoOnly": "Checkpoint Info", #
     
     # Test nodes
     "Sage_Foobar": "Test Node (Do not use)"
