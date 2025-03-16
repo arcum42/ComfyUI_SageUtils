@@ -112,7 +112,7 @@ class Sage_CheckpointInfoOnly(ComfyNodeABC):
     FUNCTION = "get_checkpoint_info"
 
     CATEGORY  =  "Sage Utils/model"
-    DESCRIPTION = "Returns a model_info output to pass to the construct metadata node, and the hash. (And hashes and pulls civitai info for the file.)"
+    DESCRIPTION = "Returns a model_info output to pass to the construct metadata node or a model info node. (And hashes and pulls civitai info for the file.)"
     def get_checkpoint_info(self, ckpt_name):
         model_info = { "path": folder_paths.get_full_path_or_raise("checkpoints", ckpt_name) }
         pull_metadata(model_info["path"], True)

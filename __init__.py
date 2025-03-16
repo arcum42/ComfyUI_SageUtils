@@ -26,6 +26,7 @@ NODE_CLASS_MAPPINGS = {
 
     # Logic nodes
     "Sage_LogicalSwitch": Sage_LogicalSwitch,
+    "Sage_TextCompare": Sage_TextCompare,
 
     # Text nodes
     "Sage_SetText": Sage_SetText,
@@ -93,6 +94,7 @@ NODE_DISPLAY_NAME_MAPPINGS  = {
 
     #Logic nodes
     "Sage_LogicalSwitch": "Switch",
+    "Sage_TextCompare": "Text Compare",
 
     # Text nodes
     "Sage_SetText": "Set Text",
