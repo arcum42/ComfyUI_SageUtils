@@ -118,3 +118,26 @@ class Sage_TextCompare(ComfyNodeABC):
             return (text1 in text2,)
         elif comparison_type == "not_contains":
             return (text1 not in text2,)
+
+class Sage_StringListTest(ComfyNodeABC):
+    @classmethod
+    def INPUT_TYPES(s):
+        return {
+            "required": {
+                "text": ("STRING", {"defaultInput": False}),
+                "text2": ("STRING", {"defaultInput": False}),
+                "text3": ("STRING", {"defaultInput": False}),
+            }
+        }
+
+    RETURN_TYPES = ("BOOLEAN",)
+    RETURN_NAMES = ("result",)
+
+    FUNCTION = "test_list"
+
+    CATEGORY = "Sage Utils/text"
+    DESCRIPTION = "Returns a list of three strings."
+    OUTPUT_IS_LIST = (True,)
+
+    def test_list(self, text, text2, text3):
+        return ((text,text2,text3),)

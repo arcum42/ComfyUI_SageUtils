@@ -81,7 +81,8 @@ NODE_CLASS_MAPPINGS = {
     "Sage_CheckpointInfoOnly": Sage_CheckpointInfoOnly, #
     
     # Test nodes
-    "Sage_Foobar": Sage_Foobar
+    "Sage_Foobar": Sage_Foobar#,
+    #"Sage_StringListTest": Sage_StringListTest
 
 }
 
@@ -149,7 +150,8 @@ NODE_DISPLAY_NAME_MAPPINGS  = {
     "Sage_CheckpointInfoOnly": "Checkpoint Info", #
     
     # Test nodes
-    "Sage_Foobar": "Test Node (Do not use)"
+    "Sage_Foobar": "Test Node (Do not use)"#,
+    #"Sage_StringListTest": "String List Test"
 }
 
 __all__ = ['NODE_CLASS_MAPPINGS', 'NODE_DISPLAY_NAME_MAPPINGS', 'WEB_DIRECTORY']
