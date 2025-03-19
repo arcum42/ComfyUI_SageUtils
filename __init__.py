@@ -43,6 +43,7 @@ NODE_CLASS_MAPPINGS = {
     "Sage_ModelInfo": Sage_ModelInfo,
     "Sage_CacheMaintenance": Sage_CacheMaintenance,
     "Sage_ModelReport": Sage_ModelReport,
+    "Sage_ModelLoraStackLoader": Sage_ModelLoraStackLoader,
 
     # Lora stack nodes
     "Sage_LoraStack": Sage_LoraStack,
@@ -112,6 +113,7 @@ NODE_DISPLAY_NAME_MAPPINGS  = {
     "Sage_ModelInfo": "Model Info",
     "Sage_CacheMaintenance": "Cache Maintenance",
     "Sage_ModelReport": "Model Scan & Report",
+    "Sage_ModelLoraStackLoader": "Model + Lora Stack Loader",
 
     # Lora stack nodes
     "Sage_LoraStack": "Simple Lora Stack",

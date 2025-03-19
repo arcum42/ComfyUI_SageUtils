@@ -7,17 +7,19 @@ import comfy
 import folder_paths
 from comfy.comfy_types import IO, ComfyNodeABC, InputTypeDict
 
-class Sage_LoraStackRecent(ComfyNodeABC):
+import pathlib
+
+
+class Sage_LoraStack(ComfyNodeABC):
     def __init__(self):
         pass
 
     @classmethod
     def INPUT_TYPES(s):
-        lora_list = get_recently_used_models("loras")
         return {
             "required": {
                 "enabled": ("BOOLEAN", {"defaultInput": False, "default": True}),
-                "lora_name": (lora_list, {"defaultInput": False, "tooltip": "The name of the LoRA."}),
+                "lora_name": (folder_paths.get_filename_list("loras"), {"defaultInput": False, "tooltip": "The name of the LoRA."}),
                 "model_weight": ("FLOAT", {"defaultInput": False, "default": 1.0, "min": -100.0, "max": 100.0, "step": 0.01, "tooltip": "How strongly to modify the diffusion model. This value can be negative."}),
                 "clip_weight": ("FLOAT", {"defaultInput": False, "default": 1.0, "min": -100.0, "max": 100.0, "step": 0.01, "tooltip": "How strongly to modify the CLIP model. This value can be negative."}),
                 },
@@ -41,16 +43,17 @@ class Sage_LoraStackRecent(ComfyNodeABC):
 
         return (stack,)
 
-class Sage_LoraStack(ComfyNodeABC):
+class Sage_LoraStackRecent(ComfyNodeABC):
     def __init__(self):
         pass
 
     @classmethod
     def INPUT_TYPES(s):
+        lora_list = get_recently_used_models("loras")
         return {
             "required": {
                 "enabled": ("BOOLEAN", {"defaultInput": False, "default": True}),
-                "lora_name": (folder_paths.get_filename_list("loras"), {"defaultInput": False, "tooltip": "The name of the LoRA."}),
+                "lora_name": (lora_list, {"defaultInput": False, "tooltip": "The name of the LoRA."}),
                 "model_weight": ("FLOAT", {"defaultInput": False, "default": 1.0, "min": -100.0, "max": 100.0, "step": 0.01, "tooltip": "How strongly to modify the diffusion model. This value can be negative."}),
                 "clip_weight": ("FLOAT", {"defaultInput": False, "default": 1.0, "min": -100.0, "max": 100.0, "step": 0.01, "tooltip": "How strongly to modify the CLIP model. This value can be negative."}),
                 },
@@ -158,7 +161,7 @@ class Sage_LoraStackLoader(ComfyNodeABC):
     RETURN_TYPES = ("MODEL", "CLIP", "LORA_STACK", "STRING")
     RETURN_NAMES = ("model", "clip", "lora_stack", "keywords")
     OUTPUT_TOOLTIPS = ("The modified diffusion model.", "The modified CLIP model.", "The stack of loras.", "Keywords from the lora stack.")
-    FUNCTION = "load_loras"
+    FUNCTION = "load_all"
 
     CATEGORY = "Sage Utils/lora"
     DESCRIPTION = "Accept a lora_stack with Model and Clip, and apply all the loras in the stack at once."
@@ -178,7 +181,7 @@ class Sage_LoraStackLoader(ComfyNodeABC):
 
         return comfy.sd.load_lora_for_models(model, clip, lora, strength_model, strength_clip)
 
-    def load_loras(self, model, clip, lora_stack=None):
+    def load_loras(self, model, clip, pbar, lora_stack=None):
         if not lora_stack:
             print("No lora stacks found. Warning: Passing 'None' to lora_stack output.")
             return model, clip, None
@@ -189,3 +192,42 @@ class Sage_LoraStackLoader(ComfyNodeABC):
                 model, clip = self.load_lora(model, clip, *lora)
             pbar.update(1)
         return model, clip, lora_stack, get_lora_stack_keywords(lora_stack)
+    
+    def load_all(self, model, clip, lora_stack=None):
+        pbar = comfy.utils.ProgressBar(len(lora_stack))
+        model, clip, lora_stack, keywords = self.load_loras(model, clip, pbar, lora_stack)
+        return model, clip, lora_stack, keywords
+
+class Sage_ModelLoraStackLoader(Sage_LoraStackLoader):
+    def __init__(self):
+        self.loaded_lora = None
+
+    @classmethod
+    def INPUT_TYPES(s):
+        return {
+            "required": {
+                "model_info": ("MODEL_INFO", {"tooltip": "The diffusion model the LoRA will be applied to. Note: Should be from the checkpoint info node, not a loader node, or the model will be loaded twice."}),
+            },
+            "optional": {
+                "lora_stack": ("LORA_STACK", {"defaultInput": True})
+            }
+        }
+
+    RETURN_TYPES = ("MODEL", "CLIP", "VAE", "LORA_STACK", "STRING")
+    RETURN_NAMES = ("model", "clip", "vae", "lora_stack", "keywords")
+    OUTPUT_TOOLTIPS = ("The modified diffusion model.", "The modified CLIP model.", "The VAE model.", "The stack of loras.", "Keywords from the lora stack.")
+
+    FUNCTION = "load_everything"
+    CATEGORY = "Sage Utils/model"
+    DESCRIPTION = "Accept model info and a lora_stack, load the model, and apply all the loras in the stack to it at once."
+
+    def load_checkpoint(self, ckpt_path):
+        out = comfy.sd.load_checkpoint_guess_config(ckpt_path, output_vae=True, output_clip=True, embedding_directory=folder_paths.get_folder_paths("embeddings"))
+        return out[:3]
+
+    def load_everything(self, model_info, lora_stack=None):
+        pbar = comfy.utils.ProgressBar(len(lora_stack) + 1)
+        model, clip, vae = self.load_checkpoint(model_info["path"])
+        pbar.update(1)
+        model, clip, lora_stack, keywords = self.load_loras(model, clip, pbar, lora_stack)
+        return model, clip, vae, lora_stack, keywords

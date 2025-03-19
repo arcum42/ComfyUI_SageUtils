@@ -36,7 +36,7 @@ class Sage_CheckpointLoaderRecent(ComfyNodeABC):
     DESCRIPTION = "Loads a diffusion model checkpoint. Also returns a model_info output to pass to the construct metadata node, and the hash. (And hashes and pulls civitai info for the file.)"
 
     def load_checkpoint(self, ckpt_name):
-        model_info = { "path": folder_paths.get_full_path_or_raise("checkpoints", ckpt_name) }
+        model_info = { "type": "CKPT", "path": folder_paths.get_full_path_or_raise("checkpoints", ckpt_name) }
         pull_metadata(model_info["path"], True)
 
         model_info["hash"] = cache.cache.data[model_info["path"]]["hash"]
@@ -67,7 +67,7 @@ class Sage_CheckpointLoaderSimple(CheckpointLoaderSimple):
     CATEGORY  =  "Sage Utils/model"
     DESCRIPTION = "Loads a diffusion model checkpoint. Also returns a model_info output to pass to the construct metadata node, and the hash. (And hashes and pulls civitai info for the file.)"
     def load_checkpoint(self, ckpt_name):
-        model_info = { "path": folder_paths.get_full_path_or_raise("checkpoints", ckpt_name) }
+        model_info = { "type": "CKPT", "path": folder_paths.get_full_path_or_raise("checkpoints", ckpt_name) }
         pull_metadata(model_info["path"], True)
 
         model_info["hash"] = cache.cache.data[model_info["path"]]["hash"]
@@ -88,6 +88,7 @@ class Sage_UNETLoader(UNETLoader):
 
     def load_unet(self, unet_name, weight_dtype):
         model_info = {
+            "type": "UNET",
             "name": pathlib.Path(unet_name).name,
             "path": folder_paths.get_full_path_or_raise("diffusion_models", unet_name)
         }
@@ -114,7 +115,7 @@ class Sage_CheckpointInfoOnly(ComfyNodeABC):
     CATEGORY  =  "Sage Utils/model"
     DESCRIPTION = "Returns a model_info output to pass to the construct metadata node or a model info node. (And hashes and pulls civitai info for the file.)"
     def get_checkpoint_info(self, ckpt_name):
-        model_info = { "path": folder_paths.get_full_path_or_raise("checkpoints", ckpt_name) }
+        model_info = { "type": "CKPT", "path": folder_paths.get_full_path_or_raise("checkpoints", ckpt_name) }
         pull_metadata(model_info["path"], True)
         model_info["hash"] = cache.cache.data[model_info["path"]]["hash"]
         return (model_info,)
