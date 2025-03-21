@@ -39,7 +39,7 @@ app.registerExtension({
         //console.log("Foobar node created!");
       };
     }
-    if (nodeData.name == "Sage_ViewText") {
+    if ((nodeData.name == "Sage_ViewText") || (nodeData.name == "Sage_ViewAnything")) {
       const onNodeCreated = nodeType.prototype.onNodeCreated;
       nodeType.prototype.onNodeCreated = function () {
         onNodeCreated ? onNodeCreated.apply(this, []) : undefined;

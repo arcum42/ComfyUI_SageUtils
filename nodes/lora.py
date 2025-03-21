@@ -226,6 +226,9 @@ class Sage_ModelLoraStackLoader(Sage_LoraStackLoader):
         return out[:3]
 
     def load_everything(self, model_info, lora_stack=None):
+        if model_info["type"] != "CKPT":
+            raise ValueError("Clip information is missing. Please use a checkpoint for model_info, not a diffusion model.")
+
         pbar = comfy.utils.ProgressBar(len(lora_stack) + 1)
         model, clip, vae = self.load_checkpoint(model_info["path"])
         pbar.update(1)

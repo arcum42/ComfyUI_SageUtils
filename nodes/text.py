@@ -98,7 +98,29 @@ class Sage_ViewText(ComfyNodeABC):
     def INPUT_TYPES(s):
         return {
             "required": {
-                "text": (IO.ANY, {"forceInput": True, "multiline": True})
+                "text": ("STRING", {"forceInput": True, "multiline": True})
+            }
+        }
+
+    RETURN_TYPES = ("STRING",)
+
+    FUNCTION = "show_text"
+
+    CATEGORY = "Sage Utils/text"
+    DESCRIPTION = "Shows some text."
+    OUTPUT_NODE = True
+
+    def show_text(self, text):
+        print(f"String is '{text}'")
+        return { "ui": {"text": text}, "result" : (text,) }
+
+
+class Sage_ViewAnything(ComfyNodeABC):
+    @classmethod
+    def INPUT_TYPES(s):
+        return {
+            "required": {
+                "any": (IO.ANY, {"forceInput": True, "multiline": True})
             }
         }
 
@@ -111,15 +133,15 @@ class Sage_ViewText(ComfyNodeABC):
     OUTPUT_NODE = True
     INPUT_IS_LIST = True
 
-    def show_text(self, text):
-        print(f"Text is '{text}'")
+    def show_text(self, any):
+        print(f"Text is '{any}'")
         str = ""
-        if isinstance(text, list):
-            for t in text:
+        if isinstance(any, list):
+            for t in any:
                 str += f"{t}\n"
                 print(f"String is '{t}'")
         else:
-            str = text
+            str = any
         print(f"String is '{str}'")
         return { "ui": {"text": str}, "result" : (str,) }
 

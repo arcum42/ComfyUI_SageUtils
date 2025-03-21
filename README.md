@@ -16,7 +16,7 @@ Now, you could just write out the metadata by hand, but you probably want that a
 
 Either are going to need inputs from several places, and I had to make custom versions of several nodes to get it.
 
-For the "model_info" parameter, you need to hook it to one of my custom nodes for loading a checkpoint. There's "Load Checkpoint w/ Metadata", "Load Recently Used Checkpoint", and "Load Diffusion Model w/ Metadata". 
+for the "model_info" parameter, you can either get it from a "Checkpoint Info" node, or hook it to one of my custom nodes for loading a checkpoint. There's "Load Checkpoint w/ Metadata", "Load Recently Used Checkpoint", and "Load Diffusion Model w/ Metadata". 
 
 The first is a normal node for loading a checkpoint, just with an added "model_info" output. It *is* going to hash the model the first time you load it and save it to a cache, and it also checks civitai for information on the model, as I'm writing in the Civitai Resources section in the metadata, with model and version id. It also saves the last time you loaded it. Model information is saved in "sage_cache.json", which you might find useful. Indeed, a friend of mine wrote a [useful script](https://github.com/tecknight/comfy_model_html) to generate a model/lora report from it.
 
@@ -30,9 +30,11 @@ I've got a "Simple Lora Stack" node, which lets you set a lora and weights, and 
 
 The lora_stack then needs to go to a "Lora Stack Loader" node. Pipe your model, clip, and the lora_stack through this node, and it'll load all the loras in the stack. Make sure to also hook the lora_stack to the construct node if you want them showing up in the metadata.
 
+You could also use the "Model + Lora Stack Loader" node instead, which accepts a model_info input as well, and loads both the checkpoint and the lora.
+
 Alternative nodes for this are in [ComfyUI-Lora-Auto-Trigger-Words](https://github.com/idrirap/ComfyUI-Lora-Auto-Trigger-Words) and [Comfyroll Studio](https://github.com/Suzie1/ComfyUI_Comfyroll_CustomNodes) and others.
 
-In order for it to print your KSampler information, it'll need to get that as well, and that's what the "Sampler Info" node is for. I've *also* added a "KSampler w/ Sampler Info" node, so you can hook the info node to both the KSampler and the Construct node. 
+In order for it to print your KSampler information, it'll need to get that as well, and that's what the "Sampler Info" node is for. I've *also* added a "KSampler w/ Sampler Info" node, so you can hook the info node to both the KSampler and the Construct node. Or there's the "KSampler + Decoder" nodes, if you want to decode the VAE at the same time.
 
 Another area where this can be quite useful is hooking the same "Sampler Info" node to *multiple* KSamplers.
 
