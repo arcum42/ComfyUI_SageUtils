@@ -2,6 +2,7 @@
 # This contains nodes involving models. Primarily loading models, but also includes nodes for model info and cache maintenance.
 
 from ..sage import *
+from ..utils.loaders import *
 
 import pathlib
 import json
@@ -41,8 +42,9 @@ class Sage_CheckpointLoaderRecent(ComfyNodeABC):
 
         model_info["hash"] = cache.cache.data[model_info["path"]]["hash"]
 
-        out = comfy.sd.load_checkpoint_guess_config(model_info["path"], output_vae=True, output_clip=True, embedding_directory=folder_paths.get_folder_paths("embeddings"))
-        result = (*out[:3], model_info)
+        model, clip, vae = sage_load_checkpoint(model_info["path"])
+        #out = comfy.sd.load_checkpoint_guess_config(model_info["path"], output_vae=True, output_clip=True, embedding_directory=folder_paths.get_folder_paths("embeddings"))
+        result = (model, clip, vae, model_info)
         return (result)
 
 class Sage_CheckpointLoaderSimple(CheckpointLoaderSimple):
@@ -71,8 +73,8 @@ class Sage_CheckpointLoaderSimple(CheckpointLoaderSimple):
         pull_metadata(model_info["path"], True)
 
         model_info["hash"] = cache.cache.data[model_info["path"]]["hash"]
-        ret = super().load_checkpoint(ckpt_name) + (model_info,)
-        return ret
+        model, clip, vae = sage_load_checkpoint(model_info["path"])
+        return (model, clip, vae, model_info)
     
 class Sage_UNETLoader(UNETLoader):
     @classmethod
@@ -94,8 +96,7 @@ class Sage_UNETLoader(UNETLoader):
         }
         pull_metadata(model_info["path"], True)
         model_info["hash"] = cache.cache.data[model_info["path"]]["hash"]
-        ret = super().load_unet(unet_name, weight_dtype) + (model_info,)
-        return ret
+        return (sage_load_unet(model_info["path"], weight_dtype), model_info)
 
 class Sage_CheckpointInfoOnly(ComfyNodeABC):
     @classmethod

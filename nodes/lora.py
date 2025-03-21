@@ -2,6 +2,7 @@
 # This includes nodes involving loras and lora stacks.
 
 from ..sage import *
+from ..utils.loaders import *
 
 import comfy
 import folder_paths
@@ -165,40 +166,11 @@ class Sage_LoraStackLoader(ComfyNodeABC):
 
     CATEGORY = "Sage Utils/lora"
     DESCRIPTION = "Accept a lora_stack with Model and Clip, and apply all the loras in the stack at once."
-
-    def load_lora(self, model, clip, lora_name, strength_model, strength_clip):
-        if not (strength_model or strength_clip):
-            return model, clip
-
-        lora_path = folder_paths.get_full_path_or_raise("loras", lora_name)
-
-        if lora_path in self.loaded_lora:
-            lora = self.loaded_lora[lora_path]
-            print(f"Using cached lora for {lora_path}")
-        else:
-            print(f"Loading lora from {lora_path}")
-            pull_metadata(lora_path, True)
-            lora = comfy.utils.load_torch_file(lora_path, safe_load=True)
-            self.loaded_lora[lora_path] = lora
-
-        return comfy.sd.load_lora_for_models(model, clip, lora, strength_model, strength_clip)
-
-    def load_loras(self, model, clip, pbar, lora_stack=None):
-        if not lora_stack:
-            print("No lora stacks found. Warning: Passing 'None' to lora_stack output.")
-            return model, clip, None, ""
-        pbar = comfy.utils.ProgressBar(len(lora_stack))
-
-        for lora in lora_stack:
-            if lora:
-                model, clip = self.load_lora(model, clip, *lora)
-            pbar.update(1)
-        return model, clip, lora_stack, get_lora_stack_keywords(lora_stack)
     
     def load_all(self, model, clip, lora_stack=None):
         stack_length = len(lora_stack) if lora_stack else 1
         pbar = comfy.utils.ProgressBar(stack_length)
-        model, clip, lora_stack, keywords = self.load_loras(model, clip, pbar, lora_stack)
+        model, clip, lora_stack, keywords = sage_load_lora_stack(model, clip, pbar, lora_stack)
         return model, clip, lora_stack, keywords
 
 class Sage_ModelLoraStackLoader(Sage_LoraStackLoader):
@@ -224,17 +196,13 @@ class Sage_ModelLoraStackLoader(Sage_LoraStackLoader):
     CATEGORY = "Sage Utils/model"
     DESCRIPTION = "Accept model info and a lora_stack, load the model, and apply all the loras in the stack to it at once."
 
-    def load_checkpoint(self, ckpt_path):
-        out = comfy.sd.load_checkpoint_guess_config(ckpt_path, output_vae=True, output_clip=True, embedding_directory=folder_paths.get_folder_paths("embeddings"))
-        return out[:3]
-
     def load_everything(self, model_info, lora_stack=None):
         if model_info["type"] != "CKPT":
             raise ValueError("Clip information is missing. Please use a checkpoint for model_info, not a diffusion model.")
         stack_length = len(lora_stack) if lora_stack else 1
 
         pbar = comfy.utils.ProgressBar(stack_length + 1)
-        model, clip, vae = self.load_checkpoint(model_info["path"])
+        model, clip, vae = sage_load_checkpoint(model_info["path"])
         pbar.update(1)
-        model, clip, lora_stack, keywords = self.load_loras(model, clip, pbar, lora_stack)
+        model, clip, lora_stack, keywords = sage_load_lora_stack(model, clip, pbar, lora_stack)
         return model, clip, vae, lora_stack, keywords
