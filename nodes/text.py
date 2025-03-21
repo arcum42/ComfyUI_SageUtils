@@ -106,9 +106,10 @@ class Sage_ViewText(ComfyNodeABC):
 
     FUNCTION = "show_text"
 
-    CATEGORY = "Sage Utils/text"
+    CATEGORY = "Sage Utils/depreciated/text"
     DESCRIPTION = "Shows some text."
     OUTPUT_NODE = True
+    DEPRECATED = True
 
     def show_text(self, text):
         print(f"String is '{text}'")
