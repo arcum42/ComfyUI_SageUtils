@@ -11,6 +11,55 @@ from ..sage import *
 import json
 import torch
 
+class Sage_LogicalSwitch(ComfyNodeABC):
+    @classmethod
+    def INPUT_TYPES(cls) -> InputTypeDict:
+        return {
+            "required": {
+                "condition": (IO.BOOLEAN, {"defaultInput": False}),
+                "true_value": (IO.ANY,{"defaultInput": False}),
+                "false_value": (IO.ANY,{"defaultInput": False})
+            }
+        }
+
+    @classmethod
+    def VALIDATE_INPUTS(s, input_types) -> bool:
+        return True
+
+    RETURN_TYPES = (IO.ANY,)
+    RETURN_NAMES = ("result",)
+
+    FUNCTION = "if_else"
+
+    CATEGORY = "Sage Utils/logic"
+    DESCRIPTION = "Returns one of two values based on a condition."
+
+    def if_else(self, condition, true_value, false_value) -> tuple:
+        return (true_value if condition else false_value,)
+
+class Sage_StringListTest(ComfyNodeABC):
+    @classmethod
+    def INPUT_TYPES(cls) -> InputTypeDict:
+        return {
+            "required": {
+                "text": (IO.STRING, {"defaultInput": False}),
+                "text2": (IO.STRING, {"defaultInput": False}),
+                "text3": (IO.STRING, {"defaultInput": False}),
+            }
+        }
+
+    RETURN_TYPES = (IO.BOOLEAN,)
+    RETURN_NAMES = ("result",)
+
+    FUNCTION = "test_list"
+
+    CATEGORY = "Sage Utils/text"
+    DESCRIPTION = "Returns a list of three strings."
+    OUTPUT_IS_LIST = (True,)
+
+    def test_list(self, text, text2, text3) -> tuple[str]:
+        return ((text,text2,text3),)
+    
 class Sage_Foobar(ComfyNodeABC):
     @classmethod
     def INPUT_TYPES(cls) -> InputTypeDict:

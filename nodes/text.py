@@ -173,3 +173,32 @@ class Sage_PonyPrefix(ComfyNodeABC):
         prefix += f"rating_{rating}, " if rating != "none" else ""
         prefix += f"{prompt or ''}"
         return (prefix,)
+
+class Sage_TextCompare(ComfyNodeABC):
+    @classmethod
+    def INPUT_TYPES(cls) -> InputTypeDict:
+        return {
+            "required": {
+                "text1": (IO.STRING, {"defaultInput": True}),
+                "text2": (IO.STRING, {"defaultInput": True}),
+                "comparison_type": (["equal", "not_equal", "contains", "not_contains"], {"defaultInput": False}),
+            }
+        }
+
+    RETURN_TYPES = (IO.BOOLEAN,)
+    RETURN_NAMES = ("result",)
+
+    FUNCTION = "compare"
+
+    CATEGORY = "Sage Utils/logic"
+    DESCRIPTION = "Compares two strings based on the selected comparison type."
+
+    def compare(self, text1, text2, comparison_type) -> tuple[bool]:
+        if comparison_type == "equal":
+            return (text1 == text2,)
+        elif comparison_type == "not_equal":
+            return (text1 != text2,)
+        elif comparison_type == "contains":
+            return (text1 in text2,)
+        elif comparison_type == "not_contains":
+            return (text1 not in text2,)

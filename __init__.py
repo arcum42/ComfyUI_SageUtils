@@ -2,8 +2,8 @@ import os
 
 from .sage import *
 
-from .nodes.basic import *
 from .nodes.conditioning import *
+from .nodes.depreciated import *
 from .nodes.image import *
 from .nodes.lora import *
 from .nodes.metadata import *
