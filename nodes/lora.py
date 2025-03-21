@@ -184,7 +184,7 @@ class Sage_LoraStackLoader(ComfyNodeABC):
     def load_loras(self, model, clip, pbar, lora_stack=None):
         if not lora_stack:
             print("No lora stacks found. Warning: Passing 'None' to lora_stack output.")
-            return model, clip, None
+            return model, clip, None, ""
         pbar = comfy.utils.ProgressBar(len(lora_stack))
 
         for lora in lora_stack:
@@ -194,7 +194,8 @@ class Sage_LoraStackLoader(ComfyNodeABC):
         return model, clip, lora_stack, get_lora_stack_keywords(lora_stack)
     
     def load_all(self, model, clip, lora_stack=None):
-        pbar = comfy.utils.ProgressBar(len(lora_stack))
+        stack_length = len(lora_stack) if lora_stack else 1
+        pbar = comfy.utils.ProgressBar(stack_length)
         model, clip, lora_stack, keywords = self.load_loras(model, clip, pbar, lora_stack)
         return model, clip, lora_stack, keywords
 
@@ -228,8 +229,9 @@ class Sage_ModelLoraStackLoader(Sage_LoraStackLoader):
     def load_everything(self, model_info, lora_stack=None):
         if model_info["type"] != "CKPT":
             raise ValueError("Clip information is missing. Please use a checkpoint for model_info, not a diffusion model.")
+        stack_length = len(lora_stack) if lora_stack else 1
 
-        pbar = comfy.utils.ProgressBar(len(lora_stack) + 1)
+        pbar = comfy.utils.ProgressBar(stack_length + 1)
         model, clip, vae = self.load_checkpoint(model_info["path"])
         pbar.update(1)
         model, clip, lora_stack, keywords = self.load_loras(model, clip, pbar, lora_stack)
