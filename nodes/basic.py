@@ -18,8 +18,9 @@ class Sage_SetBool(ComfyNodeABC):
 
     FUNCTION = "pass_bool"
 
-    CATEGORY = "Sage Utils/primitives"
+    CATEGORY = "Sage Utils/depreciated/primitives"
     DESCRIPTION = "Sets an boolean."
+    DEPRECATED = True
 
     def pass_bool(self, bool):
         return (bool,)
@@ -38,8 +39,9 @@ class Sage_SetInteger(ComfyNodeABC):
 
     FUNCTION = "pass_int"
 
-    CATEGORY = "Sage Utils/primitives"
+    CATEGORY = "Sage Utils/depreciated/primitives"
     DESCRIPTION = "Sets an integer."
+    DEPRECATED = True
 
     def pass_int(self, int):
         return (int,)
@@ -58,8 +60,9 @@ class Sage_SetFloat(ComfyNodeABC):
 
     FUNCTION = "pass_float"
 
-    CATEGORY = "Sage Utils/primitives"
+    CATEGORY = "Sage Utils/depreciated/primitives"
     DESCRIPTION = "Sets an float."
+    DEPRECATED = True
 
     def pass_float(self, float):
         return (float,)
