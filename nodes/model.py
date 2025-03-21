@@ -1,23 +1,25 @@
 # Model nodes.
 # This contains nodes involving models. Primarily loading models, but also includes nodes for model info and cache maintenance.
 
+from __future__ import annotations
+from comfy.comfy_types.node_typing import ComfyNodeABC, InputTypeDict, IO
+
+import comfy
+import folder_paths
+from nodes import CheckpointLoaderSimple, UNETLoader
+
 from ..sage import *
 from ..utils.loaders import *
 
 import pathlib
 import json
 
-import comfy
-import folder_paths
-from comfy.comfy_types import IO, ComfyNodeABC, InputTypeDict
-from nodes import CheckpointLoaderSimple, UNETLoader
-
 class Sage_CheckpointLoaderRecent(ComfyNodeABC):
     def __init__(self):
         pass
 
     @classmethod
-    def INPUT_TYPES(s):
+    def INPUT_TYPES(cls) -> InputTypeDict:
         ckpt_list = get_recently_used_models("checkpoints")
 
         return {
@@ -25,7 +27,7 @@ class Sage_CheckpointLoaderRecent(ComfyNodeABC):
                 "ckpt_name": (ckpt_list, {"tooltip": "The name of the checkpoint (model) to load."}),
             }
         }
-    RETURN_TYPES = ("MODEL", "CLIP", "VAE", "MODEL_INFO")
+    RETURN_TYPES = (IO.MODEL, IO.CLIP, IO.VAE, "MODEL_INFO")
     RETURN_NAMES = ("model", "clip", "vae", "model_info")
     OUTPUT_TOOLTIPS = ("The model used for denoising latents.",
                     "The CLIP model used for encoding text prompts.",
@@ -36,7 +38,7 @@ class Sage_CheckpointLoaderRecent(ComfyNodeABC):
     CATEGORY  =  "Sage Utils/model"
     DESCRIPTION = "Loads a diffusion model checkpoint. Also returns a model_info output to pass to the construct metadata node, and the hash. (And hashes and pulls civitai info for the file.)"
 
-    def load_checkpoint(self, ckpt_name):
+    def load_checkpoint(self, ckpt_name) -> tuple:
         model_info = { "type": "CKPT", "path": folder_paths.get_full_path_or_raise("checkpoints", ckpt_name) }
         pull_metadata(model_info["path"], True)
 
@@ -52,14 +54,14 @@ class Sage_CheckpointLoaderSimple(CheckpointLoaderSimple):
             pass
 
     @classmethod
-    def INPUT_TYPES(cls):
+    def INPUT_TYPES(cls) -> InputTypeDict:
         return {
                 "required": {
                     "ckpt_name": (folder_paths.get_filename_list("checkpoints"), {"tooltip": "The name of the checkpoint (model) to load."}),
                 }
             }
 
-    RETURN_TYPES = ("MODEL", "CLIP", "VAE", "MODEL_INFO")
+    RETURN_TYPES = (IO.MODEL, IO.CLIP, IO.VAE, "MODEL_INFO")
     RETURN_NAMES = ("model", "clip", "vae", "model_info")
     OUTPUT_TOOLTIPS = ("The model used for denoising latents.",
                     "The CLIP model used for encoding text prompts.",
@@ -68,7 +70,7 @@ class Sage_CheckpointLoaderSimple(CheckpointLoaderSimple):
     FUNCTION = "load_checkpoint"
     CATEGORY  =  "Sage Utils/model"
     DESCRIPTION = "Loads a diffusion model checkpoint. Also returns a model_info output to pass to the construct metadata node, and the hash. (And hashes and pulls civitai info for the file.)"
-    def load_checkpoint(self, ckpt_name):
+    def load_checkpoint(self, ckpt_name) -> tuple:
         model_info = { "type": "CKPT", "path": folder_paths.get_full_path_or_raise("checkpoints", ckpt_name) }
         pull_metadata(model_info["path"], True)
 
@@ -78,17 +80,17 @@ class Sage_CheckpointLoaderSimple(CheckpointLoaderSimple):
     
 class Sage_UNETLoader(UNETLoader):
     @classmethod
-    def INPUT_TYPES(s):
+    def INPUT_TYPES(cls) -> InputTypeDict:
         return {"required": { "unet_name": (folder_paths.get_filename_list("diffusion_models"), ),
                             "weight_dtype": (["default", "fp8_e4m3fn", "fp8_e4m3fn_fast", "fp8_e5m2"],)
                             }}
-    RETURN_TYPES = ("MODEL", "MODEL_INFO")
+    RETURN_TYPES = (IO.MODEL, "MODEL_INFO")
     RETURN_NAMES = ("model", "model_info")
 
     FUNCTION = "load_unet"
     CATEGORY  =  "Sage Utils/model"
 
-    def load_unet(self, unet_name, weight_dtype):
+    def load_unet(self, unet_name, weight_dtype) -> tuple:
         model_info = {
             "type": "UNET",
             "name": pathlib.Path(unet_name).name,
@@ -100,7 +102,7 @@ class Sage_UNETLoader(UNETLoader):
 
 class Sage_CheckpointInfoOnly(ComfyNodeABC):
     @classmethod
-    def INPUT_TYPES(s):
+    def INPUT_TYPES(cls) -> InputTypeDict:
         return {
                 "required": {
                     "ckpt_name": (folder_paths.get_filename_list("checkpoints"), {"tooltip": "The name of the checkpoint (model) to load."})
@@ -115,7 +117,7 @@ class Sage_CheckpointInfoOnly(ComfyNodeABC):
 
     CATEGORY  =  "Sage Utils/model"
     DESCRIPTION = "Returns a model_info output to pass to the construct metadata node or a model info node. (And hashes and pulls civitai info for the file.)"
-    def get_checkpoint_info(self, ckpt_name):
+    def get_checkpoint_info(self, ckpt_name) -> tuple:
         model_info = { "type": "CKPT", "path": folder_paths.get_full_path_or_raise("checkpoints", ckpt_name) }
         pull_metadata(model_info["path"], True)
         model_info["hash"] = cache.cache.data[model_info["path"]]["hash"]
@@ -123,21 +125,21 @@ class Sage_CheckpointInfoOnly(ComfyNodeABC):
 
 class Sage_CacheMaintenance(ComfyNodeABC):
     @classmethod
-    def INPUT_TYPES(s):
+    def INPUT_TYPES(cls) -> InputTypeDict:
         return {
             "required": {
                 "remove_ghost_entries": ("BOOLEAN", {"defaultInput": True})
             }
         }
 
-    RETURN_TYPES = ("STRING", "STRING", "STRING")
+    RETURN_TYPES = (IO.STRING, IO.STRING, IO.STRING)
     RETURN_NAMES = ("ghost_entries", "dup_hash","dup_model")
 
     FUNCTION = "cache_maintenance"
     CATEGORY = "Sage Utils/model"
     DESCRIPTION = "Lets you remove entries for models that are no longer there. dup_hash returns a list of files with the same hash, and dup_model returns ones with the same civitai model id (but not neccessarily the same version)."
 
-    def cache_maintenance(self, remove_ghost_entries):
+    def cache_maintenance(self, remove_ghost_entries) -> tuple[str, str, str]:
         ghost_entries = [path for path in cache.cache.data if not pathlib.Path(path).is_file()]
         cache_by_hash = {}
         cache_by_id = {}
@@ -162,14 +164,14 @@ class Sage_CacheMaintenance(ComfyNodeABC):
 
 class Sage_ModelReport(ComfyNodeABC):
     @classmethod
-    def INPUT_TYPES(s):
+    def INPUT_TYPES(cls) -> InputTypeDict:
         return {
             "required": {
                 "scan_models": (("none", "loras", "checkpoints", "all"), {"defaultInput": False, "default": "none"}),
             }
         }
 
-    RETURN_TYPES = ("STRING", "STRING")
+    RETURN_TYPES = (IO.STRING, IO.STRING)
     RETURN_NAMES = ("model_list", "lora_list")
 
     FUNCTION = "pull_list"
@@ -191,7 +193,7 @@ class Sage_ModelReport(ComfyNodeABC):
         print(f"the_paths == {the_paths}")
         if the_paths != []: model_scan(the_paths)
 
-    def pull_list(self, scan_models):
+    def pull_list(self, scan_models) -> tuple[str, str]:
         sorted_models = {}
         sorted_loras = {}
         model_list = ""

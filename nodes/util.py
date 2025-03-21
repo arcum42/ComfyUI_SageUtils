@@ -1,25 +1,28 @@
 # Utility nodes
 # This is for any misc utility nodes that don't fit into the other categories.
 
+from __future__ import annotations
+from comfy.comfy_types.node_typing import ComfyNodeABC, InputTypeDict, IO
+
+import folder_paths
+
+from ..sage import *
+
 import json
 import torch
 
-from ..sage import *
-import folder_paths
-from comfy.comfy_types import IO, ComfyNodeABC, InputTypeDict
-
 class Sage_Foobar(ComfyNodeABC):
     @classmethod
-    def INPUT_TYPES(s):
+    def INPUT_TYPES(cls) -> InputTypeDict:
         return {
             "required": {
-                "separator": ("STRING", {"defaultInput": False, "default": ', '}),
-                "str1": ("STRING", {"defaultInput": True, "multiline": True}),
-                "str2": ("STRING", {"defaultInput": True, "multiline": True}),
+                "separator": (IO.STRING, {"defaultInput": False, "default": ', '}),
+                "str1": (IO.STRING, {"defaultInput": True, "multiline": True}),
+                "str2": (IO.STRING, {"defaultInput": True, "multiline": True}),
             }
         }
 
-    RETURN_TYPES = ("STRING",)
+    RETURN_TYPES = (IO.STRING,)
     RETURN_NAMES = ("output",)
 
     FUNCTION = "process"
@@ -29,7 +32,7 @@ class Sage_Foobar(ComfyNodeABC):
     EXPERIMENTAL = True
     DEPRECATED = True
 
-    def process(self, separator, **args):
+    def process(self, separator, **args) -> tuple[str]:
         print(args.values())
         print(vars(self))
         print(dir(self))
@@ -40,14 +43,14 @@ class Sage_Foobar(ComfyNodeABC):
 
 class Sage_ModelInfo(ComfyNodeABC):
     @classmethod
-    def INPUT_TYPES(s):
+    def INPUT_TYPES(cls) -> InputTypeDict:
         return {
             "required": {
                 "model_info": ("MODEL_INFO", {"defaultInput": True})
             }
         }
 
-    RETURN_TYPES = ("STRING", "STRING", "STRING", "STRING", "IMAGE")
+    RETURN_TYPES = (IO.STRING, IO.STRING, IO.STRING, IO.STRING, IO.IMAGE)
     RETURN_NAMES = ("base_model", "name", "url", "latest_url", "image")
 
     FUNCTION = "get_last_info"
@@ -55,7 +58,7 @@ class Sage_ModelInfo(ComfyNodeABC):
     CATEGORY = "Sage Utils/model"
     DESCRIPTION = "Pull the civitai model info, and return what the base model is, the name with version, the url, the url for the latest version, and a preview image. Note that last model in the stack is not necessarily the one this node is hooked to, since that node may be disabled."
 
-    def get_last_info(self, model_info):
+    def get_last_info(self, model_info) -> tuple:
         if model_info is None:
             return ("", "", "", "", None)
 
@@ -84,14 +87,14 @@ class Sage_ModelInfo(ComfyNodeABC):
 
 class Sage_LastLoraInfo(ComfyNodeABC):
     @classmethod
-    def INPUT_TYPES(s):
+    def INPUT_TYPES(cls) -> InputTypeDict:
         return {
             "required": {
                 "lora_stack": ("LORA_STACK", {"defaultInput": True})
             }
         }
 
-    RETURN_TYPES = ("STRING", "STRING", "STRING", "STRING", "IMAGE")
+    RETURN_TYPES = (IO.STRING, IO.STRING, IO.STRING, IO.STRING, IO.IMAGE)
     RETURN_NAMES = ("base_model", "name", "url", "latest_url", "image")
 
     FUNCTION = "get_last_info"
@@ -99,7 +102,7 @@ class Sage_LastLoraInfo(ComfyNodeABC):
     CATEGORY = "Sage Utils/lora"
     DESCRIPTION = "Take the last lora in the stack, pull the civitai model info, and return what the base model is, the name with version, the url, the url for the latest version, and a preview image. Note that last model in the stack is not necessarily the one this node is hooked to, since that node may be disabled."
 
-    def get_last_info(self, lora_stack):
+    def get_last_info(self, lora_stack) -> tuple:
         if lora_stack is None:
             return ("", "", "", "", None)
 
@@ -130,15 +133,15 @@ class Sage_LastLoraInfo(ComfyNodeABC):
 
 class Sage_GetFileHash(ComfyNodeABC):
     @classmethod
-    def INPUT_TYPES(s):
+    def INPUT_TYPES(cls) -> InputTypeDict:
         return {
             "required": {
                 "base_dir": (list(folder_paths.folder_names_and_paths.keys()), {"defaultInput": False}),
-                "filename": ("STRING", {"defaultInput": False}),
+                "filename": (IO.STRING, {"defaultInput": False}),
             }
         }
 
-    RETURN_TYPES = ("STRING",)
+    RETURN_TYPES = (IO.STRING,)
     RETURN_NAMES = ("hash",)
 
     FUNCTION = "get_hash"
@@ -146,7 +149,7 @@ class Sage_GetFileHash(ComfyNodeABC):
     CATEGORY = "Sage Utils/util"
     DESCRIPTION = "Get an sha256 hash of a file."
 
-    def get_hash(self, base_dir, filename):
+    def get_hash(self, base_dir, filename) -> tuple[str]:
         the_hash = ""
         try:
             file_path = folder_paths.get_full_path_or_raise(base_dir, filename)

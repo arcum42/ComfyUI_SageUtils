@@ -1,19 +1,21 @@
 # Basic nodes
 # This includes nodes for setting values, logical nodes, potentially math nodes, etc. Text nodes are in their own file, as are image nodes.
 
-from comfy.comfy_types import IO, ComfyNodeABC, InputTypeDict
+from __future__ import annotations
+from comfy.comfy_types.node_typing import ComfyNodeABC, InputTypeDict, IO
+
 from ..sage import *
 
 class Sage_SetBool(ComfyNodeABC):
     @classmethod
-    def INPUT_TYPES(s):
+    def INPUT_TYPES(cls) -> InputTypeDict:
         return {
             "required": {
-                "bool": ("BOOLEAN", {"defaultInput": False}),
+                "bool": (IO.BOOLEAN, {"defaultInput": False}),
             }
         }
 
-    RETURN_TYPES = ("BOOLEAN",)
+    RETURN_TYPES = (IO.BOOLEAN,)
     RETURN_NAMES = ("bool",)
 
     FUNCTION = "pass_bool"
@@ -22,19 +24,19 @@ class Sage_SetBool(ComfyNodeABC):
     DESCRIPTION = "Sets an boolean."
     DEPRECATED = True
 
-    def pass_bool(self, bool):
+    def pass_bool(self, bool: bool) -> tuple[bool]:
         return (bool,)
 
 class Sage_SetInteger(ComfyNodeABC):
     @classmethod
-    def INPUT_TYPES(s):
+    def INPUT_TYPES(cls) -> InputTypeDict:
         return {
             "required": {
-                "int": ("INT", {"defaultInput": False}),
+                "int": (IO.INT, {"defaultInput": False}),
             }
         }
 
-    RETURN_TYPES = ("INT",)
+    RETURN_TYPES = (IO.INT,)
     RETURN_NAMES = ("int",)
 
     FUNCTION = "pass_int"
@@ -43,19 +45,19 @@ class Sage_SetInteger(ComfyNodeABC):
     DESCRIPTION = "Sets an integer."
     DEPRECATED = True
 
-    def pass_int(self, int):
+    def pass_int(self, int: int) -> tuple[int]:
         return (int,)
 
 class Sage_SetFloat(ComfyNodeABC):
     @classmethod
-    def INPUT_TYPES(s):
+    def INPUT_TYPES(cls) -> InputTypeDict:
         return {
             "required": {
-                "float": ("FLOAT", {"defaultInput": False}),
+                "float": (IO.FLOAT, {"defaultInput": False}),
             }
         }
 
-    RETURN_TYPES = ("FLOAT",)
+    RETURN_TYPES = (IO.FLOAT,)
     RETURN_NAMES = ("float",)
 
     FUNCTION = "pass_float"
@@ -64,22 +66,22 @@ class Sage_SetFloat(ComfyNodeABC):
     DESCRIPTION = "Sets an float."
     DEPRECATED = True
 
-    def pass_float(self, float):
+    def pass_float(self, float: float) -> tuple[float]:
         return (float,)
 
 class Sage_LogicalSwitch(ComfyNodeABC):
     @classmethod
-    def INPUT_TYPES(s):
+    def INPUT_TYPES(cls) -> InputTypeDict:
         return {
             "required": {
-                "condition": ("BOOLEAN", {"defaultInput": False}),
+                "condition": (IO.BOOLEAN, {"defaultInput": False}),
                 "true_value": (IO.ANY,{"defaultInput": False}),
                 "false_value": (IO.ANY,{"defaultInput": False})
             }
         }
 
     @classmethod
-    def VALIDATE_INPUTS(s, input_types):
+    def VALIDATE_INPUTS(s, input_types) -> bool:
         return True
 
     RETURN_TYPES = (IO.ANY,)
@@ -90,21 +92,21 @@ class Sage_LogicalSwitch(ComfyNodeABC):
     CATEGORY = "Sage Utils/logic"
     DESCRIPTION = "Returns one of two values based on a condition."
 
-    def if_else(self, condition, true_value, false_value):
+    def if_else(self, condition, true_value, false_value) -> tuple:
         return (true_value if condition else false_value,)
 
 class Sage_TextCompare(ComfyNodeABC):
     @classmethod
-    def INPUT_TYPES(s):
+    def INPUT_TYPES(cls) -> InputTypeDict:
         return {
             "required": {
-                "text1": ("STRING", {"defaultInput": True}),
-                "text2": ("STRING", {"defaultInput": True}),
+                "text1": (IO.STRING, {"defaultInput": True}),
+                "text2": (IO.STRING, {"defaultInput": True}),
                 "comparison_type": (["equal", "not_equal", "contains", "not_contains"], {"defaultInput": False}),
             }
         }
 
-    RETURN_TYPES = ("BOOLEAN",)
+    RETURN_TYPES = (IO.BOOLEAN,)
     RETURN_NAMES = ("result",)
 
     FUNCTION = "compare"
@@ -112,7 +114,7 @@ class Sage_TextCompare(ComfyNodeABC):
     CATEGORY = "Sage Utils/logic"
     DESCRIPTION = "Compares two strings based on the selected comparison type."
 
-    def compare(self, text1, text2, comparison_type):
+    def compare(self, text1, text2, comparison_type) -> tuple[bool]:
         if comparison_type == "equal":
             return (text1 == text2,)
         elif comparison_type == "not_equal":
@@ -124,16 +126,16 @@ class Sage_TextCompare(ComfyNodeABC):
 
 class Sage_StringListTest(ComfyNodeABC):
     @classmethod
-    def INPUT_TYPES(s):
+    def INPUT_TYPES(cls) -> InputTypeDict:
         return {
             "required": {
-                "text": ("STRING", {"defaultInput": False}),
-                "text2": ("STRING", {"defaultInput": False}),
-                "text3": ("STRING", {"defaultInput": False}),
+                "text": (IO.STRING, {"defaultInput": False}),
+                "text2": (IO.STRING, {"defaultInput": False}),
+                "text3": (IO.STRING, {"defaultInput": False}),
             }
         }
 
-    RETURN_TYPES = ("BOOLEAN",)
+    RETURN_TYPES = (IO.BOOLEAN,)
     RETURN_NAMES = ("result",)
 
     FUNCTION = "test_list"
@@ -142,5 +144,5 @@ class Sage_StringListTest(ComfyNodeABC):
     DESCRIPTION = "Returns a list of three strings."
     OUTPUT_IS_LIST = (True,)
 
-    def test_list(self, text, text2, text3):
+    def test_list(self, text, text2, text3) -> tuple[str]:
         return ((text,text2,text3),)

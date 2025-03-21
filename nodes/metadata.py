@@ -1,42 +1,44 @@
 # Metadata nodes.
 # This includes nodes for constructing metadata, and related nodes. Saving metadata is handled in the image nodes.
 
-import numpy as np
-import os
+from __future__ import annotations
+from comfy.comfy_types.node_typing import ComfyNodeABC, InputTypeDict, IO
 
 import folder_paths
-from comfy.comfy_types import IO, ComfyNodeABC, InputTypeDict
 
 from ..sage import *
+
+import numpy as np
+import os
 
 class Sage_ConstructMetadata(ComfyNodeABC):
     def __init__(self):
         pass
 
     @classmethod
-    def INPUT_TYPES(s):
+    def INPUT_TYPES(cls) -> InputTypeDict:
         return {
             "required": {
                 "model_info": ('MODEL_INFO',{ "defaultInput": True}),
-                "positive_string": ('STRING',{ "defaultInput": True}),
-                "negative_string": ('STRING',{ "defaultInput": True}),
+                "positive_string": (IO.STRING,{ "defaultInput": True}),
+                "negative_string": (IO.STRING,{ "defaultInput": True}),
                 "sampler_info": ('SAMPLER_INFO', { "defaultInput": True}),
-                "width": ('INT', { "defaultInput": True}),
-                "height": ('INT', { "defaultInput": True})
+                "width": (IO.INT, { "defaultInput": True}),
+                "height": (IO.INT, { "defaultInput": True})
             },
             "optional": {
                 "lora_stack": ('LORA_STACK',{ "defaultInput": True})
             },
         }
 
-    RETURN_TYPES = ('STRING',)
+    RETURN_TYPES = (IO.STRING,)
     RETURN_NAMES = ('param_metadata',)
     FUNCTION = "construct_metadata"
 
     CATEGORY = "Sage Utils/metadata"
     DESCRIPTION = "Puts together metadata in a A1111-like format. Uses the custom sampler info node. The return value is a string, so can be manipulated by other nodes."
 
-    def construct_metadata(self, model_info, positive_string, negative_string, width, height, sampler_info, lora_stack = None):
+    def construct_metadata(self, model_info, positive_string, negative_string, width, height, sampler_info, lora_stack = None) -> tuple[str]:
         metadata = ''
 
         lora_hashes = []
@@ -77,29 +79,29 @@ class Sage_ConstructMetadataLite(ComfyNodeABC):
         pass
 
     @classmethod
-    def INPUT_TYPES(s):
+    def INPUT_TYPES(cls) -> InputTypeDict:
         return {
             "required": {
-                "model_info": ('MODEL_INFO',{ "defaultInput": True}),
-                "positive_string": ('STRING',{ "defaultInput": True}),
-                "negative_string": ('STRING',{ "defaultInput": True}),
+                "model_info": ('MODEL_INFO', { "defaultInput": True}),
+                "positive_string": (IO.STRING, { "defaultInput": True}),
+                "negative_string": (IO.STRING, { "defaultInput": True}),
                 "sampler_info": ('SAMPLER_INFO', { "defaultInput": True}),
-                "width": ('INT', { "defaultInput": True}),
-                "height": ('INT', { "defaultInput": True})
+                "width": (IO.INT, { "defaultInput": True}),
+                "height": (IO.INT, { "defaultInput": True})
             },
             "optional": {
                 "lora_stack": ('LORA_STACK',{ "defaultInput": True})
             },
         }
 
-    RETURN_TYPES = ('STRING',)
+    RETURN_TYPES = (IO.STRING,)
     RETURN_NAMES = ('param_metadata',)
     FUNCTION = "construct_metadata"
 
     CATEGORY = "Sage Utils/metadata"
     DESCRIPTION = "Puts together metadata in a A1111-like format. Uses the custom sampler info node. The return value is a string, so can be manipulated by other nodes."
 
-    def construct_metadata(self, model_info, positive_string, negative_string, width, height, sampler_info, lora_stack = None):
+    def construct_metadata(self, model_info, positive_string, negative_string, width, height, sampler_info, lora_stack = None) -> tuple[str]:
         metadata = ''
 
         resource_hashes = []

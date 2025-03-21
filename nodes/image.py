@@ -1,32 +1,32 @@
 # Image nodes.
 # This includes nodes involving loading, saving, and manipulating images and latents.
 
-import torch
-import numpy as np
-import random
-from PIL import Image, ImageOps, ImageSequence
-from PIL.PngImagePlugin import PngInfo
+from __future__ import annotations
+from comfy.comfy_types.node_typing import ComfyNodeABC, InputTypeDict, IO
 
 import cli_args
 import comfy
 import nodes
 import node_helpers
 
-from comfy.comfy_types import IO, ComfyNodeABC, InputTypeDict
+import torch
+import numpy as np
+import random
+from PIL import Image, ImageOps, ImageSequence
+from PIL.PngImagePlugin import PngInfo
 
 from ..sage import *
-
 
 class Sage_EmptyLatentImagePassthrough(ComfyNodeABC):
     def __init__(self):
         self.device = comfy.model_management.intermediate_device()
 
     @classmethod
-    def INPUT_TYPES(s):
+    def INPUT_TYPES(cls) -> InputTypeDict:
         return {
             "required": {
                 "width": (
-                    "INT",
+                    IO.INT,
                     {
                         "defaultInput": True,
                         "default": 1024,
@@ -37,7 +37,7 @@ class Sage_EmptyLatentImagePassthrough(ComfyNodeABC):
                     },
                 ),
                 "height": (
-                    "INT",
+                    IO.INT,
                     {
                         "defaultInput": True,
                         "default": 1024,
@@ -48,7 +48,7 @@ class Sage_EmptyLatentImagePassthrough(ComfyNodeABC):
                     },
                 ),
                 "batch_size": (
-                    "INT",
+                    IO.INT,
                     {
                         "default": 1,
                         "min": 1,
@@ -56,11 +56,11 @@ class Sage_EmptyLatentImagePassthrough(ComfyNodeABC):
                         "tooltip": "The number of latent images in the batch.",
                     },
                 ),
-                "sd3": ("BOOLEAN", {"default": False}),
+                "sd3": (IO.BOOLEAN, {"default": False}),
             }
         }
 
-    RETURN_TYPES = ("LATENT", "INT", "INT")
+    RETURN_TYPES = (IO.LATENT, IO.INT, IO.INT)
     RETURN_NAMES = ("latent", "width", "height")
     OUTPUT_TOOLTIPS = (
         "The empty latent image batch.",
@@ -74,7 +74,7 @@ class Sage_EmptyLatentImagePassthrough(ComfyNodeABC):
         "Create a new batch of empty latent images to be denoised via sampling."
     )
 
-    def generate(self, width, height, batch_size=1, sd3=False):
+    def generate(self, width, height, batch_size=1, sd3=False) -> tuple:
         size = 16 if sd3 else 4
         latent = torch.zeros(
             [batch_size, size, height // 8, width // 8], device=self.device
@@ -84,7 +84,7 @@ class Sage_EmptyLatentImagePassthrough(ComfyNodeABC):
 
 class Sage_LoadImage(ComfyNodeABC):
     @classmethod
-    def INPUT_TYPES(s):
+    def INPUT_TYPES(cls) -> InputTypeDict:
         files = sorted(
             str(x.relative_to(folder_paths.get_input_directory()))
             for x in pathlib.Path(folder_paths.get_input_directory()).rglob("*")
@@ -94,12 +94,12 @@ class Sage_LoadImage(ComfyNodeABC):
 
     CATEGORY = "Sage Utils/image"
 
-    RETURN_TYPES = ("IMAGE", "MASK", "INT", "INT", "STRING")
+    RETURN_TYPES = (IO.IMAGE, IO.MASK, IO.INT, IO.INT, IO.STRING)
     RETURN_NAMES = ("image", "mask", "width", "height", "metadata")
 
     FUNCTION = "load_image"
 
-    def load_image(self, image):
+    def load_image(self, image) -> tuple:
         image_path = folder_paths.get_annotated_filepath(image)
         img = node_helpers.pillow(Image.open, image_path)
 
@@ -170,29 +170,29 @@ class Sage_SaveImageWithMetadata(ComfyNodeABC):
         self.compress_level = 4
 
     @classmethod
-    def INPUT_TYPES(s):
+    def INPUT_TYPES(cls) -> InputTypeDict:
         return {
             "required": {
-                "images": ("IMAGE", {"tooltip": "The images to save."}),
+                "images": (IO.IMAGE, {"tooltip": "The images to save."}),
                 "filename_prefix": (
-                    "STRING",
+                    IO.STRING,
                     {
                         "default": "ComfyUI_Meta",
                         "tooltip": "The prefix for the file to save. This may include formatting information such as %date:yyyy-MM-dd% or %Empty Latent Image.width% to include values from nodes.",
                     },
                 ),
                 "include_node_metadata": (
-                    "BOOLEAN",
+                    IO.BOOLEAN,
                     {"default": True, "defaultInput": False},
                 ),
                 "include_extra_pnginfo_metadata": (
-                    "BOOLEAN",
+                    IO.BOOLEAN,
                     {"default": True, "defaultInput": False},
                 ),
             },
             "optional": {
-                "param_metadata": ("STRING", {"defaultInput": True}),
-                "extra_metadata": ("STRING", {"defaultInput": True}),
+                "param_metadata": (IO.STRING, {"defaultInput": True}),
+                "extra_metadata": (IO.STRING, {"defaultInput": True}),
             },
             "hidden": {"prompt": "PROMPT", "extra_pnginfo": "EXTRA_PNGINFO"},
         }
