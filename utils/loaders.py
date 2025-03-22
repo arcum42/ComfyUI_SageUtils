@@ -1,5 +1,6 @@
 
-from .helpers import pull_metadata, get_lora_stack_keywords
+from .helpers import pull_metadata
+from .lora_stack import get_lora_stack_keywords
 import comfy
 import folder_paths
 

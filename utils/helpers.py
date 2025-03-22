@@ -56,7 +56,7 @@ def get_file_sha256(path):
     
     with open(path, 'rb') as f:
         m.update(f.read())
-        
+
     result = str(m.digest().hex()[:10])
     print(f"Got hash {result}")
     return result
@@ -72,7 +72,7 @@ def pull_metadata(file_path, timestamp = False):
         hash = cache.cache.data[file_path]["hash"]
     else:
         time.sleep(3)
-    
+
     try:
         pull_json = True
         file_cache = cache.cache.data.get(file_path, {})
@@ -124,52 +124,6 @@ def lora_to_prompt(lora_stack = None):
             lora_info += lora_to_string(lora[0], lora[1], lora[2])
     return lora_info
 
-def get_lora_keywords(lora_name):
-    lora_path = folder_paths.get_full_path_or_raise("loras", lora_name)
-    if cache.cache.data.get(lora_path, {}).get("trainedWords", None) is None:
-        pull_metadata(lora_path, True)
-
-    return cache.cache.data.get(lora_path, {}).get("trainedWords", [])
-
-def get_lora_stack_keywords(lora_stack = None):
-    lora_keywords = []
-    
-    if lora_stack is None:
-        return []
-    
-    for lora in lora_stack:
-        print(f"Let's get keywords for {lora[0]}")
-        try:
-            keywords = get_lora_keywords(lora[0])
-            if keywords != []:
-                lora_keywords.extend(keywords)
-            print(keywords)
-        except:
-            print("Exception getting keywords!")
-            continue
-    
-    lora_keywords = list(set(lora_keywords))
-    lora_keywords = [x for x in lora_keywords if x != '']
-    lora_keywords = [x for x in lora_keywords if x != None]
-    lora_keywords = [x for x in lora_keywords if x != ' ']
-    
-    ret = ", ".join(lora_keywords)
-    ret = ' '.join(ret.split('\n'))
-    return ret
-
-
-def add_lora_to_stack(lora_name, model_weight, clip_weight, lora_stack = None):
-    if lora_stack is None:
-        lora = (lora_name, model_weight, clip_weight)
-        stack = [lora]
-        return(stack)
-        
-    stack = []
-    for the_name, m_weight, c_weight in lora_stack:
-        stack.append((the_name, m_weight, c_weight))
-    stack.append((lora_name, model_weight, clip_weight))
-    return stack
-
 def get_lora_hash(lora_name):
     lora_path = folder_paths.get_full_path_or_raise("loras", lora_name)
     pull_metadata(lora_path)
@@ -188,24 +142,24 @@ def get_model_info(lora_path, weight = None):
     except:
         ret = {}
     return ret
-    
+
 def get_latest_model_version(modelId):
     json = get_civitai_model_json(modelId)
     if 'error' in json:
         return json['error']
-    
+
     latest_model = None
     model_date = None
     for model in json["modelVersions"]:
         if model_date is None or (datetime.datetime.fromisoformat(model['createdAt']) > model_date and model['status'] == "Published" and model['availability'] == "Public"):
             model_date = datetime.datetime.fromisoformat(model['createdAt'])
             latest_model = model["id"]
-        
+
     return latest_model
 
 def model_scan(the_path):
     the_paths = the_path
-    
+
     print(f"the_paths: {the_paths}")
 
     model_list = []
@@ -243,7 +197,7 @@ def blank_image():
     img = ImageOps.exif_transpose(img)
     img = np.array(img.convert("RGB")).astype(np.float32) / 255.0
     return (torch.from_numpy(img)[None,])
-    
+
 def get_recently_used_models(model_type):
         model_list = list()
         full_model_list = folder_paths.get_filename_list(model_type)
@@ -286,12 +240,12 @@ def civitai_sampler_name(sampler_name, scheduler_name):
         'uni_pc_bh2': 'UniPC'
     }
     result = comfy_to_auto.get(sampler_name, sampler_name)
-    
+
     if (scheduler_name == "karras"):
         result += " Karras"
     elif (scheduler_name == "exponential"):
         result += " Exponential"
-    
+
     return result
 
 def clean_text(text):
@@ -312,11 +266,11 @@ def condition_text(clip, text = None):
     tokens = clip.tokenize(text)
     output = clip.encode_from_tokens(tokens, return_pooled=True, return_dict=True)
     cond = output.pop("cond")
-    
+
     if zero_text:
         pooled_output = output.get("pooled_output")
         if pooled_output is not None:
             output["pooled_output"] = torch.zeros_like(pooled_output)
         return [[torch.zeros_like(cond), output]]
-    
+
     return [[cond, output]]

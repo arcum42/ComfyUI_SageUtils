@@ -6,6 +6,7 @@ from comfy.comfy_types.node_typing import ComfyNodeABC, InputTypeDict, IO
 
 from ..sage import *
 from ..utils.loaders import *
+from ..utils.lora_stack import *
 
 import comfy
 import folder_paths
@@ -33,11 +34,11 @@ class Sage_LoraStack(ComfyNodeABC):
     RETURN_TYPES = ("LORA_STACK",)
     RETURN_NAMES = ("lora_stack",)
 
-    FUNCTION = "add_lora_to_stack"
+    FUNCTION = "add_to_stack"
     CATEGORY = "Sage Utils/lora"
     DESCRIPTION = "Choose a lora with weights, and add it to a lora_stack. Compatable with other node packs that have lora_stacks."
 
-    def add_lora_to_stack(self, enabled, lora_name, model_weight, clip_weight, lora_stack = None) -> tuple:
+    def add_to_stack(self, enabled, lora_name, model_weight, clip_weight, lora_stack = None) -> tuple:
         if enabled == True:
             stack = add_lora_to_stack(lora_name, model_weight, clip_weight, lora_stack)
         else:

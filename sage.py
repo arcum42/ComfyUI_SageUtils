@@ -25,5 +25,4 @@ cache = importlib.import_module(".utils.cache", package=base_path.name)
 sage_styles = importlib.import_module(".utils.styles", package=base_path.name)
 
 from comfy.comfy_types import IO, ComfyNodeABC, InputTypeDict
-
 from .utils.helpers import *
