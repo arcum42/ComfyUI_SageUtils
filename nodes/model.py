@@ -40,9 +40,9 @@ class Sage_CheckpointLoaderRecent(ComfyNodeABC):
         model_info = { "type": "CKPT", "path": folder_paths.get_full_path_or_raise("checkpoints", ckpt_name) }
         pull_metadata(model_info["path"], True)
 
-        model_info["hash"] = cache.cache.data[model_info["path"]]["hash"]
+        model_info["hash"] = cache.data[model_info["path"]]["hash"]
 
-        model, clip, vae = loaders.sage_load_checkpoint(model_info["path"])
+        model, clip, vae = loaders.checkpoint(model_info["path"])
         result = (model, clip, vae, model_info)
         return (result)
 
@@ -71,8 +71,8 @@ class Sage_CheckpointLoaderSimple(CheckpointLoaderSimple):
         model_info = { "type": "CKPT", "path": folder_paths.get_full_path_or_raise("checkpoints", ckpt_name) }
         pull_metadata(model_info["path"], True)
 
-        model_info["hash"] = cache.cache.data[model_info["path"]]["hash"]
-        model, clip, vae = loaders.sage_load_checkpoint(model_info["path"])
+        model_info["hash"] = cache.data[model_info["path"]]["hash"]
+        model, clip, vae = loaders.checkpoint(model_info["path"])
         return (model, clip, vae, model_info)
     
 class Sage_UNETLoader(UNETLoader):
@@ -94,8 +94,8 @@ class Sage_UNETLoader(UNETLoader):
             "path": folder_paths.get_full_path_or_raise("diffusion_models", unet_name)
         }
         pull_metadata(model_info["path"], True)
-        model_info["hash"] = cache.cache.data[model_info["path"]]["hash"]
-        return (loaders.sage_load_unet(model_info["path"], weight_dtype), model_info)
+        model_info["hash"] = cache.data[model_info["path"]]["hash"]
+        return (loaders.unet(model_info["path"], weight_dtype), model_info)
 
 class Sage_CheckpointInfoOnly(ComfyNodeABC):
     @classmethod
@@ -117,7 +117,7 @@ class Sage_CheckpointInfoOnly(ComfyNodeABC):
     def get_checkpoint_info(self, ckpt_name) -> tuple:
         model_info = { "type": "CKPT", "path": folder_paths.get_full_path_or_raise("checkpoints", ckpt_name) }
         pull_metadata(model_info["path"], True)
-        model_info["hash"] = cache.cache.data[model_info["path"]]["hash"]
+        model_info["hash"] = cache.data[model_info["path"]]["hash"]
         return (model_info,)
 
 class Sage_CacheMaintenance(ComfyNodeABC):
@@ -137,13 +137,13 @@ class Sage_CacheMaintenance(ComfyNodeABC):
     DESCRIPTION = "Lets you remove entries for models that are no longer there. dup_hash returns a list of files with the same hash, and dup_model returns ones with the same civitai model id (but not neccessarily the same version)."
 
     def cache_maintenance(self, remove_ghost_entries) -> tuple[str, str, str]:
-        ghost_entries = [path for path in cache.cache.data if not pathlib.Path(path).is_file()]
+        ghost_entries = [path for path in cache.data if not pathlib.Path(path).is_file()]
         cache_by_hash = {}
         cache_by_id = {}
         dup_hash = {}
         dup_id = {}
 
-        for model_path, data in cache.cache.data.items():
+        for model_path, data in cache.data.items():
             if 'hash' in data:
                 cache_by_hash.setdefault(data['hash'], []).append(model_path)
             if 'modelId' in data:
@@ -151,8 +151,8 @@ class Sage_CacheMaintenance(ComfyNodeABC):
 
         if remove_ghost_entries:
             for ghost in ghost_entries:
-                cache.cache.data.pop(ghost)
-            cache.cache.save()
+                cache.data.pop(ghost)
+            cache.save()
 
         dup_hash = {h: paths for h, paths in cache_by_hash.items() if len(paths) > 1}
         dup_id = {i: paths for i, paths in cache_by_id.items() if len(paths) > 1}
@@ -198,8 +198,8 @@ class Sage_ModelReport(ComfyNodeABC):
 
         self.get_files(scan_models)
 
-        for model_path in cache.cache.data.keys():
-            cur = cache.cache.data.get(model_path, {})
+        for model_path in cache.data.keys():
+            cur = cache.data.get(model_path, {})
             baseModel = cur.get('baseModel', None)
             if cur.get('model', {}).get('type', None) == "Checkpoint":
                 if baseModel not in sorted_models: sorted_models[baseModel] = []

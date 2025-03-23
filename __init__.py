@@ -3,7 +3,7 @@ import os
 from .nodes import *
 from .utils import *
 
-cache.cache.load()
+cache.load()
 styles.load_styles()
 
 WEB_DIRECTORY = "./js"

@@ -202,7 +202,7 @@ class Sage_GetFileHash(ComfyNodeABC):
         try:
             file_path = folder_paths.get_full_path_or_raise(base_dir, filename)
             pull_metadata(file_path)
-            the_hash = cache.cache.data[file_path]["hash"]
+            the_hash = cache.data[file_path]["hash"]
         except:
             print(f"Unable to hash file '{file_path}'. \n")
             the_hash = ""

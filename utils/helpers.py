@@ -62,20 +62,20 @@ def get_file_sha256(path):
     return result
 
 def pull_metadata(file_path, timestamp = False):
-    cache.cache.load()
+    cache.load()
     
     print(f"Pull metadata for {file_path}.")
-    hash = cache.cache.data.get(file_path, {}).get("hash", "")
+    hash = cache.data.get(file_path, {}).get("hash", "")
 
     if not hash:
-        cache.cache.data[file_path] = {"hash": get_file_sha256(file_path)}
-        hash = cache.cache.data[file_path]["hash"]
+        cache.data[file_path] = {"hash": get_file_sha256(file_path)}
+        hash = cache.data[file_path]["hash"]
     else:
         time.sleep(3)
 
     try:
         pull_json = True
-        file_cache = cache.cache.data.get(file_path, {})
+        file_cache = cache.data.get(file_path, {})
         
         if 'lastUsed' in file_cache and 'civitai' in file_cache:
             last_used = datetime.datetime.fromisoformat(file_cache['lastUsed'])
@@ -107,8 +107,8 @@ def pull_metadata(file_path, timestamp = False):
     if timestamp:
         file_cache['lastUsed'] = datetime.datetime.now().isoformat()
 
-    cache.cache.data[file_path] = file_cache
-    cache.cache.save()
+    cache.data[file_path] = file_cache
+    cache.save()
 
 def lora_to_string(lora_name, model_weight, clip_weight):
     lora_string = ' <lora:' + str(pathlib.Path(lora_name).name) + ":" + str(model_weight) +  ">" #  + ":" + str(clip_weight)
@@ -128,17 +128,17 @@ def get_lora_hash(lora_name):
     lora_path = folder_paths.get_full_path_or_raise("loras", lora_name)
     pull_metadata(lora_path)
 
-    return cache.cache.data[lora_path]["hash"]
+    return cache.data[lora_path]["hash"]
 
 def get_model_info(lora_path, weight = None):
     ret = {}
     try:
-        ret["type"] = cache.cache.data[lora_path]["model"]["type"]
+        ret["type"] = cache.data[lora_path]["model"]["type"]
         if (ret["type"] == "LORA") and (weight is not None):
             ret["weight"] = weight
-        ret["modelVersionId"] = cache.cache.data[lora_path]["id"]
-        ret["modelName"] = cache.cache.data[lora_path]["model"]["name"]
-        ret["modelVersionName"] = cache.cache.data[lora_path]["name"]
+        ret["modelVersionId"] = cache.data[lora_path]["id"]
+        ret["modelName"] = cache.data[lora_path]["model"]["name"]
+        ret["modelVersionName"] = cache.data[lora_path]["name"]
     except:
         ret = {}
     return ret
@@ -203,13 +203,13 @@ def get_recently_used_models(model_type):
         full_model_list = folder_paths.get_filename_list(model_type)
         for item in full_model_list:
             model_path = folder_paths.get_full_path_or_raise(model_type, item)
-            if model_path not in cache.cache.data.keys():
+            if model_path not in cache.data.keys():
                 continue
             
-            if 'lastUsed' not in cache.cache.data[model_path]:
+            if 'lastUsed' not in cache.data[model_path]:
                 continue
             
-            last = cache.cache.data[model_path]['lastUsed']
+            last = cache.data[model_path]['lastUsed']
             last_used = datetime.datetime.fromisoformat(last)
             #print(f"{model_path} - last: {last} last_used: {last_used}")
             if (datetime.datetime.now() - last_used).days <= 7:
@@ -247,6 +247,15 @@ def civitai_sampler_name(sampler_name, scheduler_name):
         result += " Exponential"
 
     return result
+
+def clean_keywords(keywords):
+    keywords = list(set(keywords))
+    keywords = [x for x in keywords if x != '']
+    keywords = [x for x in keywords if x != None]
+    keywords = [x for x in keywords if x != ' ']
+    
+    ret = ' '.join(", ".join(keywords).split('\n'))
+    return ret
 
 def clean_text(text):
     ret_list = [x for x in text.split(" ") if x.strip()]

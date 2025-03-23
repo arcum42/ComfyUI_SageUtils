@@ -1,13 +1,13 @@
 import folder_paths
-from . import cache
-from .helpers import pull_metadata
+from .cache import cache
+from .helpers import pull_metadata, clean_keywords
 
 def get_lora_keywords(lora_name):
     lora_path = folder_paths.get_full_path_or_raise("loras", lora_name)
-    if cache.cache.data.get(lora_path, {}).get("trainedWords", None) is None:
+    if cache.data.get(lora_path, {}).get("trainedWords", None) is None:
         pull_metadata(lora_path, True)
 
-    return cache.cache.data.get(lora_path, {}).get("trainedWords", [])
+    return cache.data.get(lora_path, {}).get("trainedWords", [])
 
 def get_lora_stack_keywords(lora_stack = None):
     lora_keywords = []
@@ -25,16 +25,8 @@ def get_lora_stack_keywords(lora_stack = None):
         except:
             print("Exception getting keywords!")
             continue
-    
-    lora_keywords = list(set(lora_keywords))
-    lora_keywords = [x for x in lora_keywords if x != '']
-    lora_keywords = [x for x in lora_keywords if x != None]
-    lora_keywords = [x for x in lora_keywords if x != ' ']
-    
-    ret = ", ".join(lora_keywords)
-    ret = ' '.join(ret.split('\n'))
-    return ret
 
+    return clean_keywords(lora_keywords)
 
 def add_lora_to_stack(lora_name, model_weight, clip_weight, lora_stack = None):
     if lora_stack is None:

@@ -167,7 +167,7 @@ class Sage_LoraStackLoader(ComfyNodeABC):
     def load_all(self, model, clip, lora_stack=None) -> tuple:
         stack_length = len(lora_stack) if lora_stack else 1
         pbar = comfy.utils.ProgressBar(stack_length)
-        model, clip, lora_stack, keywords = loaders.sage_load_lora_stack(model, clip, pbar, lora_stack)
+        model, clip, lora_stack, keywords = loaders.lora_stack(model, clip, pbar, lora_stack)
         return (model, clip, lora_stack, keywords)
 
 class Sage_ModelLoraStackLoader(Sage_LoraStackLoader):
@@ -199,8 +199,8 @@ class Sage_ModelLoraStackLoader(Sage_LoraStackLoader):
         stack_length = len(lora_stack) if lora_stack else 1
 
         pbar = comfy.utils.ProgressBar(stack_length + 1)
-        model, clip, vae = loaders.sage_load_checkpoint(model_info["path"])
+        model, clip, vae = loaders.checkpoint(model_info["path"])
         pbar.update(1)
-        model, clip, lora_stack, keywords = loaders.sage_load_lora_stack(model, clip, pbar, lora_stack)
+        model, clip, lora_stack, keywords = loaders.lora_stack(model, clip, pbar, lora_stack)
         return (model, clip, vae, lora_stack, keywords)
     
