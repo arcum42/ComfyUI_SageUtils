@@ -2,7 +2,14 @@ import os
 import json
 import pathlib
 
-from ..sage import base_path,sage_users_path
+import folder_paths
+
+base_path = pathlib.Path(os.path.dirname(os.path.realpath(__file__))).parent
+#print(f"Loading SageUtils cache from {str(base_path)}")
+
+users_path = pathlib.Path(folder_paths.get_user_directory())
+sage_users_path = users_path / "default" / "SageUtils"
+os.makedirs(str(sage_users_path), exist_ok=True)
 
 class SageCache:
     def __init__(self, path):

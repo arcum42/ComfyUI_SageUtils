@@ -4,12 +4,10 @@
 from __future__ import annotations
 from comfy.comfy_types.node_typing import ComfyNodeABC, InputTypeDict, IO
 
-import comfy
 import folder_paths
 from nodes import CheckpointLoaderSimple, UNETLoader
 
-from ..sage import *
-from ..utils.loaders import *
+from ..utils import *
 
 import pathlib
 import json
@@ -44,8 +42,7 @@ class Sage_CheckpointLoaderRecent(ComfyNodeABC):
 
         model_info["hash"] = cache.cache.data[model_info["path"]]["hash"]
 
-        model, clip, vae = sage_load_checkpoint(model_info["path"])
-        #out = comfy.sd.load_checkpoint_guess_config(model_info["path"], output_vae=True, output_clip=True, embedding_directory=folder_paths.get_folder_paths("embeddings"))
+        model, clip, vae = loaders.sage_load_checkpoint(model_info["path"])
         result = (model, clip, vae, model_info)
         return (result)
 
@@ -75,7 +72,7 @@ class Sage_CheckpointLoaderSimple(CheckpointLoaderSimple):
         pull_metadata(model_info["path"], True)
 
         model_info["hash"] = cache.cache.data[model_info["path"]]["hash"]
-        model, clip, vae = sage_load_checkpoint(model_info["path"])
+        model, clip, vae = loaders.sage_load_checkpoint(model_info["path"])
         return (model, clip, vae, model_info)
     
 class Sage_UNETLoader(UNETLoader):
@@ -98,7 +95,7 @@ class Sage_UNETLoader(UNETLoader):
         }
         pull_metadata(model_info["path"], True)
         model_info["hash"] = cache.cache.data[model_info["path"]]["hash"]
-        return (sage_load_unet(model_info["path"], weight_dtype), model_info)
+        return (loaders.sage_load_unet(model_info["path"], weight_dtype), model_info)
 
 class Sage_CheckpointInfoOnly(ComfyNodeABC):
     @classmethod

@@ -3,10 +3,9 @@
 
 from __future__ import annotations
 from comfy.comfy_types.node_typing import ComfyNodeABC, InputTypeDict, IO
-
 import comfy
 
-from ..sage import *
+from ..utils import *
 
 import torch
 

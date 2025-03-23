@@ -1,7 +1,7 @@
 from __future__ import annotations
 from comfy.comfy_types.node_typing import ComfyNodeABC, InputTypeDict, IO
 
-from ..sage import *
+from ..utils import *
 
 class Sage_SetBool(ComfyNodeABC):
     @classmethod

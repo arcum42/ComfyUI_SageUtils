@@ -1,19 +1,11 @@
 import os
 
-from .sage import *
-
-from .nodes.conditioning import *
-from .nodes.depreciated import *
-from .nodes.image import *
-from .nodes.lora import *
-from .nodes.metadata import *
-from .nodes.model import *
-from .nodes.sampler import *
-from .nodes.text import *
-from .nodes.util import *
+from .nodes import *
+from .utils import *
 
 cache.cache.load()
-sage_styles.load_styles()
+styles.load_styles()
+
 WEB_DIRECTORY = "./js"
 
 # A dictionary that contains all nodes you want to export with their names

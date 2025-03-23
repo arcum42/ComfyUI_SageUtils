@@ -3,13 +3,11 @@
 
 from __future__ import annotations
 from comfy.comfy_types.node_typing import ComfyNodeABC, InputTypeDict, IO
-
 import folder_paths
 
-from ..sage import *
+from ..utils import *
 
 import numpy as np
-import os
 
 class Sage_ConstructMetadata(ComfyNodeABC):
     def __init__(self):

@@ -6,10 +6,9 @@ from comfy.comfy_types.node_typing import ComfyNodeABC, InputTypeDict, IO
 
 import folder_paths
 
-from ..sage import *
+from ..utils import *
 
 import json
-import torch
 
 class Sage_LogicalSwitch(ComfyNodeABC):
     @classmethod
