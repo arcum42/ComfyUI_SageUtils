@@ -63,7 +63,11 @@ class Sage_LoadImage(ComfyNodeABC):
             for x in pathlib.Path(folder_paths.get_input_directory()).rglob("*")
             if x.is_file()
         )
-        return {"required": {"image": (files, {"image_upload": True})}}
+        return {
+            "required": {
+                "image": (IO.COMBO, {"options": files, "image_upload": True})
+                }
+            }
 
     CATEGORY = "Sage Utils/image"
 

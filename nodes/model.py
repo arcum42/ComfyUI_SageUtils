@@ -52,10 +52,9 @@ class Sage_CheckpointLoaderSimple(CheckpointLoaderSimple):
 
     @classmethod
     def INPUT_TYPES(cls) -> InputTypeDict:
-        model_list = folder_paths.get_filename_list("checkpoints")
         return {
                 "required": {
-                    "ckpt_name": (IO.COMBO, {"options": model_list, "tooltip": "The name of the checkpoint (model) to load."})
+                    "ckpt_name": (IO.COMBO, {"remote": { "route" : "/models/checkpoints", "refresh_button": True}, "tooltip": "The name of the checkpoint (model) to load."})
                 }
             }
 
@@ -79,10 +78,9 @@ class Sage_CheckpointLoaderSimple(CheckpointLoaderSimple):
 class Sage_UNETLoader(UNETLoader):
     @classmethod
     def INPUT_TYPES(cls) -> InputTypeDict:
-        unet_list = folder_paths.get_filename_list("diffusion_models")
         return {
             "required": {
-                "unet_name": (IO.COMBO, {"options": unet_list}),
+                "unet_name": (IO.COMBO, {"remote": { "route" : "/models/diffusion_models", "refresh_button": True}}),
                 "weight_dtype": (IO.COMBO, {"options": ["default", "fp8_e4m3fn", "fp8_e4m3fn_fast", "fp8_e5m2"]})
                 }
             }
@@ -105,10 +103,9 @@ class Sage_UNETLoader(UNETLoader):
 class Sage_CheckpointInfoOnly(ComfyNodeABC):
     @classmethod
     def INPUT_TYPES(cls) -> InputTypeDict:
-        model_list = folder_paths.get_filename_list("checkpoints")
         return {
                 "required": {
-                    "ckpt_name": (IO.COMBO, {"options": model_list, "tooltip": "The name of the checkpoint (model) to load."})
+                    "ckpt_name": (IO.COMBO, { "tooltip": "The name of the checkpoint (model) to load.", "remote": { "route" : "/models/checkpoints", "refresh_button": True}})
                 }
             }
 
