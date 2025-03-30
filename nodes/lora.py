@@ -105,7 +105,7 @@ class Sage_TripleLoraStack(ComfyNodeABC):
     def add_lora_to_stack(self, **args) -> tuple:
         stack = args.get("lora_stack", None)
 
-        for i in range(1, len(args) // 4 + 1):
+        for i in range(1, len(args) // 5 + 1): # including refresh button
             enabled = args[f"enabled_{i}"]
             lora_name = args[f"lora_{i}_name"]
             model_weight = args[f"model_{i}_weight"]

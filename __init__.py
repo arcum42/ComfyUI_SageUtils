@@ -30,6 +30,7 @@ NODE_CLASS_MAPPINGS = {
     "Sage_PonyPrefix": Sage_PonyPrefix,
 
     # Model nodes
+    "Sage_CheckpointSelector": Sage_CheckpointSelector, #
     "Sage_UNETLoader": Sage_UNETLoader,
     "Sage_CheckpointLoaderSimple": Sage_CheckpointLoaderSimple,
     "Sage_CheckpointLoaderRecent": Sage_CheckpointLoaderRecent,
@@ -72,7 +73,6 @@ NODE_CLASS_MAPPINGS = {
 
     # Utility nodes
     "Sage_GetFileHash": Sage_GetFileHash,
-    "Sage_CheckpointInfoOnly": Sage_CheckpointInfoOnly, #
     
     # Test nodes
     "Sage_Foobar": Sage_Foobar#,
@@ -101,6 +101,7 @@ NODE_DISPLAY_NAME_MAPPINGS  = {
     "Sage_PonyPrefix": "Add Pony v6 Prefixes",
 
     # Model nodes
+    "Sage_CheckpointSelector": "Checkpoint Selector", #
     "Sage_UNETLoader": "Load Diffusion Model w/ Metadata",
     "Sage_CheckpointLoaderSimple": "Load Checkpoint w/ Metadata",
     "Sage_CheckpointLoaderRecent": "Load Recently Used Checkpoint",
@@ -143,7 +144,6 @@ NODE_DISPLAY_NAME_MAPPINGS  = {
 
     # Utility nodes
     "Sage_GetFileHash": "Get Sha256 Hash",
-    "Sage_CheckpointInfoOnly": "Checkpoint Info", #
     
     # Test nodes
     "Sage_Foobar": "Test Node (Do not use)"#,

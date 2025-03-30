@@ -100,7 +100,7 @@ class Sage_UNETLoader(UNETLoader):
         model_info["hash"] = cache.data[model_info["path"]]["hash"]
         return (loaders.unet(model_info["path"], weight_dtype), model_info)
 
-class Sage_CheckpointInfoOnly(ComfyNodeABC):
+class Sage_CheckpointSelector(ComfyNodeABC):
     @classmethod
     def INPUT_TYPES(cls) -> InputTypeDict:
         return {
