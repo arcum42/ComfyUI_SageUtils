@@ -182,9 +182,10 @@ class Sage_LastLoraInfo(ComfyNodeABC):
 class Sage_GetFileHash(ComfyNodeABC):
     @classmethod
     def INPUT_TYPES(cls) -> InputTypeDict:
+        folder_list = list(folder_paths.folder_names_and_paths.keys())
         return {
             "required": {
-                "base_dir": (list(folder_paths.folder_names_and_paths.keys()), {"defaultInput": False}),
+                "base_dir": (IO.COMBO, {"options": folder_list, "defaultInput": False}),
                 "filename": (IO.STRING, {"defaultInput": False}),
             }
         }

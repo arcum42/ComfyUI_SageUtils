@@ -13,7 +13,6 @@ from ..utils import *
 
 import torch
 import numpy as np
-import random
 from PIL import Image, ImageOps, ImageSequence
 from PIL.PngImagePlugin import PngInfo
 import os
@@ -27,38 +26,10 @@ class Sage_EmptyLatentImagePassthrough(ComfyNodeABC):
     def INPUT_TYPES(cls) -> InputTypeDict:
         return {
             "required": {
-                "width": (
-                    IO.INT,
-                    {
-                        "defaultInput": True,
-                        "default": 1024,
-                        "min": 16,
-                        "max": nodes.MAX_RESOLUTION,
-                        "step": 8,
-                        "tooltip": "The width of the latent images in pixels.",
-                    },
-                ),
-                "height": (
-                    IO.INT,
-                    {
-                        "defaultInput": True,
-                        "default": 1024,
-                        "min": 16,
-                        "max": nodes.MAX_RESOLUTION,
-                        "step": 8,
-                        "tooltip": "The height of the latent images in pixels.",
-                    },
-                ),
-                "batch_size": (
-                    IO.INT,
-                    {
-                        "default": 1,
-                        "min": 1,
-                        "max": 4096,
-                        "tooltip": "The number of latent images in the batch.",
-                    },
-                ),
-                "sd3": (IO.BOOLEAN, {"default": False}),
+                "width": (IO.INT, {"defaultInput": True, "default": 1024, "min": 16, "max": nodes.MAX_RESOLUTION, "step": 8, "tooltip": "The width of the latent images in pixels.", }),
+                "height": (IO.INT, {"defaultInput": True, "default": 1024, "min": 16, "max": nodes.MAX_RESOLUTION, "step": 8, "tooltip": "The height of the latent images in pixels."}),
+                "batch_size": (IO.INT, { "default": 1, "min": 1, "max": 4096, "tooltip": "The number of latent images in the batch."}),
+                "sd3": (IO.BOOLEAN, {"default": False})
             }
         }
 
@@ -162,7 +133,6 @@ class Sage_LoadImage(ComfyNodeABC):
 
         return True
 
-
 # An altered version of Save Image
 class Sage_SaveImageWithMetadata(ComfyNodeABC):
     def __init__(self):
@@ -176,21 +146,9 @@ class Sage_SaveImageWithMetadata(ComfyNodeABC):
         return {
             "required": {
                 "images": (IO.IMAGE, {"tooltip": "The images to save."}),
-                "filename_prefix": (
-                    IO.STRING,
-                    {
-                        "default": "ComfyUI_Meta",
-                        "tooltip": "The prefix for the file to save. This may include formatting information such as %date:yyyy-MM-dd% or %Empty Latent Image.width% to include values from nodes.",
-                    },
-                ),
-                "include_node_metadata": (
-                    IO.BOOLEAN,
-                    {"default": True, "defaultInput": False},
-                ),
-                "include_extra_pnginfo_metadata": (
-                    IO.BOOLEAN,
-                    {"default": True, "defaultInput": False},
-                ),
+                "filename_prefix": (IO.STRING, {"default": "ComfyUI_Meta", "tooltip": "The prefix for the file to save. This may include formatting information such as %date:yyyy-MM-dd% or %Empty Latent Image.width% to include values from nodes."}),
+                "include_node_metadata": (IO.BOOLEAN, {"default": True, "defaultInput": False}),
+                "include_extra_pnginfo_metadata": (IO.BOOLEAN,{"default": True, "defaultInput": False})
             },
             "optional": {
                 "param_metadata": (IO.STRING, {"defaultInput": True}),

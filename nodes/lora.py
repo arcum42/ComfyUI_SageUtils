@@ -14,10 +14,11 @@ class Sage_LoraStack(ComfyNodeABC):
 
     @classmethod
     def INPUT_TYPES(cls) -> InputTypeDict:
+        lora_list = folder_paths.get_filename_list("loras")
         return {
             "required": {
                 "enabled": (IO.BOOLEAN, {"defaultInput": False, "default": True}),
-                "lora_name": (folder_paths.get_filename_list("loras"), {"defaultInput": False, "tooltip": "The name of the LoRA."}),
+                "lora_name": (IO.COMBO, {"options": lora_list, "defaultInput": False, "tooltip": "The name of the LoRA."}),
                 "model_weight": (IO.FLOAT, {"defaultInput": False, "default": 1.0, "min": -100.0, "max": 100.0, "step": 0.01, "tooltip": "How strongly to modify the diffusion model. This value can be negative."}),
                 "clip_weight": (IO.FLOAT, {"defaultInput": False, "default": 1.0, "min": -100.0, "max": 100.0, "step": 0.01, "tooltip": "How strongly to modify the CLIP model. This value can be negative."}),
                 },
@@ -51,7 +52,7 @@ class Sage_LoraStackRecent(ComfyNodeABC):
         return {
             "required": {
                 "enabled": (IO.BOOLEAN, {"defaultInput": False, "default": True}),
-                "lora_name": (lora_list, {"defaultInput": False, "tooltip": "The name of the LoRA."}),
+                "lora_name": (IO.COMBO, {"options": lora_list, "defaultInput": False, "tooltip": "The name of the LoRA."}),
                 "model_weight": (IO.FLOAT, {"defaultInput": False, "default": 1.0, "min": -100.0, "max": 100.0, "step": 0.01, "tooltip": "How strongly to modify the diffusion model. This value can be negative."}),
                 "clip_weight": (IO.FLOAT, {"defaultInput": False, "default": 1.0, "min": -100.0, "max": 100.0, "step": 0.01, "tooltip": "How strongly to modify the CLIP model. This value can be negative."}),
                 },
@@ -81,10 +82,11 @@ class Sage_TripleLoraStack(ComfyNodeABC):
 
     @classmethod
     def INPUT_TYPES(cls) -> InputTypeDict:
+        lora_list = folder_paths.get_filename_list("loras")
         required_list = {}
         for i in range(1, 4):
             required_list[f"enabled_{i}"] = (IO.BOOLEAN, {"defaultInput": False, "default": True})
-            required_list[f"lora_{i}_name"] = (folder_paths.get_filename_list("loras"), {"defaultInput": False, "tooltip": "The name of the LoRA."})
+            required_list[f"lora_{i}_name"] = (IO.COMBO, {"options": lora_list, "defaultInput": False, "tooltip": "The name of the LoRA."})
             required_list[f"model_{i}_weight"] = (IO.FLOAT, {"defaultInput": False, "default": 1.0, "min": -100.0, "max": 100.0, "step": 0.01, "tooltip": "How strongly to modify the diffusion model. This value can be negative."})
             required_list[f"clip_{i}_weight"] = (IO.FLOAT, {"defaultInput": False, "default": 1.0, "min": -100.0, "max": 100.0, "step": 0.01, "tooltip": "How strongly to modify the CLIP model. This value can be negative."})
         
@@ -203,4 +205,3 @@ class Sage_ModelLoraStackLoader(Sage_LoraStackLoader):
         pbar.update(1)
         model, clip, lora_stack, keywords = loaders.lora_stack(model, clip, pbar, lora_stack)
         return (model, clip, vae, lora_stack, keywords)
-    
