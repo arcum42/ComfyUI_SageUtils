@@ -14,10 +14,11 @@ class Sage_LoraStack(ComfyNodeABC):
 
     @classmethod
     def INPUT_TYPES(cls) -> InputTypeDict:
+        lora_list = folder_paths.get_filename_list("loras")
         return {
             "required": {
                 "enabled": (IO.BOOLEAN, {"defaultInput": False, "default": True}),
-                "lora_name": (IO.COMBO, {"remote": { "route" : "/models/loras", "refresh_button": True}, "defaultInput": False, "tooltip": "The name of the LoRA."}),
+                "lora_name": (IO.COMBO, {"options": lora_list, "defaultInput": False, "tooltip": "The name of the LoRA."}),
                 "model_weight": (IO.FLOAT, {"defaultInput": False, "default": 1.0, "min": -100.0, "max": 100.0, "step": 0.01, "tooltip": "How strongly to modify the diffusion model. This value can be negative."}),
                 "clip_weight": (IO.FLOAT, {"defaultInput": False, "default": 1.0, "min": -100.0, "max": 100.0, "step": 0.01, "tooltip": "How strongly to modify the CLIP model. This value can be negative."}),
                 },
@@ -81,19 +82,20 @@ class Sage_TripleLoraStack(ComfyNodeABC):
 
     @classmethod
     def INPUT_TYPES(cls) -> InputTypeDict:
+        lora_list = folder_paths.get_filename_list("loras")
         required_list = {}
         for i in range(1, 4):
             required_list[f"enabled_{i}"] = (IO.BOOLEAN, {"defaultInput": False, "default": True})
-            required_list[f"lora_{i}_name"] = (IO.COMBO, {"remote": { "route" : "/models/loras", "refresh_button": True}, "defaultInput": False, "tooltip": "The name of the LoRA."})
+            required_list[f"lora_{i}_name"] = (IO.COMBO, {"options": lora_list, "defaultInput": False, "tooltip": "The name of the LoRA."})
             required_list[f"model_{i}_weight"] = (IO.FLOAT, {"defaultInput": False, "default": 1.0, "min": -100.0, "max": 100.0, "step": 0.01, "tooltip": "How strongly to modify the diffusion model. This value can be negative."})
             required_list[f"clip_{i}_weight"] = (IO.FLOAT, {"defaultInput": False, "default": 1.0, "min": -100.0, "max": 100.0, "step": 0.01, "tooltip": "How strongly to modify the CLIP model. This value can be negative."})
         
-        ret_list = {}
-        ret_list["required"] = required_list
-        ret_list["optional"] = {
-            "lora_stack": ("LORA_STACK", {"defaultInput": True}),
+        return {
+            "required": required_list,
+            "optional": {
+                "lora_stack": ("LORA_STACK", {"defaultInput": True})
+            }
         }
-        return ret_list
 
     RETURN_TYPES = ("LORA_STACK",)
     RETURN_NAMES = ("lora_stack",)
@@ -105,7 +107,7 @@ class Sage_TripleLoraStack(ComfyNodeABC):
     def add_lora_to_stack(self, **args) -> tuple:
         stack = args.get("lora_stack", None)
 
-        for i in range(1, len(args) // 5 + 1): # including refresh button
+        for i in range(1, len(args) // 4 + 1):
             enabled = args[f"enabled_{i}"]
             lora_name = args[f"lora_{i}_name"]
             model_weight = args[f"model_{i}_weight"]
