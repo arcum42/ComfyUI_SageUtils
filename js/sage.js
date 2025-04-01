@@ -20,6 +20,7 @@ app.registerExtension({
 
       nodeType.prototype.onNodeCreated = function () {
         console.log("Sage_Foobar");
+
         var addNew = this.addWidget("button", "Add String", "BUTTON", () => {
           console.log("Button clicked!");
           var arrLength = this.widgets.length;
@@ -29,20 +30,36 @@ app.registerExtension({
             defaultInput: false,
             multiline: false,
           });
+
           this.serialize_widgets = true;
           this.setDirtyCanvas();
           console.log(this);
         });
+
         this.serialize_widgets = true;
         this.setDirtyCanvas();
         onNodeCreated ? onNodeCreated.apply(this, []) : undefined;
         //console.log("Foobar node created!");
       };
     }
+    //if ((nodeData.name == "Sage_PonyStyle") || (nodeData.name == "Sage_PonyPrefix")) {
+      //const onNodeCreated = nodeType.prototype.onNodeCreated;
+
+      //nodeType.prototype.onNodeCreated = function () {
+        //const combo = this.widgets.find(w => w.name == 'style');
+        //if (combo != undefined) {
+        //  console.log(combo);
+        //  combo.inputSpec.options[1] = "foo";
+        //  console.log(combo.inputSpec.options);
+        //}
+
+      //}
+    //}
     if ((nodeData.name == "Sage_ViewText") || (nodeData.name == "Sage_ViewAnything")) {
       const onNodeCreated = nodeType.prototype.onNodeCreated;
       nodeType.prototype.onNodeCreated = function () {
         onNodeCreated ? onNodeCreated.apply(this, []) : undefined;
+        // Not really doing anything on creation, but passing on the message.
         //console.log("ViewText node created!");
       };
 
@@ -52,7 +69,10 @@ app.registerExtension({
         console.log(message["text"]);
         onExecuted?.apply(this, arguments);
 
+        // Find the output.
         var w = this.widgets?.find((w) => w.name === "output");
+
+        // If there is no output, create it.
         if (w === undefined) {
           w = ComfyWidgets["STRING"](
             this,
@@ -64,6 +84,8 @@ app.registerExtension({
           w.inputEl.style.opacity = 0.6;
           w.inputEl.style.fontSize = "9pt";
         }
+
+        // Put the message that was passed to the node in the value of output, so it is printed on the node.
         w.value = message["text"].join("");
         this.onResize?.(this.size);
       };

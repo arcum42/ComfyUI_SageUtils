@@ -25,9 +25,11 @@ NODE_CLASS_MAPPINGS = {
     "Sage_JoinText": Sage_JoinText,
     "Sage_TripleJoinText": Sage_TripleJoinText,
     "Sage_CleanText": Sage_CleanText,
+    "Sage_TextWeight": Sage_TextWeight,
     "Sage_ViewText": Sage_ViewText,
     "Sage_ViewAnything": Sage_ViewAnything,
     "Sage_PonyPrefix": Sage_PonyPrefix,
+    "Sage_PonyStyle": Sage_PonyStyle,
 
     # Model nodes
     "Sage_CheckpointSelector": Sage_CheckpointSelector, #
@@ -96,9 +98,11 @@ NODE_DISPLAY_NAME_MAPPINGS  = {
     "Sage_JoinText": "Join Text",
     "Sage_TripleJoinText": "Join Text x3",
     "Sage_CleanText": "Clean Text",
+    "Sage_TextWeight": "Text Weight",
     "Sage_ViewText": "View Text",
     "Sage_ViewAnything": "View Any Node as Text",
     "Sage_PonyPrefix": "Add Pony v6 Prefixes",
+    "Sage_PonyStyle": "Add Pony Style",
 
     # Model nodes
     "Sage_CheckpointSelector": "Checkpoint Selector", #
