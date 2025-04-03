@@ -94,7 +94,7 @@ class Sage_DualCLIPTextEncode(ComfyNodeABC):
             }
         }
     RETURN_TYPES = (IO.CONDITIONING, IO.CONDITIONING, IO.STRING, IO.STRING)
-    RETURN_NAMES = ("pos_cond", "neg_cond", "pos_text", "neg_text")
+    RETURN_NAMES = ("positive", "negative", "pos_text", "neg_text")
 
     OUTPUT_TOOLTIPS = ("A conditioning containing the embedded text used to guide the diffusion model. If neg is not hooked up, it'll be automatically zeroed.",)
     FUNCTION = "encode"

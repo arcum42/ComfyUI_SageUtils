@@ -126,6 +126,38 @@ class Sage_CheckpointSelector(ComfyNodeABC):
         model_info["hash"] = cache.data[model_info["path"]]["hash"]
         return (model_info,)
 
+class Sage_MultiModelPicker(ComfyNodeABC):
+    @classmethod
+    def INPUT_TYPES(s) -> Dict[str, dict]:
+        return {
+            "required": {
+                "index": (IO.INT, {
+                    "default": 1,
+                    "min": 1,
+                    "max": 100,  # Arbitrary upper limit for the number of models
+                    "step": 1,
+                    "tooltip": "Selects which model to load from the list of available models.",
+                }),
+                },
+            "optional": {}
+        }
+
+    RETURN_TYPES = ("MODEL_INFO",)
+    RETURN_NAMES = ("model_info",)
+
+    FUNCTION = "pick_model"
+    CATEGORY  =  "Sage Utils/model"
+    DESCRIPTION = "Returns a list of model_info outputs for the selected checkpoints. (And hashes and pulls civitai info for the files.)"
+
+    def pick_model(self, **kw) -> Tuple[Any | None]:
+        model_infos = kw.values()
+        index = kw.get("index", 1)  # Convert to zero-based index
+        model_infos = list(model_infos)
+        if index < 0 or index >= len(model_infos):
+            raise ValueError("Index out of range. Please select a valid model index.")
+        selected_model_info = model_infos[index]
+        
+        return (selected_model_info,)
 class Sage_CacheMaintenance(ComfyNodeABC):
     @classmethod
     def INPUT_TYPES(cls) -> InputTypeDict:

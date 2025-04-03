@@ -40,6 +40,7 @@ NODE_CLASS_MAPPINGS = {
     "Sage_CacheMaintenance": Sage_CacheMaintenance,
     "Sage_ModelReport": Sage_ModelReport,
     "Sage_ModelLoraStackLoader": Sage_ModelLoraStackLoader,
+    "Sage_MultiModelPicker": Sage_MultiModelPicker,
 
     # Lora stack nodes
     "Sage_LoraStack": Sage_LoraStack,
@@ -113,6 +114,7 @@ NODE_DISPLAY_NAME_MAPPINGS  = {
     "Sage_CacheMaintenance": "Cache Maintenance",
     "Sage_ModelReport": "Model Scan & Report",
     "Sage_ModelLoraStackLoader": "Model + Lora Stack Loader",
+    "Sage_MultiModelPicker": "Multi Model Picker",
 
     # Lora stack nodes
     "Sage_LoraStack": "Simple Lora Stack",
@@ -123,8 +125,8 @@ NODE_DISPLAY_NAME_MAPPINGS  = {
     "Sage_LastLoraInfo": "Last Lora Info",
 
     # Clip nodes
-    "Sage_DualCLIPTextEncode": "Prompts to CLIP",
-    "Sage_DualCLIPTextEncodeLumina2": "Prompts to CLIP for Lumina 2",
+    "Sage_DualCLIPTextEncode": "Dual Prompt Encode",
+    "Sage_DualCLIPTextEncodeLumina2": "Dual Prompt Encode (Lumina 2)",
     "Sage_ConditioningZeroOut": "Zero Conditioning",
     #"Sage_ConditioningOneOut": "One Conditioning",
     "Sage_ConditioningRngOut": "Randomized conditioning",

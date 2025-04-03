@@ -9,13 +9,115 @@ import { app } from "../../../scripts/app.js";
 import { ComfyWidgets } from "../../../scripts/widgets.js";
 import { api } from "../../scripts/api.js";
 
+const TypeSlot = {
+  Input: 1,
+  Output: 2,
+};
+
+const TypeSlotEvent = {
+  Connect: true,
+  Disconnect: false,
+};
+
+const _ID = "Sage_";
+const _PREFIX = "model_info";
+const _TYPE = "MODEL_INFO";
+
 app.registerExtension({
   name: "arcum42.sage.utils",
   async setup() {
     console.log("Sage Utils loaded.");
   },
   async beforeRegisterNodeDef(nodeType, nodeData, app) {
-    if (nodeData.name == "Sage_Foobar") {
+    if (!nodeData.name.startsWith(_ID)) {
+      return;
+    }
+
+    if (nodeData.name === _ID + "MultiModelPicker") {
+      const onNodeCreated = nodeType.prototype.onNodeCreated;
+      nodeType.prototype.onNodeCreated = async function () {
+        const me = onNodeCreated?.apply(this);
+        // start with a new dynamic input
+        this.addInput(_PREFIX, _TYPE);
+        // Ensure the new slot has proper appearance
+        const slot = this.inputs[this.inputs.length - 1];
+        if (slot) {
+          slot.color_off = "#666";
+        }
+        return me;
+      };
+      
+      const onConnectionsChange = nodeType.prototype.onConnectionsChange;
+      nodeType.prototype.onConnectionsChange = function (
+        slotType,
+        slot_idx,
+        event,
+        link_info,
+        node_slot
+      ) {
+        const me = onConnectionsChange?.apply(this, arguments);
+
+        if (slotType === TypeSlot.Input) {
+          if (link_info && event === TypeSlotEvent.Connect) {
+            // get the parent (left side node) from the link
+            const fromNode = this.graph._nodes.find(
+              (otherNode) => otherNode.id == link_info.origin_id
+            );
+
+            if (fromNode) {
+              // make sure there is a parent for the link
+              const parent_link = fromNode.outputs[link_info.origin_slot];
+              if (parent_link) {
+                node_slot.type = parent_link.type;
+                node_slot.name = `${_PREFIX}_`;
+              }
+            }
+          } else if (event === TypeSlotEvent.Disconnect) {
+            this.removeInput(slot_idx);
+          }
+
+          // Track each slot name so we can index the uniques
+          let idx = 0;
+          let slot_tracker = {};
+          for (const slot of this.inputs) {
+            if (slot.link === null) {
+              this.removeInput(idx);
+              continue;
+            }
+            idx += 1;
+            const name = slot.name.split("_")[0];
+
+            // Correctly increment the count in slot_tracker
+            let count = (slot_tracker[name] || 0) + 1;
+            slot_tracker[name] = count;
+
+            // Update the slot name with the count if greater than 1
+            slot.name = `${name}_${count}`;
+          }
+
+          // check that the last slot is a dynamic entry....
+          let last = this.inputs[this.inputs.length - 1];
+          if (
+            last === undefined ||
+            last.name != _PREFIX ||
+            last.type != _TYPE
+          ) {
+            this.addInput(_PREFIX, _TYPE);
+            // Set the unconnected slot to appear gray
+            last = this.inputs[this.inputs.length - 1];
+            if (last) {
+              last.color_off = "#666";
+            }
+          }
+
+          // force the node to resize itself for the new/deleted connections
+          this?.graph?.setDirtyCanvas(true);
+          return me;
+        }
+      };
+      return;
+    }
+    if (nodeData.name == _ID + "Foobar") {
       const onNodeCreated = nodeType.prototype.onNodeCreated;
 
       nodeType.prototype.onNodeCreated = function () {
@@ -43,19 +145,22 @@ app.registerExtension({
       };
     }
     //if ((nodeData.name == "Sage_PonyStyle") || (nodeData.name == "Sage_PonyPrefix")) {
-      //const onNodeCreated = nodeType.prototype.onNodeCreated;
+    //const onNodeCreated = nodeType.prototype.onNodeCreated;
 
-      //nodeType.prototype.onNodeCreated = function () {
-        //const combo = this.widgets.find(w => w.name == 'style');
-        //if (combo != undefined) {
-        //  console.log(combo);
-        //  combo.inputSpec.options[1] = "foo";
-        //  console.log(combo.inputSpec.options);
-        //}
-
-      //}
+    //nodeType.prototype.onNodeCreated = function () {
+    //const combo = this.widgets.find(w => w.name == 'style');
+    //if (combo != undefined) {
+    //  console.log(combo);
+    //  combo.inputSpec.options[1] = "foo";
+    //  console.log(combo.inputSpec.options);
     //}
-    if ((nodeData.name == "Sage_ViewText") || (nodeData.name == "Sage_ViewAnything")) {
+
+    //}
+    //}
+    if (
+      nodeData.name == _ID + "ViewText" ||
+      nodeData.name == _ID + "ViewAnything"
+    ) {
       const onNodeCreated = nodeType.prototype.onNodeCreated;
       nodeType.prototype.onNodeCreated = function () {
         onNodeCreated ? onNodeCreated.apply(this, []) : undefined;
@@ -78,7 +183,7 @@ app.registerExtension({
             this,
             "output",
             ["STRING", { multiline: true }],
-            app,
+            app
           ).widget;
           w.inputEl.readOnly = true;
           w.inputEl.style.opacity = 0.6;
