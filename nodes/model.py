@@ -151,7 +151,7 @@ class Sage_MultiModelPicker(ComfyNodeABC):
 
     def pick_model(self, **kw) -> Tuple[Any | None]:
         model_infos = kw.values()
-        index = kw.get("index", 1)  # Convert to zero-based index
+        index = kw.get("index", 1)
         model_infos = list(model_infos)
         if index < 0 or index >= len(model_infos):
             raise ValueError("Index out of range. Please select a valid model index.")

@@ -5,6 +5,8 @@
 // https://github.com/chrisgoringe/Comfy-Custom-Node-How-To/wiki/ui_1_starting
 // https://github.com/chrisgoringe/Comfy-Custom-Node-How-To/wiki/remove_or_add_widget
 
+
+
 import { app } from "../../../scripts/app.js";
 import { ComfyWidgets } from "../../../scripts/widgets.js";
 import { api } from "../../scripts/api.js";
@@ -46,7 +48,7 @@ app.registerExtension({
         }
         return me;
       };
-      
+
       const onConnectionsChange = nodeType.prototype.onConnectionsChange;
       nodeType.prototype.onConnectionsChange = function (
         slotType,
@@ -108,6 +110,16 @@ app.registerExtension({
             if (last) {
               last.color_off = "#666";
             }
+          }
+
+          var w = this.widgets?.find((w) => w.name === "index");
+          if (w !== undefined) {
+            // Update the index widget to reflect the number of inputs
+            w.options.max = this.inputs.length - 1; // -1 because the last one is dynamic
+            if ((w.value > w.options.max) || (w.value < 1)) {
+              w.value = w.options.max;
+            }
+            w.onResize?.(w.size);
           }
 
           // force the node to resize itself for the new/deleted connections
