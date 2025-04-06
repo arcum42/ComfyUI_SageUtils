@@ -50,13 +50,7 @@ app.registerExtension({
       };
 
       const onConnectionsChange = nodeType.prototype.onConnectionsChange;
-      nodeType.prototype.onConnectionsChange = function (
-        slotType,
-        slot_idx,
-        event,
-        link_info,
-        node_slot
-      ) {
+      nodeType.prototype.onConnectionsChange = function (slotType, slot_idx, event, link_info, node_slot) {
         const me = onConnectionsChange?.apply(this, arguments);
 
         if (slotType === TypeSlot.Input) {
@@ -99,11 +93,7 @@ app.registerExtension({
 
           // check that the last slot is a dynamic entry....
           let last = this.inputs[this.inputs.length - 1];
-          if (
-            last === undefined ||
-            last.name != _PREFIX ||
-            last.type != _TYPE
-          ) {
+          if (last === undefined || last.name != _PREFIX || last.type != _TYPE) {
             this.addInput(_PREFIX, _TYPE);
             // Set the unconnected slot to appear gray
             last = this.inputs[this.inputs.length - 1];
@@ -129,50 +119,7 @@ app.registerExtension({
       };
       return;
     }
-    if (nodeData.name == _ID + "Foobar") {
-      const onNodeCreated = nodeType.prototype.onNodeCreated;
-
-      nodeType.prototype.onNodeCreated = function () {
-        console.log("Sage_Foobar");
-
-        var addNew = this.addWidget("button", "Add String", "BUTTON", () => {
-          console.log("Button clicked!");
-          var arrLength = this.widgets.length;
-          var nameOfInput = "str" + arrLength;
-          var ww = this.addWidget("text", nameOfInput, "", () => {}, {
-            default: "test",
-            defaultInput: false,
-            multiline: false,
-          });
-
-          this.serialize_widgets = true;
-          this.setDirtyCanvas();
-          console.log(this);
-        });
-
-        this.serialize_widgets = true;
-        this.setDirtyCanvas();
-        onNodeCreated ? onNodeCreated.apply(this, []) : undefined;
-        //console.log("Foobar node created!");
-      };
-    }
-    //if ((nodeData.name == "Sage_PonyStyle") || (nodeData.name == "Sage_PonyPrefix")) {
-    //const onNodeCreated = nodeType.prototype.onNodeCreated;
-
-    //nodeType.prototype.onNodeCreated = function () {
-    //const combo = this.widgets.find(w => w.name == 'style');
-    //if (combo != undefined) {
-    //  console.log(combo);
-    //  combo.inputSpec.options[1] = "foo";
-    //  console.log(combo.inputSpec.options);
-    //}
-
-    //}
-    //}
-    if (
-      nodeData.name == _ID + "ViewText" ||
-      nodeData.name == _ID + "ViewAnything"
-    ) {
+    if (nodeData.name == _ID + "ViewText" || nodeData.name == _ID + "ViewAnything") {
       const onNodeCreated = nodeType.prototype.onNodeCreated;
       nodeType.prototype.onNodeCreated = function () {
         onNodeCreated ? onNodeCreated.apply(this, []) : undefined;
