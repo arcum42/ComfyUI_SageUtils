@@ -22,7 +22,7 @@ class Sage_CheckpointLoaderRecent(ComfyNodeABC):
 
         return {
             "required": {
-                "ckpt_name": (IO.COMBO, {"options": model_list, "tooltip": "The name of the checkpoint (model) to load."}),
+                "ckpt_name": (model_list, {"tooltip": "The name of the checkpoint (model) to load."}),
             }
         }
     RETURN_TYPES = (IO.MODEL, IO.CLIP, IO.VAE, "MODEL_INFO")
@@ -55,7 +55,7 @@ class Sage_CheckpointLoaderSimple(CheckpointLoaderSimple):
         model_list = folder_paths.get_filename_list("checkpoints")
         return {
                 "required": {
-                    "ckpt_name": (IO.COMBO, {"options": model_list})
+                    "ckpt_name": (model_list, )
                 }
             }
 
@@ -82,8 +82,8 @@ class Sage_UNETLoader(UNETLoader):
         unet_list = folder_paths.get_filename_list("diffusion_models")
         return {
             "required": {
-                "unet_name": (IO.COMBO, {"options": unet_list}),
-                "weight_dtype": (IO.COMBO, {"options": ["default", "fp8_e4m3fn", "fp8_e4m3fn_fast", "fp8_e5m2"]})
+                "unet_name": (unet_list,),
+                "weight_dtype": (["default", "fp8_e4m3fn", "fp8_e4m3fn_fast", "fp8_e5m2"],)
                 }
             }
     RETURN_TYPES = (IO.MODEL, "MODEL_INFO")
@@ -108,7 +108,7 @@ class Sage_CheckpointSelector(ComfyNodeABC):
         model_list = folder_paths.get_filename_list("checkpoints")
         return {
                 "required": {
-                    "ckpt_name": (IO.COMBO, {"options": model_list, "tooltip": "The name of the checkpoint (model) to load."})
+                    "ckpt_name": (model_list, {"tooltip": "The name of the checkpoint (model) to load."})
                 }
             }
 
@@ -202,7 +202,7 @@ class Sage_ModelReport(ComfyNodeABC):
     def INPUT_TYPES(cls) -> InputTypeDict:
         return {
             "required": {
-                "scan_models": (IO.COMBO, {"options": ["none", "loras", "checkpoints", "all"], "defaultInput": False, "default": "none"}),
+                "scan_models": (["none", "loras", "checkpoints", "all"], {"defaultInput": False, "default": "none"}),
             }
         }
 

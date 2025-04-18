@@ -167,8 +167,8 @@ class Sage_PonyPrefix(ComfyNodeABC):
         return {
             "required": {
                 "add_score": (IO.BOOLEAN, {"defaultInput": False}),
-                "rating": (IO.COMBO, {"options": ["none", "safe", "questionable", "explicit"], "defaultInput": False}),
-                "source": (IO.COMBO, {"options": ["none", "pony", "furry", "anime", "cartoon", "3d", "western", "comic", "monster"], "defaultInput": False}),
+                "rating": (["none", "safe", "questionable", "explicit"], {"defaultInput": False}),
+                "source": (["none", "pony", "furry", "anime", "cartoon", "3d", "western", "comic", "monster"], {"defaultInput": False}),
             }
         }
 
@@ -241,7 +241,7 @@ class Sage_PonyStyle(ComfyNodeABC):
     def INPUT_TYPES(cls) -> InputTypeDict:
         return {
             "required": {
-                "style": (IO.COMBO, {"options": pony_strings, "defaultInput": False, "multi_select": True, "chip": True, "placeholder": "Pony Style"})
+                "style": (pony_strings, {"defaultInput": False, "multi_select": True, "chip": True, "placeholder": "Pony Style"})
             }
         }
 

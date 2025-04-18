@@ -185,7 +185,7 @@ class Sage_GetFileHash(ComfyNodeABC):
         folder_list = list(folder_paths.folder_names_and_paths.keys())
         return {
             "required": {
-                "base_dir": (IO.COMBO, {"options": folder_list, "defaultInput": False}),
+                "base_dir": (folder_list, {"defaultInput": False}),
                 "filename": (IO.STRING, {"defaultInput": False}),
             }
         }

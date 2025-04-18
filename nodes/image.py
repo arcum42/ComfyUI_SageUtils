@@ -65,7 +65,7 @@ class Sage_LoadImage(ComfyNodeABC):
         )
         return {
             "required": {
-                "image": (IO.COMBO, {"options": files, "image_upload": True})
+                "image": (files, { "image_upload": True})
                 }
             }
 

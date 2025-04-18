@@ -18,8 +18,8 @@ class Sage_SamplerInfo(ComfyNodeABC):
                 "seed": (IO.INT, {"default": 0, "min": 0, "max": 0xffffffffffffffff, "tooltip": "The random seed used for creating the noise."}),
                 "steps": (IO.INT, {"default": 20, "min": 1, "max": 10000, "tooltip": "The number of steps used in the denoising process."}),
                 "cfg": (IO.FLOAT, {"default": 5.5, "min": 0.0, "max": 100.0, "step":0.1, "round": 0.01, "tooltip": "The Classifier-Free Guidance scale balances creativity and adherence to the prompt. Higher values result in images more closely matching the prompt however too high values will negatively impact quality."}),
-                "sampler_name": (IO.COMBO, {"options": comfy.samplers.KSampler.SAMPLERS, "default": "dpmpp_2m", "tooltip": "The algorithm used when sampling, this can affect the quality, speed, and style of the generated output."}),
-                "scheduler": (IO.COMBO, {"options": comfy.samplers.KSampler.SCHEDULERS, "default": "beta", "tooltip": "The scheduler controls how noise is gradually removed to form the image."}),
+                "sampler_name": (comfy.samplers.KSampler.SAMPLERS, {"default": "dpmpp_2m", "tooltip": "The algorithm used when sampling, this can affect the quality, speed, and style of the generated output."}),
+                "scheduler": (comfy.samplers.KSampler.SCHEDULERS, {"default": "beta", "tooltip": "The scheduler controls how noise is gradually removed to form the image."}),
             }
         }
 

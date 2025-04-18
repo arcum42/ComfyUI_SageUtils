@@ -18,7 +18,7 @@ class Sage_LoraStack(ComfyNodeABC):
         return {
             "required": {
                 "enabled": (IO.BOOLEAN, {"defaultInput": False, "default": True}),
-                "lora_name": (IO.COMBO, {"options": lora_list, "defaultInput": False, "tooltip": "The name of the LoRA."}),
+                "lora_name": (lora_list, {"defaultInput": False, "tooltip": "The name of the LoRA."}),
                 "model_weight": (IO.FLOAT, {"defaultInput": False, "default": 1.0, "min": -100.0, "max": 100.0, "step": 0.01, "tooltip": "How strongly to modify the diffusion model. This value can be negative."}),
                 "clip_weight": (IO.FLOAT, {"defaultInput": False, "default": 1.0, "min": -100.0, "max": 100.0, "step": 0.01, "tooltip": "How strongly to modify the CLIP model. This value can be negative."}),
                 },
@@ -52,7 +52,7 @@ class Sage_LoraStackRecent(ComfyNodeABC):
         return {
             "required": {
                 "enabled": (IO.BOOLEAN, {"defaultInput": False, "default": True}),
-                "lora_name": (IO.COMBO, {"options": lora_list, "defaultInput": False, "tooltip": "The name of the LoRA."}),
+                "lora_name": (lora_list, {"options": lora_list, "defaultInput": False, "tooltip": "The name of the LoRA."}),
                 "model_weight": (IO.FLOAT, {"defaultInput": False, "default": 1.0, "min": -100.0, "max": 100.0, "step": 0.01, "tooltip": "How strongly to modify the diffusion model. This value can be negative."}),
                 "clip_weight": (IO.FLOAT, {"defaultInput": False, "default": 1.0, "min": -100.0, "max": 100.0, "step": 0.01, "tooltip": "How strongly to modify the CLIP model. This value can be negative."}),
                 },
@@ -86,7 +86,7 @@ class Sage_TripleLoraStack(ComfyNodeABC):
         required_list = {}
         for i in range(1, 4):
             required_list[f"enabled_{i}"] = (IO.BOOLEAN, {"defaultInput": False, "default": True})
-            required_list[f"lora_{i}_name"] = (IO.COMBO, {"options": lora_list, "defaultInput": False, "tooltip": "The name of the LoRA."})
+            required_list[f"lora_{i}_name"] = (lora_list, {"options": lora_list, "defaultInput": False, "tooltip": "The name of the LoRA."})
             required_list[f"model_{i}_weight"] = (IO.FLOAT, {"defaultInput": False, "default": 1.0, "min": -100.0, "max": 100.0, "step": 0.01, "tooltip": "How strongly to modify the diffusion model. This value can be negative."})
             required_list[f"clip_{i}_weight"] = (IO.FLOAT, {"defaultInput": False, "default": 1.0, "min": -100.0, "max": 100.0, "step": 0.01, "tooltip": "How strongly to modify the CLIP model. This value can be negative."})
         

@@ -140,7 +140,7 @@ class Sage_DualCLIPTextEncodeLumina2(ComfyNodeABC):
         return {
             "required": {
                 "clip": (IO.CLIP, {"defaultInput": True, "tooltip": "The CLIP model used for encoding the text."}),
-                "system_prompt": (IO.COMBO, {"options": prompts, "tooltip": Sage_DualCLIPTextEncodeLumina2.SYSTEM_PROMPT_TIP}),
+                "system_prompt": (prompts, {"tooltip": Sage_DualCLIPTextEncodeLumina2.SYSTEM_PROMPT_TIP}),
                 "clean": (IO.BOOLEAN, {"defaultInput": False, "tooltip": "Clean up the text, getting rid of extra spaces, commas, etc."}),
 
             },
