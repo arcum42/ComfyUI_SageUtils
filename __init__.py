@@ -30,6 +30,7 @@ NODE_CLASS_MAPPINGS = {
     "Sage_ViewAnything": Sage_ViewAnything,
     "Sage_PonyPrefix": Sage_PonyPrefix,
     "Sage_PonyStyle": Sage_PonyStyle,
+    "Sage_HiDreamE1_Instruction": Sage_HiDreamE1_Instruction,
 
     # Model nodes
     "Sage_CheckpointSelector": Sage_CheckpointSelector, #
@@ -104,6 +105,7 @@ NODE_DISPLAY_NAME_MAPPINGS  = {
     "Sage_ViewAnything": "View Any Node as Text",
     "Sage_PonyPrefix": "Add Pony v6 Prefixes",
     "Sage_PonyStyle": "Add Pony Style",
+    "Sage_HiDreamE1_Instruction": "HiDreamE1 Instruction",
 
     # Model nodes
     "Sage_CheckpointSelector": "Checkpoint Selector", #
