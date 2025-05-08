@@ -80,7 +80,7 @@ def pull_metadata(file_path, timestamp = False):
         if 'lastUsed' in file_cache and 'civitai' in file_cache:
             last_used = datetime.datetime.fromisoformat(file_cache['lastUsed'])
             if (datetime.datetime.now() - last_used).days == 0:
-                print("Pulled earlier today. No pull needed.")
+                print(f"Pulled earlier today. No pull needed. Update timestamp = {timestamp}")
                 pull_json = False
 
         if pull_json:
@@ -105,6 +105,7 @@ def pull_metadata(file_path, timestamp = False):
         file_cache['civitai'] = file_cache.get('civitai', "False")
 
     if timestamp:
+        print("Updating timestamp.")
         file_cache['lastUsed'] = datetime.datetime.now().isoformat()
 
     cache.data[file_path] = file_cache
