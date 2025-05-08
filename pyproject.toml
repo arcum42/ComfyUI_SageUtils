@@ -1,7 +1,7 @@
 [project]
 name = "comfyui_sageutils"
 description = "A collection of custom nodes by arcum42. Has my own versions of a number of standard nodes geared both for my convenience and being able to write out metadata in my images in A1111/Civitai format, as well as pulling information from Civitai. Also includes various utility nodes for everything from adding commonly used pony tags to easily togging between any of several models. Still subject to a fair amount of revision. (No connection to sage attention...)"
-version = "0.7.1"
+version = "0.7.2"
 license = {file = "LICENSE"}
 
 [project.urls]
