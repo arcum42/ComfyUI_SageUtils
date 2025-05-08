@@ -13,13 +13,13 @@ def lora(model, clip, lora_name, strength_model, strength_clip):
         return model, clip
 
     lora_path = folder_paths.get_full_path_or_raise("loras", lora_name)
+    pull_metadata(lora_path, True)
 
     if lora_path in loaded_loras:
         the_lora = loaded_loras[lora_path]
-        print(f"Using cached lora for {lora_path}")
+        print(f"Using comfyui's cached lora for {lora_path}")
     else:
         print(f"Loading lora from {lora_path}")
-        pull_metadata(lora_path, True)
         the_lora = comfy.utils.load_torch_file(lora_path, safe_load=True)
         loaded_loras[lora_path] = the_lora
 
