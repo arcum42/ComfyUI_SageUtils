@@ -61,7 +61,7 @@ def get_file_sha256(path):
     print(f"Got hash {result}")
     return result
 
-def pull_metadata(file_path, timestamp = False):
+def pull_metadata(file_path, timestamp = True):
     cache.load()
     
     print(f"Pull metadata for {file_path}.")
