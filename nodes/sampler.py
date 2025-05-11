@@ -151,8 +151,9 @@ class Sage_KSamplerDecoder(ComfyNodeABC):
     OUTPUT_TOOLTIPS = ("The denoised latent.", "The decoded image.")
     FUNCTION = "sample"
 
-    CATEGORY = "Sage Utils/sampler"
-    DESCRIPTION = "Uses the provided model, positive and negative conditioning to denoise the latent image, and generate an image with the provided vae. Designed to work with the Sampler info node."
+    CATEGORY = "Sage Utils/depreciated/sampler"
+    DESCRIPTION = "KSampler + Tiled Decoder is preferred, because the tiling is optional on it. Uses the provided model, positive and negative conditioning to denoise the latent image, and generate an image with the provided vae. Designed to work with the Sampler info node."
+    DEPRECATED = True
 
     def sample(self, model, sampler_info, positive, negative, latent_image, vae, denoise=1.0, advanced_info = None) -> tuple:
         latent_result = None
@@ -183,7 +184,6 @@ class Sage_KSamplerTiledDecoder(ComfyNodeABC):
             "required": {
                 "model": (IO.MODEL, {"tooltip": "The model used for denoising the input latent."}),
                 "sampler_info": ('SAMPLER_INFO', { "defaultInput": True, "tooltip": "Adds in most of the KSampler options. Should be piped both here and to the Construct Metadata node."}),
-                "tiling_info": ('TILING_INFO', { "defaultInput": True, "tooltip": "Adds in the tiling options."}),
                 "positive": (IO.CONDITIONING, {"tooltip": "The conditioning describing the attributes you want to include in the image."}),
                 "negative": (IO.CONDITIONING, {"tooltip": "The conditioning describing the attributes you want to exclude from the image."}),
                 "latent_image": (IO.LATENT, {"tooltip": "The latent image to denoise."}),
@@ -191,6 +191,7 @@ class Sage_KSamplerTiledDecoder(ComfyNodeABC):
                 "denoise": (IO.FLOAT, {"default": 1.0, "min": 0.0, "max": 1.0, "step": 0.01, "tooltip": "The amount of denoising applied, lower values will maintain the structure of the initial image allowing for image to image sampling."})
             },
             "optional": {
+                "tiling_info": ('TILING_INFO', { "defaultInput": True, "tooltip": "Adds in the tiling options."}),
                 "advanced_info": ('ADV_SAMPLER_INFO', {"defaultInput": True, "tooltip": "Optional. Adds in the options an advanced KSampler would have."})
             }
         }
@@ -200,9 +201,9 @@ class Sage_KSamplerTiledDecoder(ComfyNodeABC):
     FUNCTION = "sample"
 
     CATEGORY = "Sage Utils/sampler"
-    DESCRIPTION = "Uses the provided model, positive and negative conditioning to denoise the latent image, and generate an image with the provided vae. Designed to work with the Sampler info node."
+    DESCRIPTION = "Uses the provided model, positive and negative conditioning to denoise the latent image, and generate an image with the provided vae. Designed to work with the Sampler info node. Will tile if tiling info is provided."
 
-    def sample(self, model, sampler_info, tiling_info, positive, negative, latent_image, vae, denoise=1.0, advanced_info = None) -> tuple:
+    def sample(self, model, sampler_info, positive, negative, latent_image, vae, denoise=1.0, tiling_info = None, advanced_info = None) -> tuple:
         latent_result = None
         
         if advanced_info is None:
@@ -217,34 +218,37 @@ class Sage_KSamplerTiledDecoder(ComfyNodeABC):
                 disable_noise = True
             latent_result = nodes.common_ksampler(model, sampler_info["seed"], sampler_info["steps"], sampler_info["cfg"], sampler_info["sampler"],  sampler_info["scheduler"], positive, negative, latent_image, denoise=denoise, disable_noise=disable_noise, start_step=advanced_info['start_at_step'], last_step=advanced_info['end_at_step'], force_full_denoise=force_full_denoise)
         
-        t_info_tile_size = tiling_info["tile_size"]
-        t_info_overlap = tiling_info["overlap"]
-        t_info_temporal_size = tiling_info["temporal_size"]
-        t_info_temporal_overlap = tiling_info["temporal_overlap"]
-        
-        if t_info_tile_size < t_info_overlap * 4:
-            t_info_overlap = t_info_tile_size // 4
-        if t_info_temporal_size < t_info_temporal_overlap * 2:
-            t_info_temporal_overlap = t_info_temporal_overlap // 2
+        if tiling_info is not None:
+            print("Tiling info provided")
+            t_info_tile_size = tiling_info["tile_size"]
+            t_info_overlap = tiling_info["overlap"]
+            t_info_temporal_size = tiling_info["temporal_size"]
+            t_info_temporal_overlap = tiling_info["temporal_overlap"]
+            
+            if t_info_tile_size < t_info_overlap * 4:
+                t_info_overlap = t_info_tile_size // 4
+            if t_info_temporal_size < t_info_temporal_overlap * 2:
+                t_info_temporal_overlap = t_info_temporal_overlap // 2
 
-        temporal_compression = vae.temporal_compression_decode()
+            temporal_compression = vae.temporal_compression_decode()
 
-        if temporal_compression is not None:
-            t_info_temporal_size = max(2, t_info_temporal_size // t_info_temporal_overlap)
-            t_info_temporal_overlap = max(1, min(t_info_temporal_size // 2, t_info_temporal_overlap // temporal_compression))
-        else:
-            t_info_temporal_size = None
-            t_info_temporal_overlap = None
+            if temporal_compression is not None:
+                t_info_temporal_size = max(2, t_info_temporal_size // t_info_temporal_overlap)
+                t_info_temporal_overlap = max(1, min(t_info_temporal_size // 2, t_info_temporal_overlap // temporal_compression))
+            else:
+                t_info_temporal_size = None
+                t_info_temporal_overlap = None
 
-        compression = vae.spacial_compression_decode()
+            compression = vae.spacial_compression_decode()
         
         images = vae.decode(latent_result[0]["samples"])
-        images = vae.decode_tiled(
-            latent_result[0]["samples"], 
-            tile_x=t_info_tile_size // compression, tile_y=t_info_tile_size // compression, 
-            overlap=t_info_overlap // compression, 
-            tile_t=t_info_temporal_size, 
-            overlap_t=t_info_temporal_overlap)
+        if tiling_info is not None:
+            images = vae.decode_tiled(
+                latent_result[0]["samples"], 
+                tile_x=t_info_tile_size // compression, tile_y=t_info_tile_size // compression, 
+                overlap=t_info_overlap // compression, 
+                tile_t=t_info_temporal_size, 
+                overlap_t=t_info_temporal_overlap)
         
         if len(images.shape) == 5: #Combine batches
             images = images.reshape(-1, images.shape[-3], images.shape[-2], images.shape[-1])
