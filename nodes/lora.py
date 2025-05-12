@@ -246,7 +246,7 @@ class Sage_ModelLoraStackLoader(Sage_LoraStackLoader):
                     multiplier = 1000.0
                 elif model_shifts["shift_type"] == "x1000":
                     multiplier = 1.0
-                print(f"Applying {model_shifts['shift_type']} shift with shift {model_shifts["shift"]} to model.")
+                print(f"Applying {model_shifts['shift_type']} shift with shift {model_shifts['shift']} to model.")
 
                 sampling_base = comfy.model_sampling.ModelSamplingDiscreteFlow
                 sampling_type = comfy.model_sampling.CONST
