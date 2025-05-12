@@ -4,6 +4,8 @@
 from __future__ import annotations
 from comfy.comfy_types.node_typing import ComfyNodeABC, InputTypeDict, IO
 
+import torch
+
 import comfy
 import nodes
 
@@ -241,8 +243,9 @@ class Sage_KSamplerTiledDecoder(ComfyNodeABC):
 
             compression = vae.spacial_compression_decode()
         
-        images = vae.decode(latent_result[0]["samples"])
-        if tiling_info is not None:
+        if tiling_info is None:
+            images = vae.decode(latent_result[0]["samples"])
+        else:
             images = vae.decode_tiled(
                 latent_result[0]["samples"], 
                 tile_x=t_info_tile_size // compression, tile_y=t_info_tile_size // compression, 
@@ -254,3 +257,82 @@ class Sage_KSamplerTiledDecoder(ComfyNodeABC):
             images = images.reshape(-1, images.shape[-3], images.shape[-2], images.shape[-1])
         
         return (latent_result[0], images)
+
+class Sage_KSamplerAudioDecoder(ComfyNodeABC):
+    @classmethod
+    def INPUT_TYPES(cls) -> InputTypeDict:
+        return {
+            "required": {
+                "model": (IO.MODEL, {"tooltip": "The model used for denoising the input latent."}),
+                "sampler_info": ('SAMPLER_INFO', { "defaultInput": True, "tooltip": "Adds in most of the KSampler options. Should be piped both here and to the Construct Metadata node."}),
+                "positive": (IO.CONDITIONING, {"tooltip": "The conditioning describing the attributes you want to include in the audio."}),
+                "negative": (IO.CONDITIONING, {"tooltip": "The conditioning describing the attributes you want to exclude from the audio."}),
+                "latent_audio": (IO.LATENT, {"tooltip": "The latent audio to denoise."}),
+                "vae": (IO.VAE, {"tooltip": "The VAE used for decoding the latent audio."}),
+                "denoise": (IO.FLOAT, {"default": 1.0, "min": 0.0, "max": 1.0, "step": 0.01, "tooltip": "The amount of denoising applied, lower values will maintain the structure of the initial image allowing for image to image sampling."})
+            },
+            "optional": {
+                "advanced_info": ('ADV_SAMPLER_INFO', {"defaultInput": True, "tooltip": "Optional. Adds in the options an advanced KSampler would have."})
+            }
+        }
+
+    RETURN_TYPES = (IO.LATENT, IO.AUDIO)
+    OUTPUT_TOOLTIPS = ("The denoised latent.", "The decoded audio.")
+    FUNCTION = "sample"
+
+    CATEGORY = "Sage Utils/sampler"
+    DESCRIPTION = "Uses the provided model, positive and negative conditioning to denoise the latent audio, and generate audio with the provided vae. Designed to work with the Sampler info node."
+
+    def sample(self, model, sampler_info, positive, negative, latent_audio, vae, denoise=1.0, advanced_info = None) -> tuple:
+        latent_result = None
+        
+        if advanced_info is None:
+            latent_result = nodes.common_ksampler(model, sampler_info["seed"], sampler_info["steps"], sampler_info["cfg"], sampler_info["sampler"], sampler_info["scheduler"], positive, negative, latent_audio, denoise=denoise)
+        else:
+            force_full_denoise = True
+            if advanced_info["return_with_leftover_noise"] == True:
+                force_full_denoise = False
+
+            disable_noise = False
+            if advanced_info["add_noise"] == False:
+                disable_noise = True
+            latent_result = nodes.common_ksampler(model, sampler_info["seed"], sampler_info["steps"], sampler_info["cfg"], sampler_info["sampler"],  sampler_info["scheduler"], positive, negative, latent_audio, denoise=denoise, disable_noise=disable_noise, start_step=advanced_info['start_at_step'], last_step=advanced_info['end_at_step'], force_full_denoise=force_full_denoise)
+
+        # if tiling_info is not None:
+        #     print("Tiling info provided")
+        #     t_info_tile_size = tiling_info["tile_size"]
+        #     t_info_overlap = tiling_info["overlap"]
+        #     t_info_temporal_size = tiling_info["temporal_size"]
+        #     t_info_temporal_overlap = tiling_info["temporal_overlap"]
+            
+        #     if t_info_tile_size < t_info_overlap * 4:
+        #         t_info_overlap = t_info_tile_size // 4
+        #     if t_info_temporal_size < t_info_temporal_overlap * 2:
+        #         t_info_temporal_overlap = t_info_temporal_overlap // 2
+
+        #     temporal_compression = vae.temporal_compression_decode()
+
+        #     if temporal_compression is not None:
+        #         t_info_temporal_size = max(2, t_info_temporal_size // t_info_temporal_overlap)
+        #         t_info_temporal_overlap = max(1, min(t_info_temporal_size // 2, t_info_temporal_overlap // temporal_compression))
+        #     else:
+        #         t_info_temporal_size = None
+        #         t_info_temporal_overlap = None
+
+        #     compression = vae.spacial_compression_decode()
+        audio = vae.decode(latent_result[0]["samples"]).movedim(-1, 1)
+
+        # if tiling_info is None:
+        #     audio = vae.decode(latent_result[0]["samples"]).movedim(-1, 1)
+        # else:
+        #     audio = vae.decode_tiled(
+        #         latent_result[0]["samples"], 
+        #         tile_x=t_info_tile_size // compression, tile_y=t_info_tile_size // compression, 
+        #         overlap=t_info_overlap // compression, 
+        #         tile_t=t_info_temporal_size, 
+        #         overlap_t=t_info_temporal_overlap).movedim(-1, 1)
+
+        std = torch.std(audio, dim=[1,2], keepdim=True) * 5.0
+        std[std < 1.0] = 1.0
+        audio /= std
+        return (latent_result[0], {"waveform": audio, "sample_rate": 44100} )

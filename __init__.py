@@ -41,6 +41,7 @@ NODE_CLASS_MAPPINGS = {
     "Sage_CacheMaintenance": Sage_CacheMaintenance,
     "Sage_ModelReport": Sage_ModelReport,
     "Sage_ModelLoraStackLoader": Sage_ModelLoraStackLoader,
+    "Sage_ModelShifts": Sage_ModelShifts,
     "Sage_MultiModelPicker": Sage_MultiModelPicker,
 
     # Lora stack nodes
@@ -62,6 +63,7 @@ NODE_CLASS_MAPPINGS = {
     "Sage_KSampler": Sage_KSampler,
     "Sage_KSamplerDecoder": Sage_KSamplerDecoder,
     "Sage_KSamplerTiledDecoder": Sage_KSamplerTiledDecoder,
+    "Sage_KSamplerAudioDecoder": Sage_KSamplerAudioDecoder,
 
     # Image nodes
     "Sage_LoadImage": Sage_LoadImage,
@@ -115,6 +117,7 @@ NODE_DISPLAY_NAME_MAPPINGS  = {
     "Sage_ModelInfo": "Model Info",
     "Sage_CacheMaintenance": "Cache Maintenance",
     "Sage_ModelReport": "Model Scan & Report",
+    "Sage_ModelShifts": "Model Shifts",
     "Sage_ModelLoraStackLoader": "Model + Lora Stack Loader",
     "Sage_MultiModelPicker": "Multi Model Picker",
 
@@ -137,6 +140,7 @@ NODE_DISPLAY_NAME_MAPPINGS  = {
     "Sage_KSampler": "KSampler w/ Sampler Info",
     "Sage_KSamplerDecoder": "KSampler + Decoder",
     "Sage_KSamplerTiledDecoder": "KSampler + Tiled Decoder",
+    "Sage_KSamplerAudioDecoder": "KSampler + Audio Decoder",
 
     # Image nodes
     "Sage_EmptyLatentImagePassthrough": "Empty Latent Passthrough",
