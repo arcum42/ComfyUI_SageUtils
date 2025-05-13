@@ -112,7 +112,7 @@ class Sage_ModelInfo(ComfyNodeABC):
 
         image = blank_image()
         try:
-            json_data = get_civitai_model_version_json(model_info["hash"])
+            json_data = get_civitai_model_version_json_by_hash(model_info["hash"])
             if "modelId" in json_data:
                 url = f"https://civitai.com/models/{json_data['modelId']}?modelVersionId={json_data['id']}"
                 latest_version = get_latest_model_version(json_data["modelId"])
@@ -158,7 +158,7 @@ class Sage_LastLoraInfo(ComfyNodeABC):
         image = blank_image()
         try:
             hash = get_lora_hash(last_lora[0])
-            json_data = get_civitai_model_version_json(hash)
+            json_data = get_civitai_model_version_json_by_hash(hash)
             if "modelId" in json_data:
                 url = f"https://civitai.com/models/{json_data['modelId']}?modelVersionId={json_data['id']}"
                 latest_version = get_latest_model_version(json_data["modelId"])

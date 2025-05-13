@@ -14,20 +14,37 @@ import folder_paths
 import comfy.utils
 
 from . import cache
+from urllib.error import HTTPError
 
 def name_from_path(path):
     return pathlib.Path(path).name
 
-def get_civitai_model_version_json(hash):
+def get_civitai_model_version_json_by_hash(hash):
     try:
-        r = requests.get("https://civitai.com/api/v1/model-versions/by-hash/" + hash)
+        r = requests.get("https://civitai.com/api/v1/model-versions/by-hash/" + str(hash))
         r.raise_for_status()
     except HTTPError as http_err:
         print(f"HTTP error occurred: {http_err}")
         return {"error": "HTTP error occurred: " + http_err}
     except Exception as err:
         print(f"Other error occurred: {err}")
-        return {"error": "Other error occurred: " + err}
+        return {"error": "Other error occurred: " + str(err)}
+    else:
+        print("Retrieved json from civitai.")
+        return r.json()
+
+    return r.json()
+
+def get_civitai_model_version_json_by_id(the_id):
+    try:
+        r = requests.get("https://civitai.com/api/v1/model-versions/" + str(the_id))
+        r.raise_for_status()
+    except HTTPError as http_err:
+        print(f"HTTP error occurred: {http_err}")
+        return {"error": "HTTP error occurred: " + http_err}
+    except Exception as err:
+        print(f"Other error occurred: {err}")
+        return {"error": "Other error occurred: " + str(err)}
     else:
         print("Retrieved json from civitai.")
         return r.json()
@@ -57,6 +74,7 @@ def get_file_sha256(path):
     with open(path, 'rb') as f:
         m.update(f.read())
 
+    print(f"Got full hash {str(m.digest().hex())}")
     result = str(m.digest().hex()[:10])
     print(f"Got hash {result}")
     return result
@@ -73,36 +91,59 @@ def pull_metadata(file_path, timestamp = True):
     else:
         time.sleep(2)
 
-    try:
-        pull_json = True
-        file_cache = cache.data.get(file_path, {})
+    pull_json = True
+    check_recent = False
+    days_old = 0
+    file_cache = cache.data.get(file_path, {})
         
-        if 'lastUsed' in file_cache and 'civitai' in file_cache:
-            last_used = datetime.datetime.fromisoformat(file_cache['lastUsed'])
-            if (datetime.datetime.now() - last_used).days == 0:
-                print(f"Pulled earlier today. No pull needed. Update timestamp = {timestamp}")
-                pull_json = False
+    if not check_recent and 'lastUsed' in file_cache and 'civitai' in file_cache and file_cache['civitai'] == "True":
+        last_used = datetime.datetime.fromisoformat(file_cache['lastUsed'])
+        if (datetime.datetime.now() - last_used).days == days_old:
+            print(f"Pulled earlier today. No pull needed. Update timestamp = {timestamp}")
+            pull_json = False
 
-        if pull_json:
-            json = get_civitai_model_version_json(hash)
+    if pull_json:
+        print(f"Currently pulling metadata for {file_path}.")
+        json = get_civitai_model_version_json_by_hash(hash)
+
+        if 'error' in json:
+            print(f"Failed. Spot checking hash.")
+            new_hash = get_file_sha256(file_path)
+
+            if new_hash != hash:
+                print(f"Hash mismatch. Pulling new hash.")
+                cache.data[file_path]['hash'] = new_hash
+                json = get_civitai_model_version_json_by_hash(new_hash)
+
+            if 'error' in json and 'modelId' in file_cache:
+                print(f"Using cached model id {file_cache['id']}")
+                json = get_civitai_model_version_json_by_id(file_cache['id'])
+            else:
+                print(f"No cached model id.")
+
             if 'error' in json:
                 print(f"Error: {json['error']}")
+                print(f"Unable to find on civitai.")
                 file_cache['civitai'] = file_cache.get('model', "False")
-            else:
-                file_cache.update({
-                    'civitai': "True",
-                    'model': json["model"],
-                    'name': json["name"],
-                    'baseModel': json["baseModel"],
-                    'id': json["id"],
-                    'modelId': json["modelId"],
-                    'trainedWords': json["trainedWords"],
-                    'downloadUrl': json["downloadUrl"]
-                })
-                print("Successfully pulled metadata.")
-    except Exception as e:
-        print(f"Failed to pull metadata for {file_path} with hash {hash}: {e}")
-        file_cache['civitai'] = file_cache.get('civitai', "False")
+        else:
+            the_files = json.get("files", [])
+            
+            hashes = {}
+            if len(the_files) > 0:
+                hashes = the_files[0].get("hashes", {})
+
+            file_cache.update({
+                'civitai': "True",
+                'model': json.get("model", {}),
+                'name': json.get("name", ""),
+                'baseModel': json.get("baseModel", ""),
+                'id': json.get("id", ""),
+                'modelId': json.get("modelId", ""),
+                'trainedWords': json.get("trainedWords", []),
+                'downloadUrl': json.get("downloadUrl", ""),
+                'hashes': hashes
+            })
+            print("Successfully pulled metadata.")
 
     if timestamp:
         print("Updating timestamp.")
@@ -177,7 +218,7 @@ def model_scan(the_path):
         pull_metadata(str(the_model))
 
 def pull_lora_image_urls(hash, nsfw):
-    json = get_civitai_model_version_json(hash)
+    json = get_civitai_model_version_json_by_hash(hash)
     img_list = []
     for pic in json['images']:
         if pic['nsfwLevel'] > 1:

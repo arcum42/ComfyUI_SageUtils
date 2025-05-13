@@ -155,23 +155,60 @@ class Sage_LoraStackLoader(ComfyNodeABC):
                 "clip": (IO.CLIP, {"tooltip": "The CLIP model the LoRA will be applied to."})
             },
             "optional": {
-                "lora_stack": ("LORA_STACK", {"defaultInput": True})
+                "lora_stack": ("LORA_STACK", {"defaultInput": True}),
+                "model_shifts": ("MODEL_SHIFTS", {"defaultInput": True, "tooltip": "The model shifts & free_u2 settings to apply to the model."}),
             }
         }
 
     RETURN_TYPES = (IO.MODEL, IO.CLIP, "LORA_STACK", IO.STRING)
     RETURN_NAMES = ("model", "clip", "lora_stack", "keywords")
     OUTPUT_TOOLTIPS = ("The modified diffusion model.", "The modified CLIP model.", "The stack of loras.", "Keywords from the lora stack.")
-    FUNCTION = "load_all"
+    FUNCTION = "load_lora_and_shift"
 
     CATEGORY = "Sage Utils/lora"
     DESCRIPTION = "Accept a lora_stack with Model and Clip, and apply all the loras in the stack at once."
-    
-    def load_all(self, model, clip, lora_stack=None) -> tuple:
-        stack_length = len(lora_stack) if lora_stack else 1
-        pbar = comfy.utils.ProgressBar(stack_length)
-        model, clip, lora_stack, keywords = loaders.lora_stack(model, clip, pbar, lora_stack)
 
+    def apply_model_shifts(self, model, model_shifts):
+        if model_shifts is not None:
+            if model_shifts["shift_type"] != "None":
+                multiplier = 0.0
+                if model_shifts["shift_type"] == "x1":
+                    multiplier = 1000.0
+                elif model_shifts["shift_type"] == "x1000":
+                    multiplier = 1.0
+                print(f"Applying {model_shifts['shift_type']} shift with shift {model_shifts['shift']} to model.")
+
+                sampling_base = comfy.model_sampling.ModelSamplingDiscreteFlow
+                sampling_type = comfy.model_sampling.CONST
+                class ModelSamplingAdvanced(sampling_base, sampling_type):
+                    pass
+
+                model_sampling = ModelSamplingAdvanced(model.model.model_config)
+                model_sampling.set_parameters(shift=model_shifts["shift"], multiplier=multiplier)
+                model.add_object_patch("model_sampling", model_sampling)
+            
+            if model_shifts["freeu_v2"] == True:
+                print("FreeU v2 is enabled, applying to model.")
+                model = nodes_freelunch.FreeU_V2.patch(None, model, model_shifts["b1"], model_shifts["b2"], model_shifts["s1"], model_shifts["s2"])[0]
+        return model
+
+    def load_lora_stack(self, model, clip, pbar, lora_stack):
+        keywords = ""
+        if lora_stack is None:
+            lora_stack = loaders.lora_stack(model, clip, pbar)
+        else:
+            model, clip, lora_stack, keywords = loaders.lora_stack(model, clip, pbar, lora_stack)
+        return (model, clip, lora_stack, keywords)
+
+    def load_lora_and_shift(self, model, clip, lora_stack=None, model_shifts=None) -> tuple:
+        keywords = ""
+        stack_length = len(lora_stack) if lora_stack else 1
+        pbar = comfy.utils.ProgressBar(stack_length + 1)
+        model, clip, lora_stack, keywords = self.load_lora_stack(model, clip, pbar, lora_stack)
+        pbar.update(1)
+        if model_shifts is not None:
+            print(f"Applying model shifts: {model_shifts}")
+            model = self.apply_model_shifts(model, model_shifts)
         return (model, clip, lora_stack, keywords)
 
 class Sage_ModelShifts(ComfyNodeABC):
@@ -230,35 +267,19 @@ class Sage_ModelLoraStackLoader(Sage_LoraStackLoader):
     CATEGORY = "Sage Utils/model"
     DESCRIPTION = "Accept model info and a lora_stack, load the model, and apply all the loras in the stack to it at once. Apply changes to the model after loading it."
 
-    def load_everything(self, model_info, lora_stack=None, model_shifts=None) -> tuple:
+    def load_model_clip_vae(self, model_info):
         if model_info["type"] != "CKPT":
             raise ValueError("Clip information is missing. Please use a checkpoint for model_info, not a diffusion model.")
-        stack_length = len(lora_stack) if lora_stack else 1
-
-        pbar = comfy.utils.ProgressBar(stack_length + 1)
         model, clip, vae = loaders.checkpoint(model_info["path"])
+        return (model, clip, vae)
+    
+    def load_everything(self, model_info, lora_stack=None, model_shifts=None) -> tuple:
+        stack_length = len(lora_stack) if lora_stack else 1
+        pbar = comfy.utils.ProgressBar(stack_length + 2)
+        model, clip, vae = self.load_model_clip_vae(model_info)
         pbar.update(1)
-        model, clip, lora_stack, keywords = loaders.lora_stack(model, clip, pbar, lora_stack)
-        if model_shifts is not None:
-            if model_shifts["shift_type"] != "None":
-                multiplier = 0.0
-                if model_shifts["shift_type"] == "x1":
-                    multiplier = 1000.0
-                elif model_shifts["shift_type"] == "x1000":
-                    multiplier = 1.0
-                print(f"Applying {model_shifts['shift_type']} shift with shift {model_shifts['shift']} to model.")
-
-                sampling_base = comfy.model_sampling.ModelSamplingDiscreteFlow
-                sampling_type = comfy.model_sampling.CONST
-                class ModelSamplingAdvanced(sampling_base, sampling_type):
-                    pass
-
-                model_sampling = ModelSamplingAdvanced(model.model.model_config)
-                model_sampling.set_parameters(shift=model_shifts["shift"], multiplier=multiplier)
-                model.add_object_patch("model_sampling", model_sampling)
-            
-            if model_shifts["freeu_v2"] == True:
-                print("FreeU v2 is enabled, applying to model.")
-                model = nodes_freelunch.FreeU_V2.patch(None, model, model_shifts["b1"], model_shifts["b2"], model_shifts["s1"], model_shifts["s2"])[0]
+        model, clip, lora_stack, keywords = self.load_lora_stack(model, clip, pbar, lora_stack)
+        pbar.update(1)
+        model = self.apply_model_shifts(model, model_shifts)
 
         return (model, clip, vae, lora_stack, keywords)

@@ -167,8 +167,8 @@ class Sage_CacheMaintenance(ComfyNodeABC):
             }
         }
 
-    RETURN_TYPES = (IO.STRING, IO.STRING, IO.STRING)
-    RETURN_NAMES = ("ghost_entries", "dup_hash","dup_model")
+    RETURN_TYPES = (IO.STRING, IO.STRING, IO.STRING, IO.STRING)
+    RETURN_NAMES = ("ghost_entries", "dup_hash","dup_model", "not_on_civitai")
 
     FUNCTION = "cache_maintenance"
     CATEGORY = "Sage Utils/model"
@@ -180,6 +180,7 @@ class Sage_CacheMaintenance(ComfyNodeABC):
         cache_by_id = {}
         dup_hash = {}
         dup_id = {}
+        not_on_civitai = []
 
         for model_path, data in cache.data.items():
             if 'hash' in data:
@@ -194,8 +195,13 @@ class Sage_CacheMaintenance(ComfyNodeABC):
 
         dup_hash = {h: paths for h, paths in cache_by_hash.items() if len(paths) > 1}
         dup_id = {i: paths for i, paths in cache_by_id.items() if len(paths) > 1}
-
-        return (", ".join(ghost_entries), json.dumps(dup_hash, separators=(",", ":"), sort_keys=True, indent=4), json.dumps(dup_id, separators=(",", ":"), sort_keys=True, indent=4))
+        dup_hash_json = json.dumps(dup_hash, separators=(",", ":"), sort_keys=True, indent=4)
+        dup_id_json = json.dumps(dup_id, separators=(",", ":"), sort_keys=True, indent=4)
+        for model_path, data in cache.data.items():
+            if data.get("civitai", "False") == "False":
+                not_on_civitai.append(model_path)
+        not_on_civitai_str = str(not_on_civitai)
+        return (", ".join(ghost_entries), dup_hash_json, dup_id_json, not_on_civitai_str)
 
 class Sage_ModelReport(ComfyNodeABC):
     @classmethod
