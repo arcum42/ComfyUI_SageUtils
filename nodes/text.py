@@ -199,8 +199,9 @@ class Sage_TextCompare(ComfyNodeABC):
 
     FUNCTION = "compare"
 
-    CATEGORY = "Sage Utils/logic"
+    CATEGORY = "depreciated/Sage Utils/logic"
     DESCRIPTION = "Compares two strings based on the selected comparison type."
+    DEPRECIATED = True
 
     def compare(self, text1, text2, comparison_type) -> tuple[bool]:
         if comparison_type == "equal":
