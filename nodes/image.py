@@ -4,7 +4,7 @@
 from __future__ import annotations
 from comfy.comfy_types.node_typing import ComfyNodeABC, InputTypeDict, IO
 
-import cli_args
+import comfy.cli_args
 import comfy
 import nodes
 import node_helpers
@@ -179,7 +179,7 @@ class Sage_SaveImageWithMetadata(ComfyNodeABC):
         extra_pnginfo=None,
     ):
         result = None
-        if not cli_args.args.disable_metadata:
+        if not comfy.cli_args.args.disable_metadata:
             result = PngInfo()
             if param_metadata is not None:
                 result.add_text("parameters", param_metadata)
