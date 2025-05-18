@@ -174,13 +174,14 @@ class Sage_CacheMaintenance(ComfyNodeABC):
     CATEGORY = "Sage Utils/model"
     DESCRIPTION = "Lets you remove entries for models that are no longer there. dup_hash returns a list of files with the same hash, and dup_model returns ones with the same civitai model id (but not neccessarily the same version)."
 
-    def cache_maintenance(self, remove_ghost_entries) -> tuple[str, str, str]:
+    def cache_maintenance(self, remove_ghost_entries) -> tuple[str, str, str, str]:
         ghost_entries = [path for path in cache.data if not pathlib.Path(path).is_file()]
         cache_by_hash = {}
         cache_by_id = {}
         dup_hash = {}
         dup_id = {}
         not_on_civitai = []
+        out_of_date = []
 
         for model_path, data in cache.data.items():
             if 'hash' in data:
@@ -195,12 +196,19 @@ class Sage_CacheMaintenance(ComfyNodeABC):
 
         dup_hash = {h: paths for h, paths in cache_by_hash.items() if len(paths) > 1}
         dup_id = {i: paths for i, paths in cache_by_id.items() if len(paths) > 1}
+
         dup_hash_json = json.dumps(dup_hash, separators=(",", ":"), sort_keys=True, indent=4)
         dup_id_json = json.dumps(dup_id, separators=(",", ":"), sort_keys=True, indent=4)
+
         for model_path, data in cache.data.items():
             if data.get("civitai", "False") == "False":
                 not_on_civitai.append(model_path)
+
+            if data.get("update_available", "False") == "True":
+                out_of_date.append(model_path)
+        
         not_on_civitai_str = str(not_on_civitai)
+        out_of_date_str = str(out_of_date)
         return (", ".join(ghost_entries), dup_hash_json, dup_id_json, not_on_civitai_str)
 
 class Sage_ModelReport(ComfyNodeABC):
@@ -209,6 +217,7 @@ class Sage_ModelReport(ComfyNodeABC):
         return {
             "required": {
                 "scan_models": (["none", "loras", "checkpoints", "all"], {"defaultInput": False, "default": "none"}),
+                "force_recheck": (IO.BOOLEAN, {"defaultInput": False, "default": "False"}),
             }
         }
 
@@ -219,7 +228,7 @@ class Sage_ModelReport(ComfyNodeABC):
     CATEGORY = "Sage Utils/model"
     DESCRIPTION = "Calculates the hash of models & checkpoints & pulls civitai info if chosen. Returns a list of models in the cache of the specified type, by base model type."
 
-    def get_files(self, scan_models):
+    def get_files(self, scan_models, force_recheck):
         the_paths = []
         if scan_models == "loras":
             the_paths = folder_paths.get_folder_paths("loras")
@@ -232,15 +241,15 @@ class Sage_ModelReport(ComfyNodeABC):
 
         print(f"Scanning {len(the_paths)} paths.")
         print(f"the_paths == {the_paths}")
-        if the_paths != []: model_scan(the_paths)
+        if the_paths != []: model_scan(the_paths, force=force_recheck)
 
-    def pull_list(self, scan_models) -> tuple[str, str]:
+    def pull_list(self, scan_models, force_recheck) -> tuple[str, str]:
         sorted_models = {}
         sorted_loras = {}
         model_list = ""
         lora_list = ""
 
-        self.get_files(scan_models)
+        self.get_files(scan_models, force_recheck)
 
         for model_path in cache.data.keys():
             cur = cache.data.get(model_path, {})

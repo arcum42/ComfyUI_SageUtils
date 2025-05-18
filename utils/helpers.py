@@ -25,7 +25,7 @@ def get_civitai_model_version_json_by_hash(hash):
         r.raise_for_status()
     except HTTPError as http_err:
         print(f"HTTP error occurred: {http_err}")
-        return {"error": "HTTP error occurred: " + http_err}
+        return {"error": "HTTP error occurred: " + str(http_err)}
     except Exception as err:
         print(f"Other error occurred: {err}")
         return {"error": "Other error occurred: " + str(err)}
@@ -41,7 +41,7 @@ def get_civitai_model_version_json_by_id(the_id):
         r.raise_for_status()
     except HTTPError as http_err:
         print(f"HTTP error occurred: {http_err}")
-        return {"error": "HTTP error occurred: " + http_err}
+        return {"error": "HTTP error occurred: " + str(http_err)}
     except Exception as err:
         print(f"Other error occurred: {err}")
         return {"error": "Other error occurred: " + str(err)}
@@ -57,15 +57,42 @@ def get_civitai_model_json(modelId):
         r.raise_for_status()
     except HTTPError as http_err:
         print(f"HTTP error occurred: {http_err}")
-        return {"error": "HTTP error occurred: " + http_err}
+        return {"error": "HTTP error occurred: " + str(http_err)}
     except Exception as err:
         print(f"Other error occurred: {err}")
-        return {"error": "Other error occurred: " + err}
+        return {"error": "Other error occurred: " + str(err)}
     else:
         print("Retrieved json from civitai.")
         return r.json()
 
     return r.json()
+
+def get_model_info(lora_path, weight = None):
+    ret = {}
+    try:
+        ret["type"] = cache.data[lora_path]["model"]["type"]
+        if (ret["type"] == "LORA") and (weight is not None):
+            ret["weight"] = weight
+        ret["modelVersionId"] = cache.data[lora_path]["id"]
+        ret["modelName"] = cache.data[lora_path]["model"]["name"]
+        ret["modelVersionName"] = cache.data[lora_path]["name"]
+    except:
+        ret = {}
+    return ret
+
+def get_latest_model_version(modelId):
+    json = get_civitai_model_json(modelId)
+    if 'error' in json:
+        return json['error']
+
+    latest_model = None
+    model_date = None
+    for model in json["modelVersions"]:
+        if model_date is None or (datetime.datetime.fromisoformat(model['createdAt']) > model_date and model['status'] == "Published" and model['availability'] == "Public"):
+            model_date = datetime.datetime.fromisoformat(model['createdAt'])
+            latest_model = model["id"]
+
+    return latest_model
 
 def get_file_sha256(path):
     print(f"Calculating hash for {path}")
@@ -79,7 +106,28 @@ def get_file_sha256(path):
     print(f"Got hash {result}")
     return result
 
-def pull_metadata(file_path, timestamp = True):
+def last_used(file_path):
+    cache.load()
+    
+    if file_path in cache.data:
+        last_used = cache.data[file_path].get("lastUsed", None)
+        if last_used is not None:
+            return datetime.datetime.fromisoformat(last_used)
+        else:
+            return None
+    else:
+        return None
+
+def days_since_last_used(file_path):
+    was_last_used = last_used(file_path)
+    if was_last_used is not None:
+        now = datetime.datetime.now()
+        delta = now - was_last_used
+        return delta.days
+    else:
+        return 365
+
+def pull_metadata(file_path, timestamp = True, force = False):
     cache.load()
     
     print(f"Pull metadata for {file_path}.")
@@ -93,27 +141,28 @@ def pull_metadata(file_path, timestamp = True):
 
     pull_json = True
     check_recent = False
-    days_old = 0
+    metadata_days_recheck = 0
+    hash_recheck = 30
     file_cache = cache.data.get(file_path, {})
         
-    if not check_recent and 'lastUsed' in file_cache and 'civitai' in file_cache and file_cache['civitai'] == "True":
-        last_used = datetime.datetime.fromisoformat(file_cache['lastUsed'])
-        if (datetime.datetime.now() - last_used).days == days_old:
-            print(f"Pulled earlier today. No pull needed. Update timestamp = {timestamp}")
+    if not check_recent and 'civitai' in file_cache and file_cache['civitai'] == "True":
+        if days_since_last_used(file_path) <= metadata_days_recheck:
+            print(f"Pulled earlier today. No pull needed.")
             pull_json = False
 
-    if pull_json:
+    if pull_json or force:
         print(f"Currently pulling metadata for {file_path}.")
         json = get_civitai_model_version_json_by_hash(hash)
 
-        if 'error' in json:
-            print(f"Failed. Spot checking hash.")
-            new_hash = get_file_sha256(file_path)
+        if 'error' in json or force:
+            if (days_since_last_used(file_path) <= hash_recheck) or force:
+                print(f"Spot checking hash.")
+                new_hash = get_file_sha256(file_path)
 
-            if new_hash != hash:
-                print(f"Hash mismatch. Pulling new hash.")
-                cache.data[file_path]['hash'] = new_hash
-                json = get_civitai_model_version_json_by_hash(new_hash)
+                if new_hash != hash:
+                    print(f"Hash mismatch. Pulling new hash.")
+                    cache.data[file_path]['hash'] = new_hash
+                    json = get_civitai_model_version_json_by_hash(new_hash)
 
             if 'error' in json and 'modelId' in file_cache:
                 print(f"Using cached model id {file_cache['id']}")
@@ -125,12 +174,20 @@ def pull_metadata(file_path, timestamp = True):
                 print(f"Error: {json['error']}")
                 print(f"Unable to find on civitai.")
                 file_cache['civitai'] = file_cache.get('model', "False")
-        else:
+        
+        if 'error' not in json:
             the_files = json.get("files", [])
             
             hashes = {}
             if len(the_files) > 0:
                 hashes = the_files[0].get("hashes", {})
+            
+            update_available = True
+            
+            if json.get("modelId", None) is not None:
+                latest_model = get_latest_model_version(json["modelId"])
+                if latest_model != json["id"]:
+                    update_available = False
 
             file_cache.update({
                 'civitai': "True",
@@ -139,6 +196,7 @@ def pull_metadata(file_path, timestamp = True):
                 'baseModel': json.get("baseModel", ""),
                 'id': json.get("id", ""),
                 'modelId': json.get("modelId", ""),
+                'update_available': update_available,
                 'trainedWords': json.get("trainedWords", []),
                 'downloadUrl': json.get("downloadUrl", ""),
                 'hashes': hashes
@@ -172,34 +230,7 @@ def get_lora_hash(lora_name):
 
     return cache.data[lora_path]["hash"]
 
-def get_model_info(lora_path, weight = None):
-    ret = {}
-    try:
-        ret["type"] = cache.data[lora_path]["model"]["type"]
-        if (ret["type"] == "LORA") and (weight is not None):
-            ret["weight"] = weight
-        ret["modelVersionId"] = cache.data[lora_path]["id"]
-        ret["modelName"] = cache.data[lora_path]["model"]["name"]
-        ret["modelVersionName"] = cache.data[lora_path]["name"]
-    except:
-        ret = {}
-    return ret
-
-def get_latest_model_version(modelId):
-    json = get_civitai_model_json(modelId)
-    if 'error' in json:
-        return json['error']
-
-    latest_model = None
-    model_date = None
-    for model in json["modelVersions"]:
-        if model_date is None or (datetime.datetime.fromisoformat(model['createdAt']) > model_date and model['status'] == "Published" and model['availability'] == "Public"):
-            model_date = datetime.datetime.fromisoformat(model['createdAt'])
-            latest_model = model["id"]
-
-    return latest_model
-
-def model_scan(the_path):
+def model_scan(the_path, force = False):
     the_paths = the_path
 
     print(f"the_paths: {the_paths}")
@@ -215,7 +246,7 @@ def model_scan(the_path):
     pbar = comfy.utils.ProgressBar(len(model_list))
     for the_model in model_list:
         pbar.update(1)
-        pull_metadata(str(the_model))
+        pull_metadata(str(the_model), force=force, timestamp=False)
 
 def pull_lora_image_urls(hash, nsfw):
     json = get_civitai_model_version_json_by_hash(hash)
@@ -250,7 +281,7 @@ def get_recently_used_models(model_type):
             
             if 'lastUsed' not in cache.data[model_path]:
                 continue
-            
+
             last = cache.data[model_path]['lastUsed']
             last_used = datetime.datetime.fromisoformat(last)
             #print(f"{model_path} - last: {last} last_used: {last_used}")
