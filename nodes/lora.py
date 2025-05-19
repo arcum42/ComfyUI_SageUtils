@@ -239,9 +239,7 @@ class Sage_LoraStackLoader(ComfyNodeABC):
     def load_lora_stack(self, model, clip, pbar, lora_stack):
         print("Loading lora stack...")
         keywords = ""
-        if lora_stack is None:
-            lora_stack = loaders.lora_stack(model, clip, pbar)
-        else:
+        if lora_stack is not None:
             model, clip, lora_stack, keywords = loaders.lora_stack(model, clip, pbar, lora_stack)
         return (model, clip, lora_stack, keywords)
 
