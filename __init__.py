@@ -51,6 +51,7 @@ NODE_CLASS_MAPPINGS = {
     "Sage_LoraStackLoader": Sage_LoraStackLoader,
     "Sage_CollectKeywordsFromLoraStack": Sage_CollectKeywordsFromLoraStack,
     "Sage_LastLoraInfo": Sage_LastLoraInfo,
+    "Sage_CheckLorasForUpdates": Sage_CheckLorasForUpdates,
 
     # Clip nodes
     "Sage_DualCLIPTextEncode": Sage_DualCLIPTextEncode,
@@ -128,6 +129,7 @@ NODE_DISPLAY_NAME_MAPPINGS  = {
     "Sage_LoraStackLoader": "Lora Stack Loader",
     "Sage_CollectKeywordsFromLoraStack": "Lora Stack -> Keywords",
     "Sage_LastLoraInfo": "Last Lora Info",
+    "Sage_CheckLorasForUpdates": "Check Loras for Updates",
 
     # Clip nodes
     "Sage_DualCLIPTextEncode": "Dual Prompt Encode",

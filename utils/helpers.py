@@ -127,6 +127,19 @@ def days_since_last_used(file_path):
     else:
         return 365
 
+def get_file_modification_date(file_path):
+    try:
+        file_path = pathlib.Path(file_path)
+        if file_path.exists():
+            return datetime.datetime.fromtimestamp(file_path.stat().st_mtime)
+        else:
+            print(f"File {file_path} does not exist.")
+            return datetime.datetime.now()
+    except Exception as e:
+        print(f"Error getting modification date for {file_path}: {e}")
+        return datetime.datetime.now()
+
+
 def pull_metadata(file_path, timestamp = True, force = False):
     cache.load()
     
@@ -144,6 +157,14 @@ def pull_metadata(file_path, timestamp = True, force = False):
     metadata_days_recheck = 0
     hash_recheck = 30
     file_cache = cache.data.get(file_path, {})
+    last_used_date = datetime.datetime.fromisoformat(file_cache['lastUsed']) if 'lastUsed' in file_cache else None
+    
+    if last_used_date is not None:
+        if get_file_modification_date(file_path) is not None:
+            if get_file_modification_date(file_path) > last_used_date:
+                print(f"File was modified after last used. Pulling metadata.")
+                check_recent = True
+                force = True
         
     if not check_recent and 'civitai' in file_cache and file_cache['civitai'] == "True":
         if days_since_last_used(file_path) <= metadata_days_recheck:
@@ -186,7 +207,7 @@ def pull_metadata(file_path, timestamp = True, force = False):
             
             if json.get("modelId", None) is not None:
                 latest_model = get_latest_model_version(json["modelId"])
-                if latest_model != json["id"]:
+                if latest_model == json["id"]:
                     update_available = False
 
             file_cache.update({

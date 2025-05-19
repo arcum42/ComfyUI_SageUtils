@@ -142,6 +142,50 @@ class Sage_CollectKeywordsFromLoraStack(ComfyNodeABC):
 
         return (get_lora_stack_keywords(lora_stack),)
 
+class Sage_CheckLorasForUpdates(ComfyNodeABC):
+    @classmethod
+    def INPUT_TYPES(cls) -> InputTypeDict:
+        return {
+            "required": {
+                "lora_stack": ("LORA_STACK", {"defaultInput": True}),
+                "force": (IO.BOOLEAN, {"defaultInput": False, "default": False, "tooltip": "Force a check for updates, even if the lora is up to date."}),
+            }
+        }
+
+    RETURN_TYPES = ("LORA_STACK", IO.STRING, IO.STRING)
+    RETURN_NAMES = ("lora_stack", "path", "latest_url")
+
+    FUNCTION = "check_for_updates"
+
+    CATEGORY = "Sage Utils/lora"
+    DESCRIPTION = "Check the loras in the stack for updates. If an update is found, it will be downloaded and the lora will be replaced in the stack."
+
+    def check_for_updates(self, lora_stack, force) -> tuple:
+        if lora_stack is None:
+            return (None,)
+        
+        lora_list = []
+        lora_url_list = []
+
+        for i, lora in enumerate(lora_stack):
+            if lora is not None:
+                print(f"Checking {lora[0]} for updates...")
+                lora_path = folder_paths.get_full_path_or_raise("loras", lora[0])
+                pull_metadata(lora_path, timestamp=False, force=force)
+                print(f"Update check complete for {lora[0]}")
+                
+                if "update_available" in cache.data[lora_path]:
+                    if cache.data[lora_path]["update_available"] == True:
+                        print(f"Update found for {lora[0]}")
+                        lora_list.append(lora_path)
+
+                        model_id = cache.data[lora_path]["modelId"]
+                        latest_version = get_latest_model_version(model_id)
+                        latest_url = f"https://civitai.com/models/{model_id}?modelVersionId={latest_version}"
+                        lora_url_list.append(latest_url)
+                
+        return (lora_stack, str(lora_list), str(lora_url_list))
+
 # Modified version of the main lora loader.
 class Sage_LoraStackLoader(ComfyNodeABC):
     def __init__(self):
