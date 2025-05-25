@@ -59,7 +59,7 @@ class Sage_ConstructMetadata(ComfyNodeABC):
                 if lora_data != {}:
                     resource_hashes.append(lora_data)
 
-                lora_hash = cache.data[lora_path]["hash"]
+                lora_hash = cache.hash[lora_path]
                 lora_hashes += [f"{lora_name}: {lora_hash}"]
 
         lora_hash_string = "Lora hashes: " + ",".join(lora_hashes)

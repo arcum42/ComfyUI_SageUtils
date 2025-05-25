@@ -174,12 +174,12 @@ class Sage_CheckLorasForUpdates(ComfyNodeABC):
                 pull_metadata(lora_path, timestamp=False, force=force)
                 print(f"Update check complete for {lora[0]}")
                 
-                if "update_available" in cache.data[lora_path]:
-                    if cache.data[lora_path]["update_available"] == True:
+                if "update_available" in cache.by_path(lora_path):
+                    if cache.by_path(lora_path)["update_available"] == True:
                         print(f"Update found for {lora[0]}")
                         lora_list.append(lora_path)
 
-                        model_id = cache.data[lora_path]["modelId"]
+                        model_id = cache.by_path(lora_path)["modelId"]
                         latest_version = get_latest_model_version(model_id)
                         latest_url = f"https://civitai.com/models/{model_id}?modelVersionId={latest_version}"
                         lora_url_list.append(latest_url)

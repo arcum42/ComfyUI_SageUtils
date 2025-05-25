@@ -40,7 +40,7 @@ class Sage_CheckpointLoaderRecent(ComfyNodeABC):
         model_info = { "type": "CKPT", "path": folder_paths.get_full_path_or_raise("checkpoints", ckpt_name) }
         pull_metadata(model_info["path"], True)
 
-        model_info["hash"] = cache.data[model_info["path"]]["hash"]
+        model_info["hash"] = cache.hash[model_info["path"]]
 
         model, clip, vae = loaders.checkpoint(model_info["path"])
         result = (model, clip, vae, model_info)
@@ -72,7 +72,7 @@ class Sage_CheckpointLoaderSimple(CheckpointLoaderSimple):
         model_info = { "type": "CKPT", "path": folder_paths.get_full_path_or_raise("checkpoints", ckpt_name) }
         pull_metadata(model_info["path"], True)
 
-        model_info["hash"] = cache.data[model_info["path"]]["hash"]
+        model_info["hash"] = cache.hash[model_info["path"]]
         model, clip, vae = loaders.checkpoint(model_info["path"])
         return (model, clip, vae, model_info)
     
@@ -99,7 +99,7 @@ class Sage_UNETLoader(UNETLoader):
             "path": folder_paths.get_full_path_or_raise("diffusion_models", unet_name)
         }
         pull_metadata(model_info["path"], True)
-        model_info["hash"] = cache.data[model_info["path"]]["hash"]
+        model_info["hash"] = cache.hash[model_info["path"]]
         return (loaders.unet(model_info["path"], weight_dtype), model_info)
 
 class Sage_CheckpointSelector(ComfyNodeABC):
@@ -123,7 +123,7 @@ class Sage_CheckpointSelector(ComfyNodeABC):
     def get_checkpoint_info(self, ckpt_name) -> tuple:
         model_info = { "type": "CKPT", "path": folder_paths.get_full_path_or_raise("checkpoints", ckpt_name) }
         pull_metadata(model_info["path"], True)
-        model_info["hash"] = cache.data[model_info["path"]]["hash"]
+        model_info["hash"] = cache.hash[model_info["path"]]
         return (model_info,)
 
 class Sage_MultiModelPicker(ComfyNodeABC):
@@ -175,7 +175,11 @@ class Sage_CacheMaintenance(ComfyNodeABC):
     DESCRIPTION = "Lets you remove entries for models that are no longer there. dup_hash returns a list of files with the same hash, and dup_model returns ones with the same civitai model id (but not neccessarily the same version)."
 
     def cache_maintenance(self, remove_ghost_entries) -> tuple[str, str, str, str]:
-        ghost_entries = [path for path in cache.data if not pathlib.Path(path).is_file()]
+        ghost_entries = []
+        for key in cache.hash:
+            if not pathlib.Path(key).is_file():
+                ghost_entries.append(key)
+
         cache_by_hash = {}
         cache_by_id = {}
         dup_hash = {}
@@ -183,15 +187,21 @@ class Sage_CacheMaintenance(ComfyNodeABC):
         not_on_civitai = []
         out_of_date = []
 
-        for model_path, data in cache.data.items():
-            if 'hash' in data:
-                cache_by_hash.setdefault(data['hash'], []).append(model_path)
-            if 'modelId' in data:
-                cache_by_id.setdefault(data['modelId'], []).append(model_path)
+        for model_path, model_hash in cache.hash.items():
+            if model_hash not in cache_by_hash:
+                cache_by_hash[model_hash] = []
+            cache_by_hash[model_hash].append(model_path)
 
+            model_info = cache.by_path(model_path)
+            model_id = model_info.get("modelId", None)
+            if model_id:
+                if model_id not in cache_by_id:
+                    cache_by_id[model_id] = []
+                cache_by_id[model_id].append(model_path)
+        
         if remove_ghost_entries:
             for ghost in ghost_entries:
-                cache.data.pop(ghost)
+                cache.hash.pop(ghost)
             cache.save()
 
         dup_hash = {h: paths for h, paths in cache_by_hash.items() if len(paths) > 1}
@@ -200,11 +210,13 @@ class Sage_CacheMaintenance(ComfyNodeABC):
         dup_hash_json = json.dumps(dup_hash, separators=(",", ":"), sort_keys=True, indent=4)
         dup_id_json = json.dumps(dup_id, separators=(",", ":"), sort_keys=True, indent=4)
 
-        for model_path, data in cache.data.items():
-            if data.get("civitai", "False") == "False":
+        for model_path, model_hash in cache.hash.items():
+            model_info = cache.by_path(model_path)
+            in_civitai = model_info['civitai']
+            if in_civitai != True:
                 not_on_civitai.append(model_path)
 
-            if data.get("update_available", "False") == "True":
+            if model_info.get("update_available", False):
                 out_of_date.append(model_path)
         
         not_on_civitai_str = str(not_on_civitai)
@@ -213,7 +225,7 @@ class Sage_CacheMaintenance(ComfyNodeABC):
 
 class Sage_ModelReport(ComfyNodeABC):
     @classmethod
-    def INPUT_TYPES(cls) -> InputTypeDict:
+    def INPUT_TYPES(cls):
         return {
             "required": {
                 "scan_models": (["none", "loras", "checkpoints", "all"], {"defaultInput": False, "default": "none"}),
@@ -239,8 +251,6 @@ class Sage_ModelReport(ComfyNodeABC):
             the_checkpoint_paths = folder_paths.get_folder_paths("checkpoints")
             the_paths = [*the_lora_paths, *the_checkpoint_paths]
 
-        print(f"Scanning {len(the_paths)} paths.")
-        print(f"the_paths == {the_paths}")
         if the_paths != []: model_scan(the_paths, force=force_recheck)
 
     def pull_list(self, scan_models, force_recheck) -> tuple[str, str]:
@@ -251,8 +261,8 @@ class Sage_ModelReport(ComfyNodeABC):
 
         self.get_files(scan_models, force_recheck)
 
-        for model_path in cache.data.keys():
-            cur = cache.data.get(model_path, {})
+        for model_path in cache.hash.keys():
+            cur = cache.info.get(cache.hash[model_path], {})
             baseModel = cur.get('baseModel', None)
             if cur.get('model', {}).get('type', None) == "Checkpoint":
                 if baseModel not in sorted_models: sorted_models[baseModel] = []

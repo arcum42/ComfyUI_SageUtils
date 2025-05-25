@@ -127,7 +127,7 @@ class Sage_ViewText(ComfyNodeABC):
     DEPRECATED = True
 
     def show_text(self, text) -> tuple[str]:
-        print(f"String is '{text}'")
+        #print(f"String is '{text}'")
         return { "ui": {"text": text}, "result" : (text,) }
 
 
@@ -150,15 +150,15 @@ class Sage_ViewAnything(ComfyNodeABC):
     INPUT_IS_LIST = True
 
     def show_text(self, any) -> dict:
-        print(f"Text is '{any}'")
+        #print(f"Text is '{any}'")
         str = ""
         if isinstance(any, list):
             for t in any:
                 str += f"{t}\n"
-                print(f"String is '{t}'")
+                #print(f"String is '{t}'")
         else:
             str = any
-        print(f"String is '{str}'")
+        #print(f"String is '{str}'")
         return { "ui": {"text": str}, "result" : (str,) }
 
 class Sage_PonyPrefix(ComfyNodeABC):

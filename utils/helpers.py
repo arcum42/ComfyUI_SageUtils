@@ -70,12 +70,12 @@ def get_civitai_model_json(modelId):
 def get_model_info(lora_path, weight = None):
     ret = {}
     try:
-        ret["type"] = cache.data[lora_path]["model"]["type"]
+        ret["type"] = cache.by_path(lora_path)["model"]["type"]
         if (ret["type"] == "LORA") and (weight is not None):
             ret["weight"] = weight
-        ret["modelVersionId"] = cache.data[lora_path]["id"]
-        ret["modelName"] = cache.data[lora_path]["model"]["name"]
-        ret["modelVersionName"] = cache.data[lora_path]["name"]
+        ret["modelVersionId"] = cache.by_path(lora_path)["id"]
+        ret["modelName"] = cache.by_path(lora_path)["model"]["name"]
+        ret["modelVersionName"] = cache.by_path(lora_path)["name"]
     except:
         ret = {}
     return ret
@@ -108,9 +108,9 @@ def get_file_sha256(path):
 
 def last_used(file_path):
     cache.load()
-    
-    if file_path in cache.data:
-        last_used = cache.data[file_path].get("lastUsed", None)
+
+    if file_path in cache.hash:
+        last_used = cache.by_path(file_path).get("lastUsed", None)
         if last_used is not None:
             return datetime.datetime.fromisoformat(last_used)
         else:
@@ -144,11 +144,11 @@ def pull_metadata(file_path, timestamp = True, force = False):
     cache.load()
     
     print(f"Pull metadata for {file_path}.")
-    hash = cache.data.get(file_path, {}).get("hash", "")
+    hash = cache.hash.get(file_path, "")
 
     if not hash:
-        cache.data[file_path] = {"hash": get_file_sha256(file_path)}
-        hash = cache.data[file_path]["hash"]
+        hash = get_file_sha256(file_path)
+        cache.hash[file_path] = hash
     else:
         time.sleep(2)
 
@@ -156,7 +156,7 @@ def pull_metadata(file_path, timestamp = True, force = False):
     check_recent = False
     metadata_days_recheck = 0
     hash_recheck = 30
-    file_cache = cache.data.get(file_path, {})
+    file_cache = cache.by_path(file_path)
     last_used_date = datetime.datetime.fromisoformat(file_cache['lastUsed']) if 'lastUsed' in file_cache else None
     
     if last_used_date is not None:
@@ -182,7 +182,7 @@ def pull_metadata(file_path, timestamp = True, force = False):
 
                 if new_hash != hash:
                     print(f"Hash mismatch. Pulling new hash.")
-                    cache.data[file_path]['hash'] = new_hash
+                    cache.hash[file_path] = new_hash
                     json = get_civitai_model_version_json_by_hash(new_hash)
 
             if 'error' in json and 'modelId' in file_cache:
@@ -229,6 +229,7 @@ def pull_metadata(file_path, timestamp = True, force = False):
         file_cache['lastUsed'] = datetime.datetime.now().isoformat()
 
     cache.data[file_path] = file_cache
+    cache.info[hash] = file_cache
     cache.save()
 
 def lora_to_string(lora_name, model_weight, clip_weight):
@@ -249,7 +250,7 @@ def get_lora_hash(lora_name):
     lora_path = folder_paths.get_full_path_or_raise("loras", lora_name)
     pull_metadata(lora_path)
 
-    return cache.data[lora_path]["hash"]
+    return cache.hash[lora_path]
 
 def model_scan(the_path, force = False):
     the_paths = the_path
@@ -297,13 +298,13 @@ def get_recently_used_models(model_type):
         full_model_list = folder_paths.get_filename_list(model_type)
         for item in full_model_list:
             model_path = folder_paths.get_full_path_or_raise(model_type, item)
-            if model_path not in cache.data.keys():
+            if model_path not in cache.hash.keys():
                 continue
             
-            if 'lastUsed' not in cache.data[model_path]:
+            if 'lastUsed' not in cache.by_path(model_path):
                 continue
 
-            last = cache.data[model_path]['lastUsed']
+            last = cache.by_path(model_path)['lastUsed']
             last_used = datetime.datetime.fromisoformat(last)
             #print(f"{model_path} - last: {last} last_used: {last_used}")
             if (datetime.datetime.now() - last_used).days <= 7:
