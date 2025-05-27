@@ -30,7 +30,7 @@ class Sage_LogicalSwitch(ComfyNodeABC):
 
     FUNCTION = "if_else"
 
-    CATEGORY = "Sage Utils/logic"
+    CATEGORY = "Sage Utils/util"
     DESCRIPTION = "Returns one of two values based on a condition."
 
     def if_else(self, condition, true_value, false_value) -> tuple:
@@ -75,7 +75,7 @@ class Sage_Foobar(ComfyNodeABC):
 
     FUNCTION = "process"
 
-    CATEGORY = "Sage Utils/Test"
+    CATEGORY = "Sage Utils/util/test"
     DESCRIPTION = "This node is strictly for testing purposes, and will constantly be changing and broken, as I'll test things for other nodes here."
     EXPERIMENTAL = True
     DEPRECATED = True

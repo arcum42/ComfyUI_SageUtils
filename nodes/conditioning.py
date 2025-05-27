@@ -155,7 +155,7 @@ class Sage_DualCLIPTextEncodeLumina2(ComfyNodeABC):
     OUTPUT_TOOLTIPS = ("A conditioning containing the embedded text used to guide the diffusion model. If neg is not hooked up, it'll be automatically zeroed.",)
     FUNCTION = "encode"
 
-    CATEGORY = "Sage Utils/lumina 2"
+    CATEGORY = "Sage Utils/clip"
     DESCRIPTION = "Turns a positive and negative prompt into conditionings, and passes through the prompts. Saves space over two CLIP Text Encoders, and zeros any input not hooked up."
 
     def get_conditioning(self, pbar, clip, text=None):

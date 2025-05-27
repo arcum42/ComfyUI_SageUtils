@@ -108,29 +108,6 @@ class Sage_CleanText(ComfyNodeABC):
     def clean_str(self, str) -> tuple[str]:
         return (clean_text(str),)
 
-class Sage_ViewText(ComfyNodeABC):
-    @classmethod
-    def INPUT_TYPES(cls) -> InputTypeDict:
-        return {
-            "required": {
-                "text": (IO.STRING, {"forceInput": True, "multiline": True})
-            }
-        }
-
-    RETURN_TYPES = (IO.STRING,)
-
-    FUNCTION = "show_text"
-
-    CATEGORY = "Sage Utils/depreciated/text"
-    DESCRIPTION = "Shows some text."
-    OUTPUT_NODE = True
-    DEPRECATED = True
-
-    def show_text(self, text) -> tuple[str]:
-        #print(f"String is '{text}'")
-        return { "ui": {"text": text}, "result" : (text,) }
-
-
 class Sage_ViewAnything(ComfyNodeABC):
     @classmethod
     def INPUT_TYPES(cls):
@@ -182,36 +159,6 @@ class Sage_PonyPrefix(ComfyNodeABC):
         prefix += f"source_{source}, " if source != "none" else ""
         prefix += f"rating_{rating}, " if rating != "none" else ""
         return (prefix,)
-
-class Sage_TextCompare(ComfyNodeABC):
-    @classmethod
-    def INPUT_TYPES(cls) -> InputTypeDict:
-        return {
-            "required": {
-                "text1": (IO.STRING, {"defaultInput": True}),
-                "text2": (IO.STRING, {"defaultInput": True}),
-                "comparison_type": (["equal", "not_equal", "contains", "not_contains"], {"defaultInput": False}),
-            }
-        }
-
-    RETURN_TYPES = (IO.BOOLEAN,)
-    RETURN_NAMES = ("result",)
-
-    FUNCTION = "compare"
-
-    CATEGORY = "depreciated/Sage Utils/logic"
-    DESCRIPTION = "Compares two strings based on the selected comparison type."
-    DEPRECIATED = True
-
-    def compare(self, text1, text2, comparison_type) -> tuple[bool]:
-        if comparison_type == "equal":
-            return (text1 == text2,)
-        elif comparison_type == "not_equal":
-            return (text1 != text2,)
-        elif comparison_type == "contains":
-            return (text1 in text2,)
-        elif comparison_type == "not_contains":
-            return (text1 not in text2,)
 
 class Sage_TextWeight(ComfyNodeABC):
     @classmethod
