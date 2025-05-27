@@ -58,36 +58,6 @@ class Sage_StringListTest(ComfyNodeABC):
 
     def test_list(self, text, text2, text3) -> tuple[str]:
         return ((text,text2,text3),)
-    
-class Sage_Foobar(ComfyNodeABC):
-    @classmethod
-    def INPUT_TYPES(cls) -> InputTypeDict:
-        return {
-            "required": {
-                "separator": (IO.STRING, {"defaultInput": False, "default": ', '}),
-                "str1": (IO.STRING, {"defaultInput": True, "multiline": True}),
-                "str2": (IO.STRING, {"defaultInput": True, "multiline": True}),
-            }
-        }
-
-    RETURN_TYPES = (IO.STRING,)
-    RETURN_NAMES = ("output",)
-
-    FUNCTION = "process"
-
-    CATEGORY = "Sage Utils/util/test"
-    DESCRIPTION = "This node is strictly for testing purposes, and will constantly be changing and broken, as I'll test things for other nodes here."
-    EXPERIMENTAL = True
-    DEPRECATED = True
-
-    def process(self, separator, **args) -> tuple[str]:
-        print(args.values())
-        print(vars(self))
-        print(dir(self))
-        print(self.__dict__)
-        ret = separator.join(args.values())
-        print(ret)
-        return (ret,)
 
 class Sage_ModelInfo(ComfyNodeABC):
     @classmethod

@@ -19,7 +19,6 @@ DEPRECIATED_CLASS_MAPPINGS = {
 
 UTILITY_CLASS_MAPPINGS = {
     "Sage_GetFileHash": Sage_GetFileHash,
-    "Sage_Foobar": Sage_Foobar,
     #,"Sage_StringListTest": Sage_StringListTest
     "Sage_LogicalSwitch": Sage_LogicalSwitch
 }
@@ -105,7 +104,6 @@ DEPRECIATED_NAME_MAPPINGS = {
 
 UTILITY_NAME_MAPPINGS = {
     "Sage_GetFileHash": "Get Sha256 Hash",
-    "Sage_Foobar": "Test Node (Do not use)",#,
     #"Sage_StringListTest": "String List Test"
     "Sage_LogicalSwitch": "Switch"
 }
