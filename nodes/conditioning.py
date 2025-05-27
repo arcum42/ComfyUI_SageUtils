@@ -30,56 +30,6 @@ class Sage_ConditioningZeroOut(ComfyNodeABC):
         conditioning = torch.zeros_like(output.pop("cond"))
         return [([conditioning, output],)]
 
-class Sage_ConditioningOneOut(ComfyNodeABC):
-    @classmethod
-    def INPUT_TYPES(cls) -> InputTypeDict:
-        return {
-            "required": {
-            "clip": (IO.CLIP, {"defaultInput": True, "tooltip": "The CLIP model used for encoding."})
-            }
-        }
-
-    RETURN_TYPES = ("CONDITIONING",)
-    FUNCTION = "one_out"
-
-    CATEGORY = "Sage Utils/clip"
-    DESCRIPTION = "Returns oned out conditioning."
-
-    EXPERIMENTAL = True
-
-    def zero_out(self, clip) -> tuple:
-        tokens = clip.tokenize("")
-        output = clip.encode_from_tokens(tokens, return_pooled=True, return_dict=True)
-        output["pooled_output"] = torch.ones_like(output.get("pooled_output", torch.tensor([])))
-        conditioning = torch.ones_like(output.pop("cond"))
-        return [([conditioning, output],)]
-
-class Sage_ConditioningRngOut(ComfyNodeABC):
-    @classmethod
-    def INPUT_TYPES(cls) -> InputTypeDict:
-        return {
-            "required": {
-            "clip": (IO.CLIP, {"defaultInput": True, "tooltip": "The CLIP model used for encoding."}),
-            "seed": (IO.INT, {"default": 0, "min": 0, "max": 0xffffffffffffffff, "defaultInput": True, "tooltip": "The seed used to randomize the conditioning."})
-            }
-        }
-
-    RETURN_TYPES = (IO.CONDITIONING,)
-    FUNCTION = "rng_out"
-
-    CATEGORY = "Sage Utils/clip"
-    DESCRIPTION = "Returns randomized conditioning."
-
-    EXPERIMENTAL = True
-
-    def rng_out(self, clip, seed) -> tuple:
-        torch.manual_seed(seed)
-        tokens = clip.tokenize("")
-        output = clip.encode_from_tokens(tokens, return_pooled=True, return_dict=True)
-        output["pooled_output"] = torch.rand_like(output.get("pooled_output", torch.tensor([])))
-        conditioning = torch.rand_like(output.pop("cond"))
-        return [([conditioning, output],)]
-
 class Sage_DualCLIPTextEncode(ComfyNodeABC):
     @classmethod
     def INPUT_TYPES(cls) -> InputTypeDict:

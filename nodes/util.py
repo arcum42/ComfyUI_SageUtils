@@ -36,29 +36,6 @@ class Sage_LogicalSwitch(ComfyNodeABC):
     def if_else(self, condition, true_value, false_value) -> tuple:
         return (true_value if condition else false_value,)
 
-class Sage_StringListTest(ComfyNodeABC):
-    @classmethod
-    def INPUT_TYPES(cls) -> InputTypeDict:
-        return {
-            "required": {
-                "text": (IO.STRING, {"defaultInput": False}),
-                "text2": (IO.STRING, {"defaultInput": False}),
-                "text3": (IO.STRING, {"defaultInput": False}),
-            }
-        }
-
-    RETURN_TYPES = (IO.BOOLEAN,)
-    RETURN_NAMES = ("result",)
-
-    FUNCTION = "test_list"
-
-    CATEGORY = "Sage Utils/text"
-    DESCRIPTION = "Returns a list of three strings."
-    OUTPUT_IS_LIST = (True,)
-
-    def test_list(self, text, text2, text3) -> tuple[str]:
-        return ((text,text2,text3),)
-
 class Sage_ModelInfo(ComfyNodeABC):
     @classmethod
     def INPUT_TYPES(cls) -> InputTypeDict:

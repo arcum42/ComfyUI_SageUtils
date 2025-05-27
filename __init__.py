@@ -14,12 +14,12 @@ DEPRECIATED_CLASS_MAPPINGS = {
     "Sage_SetFloat": Sage_SetFloat,
     "Sage_KSamplerDecoder": Sage_KSamplerDecoder,
     "Sage_ViewText": Sage_ViewText,
-    "Sage_TextCompare": Sage_TextCompare
+    "Sage_TextCompare": Sage_TextCompare,
+    "Sage_ConditioningRngOut": Sage_ConditioningRngOut
 }
 
 UTILITY_CLASS_MAPPINGS = {
     "Sage_GetFileHash": Sage_GetFileHash,
-    #,"Sage_StringListTest": Sage_StringListTest
     "Sage_LogicalSwitch": Sage_LogicalSwitch
 }
 
@@ -61,9 +61,7 @@ LORA_CLASS_MAPPINGS = {
 CLIP_CLASS_MAPPINGS = {
     "Sage_DualCLIPTextEncode": Sage_DualCLIPTextEncode,
     "Sage_DualCLIPTextEncodeLumina2": Sage_DualCLIPTextEncodeLumina2,
-    "Sage_ConditioningZeroOut": Sage_ConditioningZeroOut,
-    #"Sage_ConditioningOneOut": Sage_ConditioningZeroOut,
-    "Sage_ConditioningRngOut": Sage_ConditioningRngOut
+    "Sage_ConditioningZeroOut": Sage_ConditioningZeroOut
 }
 
 SAMPLER_CLASS_MAPPINGS = {
@@ -99,12 +97,12 @@ DEPRECIATED_NAME_MAPPINGS = {
     "Sage_SetFloat": "Float",
     "Sage_KSamplerDecoder": "KSampler + Decoder",
     "Sage_ViewText": "View Text",
-    "Sage_TextCompare": "Text Compare"
+    "Sage_TextCompare": "Text Compare",
+    "Sage_ConditioningRngOut": "Randomized conditioning"
 }
 
 UTILITY_NAME_MAPPINGS = {
     "Sage_GetFileHash": "Get Sha256 Hash",
-    #"Sage_StringListTest": "String List Test"
     "Sage_LogicalSwitch": "Switch"
 }
 
@@ -146,9 +144,7 @@ LORA_NAME_MAPPINGS = {
 CLIP_NAME_MAPPINGS = {
     "Sage_DualCLIPTextEncode": "Dual Prompt Encode",
     "Sage_DualCLIPTextEncodeLumina2": "Dual Prompt Encode (Lumina 2)",
-    "Sage_ConditioningZeroOut": "Zero Conditioning",
-    #"Sage_ConditioningOneOut": "One Conditioning",
-    "Sage_ConditioningRngOut": "Randomized conditioning"
+    "Sage_ConditioningZeroOut": "Zero Conditioning"
 }
 
 SAMPLER_NAME_MAPPINGS = {

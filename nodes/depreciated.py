@@ -166,3 +166,29 @@ class Sage_KSamplerDecoder(ComfyNodeABC):
             images = images.reshape(-1, images.shape[-3], images.shape[-2], images.shape[-1])
         
         return (latent_result[0], images)
+class Sage_ConditioningRngOut(ComfyNodeABC):
+    @classmethod
+    def INPUT_TYPES(cls) -> InputTypeDict:
+        return {
+            "required": {
+            "clip": (IO.CLIP, {"defaultInput": True, "tooltip": "The CLIP model used for encoding."}),
+            "seed": (IO.INT, {"default": 0, "min": 0, "max": 0xffffffffffffffff, "defaultInput": True, "tooltip": "The seed used to randomize the conditioning."})
+            }
+        }
+
+    RETURN_TYPES = (IO.CONDITIONING,)
+    FUNCTION = "rng_out"
+
+    CATEGORY = "Sage Utils/depreciated/clip"
+    DESCRIPTION = "Returns randomized conditioning."
+
+    EXPERIMENTAL = True
+    DEPRECATED = True
+
+    def rng_out(self, clip, seed) -> tuple:
+        torch.manual_seed(seed)
+        tokens = clip.tokenize("")
+        output = clip.encode_from_tokens(tokens, return_pooled=True, return_dict=True)
+        output["pooled_output"] = torch.rand_like(output.get("pooled_output", torch.tensor([])))
+        conditioning = torch.rand_like(output.pop("cond"))
+        return [([conditioning, output],)]
