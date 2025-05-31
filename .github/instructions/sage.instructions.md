@@ -41,6 +41,12 @@ These instructions define coding standards, directory structure, and domain know
 - Use try/except blocks for error handling, especially around I/O and network operations.
 - Use tuple unpacking for return values when returning multiple outputs.
 
+### Coding Practices
+- Use list comprehensions for creating lists from iterables.
+- Use generator expressions for large datasets to save memory.
+- Use context managers (`with` statements) for file operations to ensure proper resource management.
+- Follow ideomatic Python practices, such as using `enumerate()` for loops when you need both index and value.
+
 ## Documentation and Versioning
 - **Update `README.md`** with any new features or changes.
 - **Update `pyproject.toml`** when releasing a new version.
