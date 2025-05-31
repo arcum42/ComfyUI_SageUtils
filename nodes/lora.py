@@ -162,7 +162,7 @@ class Sage_CheckLorasForUpdates(ComfyNodeABC):
 
     def check_for_updates(self, lora_stack, force) -> tuple:
         if lora_stack is None:
-            return (None,)
+            return (None, "", "")
         
         lora_list = []
         lora_url_list = []
@@ -189,6 +189,7 @@ class Sage_CheckLorasForUpdates(ComfyNodeABC):
 # Modified version of the main lora loader.
 class Sage_LoraStackLoader(ComfyNodeABC):
     def __init__(self):
+        super().__init__()
         self.loaded_lora = {}
 
     @classmethod
@@ -288,6 +289,7 @@ class Sage_ModelShifts(ComfyNodeABC):
 
 class Sage_ModelLoraStackLoader(Sage_LoraStackLoader):
     def __init__(self):
+        super().__init__()
         self.loaded_lora = {}
 
     @classmethod
