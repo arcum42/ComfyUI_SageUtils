@@ -23,6 +23,13 @@ UTILITY_CLASS_MAPPINGS = {
     "Sage_LogicalSwitch": Sage_LogicalSwitch
 }
 
+SETTINGS_CLASS_MAPPINGS = {
+    "Sage_SamplerInfo": Sage_SamplerInfo,
+    "Sage_AdvSamplerInfo": Sage_AdvSamplerInfo,
+    "Sage_TilingInfo": Sage_TilingInfo,
+    "Sage_ModelShifts": Sage_ModelShifts
+}
+
 TEXT_CLASS_MAPPINGS = {
     "Sage_SetText": Sage_SetText,
     "Sage_JoinText": Sage_JoinText,
@@ -44,7 +51,6 @@ MODEL_CLASS_MAPPINGS = {
     "Sage_CacheMaintenance": Sage_CacheMaintenance,
     "Sage_ModelReport": Sage_ModelReport,
     "Sage_ModelLoraStackLoader": Sage_ModelLoraStackLoader,
-    "Sage_ModelShifts": Sage_ModelShifts,
     "Sage_MultiModelPicker": Sage_MultiModelPicker
 }
 
@@ -77,17 +83,14 @@ IMAGE_CLASS_MAPPINGS = {
 }
 
 METADATA_CLASS_MAPPINGS = {
-    "Sage_SamplerInfo": Sage_SamplerInfo,
-    "Sage_AdvSamplerInfo": Sage_AdvSamplerInfo,
-    "Sage_TilingInfo": Sage_TilingInfo,
     "Sage_ConstructMetadata": Sage_ConstructMetadata,
     "Sage_ConstructMetadataLite": Sage_ConstructMetadataLite
 }
 
 # A dictionary that contains all nodes you want to export with their names
 # NOTE: names should be globally unique
-NODE_CLASS_MAPPINGS = DEPRECIATED_CLASS_MAPPINGS | UTILITY_CLASS_MAPPINGS | TEXT_CLASS_MAPPINGS | MODEL_CLASS_MAPPINGS | \
-    LORA_CLASS_MAPPINGS | CLIP_CLASS_MAPPINGS | SAMPLER_CLASS_MAPPINGS | IMAGE_CLASS_MAPPINGS | \
+NODE_CLASS_MAPPINGS = DEPRECIATED_CLASS_MAPPINGS | UTILITY_CLASS_MAPPINGS | SETTINGS_CLASS_MAPPINGS |  TEXT_CLASS_MAPPINGS | \
+    MODEL_CLASS_MAPPINGS | LORA_CLASS_MAPPINGS | CLIP_CLASS_MAPPINGS | SAMPLER_CLASS_MAPPINGS | IMAGE_CLASS_MAPPINGS | \
     METADATA_CLASS_MAPPINGS
     
 
@@ -104,6 +107,13 @@ DEPRECIATED_NAME_MAPPINGS = {
 UTILITY_NAME_MAPPINGS = {
     "Sage_GetFileHash": "Get Sha256 Hash",
     "Sage_LogicalSwitch": "Switch"
+}
+
+SETTINGS_NAME_MAPPINGS = {
+    "Sage_SamplerInfo": "Sampler Info",
+    "Sage_AdvSamplerInfo": "Adv Sampler Info",
+    "Sage_TilingInfo": "Tiling Info",
+    "Sage_ModelShifts": "Model Shifts"
 }
 
 TEXT_NAME_MAPPINGS = {
@@ -126,7 +136,6 @@ MODEL_NAME_MAPPINGS = {
     "Sage_ModelInfo": "Model Info",
     "Sage_CacheMaintenance": "Cache Maintenance",
     "Sage_ModelReport": "Model Scan & Report",
-    "Sage_ModelShifts": "Model Shifts",
     "Sage_ModelLoraStackLoader": "Model + Lora Stack Loader",
     "Sage_MultiModelPicker": "Multi Model Picker"
 }
@@ -160,16 +169,13 @@ IMAGE_NAME_MAPPINGS = {
 }
 
 METADATA_NAME_MAPPINGS = {
-    "Sage_SamplerInfo": "Sampler Info",
-    "Sage_AdvSamplerInfo": "Adv Sampler Info",
-    "Sage_TilingInfo": "Tiling Info",
     "Sage_ConstructMetadata": "Construct Metadata",
     "Sage_ConstructMetadataLite": "Construct Metadata Lite"
 }
 
 # A dictionary that contains the friendly/humanly readable titles for the nodes
-NODE_DISPLAY_NAME_MAPPINGS = DEPRECIATED_NAME_MAPPINGS | UTILITY_NAME_MAPPINGS | TEXT_NAME_MAPPINGS | MODEL_NAME_MAPPINGS | \
-    LORA_NAME_MAPPINGS | CLIP_NAME_MAPPINGS | SAMPLER_NAME_MAPPINGS | IMAGE_NAME_MAPPINGS | \
+NODE_DISPLAY_NAME_MAPPINGS = DEPRECIATED_NAME_MAPPINGS | UTILITY_NAME_MAPPINGS | SETTINGS_NAME_MAPPINGS | TEXT_NAME_MAPPINGS | \
+    MODEL_NAME_MAPPINGS | LORA_NAME_MAPPINGS | CLIP_NAME_MAPPINGS | SAMPLER_NAME_MAPPINGS | IMAGE_NAME_MAPPINGS | \
     METADATA_NAME_MAPPINGS
 
 __all__ = ['NODE_CLASS_MAPPINGS', 'NODE_DISPLAY_NAME_MAPPINGS', 'WEB_DIRECTORY']
