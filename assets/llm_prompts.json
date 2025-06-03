@@ -1,4 +1,3 @@
-{
     "base": {
         "descriptive": {
             "name": "Descriptive Prompt",
@@ -14,15 +13,15 @@
         },
         "straightforward": {
             "name": "Straightforward Prompt",
-            "general": "Write a straightforward caption for this image. Begin with the main subject and medium. Mention pivotal elements—people, objects, scenery—using confident, definite language. Focus on concrete details like color, shape, texture, and spatial relationships. Show how elements interact. Omit mood and speculative wording. If text is present, quote it exactly. Note any watermarks, signatures, or compression artifacts. Never mention what's absent, resolution, or unobservable details. Vary your sentence structure and keep the description concise, without starting with “This image is…” or similar phrasing.",
-            "word_count": "Write a straightforward caption for this image in {word_count} words or less. Begin with the main subject and medium. Mention pivotal elements—people, objects, scenery—using confident, definite language. Focus on concrete details like color, shape, texture, and spatial relationships. Show how elements interact. Omit mood and speculative wording. If text is present, quote it exactly. Note any watermarks, signatures, or compression artifacts. Never mention what's absent, resolution, or unobservable details. Vary your sentence structure and keep the description concise, without starting with “This image is…” or similar phrasing.",
-            "length": "Write a {length} straightforward caption for this image. Begin with the main subject and medium. Mention pivotal elements—people, objects, scenery—using confident, definite language. Focus on concrete details like color, shape, texture, and spatial relationships. Show how elements interact. Omit mood and speculative wording. If text is present, quote it exactly. Note any watermarks, signatures, or compression artifacts. Never mention what's absent, resolution, or unobservable details. Vary your sentence structure and keep the description concise, without starting with “This image is…” or similar phrasing."
+            "general": "Write a straightforward caption for this image. Begin with the main subject and medium. Mention pivotal elements, people, objects, scenery, using confident, definite language. Focus on concrete details like color, shape, texture, and spatial relationships. Show how elements interact. Omit mood and speculative wording. If text is present, quote it exactly. Note any watermarks, signatures, or compression artifacts. Never mention what's absent, resolution, or unobservable details. Vary your sentence structure and keep the description concise, without starting with This image is or similar phrasing.",
+            "word_count": "Write a straightforward caption for this image in {word_count} words or less. Begin with the main subject and medium. Mention pivotal elements, people, objects, scenery using confident, definite language. Focus on concrete details like color, shape, texture, and spatial relationships. Show how elements interact. Omit mood and speculative wording. If text is present, quote it exactly. Note any watermarks, signatures, or compression artifacts. Never mention what's absent, resolution, or unobservable details. Vary your sentence structure and keep the description concise, without starting with This image is or similar phrasing.",
+            "length": "Write a {length} straightforward caption for this image. Begin with the main subject and medium. Mention pivotal elements, people, objects, scenery, using confident, definite language. Focus on concrete details like color, shape, texture, and spatial relationships. Show how elements interact. Omit mood and speculative wording. If text is present, quote it exactly. Note any watermarks, signatures, or compression artifacts. Never mention what's absent, resolution, or unobservable details. Vary your sentence structure and keep the description concise, without starting with This image is or similar phrasing."
         },
         "stable_diffusion_prompt": {
             "name": "Stable Diffusion Prompt",
-            "general": "Write a straightforward caption for this image. Begin with the main subject and medium. Mention pivotal elements—people, objects, scenery—using confident, definite language. Focus on concrete details like color, shape, texture, and spatial relationships. Show how elements interact. Omit mood and speculative wording. If text is present, quote it exactly. Note any watermarks, signatures, or compression artifacts. Never mention what's absent, resolution, or unobservable details. Vary your sentence structure and keep the description concise, without starting with “This image is…” or similar phrasing.",
-            "word_count": "Write a straightforward caption for this image within {word_count} words. Begin with the main subject and medium. Mention pivotal elements—people, objects, scenery—using confident, definite language. Focus on concrete details like color, shape, texture, and spatial relationships. Show how elements interact. Omit mood and speculative wording. If text is present, quote it exactly. Note any watermarks, signatures, or compression artifacts. Never mention what's absent, resolution, or unobservable details. Vary your sentence structure and keep the description concise, without starting with “This image is…” or similar phrasing.",
-            "length": "Write a {length} straightforward caption for this image. Begin with the main subject and medium. Mention pivotal elements—people, objects, scenery—using confident, definite language. Focus on concrete details like color, shape, texture, and spatial relationships. Show how elements interact. Omit mood and speculative wording. If text is present, quote it exactly. Note any watermarks, signatures, or compression artifacts. Never mention what's absent, resolution, or unobservable details. Vary your sentence structure and keep the description concise, without starting with “This image is…” or similar phrasing."
+            "general": "Write a straightforward caption for this image. Begin with the main subject and medium. Mention pivotal elementspeople, objects, sceneryusing confident, definite language. Focus on concrete details like color, shape, texture, and spatial relationships. Show how elements interact. Omit mood and speculative wording. If text is present, quote it exactly. Note any watermarks, signatures, or compression artifacts. Never mention what's absent, resolution, or unobservable details. Vary your sentence structure and keep the description concise, without starting with This image is or similar phrasing.",
+            "word_count": "Write a straightforward caption for this image within {word_count} words. Begin with the main subject and medium. Mention pivotal elementspeople, objects, sceneryusing confident, definite language. Focus on concrete details like color, shape, texture, and spatial relationships. Show how elements interact. Omit mood and speculative wording. If text is present, quote it exactly. Note any watermarks, signatures, or compression artifacts. Never mention what's absent, resolution, or unobservable details. Vary your sentence structure and keep the description concise, without starting with This image is or similar phrasing.",
+            "length": "Write a {length} straightforward caption for this image. Begin with the main subject and medium. Mention pivotal elementspeople, objects, sceneryusing confident, definite language. Focus on concrete details like color, shape, texture, and spatial relationships. Show how elements interact. Omit mood and speculative wording. If text is present, quote it exactly. Note any watermarks, signatures, or compression artifacts. Never mention what's absent, resolution, or unobservable details. Vary your sentence structure and keep the description concise, without starting with This image is or similar phrasing."
         },
         "midjourney": {
             "name": "Midjourney Prompt",
@@ -178,7 +177,7 @@
     "extra_boolean": {
         "avoid_meta_phrases": {
             "name": "Avoid meta phrases",
-            "general": "Your response will be used by a text-to-image model, so avoid useless meta phrases like 'This image shows…', 'You are looking at...', etc. Do not phase things as a dialogue or a question, just describe the image directly."
+            "general": "Your response will be used by a text-to-image model, so avoid useless meta phrases like 'This image shows', 'You are looking at...', etc. Do not phase things as a dialogue or a question, just describe the image directly."
         },
         "do_not_use_ambiguous_language": {
             "name": "Do not use ambiguous language",
@@ -190,7 +189,7 @@
         },
         "do_not_use_polite_euphemisms": {
             "name": "Do not use polite euphemisms",
-            "general": "Do NOT use polite euphemisms — lean into blunt, casual phrasing."
+            "general": "Do NOT use polite euphemisms  lean into blunt, casual phrasing."
         },
         "exaggerate_quality": {
             "name": "Exaggerate image quality",
@@ -316,4 +315,3 @@
         "very long",
         "use word count"
     ]
-}
