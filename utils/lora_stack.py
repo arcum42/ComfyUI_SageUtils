@@ -1,5 +1,5 @@
 import folder_paths
-from .cache import cache
+from .model_cache import cache
 from .helpers import pull_metadata, clean_keywords
 
 def get_lora_keywords(lora_name):

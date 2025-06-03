@@ -15,7 +15,7 @@ import base64
 import folder_paths
 import comfy.utils
 
-from . import cache
+from .model_cache import cache
 from urllib.error import HTTPError
 
 def name_from_path(path):

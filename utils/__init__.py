@@ -1,5 +1,5 @@
 # Import the submodules
-from .cache import cache
+from .model_cache import cache
 from . import config_manager
 from . import loaders
 
