@@ -7,13 +7,14 @@ import folder_paths
 base_path = pathlib.Path(os.path.dirname(os.path.realpath(__file__))).parent
 users_path = pathlib.Path(folder_paths.get_user_directory())
 sage_users_path = users_path / "default" / "SageUtils"
+assets_path = base_path / "assets"
 os.makedirs(str(sage_users_path), exist_ok=True)
 
 class ConfigManager:
     def __init__(self, config_name):
         self.config_name = config_name
         self.data = None
-        self.base_file = pathlib.Path(base_path) / f"{config_name}.json"
+        self.base_file = pathlib.Path(assets_path) / f"{config_name}.json"
         self.user_file = sage_users_path / f"{config_name}.json"
         self.user_override_file = sage_users_path / f"{config_name}_user.json"
         self.ensure_user_file()
