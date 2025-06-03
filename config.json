@@ -1,0 +1,4 @@
+{
+  "llm_provider": "ollama",  
+  "custom_llm_url": ""
+}

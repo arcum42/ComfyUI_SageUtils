@@ -4,7 +4,9 @@ from .nodes import *
 from .utils import *
 
 cache.load()
-styles.load_styles()
+sage_styles = config_manager.styles_manager.data
+llm_prompts = config_manager.prompts_manager.data
+sage_config = config_manager.settings_manager.data
 
 WEB_DIRECTORY = "./js"
 
