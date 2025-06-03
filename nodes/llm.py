@@ -13,6 +13,7 @@ from comfy.comfy_types.node_typing import ComfyNodeABC, InputTypeDict, IO
 
 import folder_paths
 from ..utils import *
+from ..utils.config_manager import llm_prompts
 
 import PIL
 import base64
@@ -43,7 +44,9 @@ def get_ollama_models() -> list[str]:
 class Sage_OllamaLLMPrompt(ComfyNodeABC):
     @classmethod
     def INPUT_TYPES(cls) -> InputTypeDict:
+        print("Loading available Ollama models X...")
         models = get_ollama_models()
+        print(f"Available models: {models}")
         if not models:
             models = ["gemma3:latest", "llama3.2:latest"]
         models = sorted(models)
@@ -63,7 +66,7 @@ class Sage_OllamaLLMPrompt(ComfyNodeABC):
 
     FUNCTION = "get_response"
 
-    CATEGORY = "Sage LLM"
+    CATEGORY = "Sage Utils/LLM"
     DESCRIPTION = "Send a prompt to a language model and get a response. Optionally, you can provide an image/s to the model if it supports multimodal input. The model must be installed via Ollama."
 
     def get_response(self, prompt: str, model: str, image) -> tuple:
@@ -99,3 +102,32 @@ class Sage_OllamaLLMPrompt(ComfyNodeABC):
             raise ValueError("No valid response received from the model.")
         response = response['response'].strip()
         return (response,)
+
+class Sage_ConstructLLMPrompt(ComfyNodeABC):
+    @classmethod
+    def INPUT_TYPES(cls) -> InputTypeDict:
+        print("Loading llm_prompts from config manager...")
+        inputs: InputTypeDict =  {}
+        inputs["required"] = {}
+        inputs["required"]["prompt"] = (list(llm_prompts["base"].keys()), )
+        
+        for key in llm_prompts["extra_boolean"].keys():
+            inputs["required"][key] = (IO.BOOLEAN, {"default": False, "defaultInput": True})
+            
+        #print(f"Available prompts: {prompts}")
+        return inputs
+
+    RETURN_TYPES = (IO.STRING,)
+    RETURN_NAMES = ("prompt",)
+
+    FUNCTION = "construct_prompt"
+
+    CATEGORY = "Sage Utils/LLM"
+    EXPERIMENTAL = True
+    DESCRIPTION = "Construct a prompt for an LLM based on the provided image and prompt."
+
+    def construct_prompt(self, prompt: str) -> tuple:
+        prompt = llm_prompts["base"][prompt]["general"]
+        if not prompt:
+            raise ValueError("Prompt cannot be empty.")
+        return (prompt,)

@@ -34,7 +34,7 @@ class ConfigManager:
         for path in [self.user_file, self.user_override_file]:
             if path.is_file():
                 try:
-                    with path.open(mode="r") as read_file:
+                    with path.open(mode="r", errors='ignore', encoding='utf-8') as read_file:
                         configs.append(json.load(read_file))
                 except Exception as e:
                     print(f"Unable to load {self.config_name} from {path}: {e}")
