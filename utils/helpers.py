@@ -9,6 +9,8 @@ import numpy as np
 import torch
 import json
 from PIL import Image, ImageOps
+import io
+import base64
 
 import folder_paths
 import comfy.utils
@@ -378,3 +380,23 @@ def condition_text(clip, text = None):
         return [[torch.zeros_like(cond), output]]
 
     return [[cond, output]]
+
+def tensor_to_base64(tensor):
+    images = []
+    if tensor is None or not isinstance(tensor, torch.Tensor):
+        return []
+
+    for batch_number, image in enumerate(tensor):
+        i = 255.0 * image.cpu().numpy()
+        img = Image.fromarray(np.clip(i, 0, 255).astype(np.uint8))
+        if img.mode != 'RGB':
+            img = img.convert('RGB')
+        images.append(img)
+
+    base64_images = []
+    for img in images:
+        buffered = io.BytesIO()
+        img.save(buffered, format="PNG")
+        base64_images.append(base64.b64encode(buffered.getvalue()).decode('utf-8'))
+
+    return base64_images

@@ -7,6 +7,7 @@ from comfy.comfy_types.node_typing import ComfyNodeABC, InputTypeDict, IO
 import folder_paths
 
 from ..utils import *
+from ..utils.helpers import *
 
 import json
 
