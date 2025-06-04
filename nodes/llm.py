@@ -15,6 +15,8 @@ import folder_paths
 from ..utils import *
 from ..utils.config_manager import llm_prompts
 
+from ..utils import llm_wrapper as llm
+
 import PIL
 import base64
 
@@ -25,27 +27,11 @@ try:
 except ImportError:
     OLLAMA_AVAILABLE = False
 
-def get_ollama_models() -> list[str]:
-    """Retrieve a list of available models from Ollama."""
-    if not OLLAMA_AVAILABLE:
-        return []
-
-    try:
-        response = ollama.list()
-        models = []
-        for model in response.models:
-            models.append(model.model)
-        return models
-
-    except Exception as e:
-        print(f"Error retrieving models from Ollama: {e}")
-        return []
-
 class Sage_OllamaLLMPrompt(ComfyNodeABC):
     @classmethod
     def INPUT_TYPES(cls) -> InputTypeDict:
         print("Loading available Ollama models X...")
-        models = get_ollama_models()
+        models = llm.get_ollama_models()
         print(f"Available models: {models}")
         if not models:
             models = ["gemma3:latest", "llama3.2:latest"]
@@ -78,7 +64,7 @@ class Sage_OllamaLLMPrompt(ComfyNodeABC):
         if not OLLAMA_AVAILABLE:
             raise ImportError("Ollama is not available. Please install it to use this node.")
         
-        if model not in get_ollama_models():
+        if model not in llm.get_ollama_models():
             raise ValueError(f"Model '{model}' is not available. Available models: {get_ollama_models()}")
         
         response = None

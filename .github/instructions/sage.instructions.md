@@ -47,6 +47,11 @@ These instructions define coding standards, directory structure, and domain know
 - Use context managers (`with` statements) for file operations to ensure proper resource management.
 - Follow ideomatic Python practices, such as using `enumerate()` for loops when you need both index and value.
 
+### Character Encoding and Symbols
+- Only use standard ASCII characters in all code, comments, and documentation.
+- Do not use Unicode symbols, em dashes (—), smart quotes (“ ” ‘ ’), ellipses (…), or emojis.
+- Use only regular hyphens (-), straight quotes (' and "), and three periods (...) for ellipsis if needed.
+
 ## Documentation and Versioning
 - **Update `README.md`** with any new features or changes.
 - **Update `pyproject.toml`** when releasing a new version.

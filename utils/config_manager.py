@@ -10,6 +10,20 @@ sage_users_path = users_path / "default" / "SageUtils"
 assets_path = base_path / "assets"
 os.makedirs(str(sage_users_path), exist_ok=True)
 
+def deep_merge_dicts(a, b):
+    """Recursively merge dict b into dict a and return the result."""
+    result = a.copy()
+    for k, v in b.items():
+        if (
+            k in result
+            and isinstance(result[k], dict)
+            and isinstance(v, dict)
+        ):
+            result[k] = deep_merge_dicts(result[k], v)
+        else:
+            result[k] = v
+    return result
+
 class ConfigManager:
     def __init__(self, config_name):
         self.config_name = config_name
@@ -32,16 +46,21 @@ class ConfigManager:
     def load(self):
         configs = []
         for path in [self.user_file, self.user_override_file]:
+            print(f"Loading {self.config_name} from {path}")
             if path.is_file():
                 try:
                     with path.open(mode="r", errors='ignore', encoding='utf-8') as read_file:
                         configs.append(json.load(read_file))
                 except Exception as e:
                     print(f"Unable to load {self.config_name} from {path}: {e}")
-        # Merge configs (later overrides earlier)
-        merged = {}
-        for conf in configs:
-            merged.update(conf)
+        if not configs:
+            merged = {}
+        elif len(configs) == 1:
+            merged = configs[0]
+        else:
+            merged = configs[0]
+            for conf in configs[1:]:
+                merged = deep_merge_dicts(merged, conf)
         self.data = merged
         return self.data
 

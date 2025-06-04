@@ -1,192 +1,272 @@
-{
-    "category":{
-        "Pony v6":{
-            "Digital Drawing":{
-                "negative":"(source filmmaker:0.3), anime, painting",
-                "positive":"{prompt}, detailed, beautiful"
-            },
-            "Lineart":{
-                "negative":"painting, shading, colored, anime, source filmmaker",
-                "positive":"{prompt}, digital media \\(artwork\\), lineart, monochrome, high contrast, sketch, vector"
-            },
-            "Marker Drawing":{
-                "negative":"painting, vector",
-                "positive":"{prompt}, traditional art, marker drawing"
-            },
-            "Minimalistic":{
-                "negative":"",
-                "positive":"{prompt}, minimalist, modern art, vector, lineless, absurd resolution"
-            },
-            "Pencil Drawing":{
-                "negative":"painting, acrylic painting, (vector:0.6)",
-                "positive":"{prompt}, traditional art, pencil drawing, crayon drawing, pencil \\(artwork\\), hatching \\(art\\)"
-            },
-            "Pencil Sketch":{
-                "negative":"painting",
-                "positive":"{prompt}, traditional art, pencil drawing, sketch, grayscale, monochrome, lineart"
-            },
-            "Pixel Art":{
-                "negative":"3D",
-                "positive":"{prompt}, pixel art"
-            },
-            "Realistic Anime":{
-                "negative":"sketch, painting, ugly",
-                "positive":"{prompt}, realistic, (anime:1.1), beautiful, detailed, perfect lighting, cute perfect face, perfect eyes"
-            },
-            "Simple Cute Cartoon":{
-                "negative":"painting, focal blur, chromatic abberation, sketch",
-                "positive":"{prompt}, (marker drawing:0.5) simple eyes, ((no pupil), thick lines, digital drawing, (kawaii cartoon, flat colors)) "
-            },
-            "Watercolor Painting":{
-                "negative":"vector",
-                "positive":"{prompt}, watercolor painting, painting"
-            }
-        },
-        "Pony v6 - MLP":{
-            "Equestria Girls":{
-                "negative":"",
-                "positive":"{prompt}, equestria girls series, show accurate, vector"
-            },
-            "G5":{
-                "negative":"outline, countershading",
-                "positive":"{prompt}, g5, my little pony: a new generation, 3d"
-            },
-            "IDW Comics":{
-                "negative":"",
-                "positive":"{prompt}, official comic, idw, andy you magnificent bastard, i can't believe it's not idw, style emulation"
-            },
-            "MLP Movie":{
-                "negative":"",
-                "positive":"{prompt}, my little pony: the movie, movie accurate, vector, flat colors"
-            },
-            "Pony Life":{
-                "negative":"",
-                "positive":"{prompt}, my little pony: pony life, vector"
-            },
-            "Realistic Figurine":{
-                "negative":"",
-                "positive":"{prompt}, figurine, photo, kotobukiya negative_prompt:multiple views"
-            },
-            "Realistic Plushie":{
-                "negative":"multiple views",
-                "positive":"{prompt}, plushie, photo"
-            },
-            "Show Accurate":{
-                "negative":"",
-                "positive":"{prompt}, show accurate, vector, flat colors"
-            },
-            "TYT":{
-                "negative":"",
-                "positive":"{prompt}, g5, my little pony: tell your tale, vector"
-            }
-        },
-        "SAI":{
-            "3d Model":{
-                "negative":"ugly, deformed, noisy, low poly, blurry, painting",
-                "positive":"professional 3d model {prompt} . octane render, highly detailed, volumetric, dramatic lighting"
-            },
-            "Analog Film":{
-                "negative":"painting, drawing, illustration, glitch, deformed, mutated, cross-eyed, ugly, disfigured",
-                "positive":"analog film photo {prompt} . faded film, desaturated, 35mm photo, grainy, vignette, vintage, Kodachrome, Lomography, stained, highly detailed, found footage"
-            },
-            "Anime":{
-                "negative":"photo, deformed, black and white, realism, disfigured, low contrast",
-                "positive":"anime artwork {prompt} . anime style, key visual, vibrant, studio anime, highly detailed"
-            },
-            "Cinematic":{
-                "negative":"anime, cartoon, graphic, text, painting, crayon, graphite, abstract, glitch, deformed, mutated, ugly, disfigured",
-                "positive":"cinematic film still {prompt} . shallow depth of field, vignette, highly detailed, high budget, bokeh, cinemascope, moody, epic, gorgeous, film grain, grainy"
-            },
-            "Comic Book":{
-                "negative":"photograph, deformed, glitch, noisy, realistic, stock photo",
-                "positive":"comic {prompt} . graphic illustration, comic art, graphic novel art, vibrant, highly detailed"
-            },
-            "Craft Clay":{
-                "negative":"sloppy, messy, grainy, highly detailed, ultra textured, photo",
-                "positive":"play-doh style {prompt} . sculpture, clay art, centered composition, Claymation"
-            },
-            "Digital Art":{
-                "negative":"photo, photorealistic, realism, ugly",
-                "positive":"concept art {prompt} . digital artwork, illustrative, painterly, matte painting, highly detailed"
-            },
-            "Enhance":{
-                "negative":"ugly, deformed, noisy, blurry, distorted, grainy",
-                "positive":"breathtaking {prompt} . award-winning, professional, highly detailed"
-            },
-            "Fantasy Art":{
-                "negative":"photographic, realistic, realism, 35mm film, dslr, cropped, frame, text, deformed, glitch, noise, noisy, off-center, deformed, cross-eyed, closed eyes, bad anatomy, ugly, disfigured, sloppy, duplicate, mutated, black and white",
-                "positive":"ethereal fantasy concept art of  {prompt} . magnificent, celestial, ethereal, painterly, epic, majestic, magical, fantasy art, cover art, dreamy"
-            },
-            "Isometric":{
-                "negative":"deformed, mutated, ugly, disfigured, blur, blurry, noise, noisy, realistic, photographic",
-                "positive":"isometric style {prompt} . vibrant, beautiful, crisp, detailed, ultra detailed, intricate"
-            },
-            "Line Art":{
-                "negative":"anime, photorealistic, 35mm film, deformed, glitch, blurry, noisy, off-center, deformed, cross-eyed, closed eyes, bad anatomy, ugly, disfigured, mutated, realism, realistic, impressionism, expressionism, oil, acrylic",
-                "positive":"line art drawing {prompt} . professional, sleek, modern, minimalist, graphic, line art, vector graphics"
-            },
-            "Lowpoly":{
-                "negative":"noisy, sloppy, messy, grainy, highly detailed, ultra textured, photo",
-                "positive":"low-poly style {prompt} . low-poly game art, polygon mesh, jagged, blocky, wireframe edges, centered composition"
-            },
-            "Neonpunk":{
-                "negative":"painting, drawing, illustration, glitch, deformed, mutated, cross-eyed, ugly, disfigured",
-                "positive":"neonpunk style {prompt} . cyberpunk, vaporwave, neon, vibes, vibrant, stunningly beautiful, crisp, detailed, sleek, ultramodern, magenta highlights, dark purple shadows, high contrast, cinematic, ultra detailed, intricate, professional"
-            },
-            "Origami":{
-                "negative":"noisy, sloppy, messy, grainy, highly detailed, ultra textured, photo",
-                "positive":"origami style {prompt} . paper art, pleated paper, folded, origami art, pleats, cut and fold, centered composition"
-            },
-            "Photographic":{
-                "negative":"drawing, painting, crayon, sketch, graphite, impressionist, noisy, blurry, soft, deformed, ugly",
-                "positive":"cinematic photo {prompt} . 35mm photograph, film, bokeh, professional, 4k, highly detailed"
-            },
-            "Pixel Art":{
-                "negative":"sloppy, messy, blurry, noisy, highly detailed, ultra textured, photo, realistic",
-                "positive":"pixel-art {prompt} . low-res, blocky, pixel art style, 8-bit graphics"
-            },
-            "Texture":{
-                "negative":"ugly, deformed, noisy, blurry",
-                "positive":"texture {prompt} top down close-up"
-            }
-        },
-        "SeaArt":{
-            "3D Model":{
-                "negative":"ugly, deformed, noisy, low poly, blurry, painting",
-                "positive":"{prompt}, professional 3d model, octane render, highly detailed, volumetric, dramatic lighting"
-            },
-            "Anime":{
-                "negative":"photo, deformed, black and white, realism, disfigured, low contrast",
-                "positive":"{prompt}, anime artwork, anime style, key visual, vibrant, studio anime, highly detailed"
-            },
-            "Cinematic":{
-                "negative":"cartoon, graphic, text, painting, crayon, graphite, abstract, glitch, deformed, mutated, ugly, disfigured",
-                "positive":"{prompt}, cinematic still, emotional, harmonious, vignette, highly detailed, high budget, bokeh, cinemascope, moody, epic, gorgeous, film grain, grainy"
-            },
-            "Digital Art":{
-                "negative":"photo, photorealistic, realism, ugly",
-                "positive":"{prompt}, concept art, digital artwork, illustrative, painterly, matte painting, highly detailed"
-            },
-            "Fantasy Art":{
-                "negative":"photographic, realistic, realism, 35mm film, dslr, cropped, frame, text, deformed, glitch, noise, noisy, off-center, deformed, cross-eyed, closed eyes, bad anatomy, ugly, disfigured, sloppy, duplicate, mutated, black and white",
-                "positive":"{prompt}, ethereal fantasy concept art, magnificent, celestial, ethereal, painterly, epic, majestic, magical, fantasy art, cover art, dreamy"
-            },
-            "Manga":{
-                "negative":"ugly, deformed, noisy, blurry, low contrast, realism, photorealistic, Western comic style",
-                "positive":"{prompt}, manga style, vibrant, high-energy, detailed, iconic, Japanese comic style"
-            },
-            "Neonpunk":{
-                "negative":"painting, drawing, illustration, glitch, deformed, mutated, cross-eyed, ugly, disfigured",
-                "positive":"{prompt}, neonpunk style, cyberpunk, vaporwave, neon, vibes, vibrant, stunningly beautiful, crisp, detailed, sleek, ultramodern, magenta highlights, dark purple shadows, high contrast, cinematic, ultra detailed, intricate, professional"
-            },
-            "Photographic":{
-                "negative":"drawing, painting, crayon, sketch, graphite, impressionist, noisy, blurry, soft, deformed, ugly",
-                "positive":"{prompt}, cinematic photo, 35mm photograph, film, bokeh, professional, 4k, highly detailed"
-            },
-            "Pixel Art":{
-                "negative":"sloppy, messy, blurry, noisy, highly detailed, ultra textured, photo, realistic",
-                "positive":"{prompt}, pixel-art, low-res, blocky, pixel art style, 8-bit graphics"
-            }
-        }
+[
+    {
+        "model": "Pony v6",
+        "style": "Digital Drawing",
+        "positive": "{prompt}, detailed, beautiful",
+        "negative": "(source filmmaker:0.3), anime, painting"
+    },
+    {
+        "model": "Pony v6",
+        "style": "Lineart",
+        "positive": "{prompt}, digital media \\(artwork\\), lineart, monochrome, high contrast, sketch, vector",
+        "negative": "painting, shading, colored, anime, source filmmaker"
+    },
+    {
+        "model": "Pony v6",
+        "style": "Marker Drawing",
+        "positive": "{prompt}, traditional art, marker drawing",
+        "negative": "painting, vector"
+    },
+    {
+        "model": "Pony v6",
+        "style": "Minimalistic",
+        "positive": "{prompt}, minimalist, modern art, vector, lineless, absurd resolution",
+        "negative": ""
+    },
+    {
+        "model": "Pony v6",
+        "style": "Pencil Drawing",
+        "positive": "{prompt}, traditional art, pencil drawing, crayon drawing, pencil \\(artwork\\), hatching \\(art\\)",
+        "negative": "painting, acrylic painting, (vector:0.6)"
+    },
+    {
+        "model": "Pony v6",
+        "style": "Pencil Sketch",
+        "positive": "{prompt}, traditional art, pencil drawing, sketch, grayscale, monochrome, lineart",
+        "negative": "painting"
+    },
+    {
+        "model": "Pony v6",
+        "style": "Pixel Art",
+        "positive": "{prompt}, pixel art",
+        "negative": "3D"
+    },
+    {
+        "model": "Pony v6",
+        "style": "Realistic Anime",
+        "positive": "{prompt}, realistic, (anime:1.1), beautiful, detailed, perfect lighting, cute perfect face, perfect eyes",
+        "negative": "sketch, painting, ugly"
+    },
+    {
+        "model": "Pony v6",
+        "style": "Simple Cute Cartoon",
+        "positive": "{prompt}, (marker drawing:0.5) simple eyes, ((no pupil), thick lines, digital drawing, (kawaii cartoon, flat colors))",
+        "negative": "painting, focal blur, chromatic abberation, sketch"
+    },
+    {
+        "model": "Pony v6",
+        "style": "Watercolor Painting",
+        "positive": "{prompt}, watercolor painting, painting",
+        "negative": "vector"
+    },
+    {
+        "model": "Pony v6",
+        "style": "MLP - Equestria Girls",
+        "positive": "{prompt}, equestria girls series, show accurate, vector",
+        "negative": ""
+    },
+    {
+        "model": "Pony v6",
+        "style": "MLP - G5",
+        "positive": "{prompt}, g5, my little pony: a new generation, 3d",
+        "negative": "outline, countershading"
+    },
+    {
+        "model": "Pony v6",
+        "style": "MLP - IDW Comics",
+        "positive": "{prompt}, official comic, idw, andy you magnificent bastard, i can't believe it's not idw, style emulation",
+        "negative": ""
+    },
+    {
+        "model": "Pony v6",
+        "style": "MLP - MLP Movie",
+        "positive": "{prompt}, my little pony: the movie, movie accurate, vector, flat colors",
+        "negative": ""
+    },
+    {
+        "model": "Pony v6",
+        "style": "MLP - Pony Life",
+        "positive": "{prompt}, my little pony: pony life, vector",
+        "negative": ""
+    },
+    {
+        "model": "Pony v6",
+        "style": "MLP - Realistic Figurine",
+        "positive": "{prompt}, figurine, photo, kotobukiya negative_prompt:multiple views",
+        "negative": ""
+    },
+    {
+        "model": "Pony v6",
+        "style": "MLP - Realistic Plushie",
+        "positive": "{prompt}, plushie, photo",
+        "negative": "multiple views"
+    },
+    {
+        "model": "Pony v6",
+        "style": "MLP - Show Accurate",
+        "positive": "{prompt}, show accurate, vector, flat colors",
+        "negative": ""
+    },
+    {
+        "model": "Pony v6",
+        "style": "MLP - TYT",
+        "positive": "{prompt}, g5, my little pony: tell your tale, vector",
+        "negative": ""
+    },
+    {
+        "model": "SAI",
+        "style": "3d Model",
+        "positive": "professional 3d model {prompt}. octane render, highly detailed, volumetric, dramatic lighting",
+        "negative": "ugly, deformed, noisy, low poly, blurry, painting"
+    },
+    {
+        "model": "SAI",
+        "style": "Analog Film",
+        "positive": "analog film photo {prompt}. faded film, desaturated, 35mm photo, grainy, vignette, vintage, Kodachrome, Lomography, stained, highly detailed, found footage",
+        "negative": "painting, drawing, illustration, glitch, deformed, mutated, cross-eyed, ugly, disfigured"
+    },
+    {
+        "model": "SAI",
+        "style": "Anime",
+        "positive": "anime artwork {prompt}. anime style, key visual, vibrant, studio anime, highly detailed",
+        "negative": "photo, deformed, black and white, realism, disfigured, low contrast"
+    },
+    {
+        "model": "SAI",
+        "style": "Cinematic",
+        "positive": "cinematic film still {prompt}. shallow depth of field, vignette, highly detailed, high budget, bokeh, cinemascope, moody, epic, gorgeous, film grain, grainy",
+        "negative": "anime, cartoon, graphic, text, painting, crayon, graphite, abstract, glitch, deformed, mutated, ugly, disfigured"
+    },
+    {
+        "model": "SAI",
+        "style": "Comic Book",
+        "positive": "comic {prompt}. graphic illustration, comic art, graphic novel art, vibrant, highly detailed",
+        "negative": "photograph, deformed, glitch, noisy, realistic, stock photo"
+    },
+    {
+        "model": "SAI",
+        "style": "Craft Clay",
+        "positive": "play-doh style {prompt}. sculpture, clay art, centered composition, Claymation",
+        "negative": "sloppy, messy, grainy, highly detailed, ultra textured, photo"
+    },
+    {
+        "model": "SAI",
+        "style": "Digital Art",
+        "positive": "concept art {prompt}. digital artwork, illustrative, painterly, matte painting, highly detailed",
+        "negative": "photo, photorealistic, realism, ugly"
+    },
+    {
+        "model": "SAI",
+        "style": "Enhance",
+        "positive": "breathtaking {prompt}. award-winning, professional, highly detailed",
+        "negative": "ugly, deformed, noisy, blurry, distorted, grainy"
+    },
+    {
+        "model": "SAI",
+        "style": "Fantasy Art",
+        "positive": "ethereal fantasy concept art of {prompt}. magnificent, celestial, ethereal, painterly, epic, majestic, magical, fantasy art, cover art, dreamy",
+        "negative": "photographic, realistic, realism, 35mm film, dslr, cropped, frame, text, deformed, glitch, noise, noisy, off-center, deformed, cross-eyed, closed eyes, bad anatomy, ugly, disfigured, sloppy, duplicate, mutated, black and white"
+    },
+    {
+        "model": "SAI",
+        "style": "Isometric",
+        "positive": "isometric style {prompt}. vibrant, beautiful, crisp, detailed, ultra detailed, intricate",
+        "negative": "deformed, mutated, ugly, disfigured, blur, blurry, noise, noisy, realistic, photographic"
+    },
+    {
+        "model": "SAI",
+        "style": "Line Art",
+        "positive": "line art drawing {prompt}. professional, sleek, modern, minimalist, graphic, line art, vector graphics",
+        "negative": "anime, photorealistic, 35mm film, deformed, glitch, blurry, noisy, off-center, deformed, cross-eyed, closed eyes, bad anatomy, ugly, disfigured, mutated, realism, realistic, impressionism, expressionism, oil, acrylic"
+    },
+    {
+        "model": "SAI",
+        "style": "Lowpoly",
+        "positive": "low-poly style {prompt}. low-poly game art, polygon mesh, jagged, blocky, wireframe edges, centered composition",
+        "negative": "noisy, sloppy, messy, grainy, highly detailed, ultra textured, photo"
+    },
+    {
+        "model": "SAI",
+        "style": "Neonpunk",
+        "positive": "neonpunk style {prompt}. cyberpunk, vaporwave, neon, vibes, vibrant, stunningly beautiful, crisp, detailed, sleek, ultramodern, magenta highlights, dark purple shadows, high contrast, cinematic, ultra detailed, intricate, professional",
+        "negative": "painting, drawing, illustration, glitch, deformed, mutated, cross-eyed, ugly, disfigured"
+    },
+    {
+        "model": "SAI",
+        "style": "Origami",
+        "positive": "origami style {prompt}. paper art, pleated paper, folded, origami art, pleats, cut and fold, centered composition",
+        "negative": "noisy, sloppy, messy, grainy, highly detailed, ultra textured, photo"
+    },
+    {
+        "model": "SAI",
+        "style": "Photographic",
+        "positive": "cinematic photo {prompt}. 35mm photograph, film, bokeh, professional, 4k, highly detailed",
+        "negative": "drawing, painting, crayon, sketch, graphite, impressionist, noisy, blurry, soft, deformed, ugly"
+    },
+    {
+        "model": "SAI",
+        "style": "Pixel Art",
+        "positive": "pixel-art {prompt}. low-res, blocky, pixel art style, 8-bit graphics",
+        "negative": "sloppy, messy, blurry, noisy, highly detailed, ultra textured, photo, realistic"
+    },
+    {
+        "model": "SAI",
+        "style": "Texture",
+        "positive": "texture {prompt} top down close-up",
+        "negative": "ugly, deformed, noisy, blurry"
+    },
+    {
+        "model": "SeaArt",
+        "style": "3D Model",
+        "positive": "{prompt}, professional 3d model, octane render, highly detailed, volumetric, dramatic lighting",
+        "negative": "ugly, deformed, noisy, low poly, blurry, painting"
+    },
+    {
+        "model": "SeaArt",
+        "style": "Anime",
+        "positive": "{prompt}, anime artwork, anime style, key visual, vibrant, studio anime, highly detailed",
+        "negative": "photo, deformed, black and white, realism, disfigured, low contrast"
+    },
+    {
+        "model": "SeaArt",
+        "style": "Cinematic",
+        "positive": "{prompt}, cinematic still, emotional, harmonious, vignette, highly detailed, high budget, bokeh, cinemascope, moody, epic, gorgeous, film grain, grainy",
+        "negative": "cartoon, graphic, text, painting, crayon, graphite, abstract, glitch, deformed, mutated, ugly, disfigured"
+    },
+    {
+        "model": "SeaArt",
+        "style": "Digital Art",
+        "positive": "{prompt}, concept art, digital artwork, illustrative, painterly, matte painting, highly detailed",
+        "negative": "photo, photorealistic, realism, ugly"
+    },
+    {
+        "model": "SeaArt",
+        "style": "Fantasy Art",
+        "positive": "{prompt}, ethereal fantasy concept art, magnificent, celestial, ethereal, painterly, epic, majestic, magical, fantasy art, cover art, dreamy",
+        "negative": "photographic, realistic, realism, 35mm film, dslr, cropped, frame, text, deformed, glitch, noise, noisy, off-center, deformed, cross-eyed, closed eyes, bad anatomy, ugly, disfigured, sloppy, duplicate, mutated, black and white"
+    },
+    {
+        "model": "SeaArt",
+        "style": "Manga",
+        "positive": "{prompt}, manga style, vibrant, high-energy, detailed, iconic, Japanese comic style",
+        "negative": "ugly, deformed, noisy, blurry, low contrast, realism, photorealistic, Western comic style"
+    },
+    {
+        "model": "SeaArt",
+        "style": "Neonpunk",
+        "positive": "{prompt}, neonpunk style, cyberpunk, vaporwave, neon, vibes, vibrant, stunningly beautiful, crisp, detailed, sleek, ultramodern, magenta highlights, dark purple shadows, high contrast, cinematic, ultra detailed, intricate, professional",
+        "negative": "painting, drawing, illustration, glitch, deformed, mutated, cross-eyed, ugly, disfigured"
+    },
+    {
+        "model": "SeaArt",
+        "style": "Photographic",
+        "positive": "{prompt}, cinematic photo, 35mm photograph, film, bokeh, professional, 4k, highly detailed",
+        "negative": "drawing, painting, crayon, sketch, graphite, impressionist, noisy, blurry, soft, deformed, ugly"
+    },
+    {
+        "model": "SeaArt",
+        "style": "Pixel Art",
+        "positive": "{prompt}, pixel-art, low-res, blocky, pixel art style, 8-bit graphics",
+        "negative": "sloppy, messy, blurry, noisy, highly detailed, ultra textured, photo, realistic"
     }
-}
+]
