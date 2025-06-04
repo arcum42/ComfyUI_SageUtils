@@ -4,385 +4,339 @@
             "name": "Booru Tag List",
             "category": "tagging",
             "input_type": "image",
-            "general": "Booru-like tag list",
-            "word_count": "Write a list of Booru-like tags for this image within {word_count} words.",
-            "length": "Write a {length} list of Booru-like tags for this image."
+            "prompt": "Booru-like tag list"
         },
         "danbooru": {
             "name": "Danbooru Tag List",
             "category": "tagging",
             "input_type": "image",
-            "general": "Generate only comma-separated Danbooru tags (lowercase_underscores). Strict order: `artist:`, `copyright:`, `character:`, `meta:`, then general tags. Include counts (1girl), appearance, clothing, accessories, pose, expression, actions, background. Use precise Danbooru syntax. No extra text.",
-            "word_count": "Generate only comma-separated Danbooru tags (lowercase_underscores). Strict order: `artist:`, `copyright:`, `character:`, `meta:`, then general tags. Include counts (1girl), appearance, clothing, accessories, pose, expression, actions, background. Use precise Danbooru syntax. No extra text. {word_count} words or less.",
-            "length": "Generate only comma-separated Danbooru tags (lowercase_underscores). Strict order: `artist:`, `copyright:`, `character:`, `meta:`, then general tags. Include counts (1girl), appearance, clothing, accessories, pose, expression, actions, background. Use precise Danbooru syntax. No extra text. {length} length."
+            "prompt": "Generate only comma-separated Danbooru tags (lowercase_underscores). Strict order: `artist:`, `copyright:`, `character:`, `meta:`, then general tags. Include counts (1girl), appearance, clothing, accessories, pose, expression, actions, background. Use precise Danbooru syntax. No extra text."
         },
         "e621": {
             "name": "E621 Tag List",
             "category": "tagging",
             "input_type": "image",
-            "general": "Write a comma-separated list of e621 tags in alphabetical order for this image. Start with the artist, copyright, character, species, meta, and lore tags (if any), prefixed by 'artist:', 'copyright:', 'character:', 'species:', 'meta:', and 'lore:'. Then all the general tags.",
-            "word_count": "Write a comma-separated list of e621 tags in alphabetical order for this image. Start with the artist, copyright, character, species, meta, and lore tags (if any), prefixed by 'artist:', 'copyright:', 'character:', 'species:', 'meta:', and 'lore:'. Then all the general tags. Keep it under {word_count} words.",
-            "length": "Write a {length} comma-separated list of e621 tags in alphabetical order for this image. Start with the artist, copyright, character, species, meta, and lore tags (if any), prefixed by 'artist:', 'copyright:', 'character:', 'species:', 'meta:', and 'lore:'. Then all the general tags."
+            "prompt": "Write a comma-separated list of e621 tags in alphabetical order for this image. Start with the artist, copyright, character, species, meta, and lore tags (if any), prefixed by 'artist:', 'copyright:', 'character:', 'species:', 'meta:', and 'lore:'. Then all the general tags."
         },
         "generate_tags": {
             "name": "Generate Tags",
             "category": "tagging",
             "input_type": "image",
-            "general": "Generate a list of relevant tags for this image, focusing on key elements, themes, and subjects.",
-            "word_count": "Generate a list of relevant tags for this image, focusing on key elements, themes, and subjects. Keep it under {word_count} words.",
-            "length": "Generate a {length} list of relevant tags for this image, focusing on key elements, themes, and subjects."
+            "prompt": "Generate a list of relevant tags for this image, focusing on key elements, themes, and subjects."
         },
         "rule34": {
             "name": "Rule34 Tag List",
             "category": "tagging",
             "input_type": "image",
-            "general": "Write a comma-separated list of rule34 tags in alphabetical order for this image. Start with the artist, copyright, character, and meta tags (if any), prefixed by 'artist:', 'copyright:', 'character:', and 'meta:'. Then all the general tags.",
-            "word_count": "Write a comma-separated list of rule34 tags in alphabetical order for this image. Start with the artist, copyright, character, and meta tags (if any), prefixed by 'artist:', 'copyright:', 'character:', and 'meta:'. Then all the general tags. Keep it under {word_count} words.",
-            "length": "Write a {length} comma-separated list of rule34 tags in alphabetical order for this image. Start with the artist, copyright, character, and meta tags (if any), prefixed by 'artist:', 'copyright:', 'character:', and 'meta:'. Then all the general tags."
+            "prompt": "Write a comma-separated list of rule34 tags in alphabetical order for this image. Start with the artist, copyright, character, and meta tags (if any), prefixed by 'artist:', 'copyright:', 'character:', and 'meta:'. Then all the general tags."
         },
         "art_critic": {
             "name": "Art Critic Prompt",
             "category": "art_critique",
             "input_type": "image",
-            "general": "Analyze this image like an art critic would with information about its composition, style, symbolism, the use of color, light, any artistic movement it might belong to, etc.",
-            "word_count": "Analyze this image like an art critic would with information about its composition, style, symbolism, the use of color, light, any artistic movement it might belong to, etc. Keep it within {word_count} words.",
-            "length": "Analyze this image like an art critic would with information about its composition, style, symbolism, the use of color, light, any artistic movement it might belong to, etc. Keep it {length}."
+            "prompt": "Analyze this image like an art critic would with information about its composition, style, symbolism, the use of color, light, any artistic movement it might belong to, etc."
         },
         "casual": {
             "name": "Casual Prompt",
             "category": "description",
             "input_type": "image",
-            "general": "Write a descriptive caption for this image in a casual tone.",
-            "word_count": "Write a descriptive caption for this image in a casual tone in {word_count} words or less.",
-            "length": "Write a {length} descriptive caption for this image in a casual tone."
+            "prompt": "Write a descriptive caption for this image in a casual tone."
         },
         "color_palette": {
             "name": "Color Palette Prompt",
             "category": "description",
             "input_type": "image",
-            "general": "Describe the dominant colors and color palette of this image, mentioning any notable color combinations or contrasts.",
-            "word_count": "Describe the dominant colors and color palette of this image, mentioning any notable color combinations or contrasts. Keep it under {word_count} words.",
-            "length": "Describe the dominant colors and color palette of this image, mentioning any notable color combinations or contrasts. Make it {length}."
+            "prompt": "Describe the dominant colors and color palette of this image, mentioning any notable color combinations or contrasts."
         },
         "comparison": {
             "name": "Comparison Prompt",
             "category": "description",
             "input_type": "image",
-            "general": "Describe this image by comparing it to a well-known artwork, style, or genre, highlighting similarities and differences.",
-            "word_count": "Describe this image by comparing it to a well-known artwork, style, or genre, highlighting similarities and differences. Keep it under {word_count} words.",
-            "length": "Describe this image by comparing it to a well-known artwork, style, or genre, highlighting similarities and differences. Make it {length}."
+            "prompt": "Describe this image by comparing it to a well-known artwork, style, or genre, highlighting similarities and differences."
         },
         "descriptive": {
             "name": "Descriptive Prompt",
             "category": "description",
             "input_type": "image",
-            "general": "Write a detailed description for this image.",
-            "word_count": "Write a detailed description for this image in {word_count} words or less.",
-            "length": "Write a {length} detailed description for this image."
+            "prompt": "Write a detailed description for this image."
         },
         "environment": {
             "name": "Environment Prompt",
             "category": "description",
             "input_type": "image",
-            "general": "Describe the environment or setting of this image, including location, time of day, and atmosphere.",
-            "word_count": "Describe the environment or setting of this image, including location, time of day, and atmosphere. Keep it under {word_count} words.",
-            "length": "Describe the environment or setting of this image, including location, time of day, and atmosphere. Make it {length}."
+            "prompt": "Describe the environment or setting of this image, including location, time of day, and atmosphere."
         },
         "impressionistic": {
             "name": "Impressionistic Prompt",
             "category": "description",
             "input_type": "image",
-            "general": "Describe the overall impression or feeling this image gives, using evocative and atmospheric language rather than concrete details.",
-            "word_count": "Describe the overall impression or feeling this image gives, using evocative and atmospheric language rather than concrete details. Keep it under {word_count} words.",
-            "length": "Describe the overall impression or feeling this image gives, using evocative and atmospheric language rather than concrete details. Make it {length}."
+            "prompt": "Describe the overall impression or feeling this image gives, using evocative and atmospheric language rather than concrete details."
         },
         "instructional": {
             "name": "Instructional Prompt",
             "category": "description",
             "input_type": "image",
-            "general": "Describe this image as if giving instructions to an artist or AI on how to recreate it, specifying key elements, style, and composition.",
-            "word_count": "Describe this image as if giving instructions to an artist or AI on how to recreate it, specifying key elements, style, and composition. Keep it under {word_count} words.",
-            "length": "Describe this image as if giving instructions to an artist or AI on how to recreate it, specifying key elements, style, and composition. Make it {length}."
+            "prompt": "Describe this image as if giving instructions to an artist or AI on how to recreate it, specifying key elements, style, and composition."
         },
         "mood": {
             "name": "Mood Prompt",
             "category": "description",
             "input_type": "image",
-            "general": "Describe the mood or emotional tone of this image, using expressive adjectives.",
-            "word_count": "Describe the mood or emotional tone of this image, using expressive adjectives. Keep it under {word_count} words.",
-            "length": "Describe the mood or emotional tone of this image, using expressive adjectives. Make it {length}."
+            "prompt": "Describe the mood or emotional tone of this image, using expressive adjectives."
         },
         "multi_image_blend": {
             "name": "Multiple Images (Blend)",
             "category": "multi_image",
             "input_type": "image",
-            "general": "Describe a new image that combines the key qualities, elements, and styles of all the supplied images.",
-            "word_count": "Describe a new image that combines the key qualities, elements, and styles of all the supplied images. Keep it under {word_count} words.",
-            "length": "Describe a new image that combines the key qualities, elements, and styles of all the supplied images. Make it {length}."
+            "prompt": "Describe a new image that combines the key qualities, elements, and styles of all the supplied images."
         },
         "multi_image_comparison": {
             "name": "Multiple Images (Comparison)",
             "category": "multi_image",
             "input_type": "image",
-            "general": "Compare and contrast the supplied images, highlighting similarities and differences in their content, style, and notable features.",
-            "word_count": "Compare and contrast the supplied images, highlighting similarities and differences in their content, style, and notable features. Keep it under {word_count} words.",
-            "length": "Compare and contrast the supplied images, highlighting similarities and differences in their content, style, and notable features. Make it {length}."
+            "prompt": "Compare and contrast the supplied images, highlighting similarities and differences in their content, style, and notable features."
         },
         "multi_image_individual": {
             "name": "Multiple Images (Individual)",
             "category": "multi_image",
             "input_type": "image",
-            "general": "Describe each image separately, providing a detailed description for each one in the order they are given.",
-            "word_count": "Describe each image separately, providing a detailed description for each one in the order they are given. Keep each description under {word_count} words.",
-            "length": "Describe each image separately, providing a detailed description for each one in the order they are given. Make each description {length}."
+            "prompt": "Describe each image separately, providing a detailed description for each one in the order they are given."
         },
         "product_listing": {
             "name": "Product Listing Caption",
             "category": "caption",
             "input_type": "image",
-            "general": "Write a caption for this image as if it were a product listing.",
-            "word_count": "Write a caption for this image as if it were a product listing. Keep it under {word_count} words.",
-            "length": "Write a {length} caption for this image as if it were a product listing."
+            "prompt": "Write a caption for this image as if it were a product listing."
         },
         "social_media": {
             "name": "Social Media Caption",
             "category": "caption",
             "input_type": "image",
-            "general": "Write a caption for this image as if it were a social media post.",
-            "word_count": "Write a caption for this image as if it were a social media post. Keep it under {word_count} words.",
-            "length": "Write a {length} caption for this image as if it were a social media post."
+            "prompt": "Write a caption for this image as if it were a social media post."
         },
         "story": {
             "name": "Story Prompt",
             "category": "description",
             "input_type": "image",
-            "general": "Invent a short story or scenario inspired by this image, describing what might be happening or what led up to this scene.",
-            "word_count": "Invent a short story or scenario inspired by this image, describing what might be happening or what led up to this scene. Keep it under {word_count} words.",
-            "length": "Invent a short story or scenario inspired by this image, describing what might be happening or what led up to this scene. Make it {length}."
+            "prompt": "Invent a short story or scenario inspired by this image, describing what might be happening or what led up to this scene."
         },
         "straightforward": {
             "name": "Straightforward Prompt",
             "category": "description",
             "input_type": "image",
-            "general": "Write a straightforward caption for this image. Begin with the main subject and medium. Mention pivotal elements such as people, objects, and scenery, using confident, definite language. Focus on concrete details like color, shape, texture, and spatial relationships. Show how elements interact. Omit mood and speculative wording. If text is present, quote it exactly. Note any watermarks, signatures, or compression artifacts. Never mention what is absent, resolution, or unobservable details. Vary your sentence structure and keep the description concise, without starting with 'This image is' or similar phrasing.",
-            "word_count": "Write a straightforward caption for this image in {word_count} words or less. Begin with the main subject and medium. Mention pivotal elements, such as people, objects, and scenery using confident, definite language. Focus on concrete details like color, shape, texture, and spatial relationships. Show how elements interact. Omit mood and speculative wording. If text is present, quote it exactly. Note any watermarks, signatures, or compression artifacts. Never mention what is absent, resolution, or unobservable details. Vary your sentence structure and keep the description concise, without starting with 'This image is' or similar phrasing.",
-            "length": "Write a {length} straightforward caption for this image. Begin with the main subject and medium. Mention pivotal elements, such as people, objects, and scenery, using confident, definite language. Focus on concrete details like color, shape, texture, and spatial relationships. Show how elements interact. Omit mood and speculative wording. If text is present, quote it exactly. Note any watermarks, signatures, or compression artifacts. Never mention what is absent, resolution, or unobservable details. Vary your sentence structure and keep the description concise, without starting with 'This image is' or similar phrasing."
+            "prompt": "Write a straightforward caption for this image. Begin with the main subject and medium. Mention pivotal elements such as people, objects, and scenery, using confident, definite language. Focus on concrete details like color, shape, texture, and spatial relationships. Show how elements interact. Omit mood and speculative wording. If text is present, quote it exactly. Note any watermarks, signatures, or compression artifacts. Never mention what is absent, resolution, or unobservable details. Vary your sentence structure and keep the description concise, without starting with 'This image is' or similar phrasing."
         },
         "technical": {
             "name": "Technical Prompt",
             "category": "description",
             "input_type": "image",
-            "general": "Describe this image in technical terms, focusing on aspects like composition, lighting, color balance, and photographic or artistic techniques.",
-            "word_count": "Describe this image in technical terms, focusing on aspects like composition, lighting, color balance, and photographic or artistic techniques. Keep it under {word_count} words.",
-            "length": "Describe this image in technical terms, focusing on aspects like composition, lighting, color balance, and photographic or artistic techniques. Make it {length}."
+            "prompt": "Describe this image in technical terms, focusing on aspects like composition, lighting, color balance, and photographic or artistic techniques."
         },
         "expand_tags": {
             "name": "Expand Tags to Description",
             "category": "text_enhancement",
             "input_type": "text",
-            "general": "Write a detailed and coherent description of an image based on the provided list of tags.",
-            "word_count": "Write a detailed and coherent description of an image based on the provided list of tags. Keep it under {word_count} words.",
-            "length": "Write a detailed and coherent description of an image based on the provided list of tags. Make it {length}."
+            "prompt": "Write a detailed and coherent description of an image based on the provided list of tags."
         },
         "enhance_description": {
             "name": "Enhance Description",
             "category": "text_enhancement",
             "input_type": "text",
-            "general": "Take the provided text description and rewrite it to be more vivid, detailed, and engaging, while preserving the original meaning.",
-            "word_count": "Take the provided text description and rewrite it to be more vivid, detailed, and engaging, while preserving the original meaning. Keep it under {word_count} words.",
-            "length": "Take the provided text description and rewrite it to be more vivid, detailed, and engaging, while preserving the original meaning. Make it {length}."
+            "prompt": "Take the provided text description and rewrite it to be more vivid, detailed, and engaging, while preserving the original meaning."
         },
         "midjourney": {
             "name": "Midjourney Prompt",
             "category": "prompt_generation",
             "input_type": "text",
-            "general": "Write a MidJourney prompt for this image.",
-            "word_count": "Write a MidJourney prompt for this image within {word_count} words.",
-            "length": "Write a {length} MidJourney prompt for this image."
+            "prompt": "Write a MidJourney prompt for this image."
         },
         "stable_diffusion_prompt": {
             "name": "Stable Diffusion Prompt",
             "category": "prompt_generation",
             "input_type": "text",
-            "general": "Output a stable diffusion prompt that is indistinguishable from a real stable diffusion prompt.",
-            "word_count": "Output a stable diffusion prompt that is indistinguishable from a real stable diffusion prompt. {word_count} words or less.",
-            "length": "Output a {length} stable diffusion prompt that is indistinguishable from a real stable diffusion prompt."
+            "prompt": "Output a stable diffusion prompt that is indistinguishable from a real stable diffusion prompt."
         }
     },
     "extra": {
-        "avoid_meta_phrases": {
-            "name": "Avoid meta phrases",
-            "category": "style",
-            "type": "boolean",
-            "general": "Your response will be used by a text-to-image model, so avoid useless meta phrases like 'This image shows', 'You are looking at...', etc. Do not phrase things as a dialogue or a question, just describe the image directly."
-        },
-        "avoid_euphemisms": {
-            "name": "Avoid euphemisms",
-            "category": "style",
-            "type": "boolean",
-            "general": "Use blunt, casual phrasing instead of polite euphemisms."
-        },
-        "use_vulgar_language": {
-            "name": "Use vulgar slang and profanity",
-            "category": "style",
-            "type": "boolean",
-            "general": "Use vulgar slang and profanity, such as (but not limited to) fucking, slut, cock, pussy, etc."
-        },
         "only_output_description": {
             "name": "Only Output Description",
             "category": "style",
             "type": "boolean",
-            "general": "This is going to be used as input for an AI image generator, so do not include anything other than the description, and do not break things into sections or use markdown."
+            "prompt": "This is going to be used as input for an AI image generator, so do not include anything other than the description, and do not break things into sections or use markdown."
+        },
+        "avoid_euphemisms": {
+            "name": "Avoid Euphemisms",
+            "category": "style",
+            "type": "boolean",
+            "prompt": "Use blunt, casual phrasing instead of polite euphemisms."
+        },
+        "use_vulgar_language": {
+            "name": "Use Vulgar Slang and Profanity",
+            "category": "style",
+            "type": "boolean",
+            "prompt": "Use vulgar slang and profanity, such as (but not limited to) fucking, slut, cock, pussy, etc."
         },
         "be_specific": {
-            "name": "Be specific",
+            "name": "Be Specific",
             "category": "content_focus",
             "type": "boolean",
-            "general": "Use precise, unambiguous language. Avoid vague or general terms."
+            "prompt": "Use precise, unambiguous language. Avoid vague or general terms."
         },
         "erotic_imagery": {
             "name": "Erotic Imagery",
             "category": "content_focus",
             "type": "boolean",
-            "general": "Assume that the image is erotic. Describe it in lurid detail, focusing on characters' sexual attributes when describing them and assuming anything that might be sexual in the image is. Describe breast size, if applicable."
+            "prompt": "Assume that the image is erotic. Describe it in lurid detail, focusing on characters' sexual attributes when describing them and assuming anything that might be sexual in the image is. Describe breast size, if applicable."
         },
         "exclude_sexual": {
-            "name": "Exclude sexual content",
+            "name": "Exclude Sexual Content",
             "category": "content_focus",
             "type": "boolean",
-            "general": "Do NOT include any sexual content in the description, even if it is present in the image."
+            "prompt": "Do NOT include any sexual content in the description, even if it is present in the image."
         },
         "only_describe_key_elements": {
-            "name": "Describe key elements only",
+            "name": "Describe Key Elements Only",
             "category": "content_focus",
             "type": "boolean",
-            "general": "Describe only the most important elements. Omit unnecessary details."
+            "prompt": "Describe only the most important elements. Omit unnecessary details."
         },
         "exaggerate_quality": {
-            "name": "Exaggerate image quality",
+            "name": "Exaggerate Image Quality",
             "category": "quality",
             "type": "boolean",
-            "general": "Describe the image as if it were a better quality image than it is. If it's drawn, describe the drawing as if it were well drawn. Act as if it is well composed, well lit, etc., and describe it as if it didn't have any flaws it may have."
+            "prompt": "Describe the image as if it were a better quality image than it is. If it's drawn, describe the drawing as if it were well drawn. Act as if it is well composed, well lit, etc., and describe it as if it didn't have any flaws it may have."
         },
         "include_emphasis_on_details": {
-            "name": "Emphasize details",
+            "name": "Emphasize Details",
             "category": "detail",
             "type": "boolean",
-            "general": "Emphasize specific details in the image, such as textures, patterns, or unique features."
+            "prompt": "Emphasize specific details in the image, such as textures, patterns, or unique features."
         },
         "include_lighting": {
-            "name": "Include lighting",
+            "name": "Include Lighting",
             "category": "detail",
             "type": "boolean",
-            "general": "Include information about the lighting."
+            "prompt": "Include information about the lighting."
         },
         "include_marks": {
-            "name": "Include marks",
+            "name": "Include Marks",
             "category": "detail",
             "type": "boolean",
-            "general": "Mention any watermarks, signatures, or visible marks in the image."
+            "prompt": "Mention any watermarks, signatures, or visible marks in the image."
         },
         "include_camera_details": {
-            "name": "Include camera details",
+            "name": "Include Camera Details",
             "category": "detail",
             "type": "boolean",
-            "general": "If a photo, include likely camera type, settings (aperture, shutter speed, ISO), angle, shot type, and vantage height."
+            "prompt": "If a photo, include likely camera type, settings (aperture, shutter speed, ISO), angle, shot type, and vantage height."
         },
         "describe_mood": {
-            "name": "Describe mood",
+            "name": "Describe Mood",
             "category": "detail",
             "type": "boolean",
-            "general": "Describe the mood or atmosphere of the image."
+            "prompt": "Describe the mood or atmosphere of the image."
         },
         "describe_actions": {
-            "name": "Describe actions",
+            "name": "Describe Actions",
             "category": "detail",
             "type": "boolean",
-            "general": "Describe any actions or interactions taking place."
+            "prompt": "Describe any actions or interactions taking place."
         },
         "describe_setting": {
-            "name": "Describe setting",
+            "name": "Describe Setting",
             "category": "detail",
             "type": "boolean",
-            "general": "Describe the setting or location depicted in the image."
+            "prompt": "Describe the setting or location depicted in the image."
         },
         "include_time_of_day": {
-            "name": "Include time of day",
+            "name": "Include Time of Day",
             "category": "detail",
             "type": "boolean",
-            "general": "Describe the time of day depicted in the image, such as morning, afternoon, evening, or night."
+            "prompt": "Describe the time of day depicted in the image, such as morning, afternoon, evening, or night."
         },
         "include_weather": {
-            "name": "Include weather",
+            "name": "Include Weather",
             "category": "detail",
             "type": "boolean",
-            "general": "Describe the weather conditions in the image, such as sunny, cloudy, rainy, snowy, etc."
+            "prompt": "Describe the weather conditions in the image, such as sunny, cloudy, rainy, snowy, etc."
         },
         "include_materials": {
-            "name": "Include materials",
+            "name": "Include Materials",
             "category": "detail",
             "type": "boolean",
-            "general": "Describe the materials or surfaces visible in the image, such as wood, metal, glass, fabric, etc."
+            "prompt": "Describe the materials or surfaces visible in the image, such as wood, metal, glass, fabric, etc."
         },
         "include_motion": {
-            "name": "Include motion",
+            "name": "Include Motion",
             "category": "detail",
             "type": "boolean",
-            "general": "Describe any sense of movement or motion in the image, whether implied or explicit."
+            "prompt": "Describe any sense of movement or motion in the image, whether implied or explicit."
         },
         "include_context": {
-            "name": "Include context",
+            "name": "Include Context",
             "category": "detail",
             "type": "boolean",
-            "general": "Describe the broader context or story suggested by the image."
+            "prompt": "Describe the broader context or story suggested by the image."
         },
         "include_scale": {
-            "name": "Include scale",
+            "name": "Include Scale",
             "category": "detail",
             "type": "boolean",
-            "general": "Describe the sense of scale in the image, such as whether elements appear large, small, or at human scale."
+            "prompt": "Describe the sense of scale in the image, such as whether elements appear large, small, or at human scale."
         },
         "include_cultural_references": {
-            "name": "Include cultural references",
+            "name": "Include Cultural References",
             "category": "detail",
             "type": "boolean",
-            "general": "Mention any cultural, historical, or symbolic references present in the image."
+            "prompt": "Mention any cultural, historical, or symbolic references present in the image."
         },
         "include_anomalies": {
-            "name": "Include anomalies",
+            "name": "Include Anomalies",
             "category": "detail",
             "type": "boolean",
-            "general": "Point out any unusual, unexpected, or out-of-place elements in the image."
+            "prompt": "Point out any unusual, unexpected, or out-of-place elements in the image."
         },
         "include_symmetry": {
-            "name": "Include symmetry",
+            "name": "Include Symmetry",
             "category": "detail",
             "type": "boolean",
-            "general": "Describe whether the image is symmetrical or asymmetrical in its composition."
+            "prompt": "Describe whether the image is symmetrical or asymmetrical in its composition."
         },
         "include_reflections": {
-            "name": "Include reflections",
+            "name": "Include Reflections",
             "category": "detail",
             "type": "boolean",
-            "general": "Describe any reflections or mirrored surfaces present in the image."
+            "prompt": "Describe any reflections or mirrored surfaces present in the image."
         },
         "character_name": {
             "name": "Character Name",
             "category": "detail",
             "type": "wildcard",
-            "general": "If there is a person or character in the image, refer to them as {string}."
+            "prompt": "If there is a person or character in the image, refer to them as {string}."
         },
         "artist_name": {
             "name": "Artist Name",
             "category": "detail",
             "type": "wildcard",
-            "general": "Refer to the artist who created the picture as {string}."
+            "prompt": "Refer to the artist who created the picture as {string}."
         },
         "other": {
             "name": "Other",
             "category": "detail",
             "type": "wildcard",
-            "general": "{string}"
+            "prompt": "{string}"
+        },
+        "word_count": {
+            "name": "Word Count",
+            "category": "length",
+            "type": "wildcard",
+            "prompt": "Use a specific word count: {string}."
+        },
+        "length": {
+            "name": "Length",
+            "category": "length",
+            "type": "wildcard",
+            "prompt": "Use a specific length: {string}."
         }
     },
     "length": [

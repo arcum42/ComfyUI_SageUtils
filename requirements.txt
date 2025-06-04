@@ -3,5 +3,5 @@
 # If you want to use LLM nodes, you must install one of these, depending on your preference.
 
 # LLM support is a work in progress, most nodes are not implemented yet, and ones that are are likely to be majorly revised.
-ollama
+ollama>=0.5.1
 #lmstudio

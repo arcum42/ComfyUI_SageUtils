@@ -90,7 +90,9 @@ METADATA_CLASS_MAPPINGS = {
 }
 
 OLLAMA_CLASS_MAPPINGS = {
-    "Sage_OllamaLLMPrompt": Sage_OllamaLLMPrompt
+    "Sage_OllamaLLMPromptText": Sage_OllamaLLMPromptText,
+    "Sage_OllamaLLMPromptVision": Sage_OllamaLLMPromptVision,
+    "Sage_OllamaAdvancedOptions": Sage_OllamaAdvancedOptions
 }
 
 LMSTUDIO_CLASS_MAPPINGS = {
@@ -195,8 +197,10 @@ METADATA_NAME_MAPPINGS = {
 }
 
 OLLAMA_NAME_MAPPINGS = {
-    "Sage_OllamaLLMPrompt": "Ollama LLM Prompt"
+    "Sage_OllamaLLMPromptText": "Ollama LLM Prompt (Text)",
+    "Sage_OllamaLLMPromptVision": "Ollama LLM Prompt (Vision)"
 }
+# "Sage_OllamaAdvancedOptions": "Ollama Advanced Options"
 
 LMSTUDIO_NAME_MAPPINGS = {
     "Sage_LMStudioLLMPrompt": "LM Studio LLM Prompt"
