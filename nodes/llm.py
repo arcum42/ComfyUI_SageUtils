@@ -171,7 +171,7 @@ class Sage_ConstructLLMPrompt(ComfyNodeABC):
         inputs["optional"] = { "extra_instructions": (IO.STRING, {"default": "", "multiline": True}) }
 
         for key in llm_prompts["extra"].keys():
-            if llm_prompts["extra"][key]["category"] == "style":
+            if llm_prompts["extra"][key]["category"] in ("style", "quality", "content_focus"):
                 if llm_prompts["extra"][key]["type"] == "boolean":
                     inputs["optional"][key] = (IO.BOOLEAN, {"default": False, "tooltip": llm_prompts["extra"][key]["name"]})
         return inputs
