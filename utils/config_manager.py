@@ -25,17 +25,19 @@ def deep_merge_dicts(a, b):
     return result
 
 class ConfigManager:
-    def __init__(self, config_name):
+    def __init__(self, config_name, overwrite=False):
         self.config_name = config_name
         self.data = None
         self.base_file = pathlib.Path(assets_path) / f"{config_name}.json"
         self.user_file = sage_users_path / f"{config_name}.json"
         self.user_override_file = sage_users_path / f"{config_name}_user.json"
-        self.ensure_user_file()
+        self.ensure_user_file(overwrite=overwrite)
 
-    def ensure_user_file(self):
-        if not self.user_file.is_file():
-            print(f"No {self.config_name}.json file found in user directory.")
+    def ensure_user_file(self, overwrite=False):
+        if not self.user_file.is_file() or overwrite:
+            if not overwrite:
+                print(f"No {self.config_name}.json file found in user directory.")
+
             if self.base_file.is_file():
                 with open(self.base_file, "r") as read_file:
                     temp = json.load(read_file)
@@ -65,10 +67,10 @@ class ConfigManager:
         return self.data
 
 # Usage examples:
-styles_manager = ConfigManager("sage_styles")
+styles_manager = ConfigManager("sage_styles", overwrite=True)
 sage_styles = styles_manager.load()
 
-prompts_manager = ConfigManager("llm_prompts")
+prompts_manager = ConfigManager("llm_prompts", overwrite=True)
 llm_prompts = prompts_manager.load()
 
 settings_manager = ConfigManager("config")
