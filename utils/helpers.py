@@ -400,3 +400,38 @@ def tensor_to_base64(tensor):
         base64_images.append(base64.b64encode(buffered.getvalue()).decode('utf-8'))
 
     return base64_images
+
+        # self.output_dir = folder_paths.get_temp_directory()
+        # self.type = "temp"
+        # self.prefix_append = "_temp_" + ''.join(random.choice("abcdefghijklmnopqrstupvxyz") for x in range(5))
+        # self.compress_level = 1
+        
+def tensor_to_temp_image(tensor, filename=None):
+    if tensor is None or not isinstance(tensor, torch.Tensor):
+        return None
+    
+    output_dir = folder_paths.get_temp_directory()
+
+    images = []
+    for batch_number, image in enumerate(tensor):
+        i = 255.0 * image.cpu().numpy()
+        img = Image.fromarray(np.clip(i, 0, 255).astype(np.uint8))
+        if img.mode != 'RGB':
+            img = img.convert('RGB')
+        images.append(img)
+
+    filenames = []
+    counter = 0
+    for img in images:
+        if filename is None:
+            filename = f"temp_image_{counter}_{int(time.time())}.png"
+        
+        counter += 1
+        
+        filename = pathlib.Path(output_dir) / filename
+        if not filename.suffix:
+            filename = filename.with_suffix('.png')
+        filenames.append(str(filename))
+
+        img.save(filename, format="PNG")
+    return filenames

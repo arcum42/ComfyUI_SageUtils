@@ -4,4 +4,4 @@
 
 # LLM support is a work in progress, most nodes are not implemented yet, and ones that are are likely to be majorly revised.
 ollama
-lmstudio
+#lmstudio
