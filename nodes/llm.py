@@ -30,11 +30,9 @@ except ImportError:
 class Sage_OllamaLLMPrompt(ComfyNodeABC):
     @classmethod
     def INPUT_TYPES(cls) -> InputTypeDict:
-        print("Loading available Ollama models X...")
         models = llm.get_ollama_models()
-        print(f"Available models: {models}")
         if not models:
-            models = ["gemma3:latest", "llama3.2:latest"]
+            models = []
         models = sorted(models)
 
         return {
@@ -95,8 +93,17 @@ class Sage_ConstructLLMPrompt(ComfyNodeABC):
         print("Loading llm_prompts from config manager...")
         inputs: InputTypeDict =  {}
         inputs["required"] = {}
-        inputs["required"]["prompt"] = (list(llm_prompts["base"].keys()), )
+        #inputs["required"]["prompt"] = (list(llm_prompts["base"].keys()), )
         
+        prompt_list = []
+        
+        for key in llm_prompts["base"].keys():
+            category = llm_prompts["base"][key]["category"]
+            prompt_list.append(f"{category}/{key}")
+        
+        inputs["required"]["prompt"] = (prompt_list, {"defaultInput": True, "multiline": True})
+        inputs["optional"] = { "extra_instructions": (IO.STRING, {"default": "", "multiline": True}) }
+
         #for key in llm_prompts["extra_boolean"].keys():
         #    inputs["required"][key] = (IO.BOOLEAN, {"default": False, "defaultInput": True})
             
@@ -112,8 +119,20 @@ class Sage_ConstructLLMPrompt(ComfyNodeABC):
     EXPERIMENTAL = True
     DESCRIPTION = "Construct a prompt for an LLM based on the provided image and prompt."
 
-    def construct_prompt(self, prompt: str) -> tuple:
+    def construct_prompt(self, prompt: str, extra_instructions: str = "") -> tuple:
+        category = prompt.split("/")[0]
+        prompt = prompt.split("/")[1]
+
         prompt = llm_prompts["base"][prompt]["general"]
+
+        # Ensure prompt ends with sentence-ending punctuation
+        if not prompt or prompt[-1] not in ".!?":
+            prompt = prompt + "."
+
+        # Add a space if extra_instructions is not empty
+        if extra_instructions.strip():
+            prompt = prompt + " " + extra_instructions.strip()
+
         if not prompt:
             raise ValueError("Prompt cannot be empty.")
         return (prompt,)
