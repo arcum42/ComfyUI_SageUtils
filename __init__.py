@@ -100,7 +100,8 @@ LMSTUDIO_CLASS_MAPPINGS = {
 }
 
 LLM_CLASS_MAPPINGS = {
-    "Sage_ConstructLLMPrompt": Sage_ConstructLLMPrompt
+    "Sage_ConstructLLMPrompt": Sage_ConstructLLMPrompt,
+    "Sage_ConstructLLMPromptExtra": Sage_ConstructLLMPromptExtra
 }
 
 if llm.OLLAMA_AVAILABLE:
@@ -207,7 +208,8 @@ LMSTUDIO_NAME_MAPPINGS = {
 }
 
 LLM_NAME_MAPPINGS = {
-    "Sage_ConstructLLMPrompt": "Construct LLM Prompt"
+    "Sage_ConstructLLMPrompt": "Construct LLM Prompt",
+    "Sage_ConstructLLMPromptExtra": "Construct LLM Prompt Extra"
 }
 
 if llm.OLLAMA_AVAILABLE:

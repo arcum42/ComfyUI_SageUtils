@@ -162,6 +162,7 @@
             "name": "Only Output Description",
             "category": "style",
             "type": "boolean",
+            "default": true,
             "prompt": "This is going to be used as input for an AI image generator, so do not include anything other than the description, and do not break things into sections or use markdown."
         },
         "avoid_euphemisms": {
@@ -199,6 +200,12 @@
             "category": "content_focus",
             "type": "boolean",
             "prompt": "Describe only the most important elements. Omit unnecessary details."
+        },
+        "exclude_watermarks": {
+            "name": "Exclude Watermarks",
+            "category": "content_focus",
+            "type": "boolean",
+            "prompt": "Do NOT include any watermarks, signatures, or visible marks in the description, even if they are present in the image."
         },
         "exaggerate_quality": {
             "name": "Exaggerate Image Quality",

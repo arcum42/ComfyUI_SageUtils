@@ -167,13 +167,18 @@ class Sage_ConstructLLMPrompt(ComfyNodeABC):
             category = llm_prompts["base"][key]["category"]
             prompt_list.append(f"{category}/{key}")
         
-        inputs["required"]["prompt"] = (prompt_list, {"defaultInput": True, "multiline": True})
-        inputs["optional"] = { "extra_instructions": (IO.STRING, {"default": "", "multiline": True}) }
+        inputs["required"] = {
+            "prompt": (prompt_list, {"defaultInput": True, "multiline": True}),
+            "extra_instructions": (IO.STRING, {"default": "", "multiline": True})
+        }
 
         for key in llm_prompts["extra"].keys():
             if llm_prompts["extra"][key]["category"] in ("style", "quality", "content_focus"):
                 if llm_prompts["extra"][key]["type"] == "boolean":
-                    inputs["optional"][key] = (IO.BOOLEAN, {"default": False, "tooltip": llm_prompts["extra"][key]["name"]})
+                    default_value = False
+                    if "default" in llm_prompts["extra"][key]:
+                        default_value = llm_prompts["extra"][key]["default"]
+                    inputs["required"][key] = (IO.BOOLEAN, {"default": default_value, "tooltip": llm_prompts["extra"][key]["name"]})
         return inputs
 
     RETURN_TYPES = (IO.STRING,)
@@ -206,7 +211,7 @@ class Sage_ConstructLLMPrompt(ComfyNodeABC):
         for key, value in args.items():
             if key in llm_prompts["extra"]:
                 if llm_prompts["extra"][key]["type"] == "boolean" and value:
-                    prompt += f" {llm_prompts['extra'][key]['prompt']}\n\n"
+                    prompt += f"{llm_prompts['extra'][key]['prompt']}\n\n"
 
         # Add a space if extra_instructions is not empty
         if extra_instructions.strip():
@@ -215,6 +220,41 @@ class Sage_ConstructLLMPrompt(ComfyNodeABC):
         if not prompt:
             raise ValueError("Prompt cannot be empty.")
         return (prompt,)
+
+class Sage_ConstructLLMPromptExtra(ComfyNodeABC):
+    @classmethod
+    def INPUT_TYPES(s) -> InputTypeDict:
+        inputs: InputTypeDict =  {}
+        inputs["required"] = { "extra_instructions": (IO.STRING, {"default": "", "defaultInput": True, "multiline": True}) }
+        for key in llm_prompts["extra"].keys():
+            if llm_prompts["extra"][key]["category"] not in ("style", "quality", "content_focus"):
+                if llm_prompts["extra"][key]["type"] == "boolean":
+                    default_value = False
+                    if "default" in llm_prompts["extra"][key]:
+                        default_value = llm_prompts["extra"][key]["default"]
+                    inputs["required"][key] = (IO.BOOLEAN, {"default": default_value, "tooltip": llm_prompts["extra"][key]["name"]})
+        return inputs
+
+    RETURN_TYPES = (IO.STRING,)
+    RETURN_NAMES = ("extra",)
+    
+    FUNCTION = "construct_extra"
+    CATEGORY = "Sage Utils/LLM"
+    EXPERIMENTAL = True
+    DESCRIPTION = "Construct extra instructions for an LLM based on the provided options."
+    def construct_extra(self, **args) -> tuple:
+        extra_instructions = args["extra_instructions"] + "\n\n" if args["extra_instructions"] else ""
+        
+        for key, value in args.items():
+            if key in llm_prompts["extra"]:
+                if llm_prompts["extra"][key]["type"] == "boolean" and value:
+                    extra_instructions += f"{llm_prompts['extra'][key]['prompt']}\n\n"
+
+        # Remove the last newline if it exists
+        if extra_instructions.endswith("\n\n"):
+            extra_instructions = extra_instructions[:-2]
+
+        return (extra_instructions.strip(),)
 
 # Don't use anything below this line.
 
