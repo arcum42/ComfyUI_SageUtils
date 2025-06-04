@@ -111,8 +111,8 @@ class Sage_ConstructLLMPrompt(ComfyNodeABC):
         inputs["required"] = {}
         inputs["required"]["prompt"] = (list(llm_prompts["base"].keys()), )
         
-        for key in llm_prompts["extra_boolean"].keys():
-            inputs["required"][key] = (IO.BOOLEAN, {"default": False, "defaultInput": True})
+        #for key in llm_prompts["extra_boolean"].keys():
+        #    inputs["required"][key] = (IO.BOOLEAN, {"default": False, "defaultInput": True})
             
         #print(f"Available prompts: {prompts}")
         return inputs
