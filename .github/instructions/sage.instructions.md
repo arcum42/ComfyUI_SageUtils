@@ -70,6 +70,7 @@ These instructions define coding standards, directory structure, and domain know
     - #fetch https://docs.comfy.org/custom-nodes/backend/lists
     - #fetch https://docs.comfy.org/custom-nodes/backend/snippets
     - #fetch https://docs.comfy.org/custom-nodes/backend/tensors
+    - #fetch https://docs.comfy.org/custom-nodes/help_page
     - #fetch https://docs.comfy.org/custom-nodes/js/javascript_overview
     - #fetch https://docs.comfy.org/custom-nodes/js/javascript_hooks
     - #fetch https://docs.comfy.org/custom-nodes/js/javascript_objects_and_hijacking
