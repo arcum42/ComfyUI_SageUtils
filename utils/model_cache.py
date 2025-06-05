@@ -59,7 +59,8 @@ class SageCache:
                 self.info[current_hash] = self.data[key]
 
     def load(self):
-        """Load cache from disk, converting old format if needed."""
+        """Load cache from disk."""
+        print("Loading cache from disk.")
         try:
             if self.hash_path.is_file() and self.info_path.is_file():
                 with self.hash_path.open("r") as read_file:
@@ -70,24 +71,27 @@ class SageCache:
                 if self.main_path.is_file():
                     with self.main_path.open("r") as read_file:
                         self.data = json.load(read_file)
-                self.convert_old_cache()
+                    self.convert_old_cache()
         except Exception as e:
             print(f"Unable to load cache: {e}")
 
     def save(self):
         """Save cache to disk."""
         def _save_json(path, data, label):
+            print(f"Saving {label} to {path}")
             try:
                 with path.open("w") as output_file:
                     json.dump(data, output_file, separators=(",", ":"), sort_keys=True, indent=4)
             except Exception as e:
                 print(f"Unable to save {label} to {path}: {e}")
 
-        if self.data:
-            _save_json(self.main_path, self.data, "main cache")
+        #if self.data:
+        #    _save_json(self.main_path, self.data, "main cache")
         if self.hash:
+            print(f"Saving hash cache to {self.hash_path}")
             _save_json(self.hash_path, self.hash, "hash cache")
         if self.info:
+            print(f"Saving info cache to {self.info_path}")
             _save_json(self.info_path, self.info, "info cache")
 
 

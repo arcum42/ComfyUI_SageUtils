@@ -146,18 +146,25 @@ def pull_metadata(file_path, timestamp = True, force = False):
     cache.load()
     
     print(f"Pull metadata for {file_path}.")
-    hash = cache.hash.get(file_path, "")
-
-    if not hash:
-        hash = get_file_sha256(file_path)
-        cache.hash[file_path] = hash
-    else:
-        time.sleep(2)
+    hash = cache.hash.get(file_path, get_file_sha256(file_path))
 
     pull_json = True
     check_recent = False
     metadata_days_recheck = 0
     hash_recheck = 30
+    
+    if file_path not in cache.hash:
+        cache.hash[file_path] = hash
+    
+    if cache.info.get(hash, None) is None:
+        cache.info[hash] = {
+            'civitai': "False",
+            'update_available': False,
+            'hash': hash,
+            'lastUsed': datetime.datetime.now().isoformat()
+        }
+        cache.save()
+        
     file_cache = cache.by_path(file_path)
     last_used_date = datetime.datetime.fromisoformat(file_cache['lastUsed']) if 'lastUsed' in file_cache else None
     
@@ -225,11 +232,17 @@ def pull_metadata(file_path, timestamp = True, force = False):
                 'hashes': hashes
             })
             print("Successfully pulled metadata.")
+        else:
+            print(f"Error pulling metadata: {json['error']}")
+            file_cache['civitai'] = "False"
+            file_cache['update_available'] = False
+            file_cache['hash'] = hash
 
     if timestamp:
         print("Updating timestamp.")
         file_cache['lastUsed'] = datetime.datetime.now().isoformat()
 
+    cache.hash[file_path] = hash
     cache.data[file_path] = file_cache
     cache.info[hash] = file_cache
     cache.save()

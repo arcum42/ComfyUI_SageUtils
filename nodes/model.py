@@ -98,6 +98,7 @@ class Sage_UNETLoader(UNETLoader):
             "name": pathlib.Path(unet_name).name,
             "path": folder_paths.get_full_path_or_raise("diffusion_models", unet_name)
         }
+        print(f"Loading UNET from {model_info['path']} with dtype {weight_dtype}")
         pull_metadata(model_info["path"], True)
         model_info["hash"] = cache.hash[model_info["path"]]
         return (loaders.unet(model_info["path"], weight_dtype), model_info)
