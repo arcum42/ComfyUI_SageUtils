@@ -10,6 +10,10 @@ sage_config = config_manager.settings_manager.data
 
 WEB_DIRECTORY = "./js"
 
+# LM Studio support is a work in progress and is not enabled by default.
+ENABLE_LM_STUDIO = True
+
+
 DEPRECIATED_CLASS_MAPPINGS = {
     "Sage_SetBool": Sage_SetBool,
     "Sage_SetInteger": Sage_SetInteger,
@@ -91,12 +95,12 @@ METADATA_CLASS_MAPPINGS = {
 
 OLLAMA_CLASS_MAPPINGS = {
     "Sage_OllamaLLMPromptText": Sage_OllamaLLMPromptText,
-    "Sage_OllamaLLMPromptVision": Sage_OllamaLLMPromptVision,
-    "Sage_OllamaAdvancedOptions": Sage_OllamaAdvancedOptions
+    "Sage_OllamaLLMPromptVision": Sage_OllamaLLMPromptVision
 }
 
 LMSTUDIO_CLASS_MAPPINGS = {
-    "Sage_LMStudioLLMPrompt": Sage_LMStudioLLMPrompt
+    "Sage_LMStudioLLMPromptVision": Sage_LMStudioLLMPromptVision,
+    "Sage_LMStudioLLMPromptText": Sage_LMStudioLLMPromptText
 }
 
 LLM_CLASS_MAPPINGS = {
@@ -107,9 +111,8 @@ LLM_CLASS_MAPPINGS = {
 if llm.OLLAMA_AVAILABLE:
     LLM_CLASS_MAPPINGS = LLM_CLASS_MAPPINGS | OLLAMA_CLASS_MAPPINGS
 
-# Disabling LM Studio for now, as it is endlessly frustrating.
-#if llm.LMSTUDIO_AVAILABLE:
-#    LLM_CLASS_MAPPINGS = LLM_CLASS_MAPPINGS | LMSTUDIO_CLASS_MAPPINGS
+if llm.LMSTUDIO_AVAILABLE and ENABLE_LM_STUDIO:
+     LLM_CLASS_MAPPINGS = LLM_CLASS_MAPPINGS | LMSTUDIO_CLASS_MAPPINGS
 
 # A dictionary that contains all nodes you want to export with their names
 # NOTE: names should be globally unique
@@ -201,10 +204,10 @@ OLLAMA_NAME_MAPPINGS = {
     "Sage_OllamaLLMPromptText": "Ollama LLM Prompt (Text)",
     "Sage_OllamaLLMPromptVision": "Ollama LLM Prompt (Vision)"
 }
-# "Sage_OllamaAdvancedOptions": "Ollama Advanced Options"
 
 LMSTUDIO_NAME_MAPPINGS = {
-    "Sage_LMStudioLLMPrompt": "LM Studio LLM Prompt"
+    "Sage_LMStudioLLMPromptVision": "LM Studio LLM Prompt (Vision)",
+    "Sage_LMStudioLLMPromptText": "LM Studio LLM Prompt (Text)"
 }
 
 LLM_NAME_MAPPINGS = {
@@ -215,9 +218,8 @@ LLM_NAME_MAPPINGS = {
 if llm.OLLAMA_AVAILABLE:
     LLM_NAME_MAPPINGS = LLM_NAME_MAPPINGS | OLLAMA_NAME_MAPPINGS
 
-# Since LM Studio is currently not working, we are disabling it for now.
-#if llm.LMSTUDIO_AVAILABLE:
-#    LLM_NAME_MAPPINGS = LLM_NAME_MAPPINGS | LMSTUDIO_NAME_MAPPINGS
+if llm.LMSTUDIO_AVAILABLE and ENABLE_LM_STUDIO:
+    LLM_NAME_MAPPINGS = LLM_NAME_MAPPINGS | LMSTUDIO_NAME_MAPPINGS
 
 # A dictionary that contains the friendly/humanly readable titles for the nodes
 NODE_DISPLAY_NAME_MAPPINGS = DEPRECIATED_NAME_MAPPINGS | UTILITY_NAME_MAPPINGS | SETTINGS_NAME_MAPPINGS | TEXT_NAME_MAPPINGS | \

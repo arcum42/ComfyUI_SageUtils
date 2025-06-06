@@ -413,11 +413,6 @@ def tensor_to_base64(tensor):
         base64_images.append(base64.b64encode(buffered.getvalue()).decode('utf-8'))
 
     return base64_images
-
-        # self.output_dir = folder_paths.get_temp_directory()
-        # self.type = "temp"
-        # self.prefix_append = "_temp_" + ''.join(random.choice("abcdefghijklmnopqrstupvxyz") for x in range(5))
-        # self.compress_level = 1
         
 def tensor_to_temp_image(tensor, filename=None):
     if tensor is None or not isinstance(tensor, torch.Tensor):
@@ -447,4 +442,6 @@ def tensor_to_temp_image(tensor, filename=None):
         filenames.append(str(filename))
 
         img.save(filename, format="PNG")
+    print(f"Saved {len(filenames)} images to {output_dir}")
+    print(filenames)
     return filenames

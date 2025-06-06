@@ -23,6 +23,112 @@ try:
 except ImportError:
     OLLAMA_AVAILABLE = False
 
+# Nodes to construct prompts for LLMs, including extra instructions and advanced options.
+
+class Sage_ConstructLLMPrompt(ComfyNodeABC):
+    @classmethod
+    def INPUT_TYPES(cls) -> InputTypeDict:
+        print("Loading llm_prompts from config manager...")
+        inputs: InputTypeDict =  {}
+        inputs["required"] = {}
+        
+        prompt_list = []
+        
+        for key in llm_prompts["base"].keys():
+            category = llm_prompts["base"][key]["category"]
+            prompt_list.append(f"{category}/{key}")
+        
+        inputs["required"] = {
+            "prompt": (prompt_list, {"defaultInput": True, "multiline": True}),
+            "extra_instructions": (IO.STRING, {"default": "", "multiline": True})
+        }
+
+        for key in llm_prompts["extra"].keys():
+            if llm_prompts["extra"][key]["category"] in ("style", "quality", "content_focus"):
+                if llm_prompts["extra"][key]["type"] == "boolean":
+                    default_value = False
+                    if "default" in llm_prompts["extra"][key]:
+                        default_value = llm_prompts["extra"][key]["default"]
+                    inputs["required"][key] = (IO.BOOLEAN, {"default": default_value, "tooltip": llm_prompts["extra"][key]["name"]})
+        return inputs
+
+    RETURN_TYPES = (IO.STRING,)
+    RETURN_NAMES = ("prompt",)
+
+    FUNCTION = "construct_prompt"
+
+    CATEGORY = "Sage Utils/LLM"
+    EXPERIMENTAL = True
+    DESCRIPTION = "Construct a prompt for an LLM based on the provided image and prompt."
+
+    def construct_prompt(self, **args) -> tuple:
+        prompt = args["prompt"]
+        extra_instructions = args.get("extra_instructions", "")
+
+        category = prompt.split("/")[0]
+        prompt = prompt.split("/")[1]
+
+        prompt = llm_prompts["base"][prompt]["prompt"]
+
+        # Ensure prompt ends with sentence-ending punctuation
+        if not prompt or prompt[-1] not in ".!?":
+            prompt = prompt + "."
+        
+        # Add a newline to the end of the prompt
+        if not prompt.endswith("\n"):
+            prompt = f"{prompt}\n\n"
+
+        # Add extra instructions based on the selected options
+        for key, value in args.items():
+            if key in llm_prompts["extra"]:
+                if llm_prompts["extra"][key]["type"] == "boolean" and value:
+                    prompt += f"{llm_prompts['extra'][key]['prompt']}\n\n"
+
+        # Add a space if extra_instructions is not empty
+        if extra_instructions.strip():
+            prompt = prompt + extra_instructions.strip()
+
+        if not prompt:
+            raise ValueError("Prompt cannot be empty.")
+        return (prompt,)
+
+class Sage_ConstructLLMPromptExtra(ComfyNodeABC):
+    @classmethod
+    def INPUT_TYPES(s) -> InputTypeDict:
+        inputs: InputTypeDict =  {}
+        inputs["required"] = { "extra_instructions": (IO.STRING, {"default": "", "defaultInput": True, "multiline": True}) }
+        for key in llm_prompts["extra"].keys():
+            if llm_prompts["extra"][key]["category"] not in ("style", "quality", "content_focus"):
+                if llm_prompts["extra"][key]["type"] == "boolean":
+                    default_value = False
+                    if "default" in llm_prompts["extra"][key]:
+                        default_value = llm_prompts["extra"][key]["default"]
+                    inputs["required"][key] = (IO.BOOLEAN, {"default": default_value, "tooltip": llm_prompts["extra"][key]["name"]})
+        return inputs
+
+    RETURN_TYPES = (IO.STRING,)
+    RETURN_NAMES = ("extra",)
+    
+    FUNCTION = "construct_extra"
+    CATEGORY = "Sage Utils/LLM"
+    EXPERIMENTAL = True
+    DESCRIPTION = "Construct extra instructions for an LLM based on the provided options."
+    def construct_extra(self, **args) -> tuple:
+        extra_instructions = args["extra_instructions"] + "\n\n" if args["extra_instructions"] else ""
+        
+        for key, value in args.items():
+            if key in llm_prompts["extra"]:
+                if llm_prompts["extra"][key]["type"] == "boolean" and value:
+                    extra_instructions += f"{llm_prompts['extra'][key]['prompt']}\n\n"
+
+        # Remove the last newline if it exists
+        if extra_instructions.endswith("\n\n"):
+            extra_instructions = extra_instructions[:-2]
+
+        return (extra_instructions.strip(),)
+
+# Ollama based nodes for LLMs.
+# These nodes allow you to send prompts to LLMs and get responses.
 class Sage_OllamaAdvancedOptions(ComfyNodeABC):
     @classmethod
     def INPUT_TYPES(cls) -> InputTypeDict:
@@ -153,112 +259,49 @@ class Sage_OllamaLLMPromptVision(ComfyNodeABC):
         options["seed"] = seed  # Ensure the seed is included in the options
         response = llm.ollama_generate_vision(model=model, prompt=prompt, images=image, options=options)
         return (response,)
-    
-class Sage_ConstructLLMPrompt(ComfyNodeABC):
-    @classmethod
-    def INPUT_TYPES(cls) -> InputTypeDict:
-        print("Loading llm_prompts from config manager...")
-        inputs: InputTypeDict =  {}
-        inputs["required"] = {}
+
+# Nodes for LM Studio.
+
+# class Sage_LMStudioLLMPrompt(ComfyNodeABC):
+#     @classmethod
+#     def INPUT_TYPES(cls) -> InputTypeDict:
+#         models = llm.get_lmstudio_models()
+#         if not models:
+#             models = []
+#         models = sorted(models)
+
+#         return {
+#             "required": {
+#                 "prompt": (IO.STRING, {"defaultInput": True, "multiline": True}),
+#                 "model": (models, )
+#             },
+#             "optional": {
+#                 "image": (IO.IMAGE, {"defaultInput": True})
+#             }
+#         }
+
+#     RETURN_TYPES = (IO.STRING,)
+#     RETURN_NAMES = ("response",)
+
+#     FUNCTION = "get_response"
+
+#     CATEGORY = "Sage Utils/LLM"
+#     EXPERIMENTAL = True
+#     DESCRIPTION = "Send a prompt to a language model and get a response. Optionally, you can provide an image/s to the model if it supports multimodal input. The model must be installed via Ollama."
+
+#     def get_response(self, prompt: str, model: str, image = None) -> tuple:
+
+#         if not llm.LMSTUDIO_AVAILABLE:
+#             raise ImportError("LM Studio is not available. Please install it to use this node.")
         
-        prompt_list = []
+#         if model not in llm.get_lmstudio_models():
+#             raise ValueError(f"Model '{model}' is not available. Available models: {llm.get_lmstudio_models()}")
         
-        for key in llm_prompts["base"].keys():
-            category = llm_prompts["base"][key]["category"]
-            prompt_list.append(f"{category}/{key}")
-        
-        inputs["required"] = {
-            "prompt": (prompt_list, {"defaultInput": True, "multiline": True}),
-            "extra_instructions": (IO.STRING, {"default": "", "multiline": True})
-        }
+#         response = llm.lmstudio_generate(model=model, prompt=prompt, images=image)
+#         return (response,)
 
-        for key in llm_prompts["extra"].keys():
-            if llm_prompts["extra"][key]["category"] in ("style", "quality", "content_focus"):
-                if llm_prompts["extra"][key]["type"] == "boolean":
-                    default_value = False
-                    if "default" in llm_prompts["extra"][key]:
-                        default_value = llm_prompts["extra"][key]["default"]
-                    inputs["required"][key] = (IO.BOOLEAN, {"default": default_value, "tooltip": llm_prompts["extra"][key]["name"]})
-        return inputs
 
-    RETURN_TYPES = (IO.STRING,)
-    RETURN_NAMES = ("prompt",)
-
-    FUNCTION = "construct_prompt"
-
-    CATEGORY = "Sage Utils/LLM"
-    EXPERIMENTAL = True
-    DESCRIPTION = "Construct a prompt for an LLM based on the provided image and prompt."
-
-    def construct_prompt(self, **args) -> tuple:
-        prompt = args["prompt"]
-        extra_instructions = args.get("extra_instructions", "")
-
-        category = prompt.split("/")[0]
-        prompt = prompt.split("/")[1]
-
-        prompt = llm_prompts["base"][prompt]["prompt"]
-
-        # Ensure prompt ends with sentence-ending punctuation
-        if not prompt or prompt[-1] not in ".!?":
-            prompt = prompt + "."
-        
-        # Add a newline to the end of the prompt
-        if not prompt.endswith("\n"):
-            prompt = f"{prompt}\n\n"
-
-        # Add extra instructions based on the selected options
-        for key, value in args.items():
-            if key in llm_prompts["extra"]:
-                if llm_prompts["extra"][key]["type"] == "boolean" and value:
-                    prompt += f"{llm_prompts['extra'][key]['prompt']}\n\n"
-
-        # Add a space if extra_instructions is not empty
-        if extra_instructions.strip():
-            prompt = prompt + extra_instructions.strip()
-
-        if not prompt:
-            raise ValueError("Prompt cannot be empty.")
-        return (prompt,)
-
-class Sage_ConstructLLMPromptExtra(ComfyNodeABC):
-    @classmethod
-    def INPUT_TYPES(s) -> InputTypeDict:
-        inputs: InputTypeDict =  {}
-        inputs["required"] = { "extra_instructions": (IO.STRING, {"default": "", "defaultInput": True, "multiline": True}) }
-        for key in llm_prompts["extra"].keys():
-            if llm_prompts["extra"][key]["category"] not in ("style", "quality", "content_focus"):
-                if llm_prompts["extra"][key]["type"] == "boolean":
-                    default_value = False
-                    if "default" in llm_prompts["extra"][key]:
-                        default_value = llm_prompts["extra"][key]["default"]
-                    inputs["required"][key] = (IO.BOOLEAN, {"default": default_value, "tooltip": llm_prompts["extra"][key]["name"]})
-        return inputs
-
-    RETURN_TYPES = (IO.STRING,)
-    RETURN_NAMES = ("extra",)
-    
-    FUNCTION = "construct_extra"
-    CATEGORY = "Sage Utils/LLM"
-    EXPERIMENTAL = True
-    DESCRIPTION = "Construct extra instructions for an LLM based on the provided options."
-    def construct_extra(self, **args) -> tuple:
-        extra_instructions = args["extra_instructions"] + "\n\n" if args["extra_instructions"] else ""
-        
-        for key, value in args.items():
-            if key in llm_prompts["extra"]:
-                if llm_prompts["extra"][key]["type"] == "boolean" and value:
-                    extra_instructions += f"{llm_prompts['extra'][key]['prompt']}\n\n"
-
-        # Remove the last newline if it exists
-        if extra_instructions.endswith("\n\n"):
-            extra_instructions = extra_instructions[:-2]
-
-        return (extra_instructions.strip(),)
-
-# Don't use anything below this line.
-
-class Sage_LMStudioLLMPrompt(ComfyNodeABC):
+class Sage_LMStudioLLMPromptText(ComfyNodeABC):
     @classmethod
     def INPUT_TYPES(cls) -> InputTypeDict:
         models = llm.get_lmstudio_models()
@@ -269,10 +312,45 @@ class Sage_LMStudioLLMPrompt(ComfyNodeABC):
         return {
             "required": {
                 "prompt": (IO.STRING, {"defaultInput": True, "multiline": True}),
-                "model": (models, )
-            },
-            "optional": {
-                "image": (IO.IMAGE, {"defaultInput": True})
+                "model": (models, ),
+                "seed": (IO.INT, {"default": 0, "min": 0, "max": 2**32 - 1, "step": 1, "tooltip": "Seed for random number generation."})  
+                }
+        }
+
+    RETURN_TYPES = (IO.STRING,)
+    RETURN_NAMES = ("response",)
+
+    FUNCTION = "get_response"
+
+    CATEGORY = "Sage Utils/LLM"
+    EXPERIMENTAL = True
+    DESCRIPTION = "Send a prompt to a language model and get a response. The model must be installed via Ollama."
+
+    def get_response(self, prompt: str, model: str, seed: int = 0, options = {}) -> tuple:
+        options = {}
+        if not llm.OLLAMA_AVAILABLE:
+            raise ImportError("Ollama is not available. Please install it to use this node.")
+        
+        if model not in llm.get_lmstudio_models():
+            raise ValueError(f"Model '{model}' is not available. Available models: {llm.get_ollama_models()}")
+        
+        options["seed"] = seed  # Ensure the seed is included in the options
+        response = llm.lmstudio_generate(model=model, prompt=prompt, options=options)
+        return (response,)
+class Sage_LMStudioLLMPromptVision(ComfyNodeABC):
+    @classmethod
+    def INPUT_TYPES(cls) -> InputTypeDict:
+        models = llm.get_lmstudio_models()
+        if not models:
+            models = []
+        models = sorted(models)
+
+        return {
+            "required": {
+                "prompt": (IO.STRING, {"defaultInput": True, "multiline": True}),
+                "model": (models, ),
+                "image": (IO.IMAGE, {"defaultInput": True}),
+                "seed": (IO.INT, {"default": 0, "min": 0, "max": 2**32 - 1, "step": 1, "tooltip": "Seed for random number generation."})  
             }
         }
 
@@ -284,14 +362,18 @@ class Sage_LMStudioLLMPrompt(ComfyNodeABC):
     CATEGORY = "Sage Utils/LLM"
     EXPERIMENTAL = True
     DESCRIPTION = "Send a prompt to a language model and get a response. Optionally, you can provide an image/s to the model if it supports multimodal input. The model must be installed via Ollama."
-
-    def get_response(self, prompt: str, model: str, image = None) -> tuple:
-
-        if not llm.LMSTUDIO_AVAILABLE:
-            raise ImportError("LM Studio is not available. Please install it to use this node.")
+    
+    def get_response(self, prompt: str, model: str, image, seed: int, ) -> tuple:
+        options = {}
+        if not llm.OLLAMA_AVAILABLE:
+            raise ImportError("Ollama is not available. Please install it to use this node.")
         
         if model not in llm.get_lmstudio_models():
-            raise ValueError(f"Model '{model}' is not available. Available models: {llm.get_lmstudio_models()}")
+            raise ValueError(f"Model '{model}' is not available or not a vision model. Available models: {llm.get_ollama_vision_models()}")
         
-        response = llm.lmstudio_generate(model=model, prompt=prompt, images=image)
+        if image is None:
+            raise ValueError("Image input is required for vision models.")
+
+        options["seed"] = seed  # Ensure the seed is included in the options
+        response = llm.lmstudio_generate_vision(model=model, prompt=prompt, images=image, options=options)
         return (response,)

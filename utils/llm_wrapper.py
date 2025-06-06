@@ -20,6 +20,26 @@ except ImportError:
     LMSTUDIO_AVAILABLE = False
     print("LM Studio library not found.")
 
+# Neutral functions
+def clean_response(response: str) -> str:
+    """Clean the response from the model by removing unnecessary tags."""
+    if not response:
+        return ""
+
+    response = response.strip()
+
+    # Remove "</end_of_turn>" if it exists in the response
+    if response.endswith("</end_of_turn>"):
+        response = response[:-len("</end_of_turn>")].strip()
+
+    # Remove ">end_of_turn>" if it exists in the response
+    if response.endswith(">end_of_turn>"):
+        response = response[:-len(">end_of_turn>")].strip()
+
+    return response
+
+
+# Ollama functions
 def get_ollama_vision_models() -> list[str]:
     """Retrieve a list of available vision models from Ollama."""
     if not OLLAMA_AVAILABLE:
@@ -100,16 +120,8 @@ def ollama_generate_vision(model, prompt, images = None, options = None) -> str:
                 )
         if not response or 'response' not in response:
             raise ValueError("No valid response received from the model.")
-        response = response['response'].strip()
         
-        # Remove "</end_of_turn>" if it exists in the response
-        if response.endswith("</end_of_turn>"):
-            response = response[:-len("</end_of_turn>")].strip()
-        # Remove ">end_of_turn>" if it exists in the response
-        if response.endswith(">end_of_turn>"):
-            response = response[:-len(">end_of_turn>")].strip()
-        
-        return response
+        return clean_response(response['response'])
 
     except Exception as e:
         print(f"Error generating response from Ollama vision model: {e}")
@@ -131,33 +143,28 @@ def ollama_generate(model, prompt, options = None) -> str:
                 model=model,
                 prompt=prompt,
                 stream=False,
-                options=options
+                options=options,
+                keep_alive=False
             )
         else:
             # If no options are provided, use the default generate function
             response = ollama.generate(
                 model=model,
                 prompt=prompt,
-                stream=False
+                stream=False,
+                keep_alive=False
             )
         if not response or 'response' not in response:
             raise ValueError("No valid response received from the model.")
-        response = response['response'].strip()
         
-        # Remove "</end_of_turn>" if it exists in the response
-        if response.endswith("</end_of_turn>"):
-            response = response[:-len("</end_of_turn>")].strip()
-        # Remove ">end_of_turn>" if it exists in the response
-        if response.endswith(">end_of_turn>"):
-            response = response[:-len(">end_of_turn>")].strip()
-        
-        return response
+        return clean_response(response['response'])
 
     except Exception as e:
         print(f"Error generating response from Ollama: {e}")
         return ""
 
-# Don't use anything below this point.
+# LM Studio functions
+# These functions will be similar to the Ollama functions but will use the LM Studio API.
 def get_lmstudio_models() -> list[str]:
     """Retrieve a list of available models from LM Studio."""
     if not LMSTUDIO_AVAILABLE:
@@ -165,21 +172,48 @@ def get_lmstudio_models() -> list[str]:
 
     try:
         response = lms.list_downloaded_models("llm")
-        models = [model.model_key for model in response]
+        models = []
+        for model in response:
+            if hasattr(model, 'model_key'):
+                models.append(model.model_key)
         return models
 
     except Exception as e:
         print(f"Error retrieving models from LM Studio: {e}")
         return []
     
-def lmstudio_generate(model, prompt, images = None) -> str:
-    """Generate a response from an LM Studio model."""
+def get_lmstudio_vision_models() -> list[str]:
+    """Retrieve a list of available models from LM Studio."""
+    if not LMSTUDIO_AVAILABLE:
+        return []
+
+    try:
+        response = lms.list_downloaded_models("llm")
+        
+        models=[]
+        
+        for model in response:
+            if hasattr(model, 'model_key'):
+                name = model.model_key
+                if hasattr(model, 'info') and hasattr(model.info, 'vision'):
+                    models.append(name)
+        
+        return models
+
+    except Exception as e:
+        print(f"Error retrieving models from LM Studio: {e}")
+        return []
+
+def lmstudio_generate_vision(model, prompt, images = None, options = {}) -> str:
+    """Generate a response from an LM Studio vision model."""
     if not LMSTUDIO_AVAILABLE:
         raise ImportError("LM Studio is not available. Please install it to use this function.")
+    
+    model_list = get_lmstudio_vision_models()
 
-    if model not in get_lmstudio_models():
-        raise ValueError(f"Model '{model}' is not available. Available models: {get_lmstudio_models()}")
-
+    if model not in model_list:
+        raise ValueError(f"Model '{model}' is not available. Available models: {model_list}")
+    seed = options.get('seed', 0)
     input_images = []
     if images is not None:
         input_images = tensor_to_temp_image(images)
@@ -196,23 +230,46 @@ def lmstudio_generate(model, prompt, images = None) -> str:
             for image in input_images:
                 image_handles.append(lms.prepare_image(image))
             chat.add_user_message(prompt, images=image_handles)
-        response = lms_model.respond(chat)
+        response = lms_model.respond(chat, config={"seed":seed})
         lms_model.unload()
 
-        
         if not response:
             raise ValueError("No valid response received from the model.")
-        response = response['messages'][-1]
-        response = response.strip()
         
-        # Remove "</end_of_turn>" if it exists in the response
-        if response.endswith("</end_of_turn>"):
-            response = response[:-len("</end_of_turn>")].strip()
-        # Remove ">end_of_turn>" if it exists in the response
-        if response.endswith(">end_of_turn>"):
-            response = response[:-len(">end_of_turn>")].strip()
-        
-        return response
+        return clean_response(response.content)
+
+    except Exception as e:
+        print(f"Error generating response from LM Studio vision model: {e}")
+        if lms_model:
+            lms_model.unload()
+        return ""
+
+def lmstudio_generate(model, prompt, options = {}) -> str:
+    """Generate a response from an LM Studio model."""
+    if not LMSTUDIO_AVAILABLE:
+        raise ImportError("LM Studio is not available. Please install it to use this function.")
+
+    model_list = get_lmstudio_models()
+    if model not in model_list:
+        raise ValueError(f"Model '{model}' is not available. Available models: {model_list}")
+
+    seed = options.get('seed', 0)
+    lms_model = None
+
+    try:
+        lms_model = lms.llm(model)
+        if lms_model is None:
+            raise ValueError(f"Model '{model}' could not be loaded from LM Studio.")
+
+        chat = lms.Chat()
+        chat.add_user_message(prompt)
+        response = lms_model.respond(chat, config={"seed":seed})
+        lms_model.unload()
+
+        if not response:
+            raise ValueError("No valid response received from the model.")
+
+        return clean_response(response.content)
 
     except Exception as e:
         print(f"Error generating response from LM Studio: {e}")
