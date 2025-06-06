@@ -78,49 +78,9 @@ class Sage_LoadImage(ComfyNodeABC):
 
     def load_image(self, image) -> tuple:
         image_path = folder_paths.get_annotated_filepath(image)
-        img = node_helpers.pillow(Image.open, image_path)
+        output_image, output_mask, w, h, info = load_image_from_path(image_path)
 
-        output_images, output_masks = [], []
-        w, h = None, None
-
-        for i in ImageSequence.Iterator(img):
-            i = node_helpers.pillow(ImageOps.exif_transpose, i)
-            if i.mode == "I":
-                i = i.point(lambda x: x * (1 / 255))
-            image = i.convert("RGB")
-
-            if not output_images:
-                w, h = image.size
-
-            if image.size != (w, h):
-                continue
-
-            image = torch.from_numpy(np.array(image).astype(np.float32) / 255.0)[None,]
-            mask = (
-                (
-                    1.0
-                    - torch.from_numpy(
-                        np.array(i.getchannel("A")).astype(np.float32) / 255.0
-                    )
-                ).unsqueeze(0)
-                if "A" in i.getbands()
-                else torch.zeros((1, 64, 64), dtype=torch.float32)
-            )
-            output_images.append(image)
-            output_masks.append(mask)
-
-        output_image = (
-            torch.cat(output_images, dim=0)
-            if len(output_images) > 1 and img.format != "MPO"
-            else output_images[0]
-        )
-        output_mask = (
-            torch.cat(output_masks, dim=0)
-            if len(output_masks) > 1 and img.format != "MPO"
-            else output_masks[0]
-        )
-
-        return output_image, output_mask, w, h, f"{img.info}"
+        return output_image, output_mask, w, h, info
 
     @classmethod
     def IS_CHANGED(s, image):
