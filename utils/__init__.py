@@ -4,4 +4,5 @@ from . import config_manager
 from . import loaders
 
 from .helpers import *
+from .helpers_image import *
 from .lora_stack import *

@@ -4,7 +4,7 @@
 OLLAMA_AVAILABLE = False
 LMSTUDIO_AVAILABLE = False
 
-from .helpers import tensor_to_base64, tensor_to_temp_image
+from .helpers_image import tensor_to_base64, tensor_to_temp_image
 
 try:
     import ollama
