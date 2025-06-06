@@ -340,7 +340,7 @@ class Sage_LMStudioLLMPromptText(ComfyNodeABC):
 class Sage_LMStudioLLMPromptVision(ComfyNodeABC):
     @classmethod
     def INPUT_TYPES(cls) -> InputTypeDict:
-        models = llm.get_lmstudio_models()
+        models = llm.get_lmstudio_vision_models()
         if not models:
             models = []
         models = sorted(models)

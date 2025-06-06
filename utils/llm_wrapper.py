@@ -193,11 +193,12 @@ def get_lmstudio_vision_models() -> list[str]:
         models=[]
         
         for model in response:
+            
             if hasattr(model, 'model_key'):
                 name = model.model_key
-                if hasattr(model, 'info') and hasattr(model.info, 'vision'):
+                if hasattr(model, 'info') and hasattr(model.info, 'vision') and model.info.vision:
                     models.append(name)
-        
+
         return models
 
     except Exception as e:

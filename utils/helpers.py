@@ -445,3 +445,30 @@ def tensor_to_temp_image(tensor, filename=None):
     print(f"Saved {len(filenames)} images to {output_dir}")
     print(filenames)
     return filenames
+
+def get_or_update_model_hash(file_path):
+    """
+    Return the cached hash for file_path if lastUsed is newer than file mtime, otherwise recalculate hash and update cache.
+    """
+    file_path = str(file_path)
+    file_mtime = get_file_modification_date(file_path)
+    cache_entry = cache.by_path(file_path)
+    last_used = cache_entry.get('lastUsed')
+    cached_hash = cache_entry.get('hash')
+
+    if last_used:
+        try:
+            last_used_dt = datetime.datetime.fromisoformat(last_used)
+            if last_used_dt >= file_mtime and cached_hash:
+                return cached_hash  # Use cached hash
+        except Exception as e:
+            print(f"Error parsing lastUsed: {e}")
+
+    # File changed or never used, recalculate hash
+    new_hash = get_file_sha256(file_path)
+    now = datetime.datetime.now().isoformat()
+    cache_entry['hash'] = new_hash
+    cache_entry['lastUsed'] = now
+    cache.add_or_update_entry(file_path, cache_entry)
+    cache.save()
+    return new_hash

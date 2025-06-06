@@ -93,6 +93,48 @@ class SageCache:
         if self.info:
             print(f"Saving info cache to {self.info_path}")
             _save_json(self.info_path, self.info, "info cache")
+    
+    def add_entry(self, file_path: str, file_hash: str):
+        self.hash[file_path] = file_hash
+        if file_hash not in self.info:
+            self.info[file_hash] = {
+                "hash": file_hash,
+                "lastUsed": "",
+                "civitai": False,
+                "filePath": file_path
+            }
+        self.save()
+
+    def add_or_update_entry(self, file_path: str, info_dict: dict):
+        """
+        Add or update a cache entry for a given file path.
+        Ensures both hash and info are updated together.
+        """
+        file_hash = info_dict.get("hash")
+        if not file_hash:
+            raise ValueError("info_dict must contain a 'hash' key")
+        self.hash[file_path] = file_hash
+        self.info[file_hash] = info_dict
+
+    def remove_entry(self, file_path: str):
+        """
+        Remove a cache entry by file path.
+        Removes both hash and info if no other file uses the same hash.
+        """
+        file_hash = self.hash.get(file_path)
+        if file_hash:
+            del self.hash[file_path]
+            # Only remove info if no other file_path uses this hash
+            if file_hash not in self.hash.values():
+                self.info.pop(file_hash, None)
+
+    def update_last_used(self, file_path: str, dt: str):
+        """
+        Update the 'lastUsed' field for a given file path.
+        """
+        file_hash = self.hash.get(file_path)
+        if file_hash and file_hash in self.info:
+            self.info[file_hash]['lastUsed'] = dt
 
 
 # Global cache instance
