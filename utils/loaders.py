@@ -13,7 +13,7 @@ def lora(model, clip, lora_name, strength_model, strength_clip):
         return model, clip
 
     lora_path = folder_paths.get_full_path_or_raise("loras", lora_name)
-    pull_metadata(lora_path, True)
+    pull_metadata(lora_path, timestamp = True)
 
     if lora_path in loaded_loras:
         the_lora = loaded_loras[lora_path]

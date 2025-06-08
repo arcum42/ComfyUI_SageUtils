@@ -92,7 +92,6 @@ def update_cache_from_civitai_json(file_path, json_data, timestamp=True):
         print("Updating timestamp.")
         cache.update_last_used_by_path(file_path)
 
-    cache.save()
     print("Successfully pulled metadata.")
 
 def update_cache_without_civitai_json(file_path, hash, timestamp=True):
@@ -103,6 +102,8 @@ def update_cache_without_civitai_json(file_path, hash, timestamp=True):
     cache.update_last_used_by_path(file_path)
 
 def add_file_to_cache(file_path, hash=None):
+    file_path = str(file_path)
+    print(f"Adding {file_path} to cache.")
     if hash is None:
         hash = get_file_sha256(file_path)
     
@@ -116,76 +117,91 @@ def add_file_to_cache(file_path, hash=None):
             'hash': hash,
             'lastUsed': datetime.datetime.now().isoformat()
         }
-    cache.save()
     
     print(f"Adding {file_path} to cache with hash {hash}.")
+    return hash
     
     
-def pull_metadata(file_path, timestamp = True, force = False):
+def pull_metadata(file_paths, timestamp = True, force_all = False, pbar = None):
     pull_json = True
-    metadata_days_recheck = 0
+    metadata_days_recheck = 7
     
     cache.load()
     
-    if file_path not in cache.hash:
-        add_file_to_cache(file_path)
-
-    file_cache = cache.by_path(file_path)
-    hash = cache.hash[file_path]
-
-    last_used_date = datetime.datetime.fromisoformat(file_cache['lastUsed']) if 'lastUsed' in file_cache else None
-
-    modified = get_file_modification_date(file_path)
-    # If file was modified after last used, force metadata pull
-    if last_used_date is not None and modified is not None and modified > last_used_date:
-        print(f"File was modified after last used. Pulling metadata.")
-        force = True
+    if isinstance(file_paths, str):
+        file_paths = [file_paths]
     
-    # Only skip pull if not forced and civitai is True and recently pulled
-    civitai_val = str(file_cache.get('civitai', '')).lower()
-    if not force and civitai_val == "true":
-        if days_since_last_used(file_path) <= metadata_days_recheck:
-            print(f"Pulled metadata within the last {metadata_days_recheck + 1} days. No pull needed.")
-            pull_json = False
+    if not file_paths:
+        print("No file paths provided.")
+        return
+    
+    for file_path in file_paths:
+        force = force_all
+        #print(f"Processing file: {file_path}")
+        #print(f"cache.hash: {cache.hash}")
+        hash = cache.hash.get(str(file_path), None)
+        #print(f"Current hash: {hash}")
+        if hash is None:
+            print(f"Hash not found in cache for {file_path}. Adding to cache.")
+            hash = add_file_to_cache(file_path)
 
-    # If force, recalculate hash before any API call
-    if force:
-        new_hash = get_file_sha256(file_path)
-        if new_hash != hash:
-            print(f"Hash mismatch. Pulling new hash.")
-            cache.hash[file_path] = new_hash
-            hash = new_hash
+        file_cache = cache.by_path(file_path)
 
-    if pull_json or force:
-        print(f"Currently pulling metadata for {file_path}.")
-        json = get_civitai_model_version_json_by_hash(hash)
+        last_used_date = datetime.datetime.fromisoformat(file_cache['lastUsed']) if 'lastUsed' in file_cache else None
 
-        if 'error' in json:
-            retried = False
-            # Try fallback with modelId if available
-            if 'modelId' in file_cache:
-                print(f"Using cached model id {file_cache.get('id', None)}")
-                json = get_civitai_model_version_json_by_id(file_cache['id'])
-                retried = True
-            else:
-                print(f"No cached model id.")
+        modified = get_file_modification_date(file_path)
+        # If file was modified after last used, force metadata pull
+        if last_used_date is not None and modified is not None and modified > last_used_date:
+            print(f"File was modified after last used. Pulling metadata.")
+            force = True
+        
+        # Only skip pull if not forced and civitai is True and recently pulled
+        civitai_val = str(file_cache.get('civitai', '')).lower()
+        if not force and civitai_val == "true":
+            if days_since_last_used(file_path) <= metadata_days_recheck:
+                print(f"Pulled metadata within the last {metadata_days_recheck} days. No pull needed.")
+                pull_json = False
+
+        # If force, recalculate hash before any API call
+        if force:
+            print(f"Force flag is set. Recalculating hash for {file_path}.")
+            new_hash = get_file_sha256(file_path)
+            if new_hash != hash:
+                print(f"Hash mismatch. Pulling new hash.")
+                cache.hash[file_path] = new_hash
+                hash = new_hash
+
+        if pull_json or force:
+            print(f"Currently pulling metadata for {file_path}.")
+            json = get_civitai_model_version_json_by_hash(hash)
 
             if 'error' in json:
-                if retried:
-                    print(f"Error: {json['error']}")
-                print(f"Unable to find on civitai.")
-                file_cache['civitai'] = file_cache.get('model', "False")
-        
-        if 'error' not in json:
-            update_cache_from_civitai_json(file_path, json, timestamp=timestamp)
+                retried = False
+                # Try fallback with modelId if available
+                if 'modelId' in file_cache:
+                    print(f"Using cached model id {file_cache.get('id', None)}")
+                    json = get_civitai_model_version_json_by_id(file_cache['id'])
+                    retried = True
+                else:
+                    print(f"No cached model id.")
 
-    if timestamp:
-        print("Updating timestamp.")
-        cache.update_last_used_by_path(file_path)
+                if 'error' in json:
+                    if retried:
+                        print(f"Error: {json['error']}")
+                    print(f"Unable to find on civitai.")
+                    file_cache['civitai'] = file_cache.get('model', "False")
+            
+            if 'error' not in json:
+                update_cache_from_civitai_json(file_path, json, timestamp=timestamp)
 
-    cache.hash[file_path] = hash
-    cache.data[file_path] = file_cache
-    cache.info[hash] = file_cache
+        if timestamp:
+            print("Updating timestamp.")
+            cache.update_last_used_by_path(file_path)
+
+        cache.hash[file_path] = hash
+        cache.info[hash] = file_cache
+        if pbar is not None:
+            pbar.update(1)
     cache.save()
 
 def lora_to_string(lora_name, model_weight, clip_weight):
@@ -220,11 +236,10 @@ def model_scan(the_path, force = False):
         model_list.extend(result)
 
     model_list = list(set(model_list))
-    print(f"There are {len(model_list)} files.")
+    model_list = [str(x) for x in model_list]
+    print(f"Scanning {len(model_list)} models for metadata.")
     pbar = comfy.utils.ProgressBar(len(model_list))
-    for the_model in model_list:
-        pbar.update(1)
-        pull_metadata(str(the_model), force=force, timestamp=False)
+    pull_metadata(model_list, force_all=force, timestamp=False, pbar=pbar)
 
 def get_recently_used_models(model_type):
     model_list = list()

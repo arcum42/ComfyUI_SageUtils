@@ -38,7 +38,7 @@ class Sage_CheckpointLoaderRecent(ComfyNodeABC):
 
     def load_checkpoint(self, ckpt_name) -> tuple:
         model_info = { "type": "CKPT", "path": folder_paths.get_full_path_or_raise("checkpoints", ckpt_name) }
-        pull_metadata(model_info["path"], True)
+        pull_metadata(model_info["path"], timestamp = True)
 
         model_info["hash"] = cache.hash[model_info["path"]]
 
@@ -70,7 +70,7 @@ class Sage_CheckpointLoaderSimple(CheckpointLoaderSimple):
     DESCRIPTION = "Loads a diffusion model checkpoint. Also returns a model_info output to pass to the construct metadata node, and the hash. (And hashes and pulls civitai info for the file.)"
     def load_checkpoint(self, ckpt_name) -> tuple:
         model_info = { "type": "CKPT", "path": folder_paths.get_full_path_or_raise("checkpoints", ckpt_name) }
-        pull_metadata(model_info["path"], True)
+        pull_metadata(model_info["path"], timestamp = True)
 
         model_info["hash"] = cache.hash[model_info["path"]]
         model, clip, vae = loaders.checkpoint(model_info["path"])
@@ -99,7 +99,7 @@ class Sage_UNETLoader(UNETLoader):
             "path": folder_paths.get_full_path_or_raise("diffusion_models", unet_name)
         }
         print(f"Loading UNET from {model_info['path']} with dtype {weight_dtype}")
-        pull_metadata(model_info["path"], True)
+        pull_metadata(model_info["path"], timestamp = True)
         model_info["hash"] = cache.hash[model_info["path"]]
         return (loaders.unet(model_info["path"], weight_dtype), model_info)
 
@@ -123,7 +123,7 @@ class Sage_CheckpointSelector(ComfyNodeABC):
     DESCRIPTION = "Returns a model_info output to pass to the construct metadata node or a model info node. (And hashes and pulls civitai info for the file.)"
     def get_checkpoint_info(self, ckpt_name) -> tuple:
         model_info = { "type": "CKPT", "path": folder_paths.get_full_path_or_raise("checkpoints", ckpt_name) }
-        pull_metadata(model_info["path"], True)
+        pull_metadata(model_info["path"], timestamp = True)
         model_info["hash"] = cache.hash[model_info["path"]]
         return (model_info,)
 
@@ -267,11 +267,11 @@ class Sage_ModelReport(ComfyNodeABC):
             baseModel = cur.get('baseModel', None)
             if cur.get('model', {}).get('type', None) == "Checkpoint":
                 if baseModel not in sorted_models: sorted_models[baseModel] = []
-                sorted_models[baseModel].append(model_path)
+                sorted_models[baseModel].append(str(model_path))
 
             if cur.get('model', {}).get('type', None) == "LORA":
                 if baseModel not in sorted_loras: sorted_loras[baseModel] = []
-                sorted_loras[baseModel].append(model_path)
+                sorted_loras[baseModel].append(str(model_path))
 
         if sorted_models != {}: model_list = json.dumps(sorted_models, separators=(",", ":"), sort_keys=True, indent=4)
         if sorted_loras != {}: lora_list = json.dumps(sorted_loras, separators=(",", ":"), sort_keys=True, indent=4)

@@ -17,7 +17,7 @@ def get_civitai_model_version_json_by_hash(hash):
         print(f"Other error occurred: {err}")
         return {"error": "Other error occurred: " + str(err)}
     else:
-        print("Retrieved json from civitai.")
+        print("Retrieved model version json from civitai by hash.")
         return r.json()
 
     return r.json()
@@ -33,7 +33,7 @@ def get_civitai_model_version_json_by_id(the_id):
         print(f"Other error occurred: {err}")
         return {"error": "Other error occurred: " + str(err)}
     else:
-        print("Retrieved json from civitai.")
+        print("Retrieved model version json from civitai by version id.")
         return r.json()
 
     return r.json()
@@ -49,7 +49,7 @@ def get_civitai_model_json(modelId):
         print(f"Other error occurred: {err}")
         return {"error": "Other error occurred: " + str(err)}
     else:
-        print("Retrieved json from civitai.")
+        print("Retrieved model json from civitai by model id.")
         return r.json()
 
     return r.json()

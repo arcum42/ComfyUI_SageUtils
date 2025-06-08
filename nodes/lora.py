@@ -171,7 +171,7 @@ class Sage_CheckLorasForUpdates(ComfyNodeABC):
             if lora is not None:
                 print(f"Checking {lora[0]} for updates...")
                 lora_path = folder_paths.get_full_path_or_raise("loras", lora[0])
-                pull_metadata(lora_path, timestamp=False, force=force)
+                pull_metadata(lora_path, timestamp=False, force_all=force)
                 print(f"Update check complete for {lora[0]}")
                 
                 if "update_available" in cache.by_path(lora_path):

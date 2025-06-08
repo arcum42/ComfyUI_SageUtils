@@ -5,7 +5,7 @@ from .helpers import pull_metadata, clean_keywords
 def get_lora_keywords(lora_name):
     lora_path = folder_paths.get_full_path_or_raise("loras", lora_name)
     if cache.by_path(lora_path).get("trainedWords", None) is None:
-        pull_metadata(lora_path, True)
+        pull_metadata(lora_path, timestamp = True)
 
     return cache.by_path(lora_path).get("trainedWords", [])
 
