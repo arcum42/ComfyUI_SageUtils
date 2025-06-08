@@ -48,11 +48,11 @@ class ConfigManager:
     def load(self):
         configs = []
         for path in [self.user_file, self.user_override_file]:
-            print(f"Loading {self.config_name} from {path}")
             if path.is_file():
                 try:
                     with path.open(mode="r", errors='ignore', encoding='utf-8') as read_file:
                         configs.append(json.load(read_file))
+                        print(f"Loading {self.config_name} from {path}")
                 except Exception as e:
                     print(f"Unable to load {self.config_name} from {path}: {e}")
         if not configs:

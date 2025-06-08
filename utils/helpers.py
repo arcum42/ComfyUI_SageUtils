@@ -2,20 +2,13 @@
 
 import pathlib
 import hashlib
-import requests
-import time
 import datetime
 import numpy as np
 import torch
 import json
-from PIL import Image, ImageOps, ImageSequence
-from PIL.PngImagePlugin import PngInfo
-import io
-import base64
 
 import folder_paths
 import comfy.utils
-import node_helpers
 
 from .model_cache import cache
 from urllib.error import HTTPError
@@ -69,17 +62,51 @@ def get_file_modification_date(file_path):
         print(f"Error getting modification date for {file_path}: {e}")
         return datetime.datetime.now()
 
+# Called *after* verifying the json pulled successfully.
+# This function updates the cache with the information from the CivitAI json.
+def update_cache_from_civitai_json(file_path, json_data, timestamp=True):
+    the_files = json_data.get("files", [])
+    hashes = {}
 
-def pull_metadata(file_path, timestamp = True, force = False):
-    cache.load()
+    if len(the_files) > 0:
+        hashes = the_files[0].get("hashes", {})
+    update_available = True
+
+    if json_data.get("modelId", None) is not None:
+        latest_model = get_latest_model_version(json_data["modelId"])
+        if latest_model == json_data["id"]:
+            update_available = False
     
-    print(f"Pull metadata for {file_path}.")
-    hash = cache.hash.get(file_path, get_file_sha256(file_path))
+    file_cache = cache.by_path(file_path)
+    file_cache.update({
+        'civitai': "True",
+        'model': json_data.get("model", {}),
+        'name': json_data.get("name", ""),
+        'baseModel': json_data.get("baseModel", ""),
+        'id': json_data.get("id", ""),
+        'modelId': json_data.get("modelId", ""),
+        'update_available': update_available,
+        'trainedWords': json_data.get("trainedWords", []),
+        'downloadUrl': json_data.get("downloadUrl", ""),
+        'hashes': hashes
+    })
+    if timestamp:
+        print("Updating timestamp.")
+        cache.update_last_used_by_path(file_path)
 
-    pull_json = True
-    check_recent = False
-    metadata_days_recheck = 0
-    hash_recheck = 30
+    cache.save()
+    print("Successfully pulled metadata.")
+
+def update_cache_without_civitai_json(file_path, hash, timestamp=True):
+    file_cache = cache.by_path(file_path)
+    print(f"Unable to find on civitai.")
+    file_cache['civitai'] = file_cache.get('model', "False")
+    file_cache['hash'] = hash
+    cache.update_last_used_by_path(file_path)
+
+def add_file_to_cache(file_path, hash=None):
+    if hash is None:
+        hash = get_file_sha256(file_path)
     
     if file_path not in cache.hash:
         cache.hash[file_path] = hash
@@ -91,84 +118,72 @@ def pull_metadata(file_path, timestamp = True, force = False):
             'hash': hash,
             'lastUsed': datetime.datetime.now().isoformat()
         }
-        cache.save()
-        
-    file_cache = cache.by_path(file_path)
-    last_used_date = datetime.datetime.fromisoformat(file_cache['lastUsed']) if 'lastUsed' in file_cache else None
+    cache.save()
     
-    if last_used_date is not None:
-        if get_file_modification_date(file_path) is not None:
-            if get_file_modification_date(file_path) > last_used_date:
-                print(f"File was modified after last used. Pulling metadata.")
-                check_recent = True
-                force = True
-        
-    if not check_recent and 'civitai' in file_cache and file_cache['civitai'] == "True":
+    print(f"Adding {file_path} to cache with hash {hash}.")
+    
+    
+def pull_metadata(file_path, timestamp = True, force = False):
+    pull_json = True
+    metadata_days_recheck = 0
+    
+    cache.load()
+    
+    if file_path not in cache.hash:
+        add_file_to_cache(file_path)
+
+    file_cache = cache.by_path(file_path)
+    hash = cache.hash[file_path]
+
+    last_used_date = datetime.datetime.fromisoformat(file_cache['lastUsed']) if 'lastUsed' in file_cache else None
+
+    modified = get_file_modification_date(file_path)
+    # If file was modified after last used, force metadata pull
+    if last_used_date is not None and modified is not None and modified > last_used_date:
+        print(f"File was modified after last used. Pulling metadata.")
+        force = True
+    
+    # Only skip pull if not forced and civitai is True and recently pulled
+    civitai_val = str(file_cache.get('civitai', '')).lower()
+    if not force and civitai_val == "true":
         if days_since_last_used(file_path) <= metadata_days_recheck:
-            print(f"Pulled earlier today. No pull needed.")
+            print(f"Pulled metadata within the last {metadata_days_recheck + 1} days. No pull needed.")
             pull_json = False
+
+    # If force, recalculate hash before any API call
+    if force:
+        new_hash = get_file_sha256(file_path)
+        if new_hash != hash:
+            print(f"Hash mismatch. Pulling new hash.")
+            cache.hash[file_path] = new_hash
+            hash = new_hash
 
     if pull_json or force:
         print(f"Currently pulling metadata for {file_path}.")
         json = get_civitai_model_version_json_by_hash(hash)
 
-        if 'error' in json or force:
-            if (days_since_last_used(file_path) <= hash_recheck) or force:
-                print(f"Spot checking hash.")
-                new_hash = get_file_sha256(file_path)
-
-                if new_hash != hash:
-                    print(f"Hash mismatch. Pulling new hash.")
-                    cache.hash[file_path] = new_hash
-                    json = get_civitai_model_version_json_by_hash(new_hash)
-
-            if 'error' in json and 'modelId' in file_cache:
-                print(f"Using cached model id {file_cache['id']}")
+        if 'error' in json:
+            retried = False
+            # Try fallback with modelId if available
+            if 'modelId' in file_cache:
+                print(f"Using cached model id {file_cache.get('id', None)}")
                 json = get_civitai_model_version_json_by_id(file_cache['id'])
+                retried = True
             else:
                 print(f"No cached model id.")
 
             if 'error' in json:
-                print(f"Error: {json['error']}")
+                if retried:
+                    print(f"Error: {json['error']}")
                 print(f"Unable to find on civitai.")
                 file_cache['civitai'] = file_cache.get('model', "False")
         
         if 'error' not in json:
-            the_files = json.get("files", [])
-            
-            hashes = {}
-            if len(the_files) > 0:
-                hashes = the_files[0].get("hashes", {})
-            
-            update_available = True
-            
-            if json.get("modelId", None) is not None:
-                latest_model = get_latest_model_version(json["modelId"])
-                if latest_model == json["id"]:
-                    update_available = False
-
-            file_cache.update({
-                'civitai': "True",
-                'model': json.get("model", {}),
-                'name': json.get("name", ""),
-                'baseModel': json.get("baseModel", ""),
-                'id': json.get("id", ""),
-                'modelId': json.get("modelId", ""),
-                'update_available': update_available,
-                'trainedWords': json.get("trainedWords", []),
-                'downloadUrl': json.get("downloadUrl", ""),
-                'hashes': hashes
-            })
-            print("Successfully pulled metadata.")
-        else:
-            print(f"Error pulling metadata: {json['error']}")
-            file_cache['civitai'] = "False"
-            file_cache['update_available'] = False
-            file_cache['hash'] = hash
+            update_cache_from_civitai_json(file_path, json, timestamp=timestamp)
 
     if timestamp:
         print("Updating timestamp.")
-        file_cache['lastUsed'] = datetime.datetime.now().isoformat()
+        cache.update_last_used_by_path(file_path)
 
     cache.hash[file_path] = hash
     cache.data[file_path] = file_cache
@@ -266,30 +281,3 @@ def condition_text(clip, text = None):
         return [[torch.zeros_like(cond), output]]
 
     return [[cond, output]]
-
-def get_or_update_model_hash(file_path):
-    """
-    Return the cached hash for file_path if lastUsed is newer than file mtime, otherwise recalculate hash and update cache.
-    """
-    file_path = str(file_path)
-    file_mtime = get_file_modification_date(file_path)
-    cache_entry = cache.by_path(file_path)
-    last_used = cache_entry.get('lastUsed')
-    cached_hash = cache_entry.get('hash')
-
-    if last_used:
-        try:
-            last_used_dt = datetime.datetime.fromisoformat(last_used)
-            if last_used_dt >= file_mtime and cached_hash:
-                return cached_hash  # Use cached hash
-        except Exception as e:
-            print(f"Error parsing lastUsed: {e}")
-
-    # File changed or never used, recalculate hash
-    new_hash = get_file_sha256(file_path)
-    now = datetime.datetime.now().isoformat()
-    cache_entry['hash'] = new_hash
-    cache_entry['lastUsed'] = now
-    cache.add_or_update_entry(file_path, cache_entry)
-    cache.save()
-    return new_hash
