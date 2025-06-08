@@ -126,9 +126,42 @@ class SageCache:
                     pass
         print(f"Pruned old backups with prefix: {prefix}")
 
+    def _atomic_write_json(self, path, data):
+        """Write JSON data to a file atomically."""
+        import tempfile
+        import os
+        temp_dir = path.parent
+        with tempfile.NamedTemporaryFile('w', dir=temp_dir, delete=False, encoding='utf-8') as tf:
+            json.dump(data, tf, separators=(",", ":"), sort_keys=True, indent=4)
+            tf.flush()
+            os.fsync(tf.fileno())
+            tempname = tf.name
+        os.replace(tempname, path)
+
+    def _save_json(self, path, data, label):
+        """Save data to a JSON file atomically, backing up and pruning old backups on error."""
+        try:
+            self._atomic_write_json(path, data)
+        except Exception as e:
+            print(f"Unable to save {label} to {path}: {e}")
+            # If file exists, back it up with an error suffix
+            current_date = datetime.datetime.now().isoformat()
+            if path.is_file():
+                error_prefix = f"{path.stem}-save-error"
+                error_backup_path = sage_backup_path / f"{error_prefix}-{current_date}.json"
+                try:
+                    with path.open("r") as src_file, error_backup_path.open("w") as dst_file:
+                        dst_file.write(src_file.read())
+                    print(f"Backed up problematic file to {error_backup_path}")
+                    self.prune_old_backups(error_prefix)
+                except Exception as backup_e:
+                    print(f"Unable to backup error file {path} to {error_backup_path}: {backup_e}")
+
     def backup_json(self, backup_prefix, data, current_date):
-        """Backup data to a JSON file, pruning old backups. Skip if identical backup already exists."""
+        """Backup data to a JSON file atomically, pruning old backups. Skip if identical backup already exists."""
         import hashlib
+        import tempfile
+        import os
         # Serialize data to JSON and hash it
         data_json = json.dumps(data, separators=(",", ":"), sort_keys=True, indent=4)
         data_hash = hashlib.sha256(data_json.encode("utf-8")).hexdigest()
@@ -144,11 +177,16 @@ class SageCache:
                         return
                 except Exception:
                     continue
-        # No identical backup found, proceed to save
+        # No identical backup found, proceed to save atomically
         backup_path = sage_backup_path / f"{backup_prefix}-{current_date}.json"
         try:
-            with backup_path.open("w") as output_file:
-                output_file.write(data_json)
+            temp_dir = backup_path.parent
+            with tempfile.NamedTemporaryFile('w', dir=temp_dir, delete=False, encoding='utf-8') as tf:
+                tf.write(data_json)
+                tf.flush()
+                os.fsync(tf.fileno())
+                tempname = tf.name
+            os.replace(tempname, backup_path)
             self.prune_old_backups(backup_prefix)
         except Exception as e:
             print(f"Unable to backup {backup_prefix} to {backup_path}: {e}")
@@ -229,26 +267,6 @@ class SageCache:
                     self.data = {}
         except Exception as e:
             print(f"Unable to load cache: {e}")
-
-    def _save_json(self, path, data, label):
-        """Save data to a JSON file, backing up and pruning old backups on error."""
-        try:
-            with path.open("w") as output_file:
-                json.dump(data, output_file, separators=(",", ":"), sort_keys=True, indent=4)
-        except Exception as e:
-            print(f"Unable to save {label} to {path}: {e}")
-            # If file exists, back it up with an error suffix
-            current_date = datetime.datetime.now().isoformat()
-            if path.is_file():
-                error_prefix = f"{path.stem}-save-error"
-                error_backup_path = sage_backup_path / f"{error_prefix}-{current_date}.json"
-                try:
-                    with path.open("r") as src_file, error_backup_path.open("w") as dst_file:
-                        dst_file.write(src_file.read())
-                    print(f"Backed up problematic file to {error_backup_path}")
-                    self.prune_old_backups(error_prefix)
-                except Exception as backup_e:
-                    print(f"Unable to backup error file {path} to {error_backup_path}: {backup_e}")
 
     def save(self):
         """Save cache to disk."""
