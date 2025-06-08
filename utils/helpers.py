@@ -78,6 +78,7 @@ def update_cache_from_civitai_json(file_path, json_data, timestamp=True):
     file_cache = cache.by_path(file_path)
     file_cache.update({
         'civitai': "True",
+        'civitai_failed_count': 0,
         'model': json_data.get("model", {}),
         'name': json_data.get("name", ""),
         'baseModel': json_data.get("baseModel", ""),
@@ -193,6 +194,10 @@ def pull_metadata(file_paths, timestamp = True, force_all = False, pbar = None):
             
             if 'error' not in json:
                 update_cache_from_civitai_json(file_path, json, timestamp=timestamp)
+            else:
+                retries = file_cache.get('civitai_failed_count', 0)
+                retries += 1
+                file_cache['civitai_failed_count'] = retries
 
         if timestamp:
             print("Updating timestamp.")
