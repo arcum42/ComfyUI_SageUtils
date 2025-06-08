@@ -65,7 +65,17 @@ app.registerExtension({
               const parent_link = fromNode.outputs[link_info.origin_slot];
               if (parent_link) {
                 node_slot.type = parent_link.type;
-                node_slot.name = `${_PREFIX}_`;
+                // Set the slot name with the correct count suffix immediately
+                // Count how many slots already have the _PREFIX as their base name
+                const baseName = _PREFIX;
+                const realbaseName = node_slot.name.split("_")[0] || baseName;
+                let count = 1;
+                for (const slot of this.inputs) {
+                  if (slot !== node_slot && slot.name.startsWith(baseName + "_")) {
+                    count++;
+                  }
+                }
+                node_slot.name = `${realbaseName}_${count}`;
               }
             }
           } else if (event === TypeSlotEvent.Disconnect) {
@@ -87,7 +97,7 @@ app.registerExtension({
             let count = (slot_tracker[name] || 0) + 1;
             slot_tracker[name] = count;
 
-            // Update the slot name with the count if greater than 1
+            // Always update the slot name with the count, even for the first
             slot.name = `${name}_${count}`;
           }
 
@@ -122,24 +132,16 @@ app.registerExtension({
     if (nodeData.name == _ID + "ViewText" || nodeData.name == _ID + "ViewAnything") {
       const onNodeCreated = nodeType.prototype.onNodeCreated;
       nodeType.prototype.onNodeCreated = function () {
-        onNodeCreated ? onNodeCreated.apply(this, []) : undefined;
+        if (onNodeCreated) onNodeCreated.apply(this, []);
         // Not really doing anything on creation, but passing on the message.
-        //console.log("ViewText node created!");
       };
 
-      const onExecuted = nodeType.prototype.onExecuted;
-      nodeType.prototype.onExecuted = function (message) {
-        //console.log("ViewText node executed!");
-        console.log(message["text"]);
-        onExecuted?.apply(this, arguments);
-
-        // Find the output.
-        var w = this.widgets?.find((w) => w.name === "output");
-
-        // If there is no output, create it.
+      // Helper to find or create the output widget and update its value
+      function updateOutputWidget(node, message) {
+        let w = node.widgets?.find((w) => w.name === "output");
         if (w === undefined) {
           w = ComfyWidgets["STRING"](
-            this,
+            node,
             "output",
             ["STRING", { multiline: true }],
             app
@@ -148,9 +150,22 @@ app.registerExtension({
           w.inputEl.style.opacity = 0.6;
           w.inputEl.style.fontSize = "9pt";
         }
+        // Defensive: handle message["text"] as array or string
+        if (Array.isArray(message["text"])) {
+          w.value = message["text"].join("");
+        } else if (typeof message["text"] === "string") {
+          w.value = message["text"];
+        } else {
+          w.value = String(message["text"] ?? "");
+        }
+      }
 
-        // Put the message that was passed to the node in the value of output, so it is printed on the node.
-        w.value = message["text"].join("");
+      const onExecuted = nodeType.prototype.onExecuted;
+      nodeType.prototype.onExecuted = function (message) {
+        //console.log("ViewText node executed!");
+        console.log(message["text"]);
+        if (onExecuted) onExecuted.apply(this, arguments);
+        updateOutputWidget(this, message);
         this.onResize?.(this.size);
       };
     }

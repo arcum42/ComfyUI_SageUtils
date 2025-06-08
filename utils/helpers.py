@@ -3,7 +3,6 @@
 import pathlib
 import hashlib
 import datetime
-import numpy as np
 import torch
 import json
 
@@ -11,7 +10,6 @@ import folder_paths
 import comfy.utils
 
 from .model_cache import cache
-from urllib.error import HTTPError
 from .helpers_civitai import *
 
 def name_from_path(path):
