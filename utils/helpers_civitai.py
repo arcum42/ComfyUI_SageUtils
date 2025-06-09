@@ -70,7 +70,8 @@ def get_model_info(lora_path, weight = None):
 def get_latest_model_version(modelId):
     json = get_civitai_model_json(modelId)
     if 'error' in json:
-        return json['error']
+        print(f"Error retrieving model versions: {json['error']}")
+        return None
 
     latest_model = None
     model_date = None

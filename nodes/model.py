@@ -213,7 +213,11 @@ class Sage_CacheMaintenance(ComfyNodeABC):
 
         for model_path, model_hash in cache.hash.items():
             model_info = cache.by_path(model_path)
-            in_civitai = model_info['civitai']
+            in_civitai = False
+            try:
+                in_civitai = str_to_bool(model_info['civitai'])
+            except:
+                in_civitai = False
             if in_civitai != True:
                 not_on_civitai.append(model_path)
 

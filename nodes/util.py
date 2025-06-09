@@ -63,6 +63,8 @@ class Sage_ModelInfo(ComfyNodeABC):
             if "modelId" in json_data:
                 url = f"https://civitai.com/models/{json_data['modelId']}?modelVersionId={json_data['id']}"
                 latest_version = get_latest_model_version(json_data["modelId"])
+                if latest_version is None:
+                    latest_version = json_data["id"]
                 latest_url = f"https://civitai.com/models/{json_data['modelId']}?modelVersionId={latest_version}"
                 image_urls = pull_lora_image_urls(model_info["hash"], True)
                 image = url_to_torch_image(image_urls[0])
@@ -109,6 +111,8 @@ class Sage_LastLoraInfo(ComfyNodeABC):
             if "modelId" in json_data:
                 url = f"https://civitai.com/models/{json_data['modelId']}?modelVersionId={json_data['id']}"
                 latest_version = get_latest_model_version(json_data["modelId"])
+                if latest_version is None:
+                    latest_version = json_data["id"]
                 latest_url = f"https://civitai.com/models/{json_data['modelId']}?modelVersionId={latest_version}"
                 image_urls = pull_lora_image_urls(hash, True)
                 image = url_to_torch_image(image_urls[0])

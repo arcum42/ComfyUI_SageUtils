@@ -12,6 +12,28 @@ import hashlib
 import folder_paths
 import datetime
 
+def str_to_bool(value):
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        value = value.lower()
+        if value in ['true', '1', 'yes']:
+            return True
+        elif value in ['false', '0', 'no']:
+            return False
+    raise ValueError(f"Cannot convert {value} to boolean.")
+
+def bool_to_str(value):
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    elif isinstance(value, str):
+        value = value.lower()
+        if value in ['true', '1', 'yes']:
+            return "true"
+        elif value in ['false', '0', 'no']:
+            return "false"
+    raise ValueError(f"Cannot convert {value} to string representation of boolean.")
+
 users_path = pathlib.Path(folder_paths.get_user_directory())
 sage_users_path = users_path / "default" / "SageUtils"
 sage_backup_path = sage_users_path / "backup"
@@ -58,12 +80,22 @@ class SageCache:
             if current_hash:
                 self.hash[key] = current_hash
                 # Add the ones not on civitai first
-                if self.data[key].get("civitai", False) == False:
+                in_civitai = False
+                try:
+                    in_civitai = str_to_bool(self.data[key].get("civitai", False))
+                except:
+                    in_civitai = False
+                if in_civitai == False:
                     self.info[current_hash] = self.data[key]
         for key in self.data:
             current_hash = self.data[key].get("hash", "")
             # Add the ones on civitai, overwriting the previous ones
-            if current_hash and self.data[key].get("civitai", False):
+            in_civitai = False
+            try:
+                in_civitai = str_to_bool(self.data[key].get("civitai", False))
+            except:
+                in_civitai = False
+            if current_hash and in_civitai:
                 self.info[current_hash] = self.data[key]
 
     def prune_old_backups(self, prefix, min_count=7, min_days=7):
@@ -288,7 +320,7 @@ class SageCache:
             self.info[file_hash] = {
                 "hash": file_hash,
                 "lastUsed": "",
-                "civitai": False,
+                "civitai": "False",
                 "filePath": file_path
             }
         self.save()

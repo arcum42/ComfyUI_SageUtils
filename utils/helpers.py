@@ -12,6 +12,28 @@ import comfy.utils
 from .model_cache import cache
 from .helpers_civitai import *
 
+def str_to_bool(value):
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        value = value.lower()
+        if value in ['true', '1', 'yes']:
+            return True
+        elif value in ['false', '0', 'no']:
+            return False
+    raise ValueError(f"Cannot convert {value} to boolean.")
+
+def bool_to_str(value):
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    elif isinstance(value, str):
+        value = value.lower()
+        if value in ['true', '1', 'yes']:
+            return "true"
+        elif value in ['false', '0', 'no']:
+            return "false"
+    raise ValueError(f"Cannot convert {value} to string representation of boolean.")
+
 def name_from_path(path):
     return pathlib.Path(path).name
 
@@ -70,11 +92,15 @@ def update_cache_from_civitai_json(file_path, json_data, timestamp=True):
         hashes = the_files[0].get("hashes", {})
     update_available = True
 
+    latest_model = None
     if json_data.get("modelId", None) is not None:
         latest_model = get_latest_model_version(json_data["modelId"])
-        if latest_model == json_data["id"]:
+        if latest_model == json_data["id"] or latest_model is None:
             update_available = False
     
+    if latest_model is None:
+        latest_model = ""
+
     file_cache = cache.by_path(file_path)
     file_cache.update({
         'civitai': "True",
@@ -85,6 +111,7 @@ def update_cache_from_civitai_json(file_path, json_data, timestamp=True):
         'id': json_data.get("id", ""),
         'modelId': json_data.get("modelId", ""),
         'update_available': update_available,
+        'update_version_id': latest_model,
         'trainedWords': json_data.get("trainedWords", []),
         'downloadUrl': json_data.get("downloadUrl", ""),
         'hashes': hashes
@@ -98,7 +125,8 @@ def update_cache_from_civitai_json(file_path, json_data, timestamp=True):
 def update_cache_without_civitai_json(file_path, hash, timestamp=True):
     file_cache = cache.by_path(file_path)
     print(f"Unable to find on civitai.")
-    file_cache['civitai'] = file_cache.get('model', "False")
+    file_cache['civitai'] = "False"
+    file_cache['civitai_failed_count'] = file_cache.get('civitai_failed_count', 0) + 1
     file_cache['hash'] = hash
     cache.update_last_used_by_path(file_path)
 
@@ -115,14 +143,14 @@ def add_file_to_cache(file_path, hash=None):
         cache.info[hash] = {
             'civitai': "False",
             'update_available': False,
+            'update_version_id': "",
             'hash': hash,
             'lastUsed': datetime.datetime.now().isoformat()
         }
     
     print(f"Adding {file_path} to cache with hash {hash}.")
     return hash
-    
-    
+ 
 def pull_metadata(file_paths, timestamp = True, force_all = False, pbar = None):
     pull_json = True
     metadata_days_recheck = 7
@@ -157,8 +185,13 @@ def pull_metadata(file_paths, timestamp = True, force_all = False, pbar = None):
             force = True
         
         # Only skip pull if not forced and civitai is True and recently pulled
-        civitai_val = str(file_cache.get('civitai', '')).lower()
-        if not force and civitai_val == "true":
+        civitai_val = False
+        try:
+            civitai_val = str_to_bool(file_cache.get('civitai', False))
+        except:
+            civitai_val = False
+
+        if not force and civitai_val == True:
             if days_since_last_used(file_path) <= metadata_days_recheck:
                 print(f"Pulled metadata within the last {metadata_days_recheck} days. No pull needed.")
                 pull_json = False
@@ -190,7 +223,9 @@ def pull_metadata(file_paths, timestamp = True, force_all = False, pbar = None):
                     if retried:
                         print(f"Error: {json['error']}")
                     print(f"Unable to find on civitai.")
-                    file_cache['civitai'] = file_cache.get('model', "False")
+                    file_cache['civitai'] = "False"
+                    file_cache['civitai_failed_count'] = file_cache.get('civitai_failed_count', 0) + 1
+                    update_cache_without_civitai_json(file_path, hash, timestamp=timestamp)
             
             if 'error' not in json:
                 update_cache_from_civitai_json(file_path, json, timestamp=timestamp)
