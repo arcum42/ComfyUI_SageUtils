@@ -1,135 +1,134 @@
-// Main javascript file for this node set.
-
-// https://github.com/chrisgoringe/Comfy-Custom-Node-How-To/ is incredibly useful.
-
-// https://github.com/chrisgoringe/Comfy-Custom-Node-How-To/wiki/ui_1_starting
-// https://github.com/chrisgoringe/Comfy-Custom-Node-How-To/wiki/remove_or_add_widget
-
-
+// Main JavaScript file for Sage Utils custom nodes.
+// For ComfyUI custom node development, see:
+//   https://github.com/chrisgoringe/Comfy-Custom-Node-How-To/
+//   https://github.com/chrisgoringe/Comfy-Custom-Node-How-To/wiki/ui_1_starting
+//   https://github.com/chrisgoringe/Comfy-Custom-Node-How-To/wiki/remove_or_add_widget
 
 import { app } from "../../../scripts/app.js";
 import { ComfyWidgets } from "../../../scripts/widgets.js";
 import { api } from "../../scripts/api.js";
 
-const TypeSlot = {
+const TypeSlot = Object.freeze({
   Input: 1,
   Output: 2,
-};
+});
 
-const TypeSlotEvent = {
+const TypeSlotEvent = Object.freeze({
   Connect: true,
   Disconnect: false,
-};
+});
 
 const _ID = "Sage_";
 const _PREFIX = "model_info";
 const _TYPE = "MODEL_INFO";
 
+/**
+ * Sets up the MultiModelPicker node with dynamic input slots and proper naming.
+ * @param {Object} nodeType - The node type prototype.
+ * @param {Object} nodeData - The node data.
+ * @param {Object} app - The app instance.
+ */
 function setupMultiModelPickerNode(nodeType, nodeData, app) {
   const onNodeCreated = nodeType.prototype.onNodeCreated;
   nodeType.prototype.onNodeCreated = async function () {
     const me = onNodeCreated?.apply(this);
-    // start with a new dynamic input
+    // Add a new dynamic input slot
     this.addInput(_PREFIX, _TYPE);
-    // Ensure the new slot has proper appearance
+    // Set appearance for the new slot
     const slot = this.inputs[this.inputs.length - 1];
-    if (slot) {
-      slot.color_off = "#666";
-    }
+    if (slot) slot.color_off = "#666";
     return me;
   };
 
   const onConnectionsChange = nodeType.prototype.onConnectionsChange;
   nodeType.prototype.onConnectionsChange = function (slotType, slot_idx, event, link_info, node_slot) {
     const me = onConnectionsChange?.apply(this, arguments);
+    if (slotType !== TypeSlot.Input) return me;
 
-    if (slotType === TypeSlot.Input) {
-      if (link_info && event === TypeSlotEvent.Connect) {
-        // get the parent (left side node) from the link
-        const fromNode = this.graph._nodes.find(
-          (otherNode) => otherNode.id == link_info.origin_id
-        );
-
-        if (fromNode) {
-          // make sure there is a parent for the link
-          const parent_link = fromNode.outputs[link_info.origin_slot];
-          if (parent_link) {
-            node_slot.type = parent_link.type;
-            // Set the slot name with the correct count suffix immediately
-            // Count how many slots already have the _PREFIX as their base name
-            const baseName = _PREFIX;
-            const realbaseName = node_slot.name.split("_")[0] || baseName;
-            let count = 1;
-            for (const slot of this.inputs) {
-              if (slot !== node_slot && slot.name.startsWith(baseName + "_")) {
-                count++;
-              }
+    if (link_info && event === TypeSlotEvent.Connect) {
+      // Get the parent (left side node) from the link
+      const fromNode = this.graph._nodes.find(
+        (otherNode) => otherNode.id == link_info.origin_id
+      );
+      if (fromNode) {
+        const parent_link = fromNode.outputs[link_info.origin_slot];
+        if (parent_link) {
+          node_slot.type = parent_link.type;
+          // Set the slot name with the correct count suffix immediately
+          const baseName = _PREFIX;
+          const realbaseName = node_slot.name.split("_")[0] || baseName;
+          let count = 1;
+          for (const slot of this.inputs) {
+            if (slot !== node_slot && slot.name.startsWith(baseName + "_")) {
+              count++;
             }
-            node_slot.name = `${realbaseName}_${count}`;
           }
-        }
-      } else if (event === TypeSlotEvent.Disconnect) {
-        this.removeInput(slot_idx);
-      }
-
-      // Track each slot name so we can index the uniques
-      let idx = 0;
-      let slot_tracker = {};
-      for (const slot of this.inputs) {
-        if (slot.link === null) {
-          this.removeInput(idx);
-          continue;
-        }
-        idx += 1;
-        const name = slot.name.split("_")[0];
-
-        // Correctly increment the count in slot_tracker
-        let count = (slot_tracker[name] || 0) + 1;
-        slot_tracker[name] = count;
-
-        // Always update the slot name with the count, even for the first
-        slot.name = `${name}_${count}`;
-      }
-
-      // check that the last slot is a dynamic entry....
-      let last = this.inputs[this.inputs.length - 1];
-      if (last === undefined || last.name != _PREFIX || last.type != _TYPE) {
-        this.addInput(_PREFIX, _TYPE);
-        // Set the unconnected slot to appear gray
-        last = this.inputs[this.inputs.length - 1];
-        if (last) {
-          last.color_off = "#666";
+          node_slot.name = `${realbaseName}_${count}`;
         }
       }
-
-      var w = this.widgets?.find((w) => w.name === "index");
-      if (w !== undefined) {
-        // Update the index widget to reflect the number of inputs
-        w.options.max = this.inputs.length - 1; // -1 because the last one is dynamic
-        if ((w.value > w.options.max) || (w.value < 1)) {
-          w.value = w.options.max;
-        }
-        w.onResize?.(w.size);
-      }
-
-      // force the node to resize itself for the new/deleted connections
-      this?.graph?.setDirtyCanvas(true);
-      return me;
+    } else if (event === TypeSlotEvent.Disconnect) {
+      this.removeInput(slot_idx);
     }
+
+    // Track each slot name so we can index the uniques
+    let idx = 0;
+    const slot_tracker = {};
+    for (const slot of this.inputs) {
+      if (slot.link === null) {
+        this.removeInput(idx);
+        continue;
+      }
+      idx += 1;
+      const name = slot.name.split("_")[0];
+      slot_tracker[name] = (slot_tracker[name] || 0) + 1;
+      slot.name = `${name}_${slot_tracker[name]}`;
+    }
+
+    // Ensure the last slot is a dynamic entry
+    let last = this.inputs[this.inputs.length - 1];
+    if (!last || last.name !== _PREFIX || last.type !== _TYPE) {
+      this.addInput(_PREFIX, _TYPE);
+      last = this.inputs[this.inputs.length - 1];
+      if (last) last.color_off = "#666";
+    }
+
+    // Update the index widget to reflect the number of inputs
+    const w = this.widgets?.find((w) => w.name === "index");
+    if (w) {
+      w.options.max = this.inputs.length - 1; // -1 because the last one is dynamic
+      if (w.value > w.options.max || w.value < 1) {
+        w.value = w.options.max;
+      }
+      w.onResize?.(w.size);
+    }
+
+    // Force the node to resize itself for the new/deleted connections
+    this?.graph?.setDirtyCanvas(true);
+    return me;
   };
 }
 
+/**
+ * Sets up a node to view text or any output, updating a read-only widget.
+ * @param {Object} nodeType - The node type prototype.
+ * @param {Object} nodeData - The node data.
+ * @param {Object} app - The app instance.
+ */
 function setupViewTextOrAnythingNode(nodeType, nodeData, app) {
   const onNodeCreated = nodeType.prototype.onNodeCreated;
   nodeType.prototype.onNodeCreated = function () {
     if (onNodeCreated) onNodeCreated.apply(this, []);
-    // Not really doing anything on creation, but passing on the message.
+    // No additional setup needed on creation
   };
 
-  // Helper to find or create the output widget and update its value
+  /**
+   * Helper to find or create the output widget and update its value.
+   * @param {Object} node - The node instance.
+   * @param {Object} message - The message object containing text.
+   */
   function updateOutputWidget(node, message) {
     let w = node.widgets?.find((w) => w.name === "output");
-    if (w === undefined) {
+    if (!w) {
       w = ComfyWidgets["STRING"](
         node,
         "output",
@@ -152,7 +151,7 @@ function setupViewTextOrAnythingNode(nodeType, nodeData, app) {
 
   const onExecuted = nodeType.prototype.onExecuted;
   nodeType.prototype.onExecuted = function (message) {
-    //console.log("ViewText node executed!");
+    // Log output for debugging
     console.log(message["text"]);
     if (onExecuted) onExecuted.apply(this, arguments);
     updateOutputWidget(this, message);
@@ -166,15 +165,12 @@ app.registerExtension({
     console.log("Sage Utils loaded.");
   },
   async beforeRegisterNodeDef(nodeType, nodeData, app) {
-    if (!nodeData.name.startsWith(_ID)) {
-      return;
-    }
-
+    if (!nodeData.name.startsWith(_ID)) return;
     if (nodeData.name === _ID + "MultiModelPicker") {
       setupMultiModelPickerNode(nodeType, nodeData, app);
       return;
     }
-    if (nodeData.name == _ID + "ViewText" || nodeData.name == _ID + "ViewAnything") {
+    if (nodeData.name === _ID + "ViewText" || nodeData.name === _ID + "ViewAnything") {
       setupViewTextOrAnythingNode(nodeType, nodeData, app);
     }
   },
