@@ -15,40 +15,79 @@ These instructions define coding standards, directory structure, and domain know
 - `pyproject.toml`: Defines the custom node set for ComfyUI's registry. **Update when releasing a new version.**
 - `README.md`: Project information. **Update with new features or changes.**
 - `js/`: JavaScript files for frontend integration.
-- `example_workflows/`: Example workflow files and images.
+- `example_workflows/`: Example workflow files and images. For each example, there should be a json file with the actual workflow and a jpg file with a thumbnail image.
 
 ## Coding Standards
-### Naming
+
+### Python Coding Standards
+#### Naming
 - Use `snake_case` for function and variable names.
 - Use `PascalCase` for class names.
 - Use `ALL_CAPS` for constants and mapping names.
 
-### Formatting
+#### Formatting
 - Use four spaces for indentation.
 - Use blank lines to separate class and function definitions.
 - Use f-strings for string formatting.
 
-### Structure
+#### Structure
 - Group related node classes in the appropriate module (e.g., model nodes in `nodes/model.py`).
 - Place all node class definitions in `comfyui_sageutils.nodes`.
 - Place utility/helper functions in `comfyui_sageutils.utils`.
 
-### Documentation
+#### Documentation
 - Each node class should have a docstring describing its purpose and inputs/outputs.
 
-### Typing and Error Handling
+#### Typing and Error Handling
 - Use type hints and return type annotations where possible.
 - Use try/except blocks for error handling, especially around I/O and network operations.
 - Use tuple unpacking for return values when returning multiple outputs.
 
-### Coding Practices
+#### Coding Practices
 - Use list comprehensions for creating lists from iterables.
 - Use generator expressions for large datasets to save memory.
 - Use context managers (`with` statements) for file operations to ensure proper resource management.
-- Follow ideomatic Python practices, such as using `enumerate()` for loops when you need both index and value.
+- Follow idiomatic Python practices, such as using `enumerate()` for loops when you need both index and value.
 - The code should be modular and reusable, with functions and classes designed for single responsibilities.
 - The code should be clean and well optimized, avoiding unnecessary complexity.
 - The code should be pythonic, following the Zen of Python principles (PEP 20).
+
+### JavaScript Coding Standards
+#### Naming
+- Use `camelCase` for variable and function names.
+- Use `PascalCase` for class and constructor names.
+- Use `ALL_CAPS` (with underscores) for constants.
+
+#### Formatting
+- Use two spaces for indentation.
+- Use semicolons at the end of statements.
+- Use single quotes for strings unless double quotes are required.
+- Use blank lines to separate logical sections of code.
+- Keep lines under 100 characters when possible.
+
+#### Structure
+- Group related functions and classes together.
+- Place all frontend integration code in the `js/` directory.
+- Use ES6 modules (`import`/`export`) where possible.
+- Prefer arrow functions for short callbacks and anonymous functions.
+
+#### Documentation
+- Use JSDoc-style comments for functions, classes, and complex logic.
+- Each exported function or class should have a comment describing its purpose and usage.
+
+#### Typing and Error Handling
+- Use explicit checks for types and null/undefined where appropriate.
+- Use try/catch for error handling around asynchronous or risky operations.
+- Prefer `const` and `let` over `var` for variable declarations.
+
+#### Coding Practices
+- Use array methods (`map`, `filter`, `reduce`) for working with collections.
+- Avoid mutating function arguments.
+- Use template literals for string interpolation.
+- Keep functions small and focused on a single responsibility.
+- Avoid global variables; encapsulate logic in modules or classes.
+- Use strict equality (`===` and `!==`).
+- Write modular, reusable code.
 
 ### Character Encoding and Symbols
 - Only use standard ASCII characters in all code, comments, and documentation.
