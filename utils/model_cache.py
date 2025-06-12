@@ -101,8 +101,8 @@ class SageCache:
     def prune_old_backups(self, prefix, min_count=7, min_days=7):
         """Prune old backup files, keeping only the newest file for each unique hash, then enforce min_count and min_days."""
         print(f"Pruning old backups with prefix: {prefix}")
-        # Updated regex to allow optional microseconds in timestamp
-        pattern = re.compile(rf"{re.escape(prefix)}-(\d{{4}}-\d{{2}}-\d{{2}}T\d{{2}}:\d{{2}}:\d{{2}}(?:\.\d+)?).*\.json$")
+        # Updated regex to match new timestamp format with dashes instead of colons
+        pattern = re.compile(rf"{re.escape(prefix)}-(\d{{4}}-\d{{2}}-\d{{2}}T\d{{2}}-\d{{2}}-\d{{2}}).*\.json$")
         backups = []
         for f in sage_backup_path.iterdir():
             if f.is_file() and f.name.startswith(prefix) and f.suffix == ".json":
@@ -177,7 +177,7 @@ class SageCache:
         except Exception as e:
             print(f"Unable to save {label} to {path}: {e}")
             # If file exists, back it up with an error suffix
-            current_date = datetime.datetime.now().isoformat()
+            current_date = datetime.datetime.now().strftime("%Y-%m-%dT%H-%M-%S")
             if path.is_file():
                 error_prefix = f"{path.stem}-save-error"
                 error_backup_path = sage_backup_path / f"{error_prefix}-{current_date}.json"
@@ -210,7 +210,9 @@ class SageCache:
                 except Exception:
                     continue
         # No identical backup found, proceed to save atomically
-        backup_path = sage_backup_path / f"{backup_prefix}-{current_date}.json"
+        # Ensure current_date is safe for filenames
+        safe_date = current_date.replace(":", "-")
+        backup_path = sage_backup_path / f"{backup_prefix}-{safe_date}.json"
         try:
             temp_dir = backup_path.parent
             with tempfile.NamedTemporaryFile('w', dir=temp_dir, delete=False, encoding='utf-8') as tf:
@@ -233,8 +235,9 @@ class SageCache:
             print(f"Unable to load {label} from {path}: {e}")
             # If file exists, back it up with an error suffix
             if path.is_file():
+                safe_date = current_date.replace(":", "-")
                 error_prefix = f"{path.stem}-error"
-                error_backup_path = sage_backup_path / f"{error_prefix}-{current_date}.json"
+                error_backup_path = sage_backup_path / f"{error_prefix}-{safe_date}.json"
                 try:
                     with path.open("r") as src_file, error_backup_path.open("w") as dst_file:
                         dst_file.write(src_file.read())
@@ -246,7 +249,7 @@ class SageCache:
 
     def load(self):
         """Load cache from disk only if not already loaded or if file has changed."""
-        current_date = datetime.datetime.now().isoformat()
+        current_date = datetime.datetime.now().strftime("%Y-%m-%dT%H-%M-%S")
         # Track last modification times
         if not hasattr(self, 'hash_mtime'):
             self.hash_mtime = None
@@ -375,6 +378,21 @@ class SageCache:
                 return datetime.datetime.fromisoformat(last_used_str)
             
         return None
+    
+    def get_models_by_model_id(self, model_id):
+        """
+        Return a list of all model info dicts with the same modelId.
+        For each, include a boolean 'latest_version_present' indicating if the update_version_id is present as an id in the cache.
+        """
+        # Build a mapping from id to info for quick lookup
+        id_to_info = {info.get("id"): info for info in self.info.values() if "id" in info}
+        # Find all models with the given modelId
+        models = [info for info in self.info.values() if info.get("modelId") == model_id]
+        # For each, check if update_version_id is present as an id
+        for info in models:
+            update_version_id = info.get("update_version_id")
+            info["latest_version_present"] = bool(update_version_id and update_version_id in id_to_info)
+        return models
 
 
 # Global cache instance
