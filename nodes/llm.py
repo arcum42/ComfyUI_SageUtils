@@ -158,7 +158,7 @@ class Sage_OllamaAdvancedOptions(ComfyNodeABC):
 
     FUNCTION = "get_options"
 
-    CATEGORY = "Sage Utils/LLM"
+    CATEGORY = "Sage Utils/LLM/Ollama"
     EXPERIMENTAL = True
     DESCRIPTION = "Get advanced options for LLMs."
 
@@ -204,7 +204,7 @@ class Sage_OllamaLLMPromptText(ComfyNodeABC):
 
     FUNCTION = "get_response"
 
-    CATEGORY = "Sage Utils/LLM"
+    CATEGORY = "Sage Utils/LLM/Ollama"
     EXPERIMENTAL = True
     DESCRIPTION = "Send a prompt to a language model and get a response. The model must be installed via Ollama."
 
@@ -241,7 +241,7 @@ class Sage_OllamaLLMPromptVision(ComfyNodeABC):
 
     FUNCTION = "get_response"
 
-    CATEGORY = "Sage Utils/LLM"
+    CATEGORY = "Sage Utils/LLM/Ollama"
     EXPERIMENTAL = True
     DESCRIPTION = "Send a prompt to a language model and get a response. Optionally, you can provide an image/s to the model if it supports multimodal input. The model must be installed via Ollama."
     
@@ -261,45 +261,6 @@ class Sage_OllamaLLMPromptVision(ComfyNodeABC):
         return (response,)
 
 # Nodes for LM Studio.
-
-# class Sage_LMStudioLLMPrompt(ComfyNodeABC):
-#     @classmethod
-#     def INPUT_TYPES(cls) -> InputTypeDict:
-#         models = llm.get_lmstudio_models()
-#         if not models:
-#             models = []
-#         models = sorted(models)
-
-#         return {
-#             "required": {
-#                 "prompt": (IO.STRING, {"defaultInput": True, "multiline": True}),
-#                 "model": (models, )
-#             },
-#             "optional": {
-#                 "image": (IO.IMAGE, {"defaultInput": True})
-#             }
-#         }
-
-#     RETURN_TYPES = (IO.STRING,)
-#     RETURN_NAMES = ("response",)
-
-#     FUNCTION = "get_response"
-
-#     CATEGORY = "Sage Utils/LLM"
-#     EXPERIMENTAL = True
-#     DESCRIPTION = "Send a prompt to a language model and get a response. Optionally, you can provide an image/s to the model if it supports multimodal input. The model must be installed via Ollama."
-
-#     def get_response(self, prompt: str, model: str, image = None) -> tuple:
-
-#         if not llm.LMSTUDIO_AVAILABLE:
-#             raise ImportError("LM Studio is not available. Please install it to use this node.")
-        
-#         if model not in llm.get_lmstudio_models():
-#             raise ValueError(f"Model '{model}' is not available. Available models: {llm.get_lmstudio_models()}")
-        
-#         response = llm.lmstudio_generate(model=model, prompt=prompt, images=image)
-#         return (response,)
-
 
 class Sage_LMStudioLLMPromptText(ComfyNodeABC):
     @classmethod
@@ -322,7 +283,7 @@ class Sage_LMStudioLLMPromptText(ComfyNodeABC):
 
     FUNCTION = "get_response"
 
-    CATEGORY = "Sage Utils/LLM"
+    CATEGORY = "Sage Utils/LLM/LM Studio"
     EXPERIMENTAL = True
     DESCRIPTION = "Send a prompt to a language model and get a response. The model must be installed via Ollama."
 
@@ -359,7 +320,7 @@ class Sage_LMStudioLLMPromptVision(ComfyNodeABC):
 
     FUNCTION = "get_response"
 
-    CATEGORY = "Sage Utils/LLM"
+    CATEGORY = "Sage Utils/LLM/LM Studio"
     EXPERIMENTAL = True
     DESCRIPTION = "Send a prompt to a language model and get a response. Optionally, you can provide an image/s to the model if it supports multimodal input. The model must be installed via Ollama."
     
