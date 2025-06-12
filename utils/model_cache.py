@@ -8,6 +8,7 @@ import json
 import pathlib
 import re
 import hashlib
+import copy
 
 import folder_paths
 import datetime
@@ -273,7 +274,7 @@ class SageCache:
                     hash_data = self.load_json_file(self.hash_path, "hash cache", current_date)
                     if hash_data is not None:
                         self.hash = hash_data
-                        self.last_hash = self.hash.copy()
+                        self.last_hash = copy.deepcopy(self.hash)
                         self.hash_mtime = self.hash_path.stat().st_mtime
                         self.backup_json("sage_cache_hash", self.hash, current_date)
                     else:
@@ -285,7 +286,7 @@ class SageCache:
                     info_data = self.load_json_file(self.info_path, "info cache", current_date)
                     if info_data is not None:
                         self.info = info_data
-                        self.last_info = self.info.copy()
+                        self.last_info = copy.deepcopy(self.info)
                         self.info_mtime = self.info_path.stat().st_mtime
                         self.backup_json("sage_cache_info", self.info, current_date)
                     else:
@@ -308,11 +309,11 @@ class SageCache:
         saved = False
         if self.hash and self.hash != self.last_hash:
             self._save_json(self.hash_path, self.hash, "hash cache")
-            self.last_hash = self.hash
+            self.last_hash = copy.deepcopy(self.hash)
             saved = True
         if self.info and self.info != self.last_info:
             self._save_json(self.info_path, self.info, "info cache")
-            self.last_info = self.info
+            self.last_info = copy.deepcopy(self.info)
             saved = True
         if saved:
             print("Saved cache to disk.")
