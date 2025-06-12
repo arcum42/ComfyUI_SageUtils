@@ -150,7 +150,22 @@ def add_file_to_cache(file_path, hash=None):
     
     print(f"Adding {file_path} to cache with hash {hash}.")
     return hash
- 
+
+def recheck_hash(file_path, hash):
+    new_hash = get_file_sha256(file_path)
+    if new_hash != hash:
+        print(f"Hash mismatch. Using new hash.")
+        if file_path in cache.hash:
+            print(f"Updating cache for {file_path} with new hash {new_hash}.")
+            if new_hash not in cache.info:
+                if hash in cache.info:
+                    cache.info[new_hash] = cache.info[hash]
+        else:
+            print(f"File {file_path} not in cache. Adding with new hash {new_hash}.")
+            add_file_to_cache(file_path, new_hash)
+        hash = new_hash
+    return hash
+
 def pull_metadata(file_paths, timestamp = True, force_all = False, pbar = None):
     pull_json = True
     metadata_days_recheck = 7
@@ -199,11 +214,7 @@ def pull_metadata(file_paths, timestamp = True, force_all = False, pbar = None):
         # If force, recalculate hash before any API call
         if force:
             print(f"Force flag is set. Recalculating hash for {file_path}.")
-            new_hash = get_file_sha256(file_path)
-            if new_hash != hash:
-                print(f"Hash mismatch. Pulling new hash.")
-                cache.hash[file_path] = new_hash
-                hash = new_hash
+            hash = recheck_hash(file_path, hash)
 
         if pull_json or force:
             print(f"Currently pulling metadata for {file_path}.")
