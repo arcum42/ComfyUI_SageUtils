@@ -17,20 +17,20 @@ def str_to_bool(value):
         return value
     if isinstance(value, str):
         value = value.lower()
-        if value in ['true', '1', 'yes']:
+        if value in {'true', '1', 'yes'}:
             return True
-        elif value in ['false', '0', 'no']:
+        if value in {'false', '0', 'no'}:
             return False
     raise ValueError(f"Cannot convert {value} to boolean.")
 
 def bool_to_str(value):
     if isinstance(value, bool):
         return "true" if value else "false"
-    elif isinstance(value, str):
+    if isinstance(value, str):
         value = value.lower()
-        if value in ['true', '1', 'yes']:
+        if value in {'true', '1', 'yes'}:
             return "true"
-        elif value in ['false', '0', 'no']:
+        if value in {'false', '0', 'no'}:
             return "false"
     raise ValueError(f"Cannot convert {value} to string representation of boolean.")
 
@@ -40,12 +40,12 @@ def name_from_path(path):
 def get_file_sha256(path):
     print(f"Calculating hash for {path}")
     m = hashlib.sha256()
-    
     with open(path, 'rb') as f:
-        m.update(f.read())
-
-    print(f"Got full hash {str(m.digest().hex())}")
-    result = str(m.digest().hex()[:10])
+        for chunk in iter(lambda: f.read(8192), b''):
+            m.update(chunk)
+    full_hash = m.digest().hex()
+    print(f"Got full hash {full_hash}")
+    result = full_hash[:10]
     print(f"Got hash {result}")
     return result
 
@@ -300,24 +300,14 @@ def get_recently_used_models(model_type):
     return model_list
 
 def clean_keywords(keywords):
-    keywords = list(set(keywords))
-    keywords = [x for x in keywords if x != '']
-    keywords = [x for x in keywords if x != None]
-    keywords = [x for x in keywords if x != ' ']
-    
-    ret = ' '.join(", ".join(keywords).split('\n'))
-    return ret
+    keywords = set(filter(None, (x.strip() for x in keywords)))
+    return ', '.join(keywords)
 
 def clean_text(text):
-    ret_list = [x for x in text.split(" ") if x.strip()]
-    ret = " ".join(ret_list)
-
-    ret_list = [x for x in ret.split(",") if x.strip()]
-    ret = ", ".join([x.strip(" ") for x in ret_list])
-
-    ret_list = [x for x in ret.split("\n") if x.strip()]
-    ret = "\n".join([x.strip(" ") for x in ret_list])
-    return (ret)
+    ret = ' '.join(filter(None, (x.strip() for x in text.split())))
+    ret = ', '.join(filter(None, (x.strip() for x in ret.split(','))))
+    ret = '\n'.join(filter(None, (x.strip() for x in ret.split('\n'))))
+    return ret
 
 def condition_text(clip, text = None):
     zero_text = text is None

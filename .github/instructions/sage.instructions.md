@@ -46,6 +46,9 @@ These instructions define coding standards, directory structure, and domain know
 - Use generator expressions for large datasets to save memory.
 - Use context managers (`with` statements) for file operations to ensure proper resource management.
 - Follow ideomatic Python practices, such as using `enumerate()` for loops when you need both index and value.
+- The code should be modular and reusable, with functions and classes designed for single responsibilities.
+- The code should be clean and well optimized, avoiding unnecessary complexity.
+- The code should be pythonic, following the Zen of Python principles (PEP 20).
 
 ### Character Encoding and Symbols
 - Only use standard ASCII characters in all code, comments, and documentation.
