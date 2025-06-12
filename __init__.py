@@ -15,13 +15,7 @@ ENABLE_LM_STUDIO = True
 
 
 DEPRECIATED_CLASS_MAPPINGS = {
-    "Sage_SetBool": Sage_SetBool,
-    "Sage_SetInteger": Sage_SetInteger,
-    "Sage_SetFloat": Sage_SetFloat,
-    "Sage_KSamplerDecoder": Sage_KSamplerDecoder,
-    "Sage_ViewText": Sage_ViewText,
-    "Sage_TextCompare": Sage_TextCompare,
-    "Sage_ConditioningRngOut": Sage_ConditioningRngOut
+    "Sage_KSamplerDecoder": Sage_KSamplerDecoder
 }
 
 UTILITY_CLASS_MAPPINGS = {
@@ -122,13 +116,7 @@ NODE_CLASS_MAPPINGS = DEPRECIATED_CLASS_MAPPINGS | UTILITY_CLASS_MAPPINGS | SETT
 
 
 DEPRECIATED_NAME_MAPPINGS = {
-    "Sage_SetBool": "Boolean",
-    "Sage_SetInteger": "Integer",
-    "Sage_SetFloat": "Float",
-    "Sage_KSamplerDecoder": "KSampler + Decoder",
-    "Sage_ViewText": "View Text",
-    "Sage_TextCompare": "Text Compare",
-    "Sage_ConditioningRngOut": "Randomized conditioning"
+    "Sage_KSamplerDecoder": "KSampler + Decoder"
 }
 
 UTILITY_NAME_MAPPINGS = {
