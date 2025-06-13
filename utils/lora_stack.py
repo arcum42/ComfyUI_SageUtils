@@ -4,38 +4,31 @@ from .helpers import pull_metadata, clean_keywords
 
 def get_lora_keywords(lora_name):
     lora_path = folder_paths.get_full_path_or_raise("loras", lora_name)
-    if cache.by_path(lora_path).get("trainedWords", None) is None:
-        pull_metadata(lora_path, timestamp = True)
-
+    if cache.by_path(lora_path).get("trainedWords") is None:
+        pull_metadata(lora_path, timestamp=True)
     return cache.by_path(lora_path).get("trainedWords", [])
 
-def get_lora_stack_keywords(lora_stack = None):
-    lora_keywords = []
-    
-    if lora_stack is None:
+def get_lora_stack_keywords(lora_stack=None):
+    if not lora_stack:
         return []
-    
-    for lora in lora_stack:
-        print(f"Let's get keywords for {lora[0]}")
+    # Collect unique lora names
+    lora_names = {lora[0] for lora in lora_stack}
+    lora_paths = [folder_paths.get_full_path_or_raise("loras", name) for name in lora_names]
+    pull_metadata(lora_paths, timestamp=True)
+    # Gather all keywords into a set for uniqueness
+    all_keywords = set()
+    for name in lora_names:
         try:
-            keywords = get_lora_keywords(lora[0])
-            if keywords != []:
-                lora_keywords.extend(keywords)
-            print(keywords)
-        except:
-            print("Exception getting keywords!")
+            keywords = cache.by_path(folder_paths.get_full_path_or_raise("loras", name)).get("trainedWords", [])
+            if keywords:
+                all_keywords.update(map(str.strip, keywords))
+        except Exception as e:
+            print(f"Exception getting keywords for {name}: {e}")
             continue
+    return clean_keywords(all_keywords)
 
-    return clean_keywords(lora_keywords)
-
-def add_lora_to_stack(lora_name, model_weight, clip_weight, lora_stack = None):
+def add_lora_to_stack(lora_name, model_weight, clip_weight, lora_stack=None):
+    lora = (lora_name, model_weight, clip_weight)
     if lora_stack is None:
-        lora = (lora_name, model_weight, clip_weight)
-        stack = [lora]
-        return(stack)
-        
-    stack = []
-    for the_name, m_weight, c_weight in lora_stack:
-        stack.append((the_name, m_weight, c_weight))
-    stack.append((lora_name, model_weight, clip_weight))
-    return stack
+        return [lora]
+    return [*lora_stack, lora]
