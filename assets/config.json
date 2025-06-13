@@ -1,4 +1,10 @@
 {
-  "llm_provider": "ollama",  
+  "enable_ollama": true,
+  "enable_lmstudio": true,
+  "ollama_use_custom_url": false,
+  "ollama_custom_url": "",
+  "lmstudio_use_custom_url": false,
+  "lmstudio_custom_url": "",
+  "llm_provider": "ollama",
   "custom_llm_url": ""
 }

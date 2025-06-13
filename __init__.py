@@ -2,19 +2,21 @@ import os
 
 from .nodes import *
 from .utils import *
+from .utils.llm_wrapper import init_ollama, init_lmstudio
 
 cache.load()
 sage_styles = config_manager.styles_manager.data
 llm_prompts = config_manager.prompts_manager.data
 sage_config = config_manager.settings_manager.data
 
+# Call LLM init functions
+init_ollama()
+init_lmstudio()
+
 WEB_DIRECTORY = "./js"
 
-# LM Studio support is a work in progress and is not enabled by default.
-ENABLE_LM_STUDIO = True
-
-
-DEPRECIATED_CLASS_MAPPINGS = {
+# Deprecated class mappings (correct spelling)
+DEPRECATED_CLASS_MAPPINGS = {
     "Sage_KSamplerDecoder": Sage_KSamplerDecoder
 }
 
@@ -105,17 +107,18 @@ LLM_CLASS_MAPPINGS = {
 if llm.OLLAMA_AVAILABLE:
     LLM_CLASS_MAPPINGS = LLM_CLASS_MAPPINGS | OLLAMA_CLASS_MAPPINGS
 
-if llm.LMSTUDIO_AVAILABLE and ENABLE_LM_STUDIO:
+if llm.LMSTUDIO_AVAILABLE:
      LLM_CLASS_MAPPINGS = LLM_CLASS_MAPPINGS | LMSTUDIO_CLASS_MAPPINGS
 
 # A dictionary that contains all nodes you want to export with their names
 # NOTE: names should be globally unique
-NODE_CLASS_MAPPINGS = DEPRECIATED_CLASS_MAPPINGS | UTILITY_CLASS_MAPPINGS | SETTINGS_CLASS_MAPPINGS |  TEXT_CLASS_MAPPINGS | \
+NODE_CLASS_MAPPINGS = DEPRECATED_CLASS_MAPPINGS | UTILITY_CLASS_MAPPINGS | SETTINGS_CLASS_MAPPINGS |  TEXT_CLASS_MAPPINGS | \
     MODEL_CLASS_MAPPINGS | LORA_CLASS_MAPPINGS | CLIP_CLASS_MAPPINGS | SAMPLER_CLASS_MAPPINGS | IMAGE_CLASS_MAPPINGS | \
     METADATA_CLASS_MAPPINGS | LLM_CLASS_MAPPINGS
 
 
-DEPRECIATED_NAME_MAPPINGS = {
+# Deprecated name mappings (correct spelling)
+DEPRECATED_NAME_MAPPINGS = {
     "Sage_KSamplerDecoder": "KSampler + Decoder"
 }
 
@@ -206,11 +209,11 @@ LLM_NAME_MAPPINGS = {
 if llm.OLLAMA_AVAILABLE:
     LLM_NAME_MAPPINGS = LLM_NAME_MAPPINGS | OLLAMA_NAME_MAPPINGS
 
-if llm.LMSTUDIO_AVAILABLE and ENABLE_LM_STUDIO:
+if llm.LMSTUDIO_AVAILABLE:
     LLM_NAME_MAPPINGS = LLM_NAME_MAPPINGS | LMSTUDIO_NAME_MAPPINGS
 
 # A dictionary that contains the friendly/humanly readable titles for the nodes
-NODE_DISPLAY_NAME_MAPPINGS = DEPRECIATED_NAME_MAPPINGS | UTILITY_NAME_MAPPINGS | SETTINGS_NAME_MAPPINGS | TEXT_NAME_MAPPINGS | \
+NODE_DISPLAY_NAME_MAPPINGS = DEPRECATED_NAME_MAPPINGS | UTILITY_NAME_MAPPINGS | SETTINGS_NAME_MAPPINGS | TEXT_NAME_MAPPINGS | \
     MODEL_NAME_MAPPINGS | LORA_NAME_MAPPINGS | CLIP_NAME_MAPPINGS | SAMPLER_NAME_MAPPINGS | IMAGE_NAME_MAPPINGS | \
     METADATA_NAME_MAPPINGS | LLM_NAME_MAPPINGS
 

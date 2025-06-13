@@ -82,5 +82,5 @@ prompts_manager = ConfigManager("llm_prompts")
 llm_prompts = prompts_manager.load()
 
 settings_manager = ConfigManager("config")
-settings_config = settings_manager.load()
+sage_config = settings_manager.load()
 

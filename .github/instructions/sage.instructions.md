@@ -4,18 +4,18 @@
 These instructions define coding standards, directory structure, and domain knowledge for developing and maintaining the Sage Utils custom node for ComfyUI. They are optimized for AI coding assistants (e.g., Copilot) to ensure consistency and best practices.
 
 ## Project Overview
-- **Project**: Sage Utils custom node for [ComfyUI](https://github.com/comfyanonymous/ComfyUI)
-- **Documentation**: https://docs.comfy.org/
-- **Main directory**: `comfyui_sageutils` (located in `comfyui/custom_nodes/`)
+- **Project:** Sage Utils custom node for [ComfyUI](https://github.com/comfyanonymous/ComfyUI)
+- **Documentation:** https://docs.comfy.org/
+- **Main directory:** `comfyui_sageutils` (located in `comfyui/custom_nodes/`)
 
 ## Directory and File Roles
 - `__init__.py`: Entry point for ComfyUI to load the custom node. Contains node mappings, descriptions, and JS file locations.
-- `nodes/`: All node class definitions for Sage Utils custom node (group by function, e.g., model nodes in `model.py`).
+- `nodes/`: All node class definitions for Sage Utils custom node (grouped by function, e.g., model nodes in `model.py`).
 - `utils/`: Utility/helper functions.
 - `pyproject.toml`: Defines the custom node set for ComfyUI's registry. **Update when releasing a new version.**
 - `README.md`: Project information. **Update with new features or changes.**
 - `js/`: JavaScript files for frontend integration.
-- `example_workflows/`: Example workflow files and images. For each example, there should be a json file with the actual workflow and a jpg file with a thumbnail image.
+- `example_workflows/`: Example workflow files and images. For each example, include a JSON file with the workflow and a JPG file with a thumbnail image.
 
 ## Coding Standards
 
@@ -42,15 +42,17 @@ These instructions define coding standards, directory structure, and domain know
 - Use type hints and return type annotations where possible.
 - Use try/except blocks for error handling, especially around I/O and network operations.
 - Use tuple unpacking for return values when returning multiple outputs.
+- Ignore type errors in `__init__.py` for the `comfyui_sageutils` module to avoid issues with ComfyUI's dynamic loading. While IO.* types are normally used, custom types are defined by passing a string in the tuple in the inputs or outputs.
+- A new v3 API is in development, but not yet available. See #fetch: https://blog.comfy.org/p/dependency-resolution-and-custom .
 
 #### Coding Practices
 - Use list comprehensions for creating lists from iterables.
 - Use generator expressions for large datasets to save memory.
 - Use context managers (`with` statements) for file operations to ensure proper resource management.
-- Follow idiomatic Python practices, such as using `enumerate()` for loops when you need both index and value.
-- The code should be modular and reusable, with functions and classes designed for single responsibilities.
-- The code should be clean and well optimized, avoiding unnecessary complexity.
-- The code should be pythonic, following the Zen of Python principles (PEP 20).
+- Follow idiomatic Python practices, such as using `enumerate()` for loops when both index and value are needed.
+- Code should be modular and reusable, with functions and classes designed for single responsibilities.
+- Code should be clean and well-optimized, avoiding unnecessary complexity.
+- Code should be pythonic, following the Zen of Python principles (PEP 20).
 
 ### JavaScript Coding Standards
 #### Naming
@@ -90,7 +92,7 @@ These instructions define coding standards, directory structure, and domain know
 - Write modular, reusable code.
 
 ### Character Encoding and Symbols
-- Only use standard ASCII characters in all code, comments, and documentation.
+- Use only standard ASCII characters in all code, comments, and documentation.
 - Do not use Unicode symbols, em dashes (—), smart quotes (“ ” ‘ ’), ellipses (…), or emojis.
 - Use only regular hyphens (-), straight quotes (' and "), and three periods (...) for ellipsis if needed.
 

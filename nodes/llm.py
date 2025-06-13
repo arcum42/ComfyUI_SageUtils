@@ -28,7 +28,6 @@ except ImportError:
 class Sage_ConstructLLMPrompt(ComfyNodeABC):
     @classmethod
     def INPUT_TYPES(cls) -> InputTypeDict:
-        print("Loading llm_prompts from config manager...")
         inputs: InputTypeDict =  {}
         inputs["required"] = {}
         
