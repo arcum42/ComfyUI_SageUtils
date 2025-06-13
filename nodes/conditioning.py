@@ -9,26 +9,37 @@ from ..utils import *
 
 import torch
 
+
+def _get_conditioning(pbar, clip, text=None):
+    pbar.update(1)
+    return condition_text(clip, text)
+
+
+def _clean_if_needed(text, clean):
+    return clean_text(text) if clean and text is not None else text
+
+
 class Sage_ConditioningZeroOut(ComfyNodeABC):
     @classmethod
     def INPUT_TYPES(cls) -> InputTypeDict:
         return {
             "required": {
-            "clip": (IO.CLIP, {"defaultInput": True, "tooltip": "The CLIP model used for encoding."})
+                "clip": (IO.CLIP, {"defaultInput": True, "tooltip": "The CLIP model used for encoding."})
             }
         }
 
-    RETURN_TYPES = ("CONDITIONING",)
+    RETURN_TYPES = (IO.CONDITIONING,)
     FUNCTION = "zero_out"
-
     CATEGORY = "Sage Utils/clip"
     DESCRIPTION = "Returns zeroed out conditioning."
+
     def zero_out(self, clip) -> tuple:
         tokens = clip.tokenize("")
         output = clip.encode_from_tokens(tokens, return_pooled=True, return_dict=True)
         output["pooled_output"] = torch.zeros_like(output.get("pooled_output", torch.tensor([])))
         conditioning = torch.zeros_like(output.pop("cond"))
-        return [([conditioning, output],)]
+        return ([conditioning, output],)
+
 
 class Sage_DualCLIPTextEncode(ComfyNodeABC):
     @classmethod
@@ -45,54 +56,52 @@ class Sage_DualCLIPTextEncode(ComfyNodeABC):
         }
     RETURN_TYPES = (IO.CONDITIONING, IO.CONDITIONING, IO.STRING, IO.STRING)
     RETURN_NAMES = ("positive", "negative", "pos_text", "neg_text")
-
     OUTPUT_TOOLTIPS = ("A conditioning containing the embedded text used to guide the diffusion model. If neg is not hooked up, it'll be automatically zeroed.",)
     FUNCTION = "encode"
-
     CATEGORY = "Sage Utils/clip"
-    DESCRIPTION = "Turns a positive and negative prompt into conditionings, and passes through the prompts. Saves space over two CLIP Text Encoders, and zeros any input not hooked up."
-
-    def get_conditioning(self, pbar, clip, text=None):
-        pbar.update(1)
-        return condition_text(clip, text)
+    DESCRIPTION = (
+        "Turns a positive and negative prompt into conditionings, and passes through the prompts. "
+        "Saves space over two CLIP Text Encoders, and zeros any input not hooked up."
+    )
 
     def encode(self, clip, clean, pos=None, neg=None) -> tuple:
         pbar = comfy.utils.ProgressBar(2)
-
-        if pos is not None:
-            pos = clean_text(pos) if clean else pos
-        if neg is not None:
-            neg = clean_text(neg) if clean else neg
-
+        pos = _clean_if_needed(pos, clean)
+        neg = _clean_if_needed(neg, clean)
         return (
-            self.get_conditioning(pbar, clip, pos),
-            self.get_conditioning(pbar, clip, neg),
+            _get_conditioning(pbar, clip, pos),
+            _get_conditioning(pbar, clip, neg),
             pos or "",
             neg or ""
         )
 
+
 class Sage_DualCLIPTextEncodeLumina2(ComfyNodeABC):
     SYSTEM_PROMPT = {
-        "superior": "You are an assistant designed to generate superior images with the superior "\
-            "degree of image-text alignment based on textual prompts or user prompts.",
-        "alignment": "You are an assistant designed to generate high-quality images with the "\
+        "superior": (
+            "You are an assistant designed to generate superior images with the superior "
+            "degree of image-text alignment based on textual prompts or user prompts."
+        ),
+        "alignment": (
+            "You are an assistant designed to generate high-quality images with the "
             "highest degree of image-text alignment based on textual prompts."
+        )
     }
-    SYSTEM_PROMPT_TIP = "Lumina2 provide two types of system prompts:" \
-        "Superior: You are an assistant designed to generate superior images with the superior "\
-        "degree of image-text alignment based on textual prompts or user prompts. "\
-        "Alignment: You are an assistant designed to generate high-quality images with the highest "\
+    SYSTEM_PROMPT_TIP = (
+        "Lumina2 provide two types of system prompts: "
+        "Superior: You are an assistant designed to generate superior images with the superior "
+        "degree of image-text alignment based on textual prompts or user prompts. "
+        "Alignment: You are an assistant designed to generate high-quality images with the highest "
         "degree of image-text alignment based on textual prompts."
+    )
 
     @classmethod
     def INPUT_TYPES(cls) -> InputTypeDict:
-        prompts = list(Sage_DualCLIPTextEncodeLumina2.SYSTEM_PROMPT.keys())
         return {
             "required": {
                 "clip": (IO.CLIP, {"defaultInput": True, "tooltip": "The CLIP model used for encoding the text."}),
-                "system_prompt": (prompts, {"tooltip": Sage_DualCLIPTextEncodeLumina2.SYSTEM_PROMPT_TIP}),
+                "system_prompt": (IO.STRING, {"tooltip": cls.SYSTEM_PROMPT_TIP}),
                 "clean": (IO.BOOLEAN, {"defaultInput": False, "tooltip": "Clean up the text, getting rid of extra spaces, commas, etc."}),
-
             },
             "optional": {
                 "pos": (IO.STRING, {"defaultInput": True, "multiline": True, "dynamicPrompts": True, "tooltip": "The positive prompt's text."}),
@@ -101,32 +110,24 @@ class Sage_DualCLIPTextEncodeLumina2(ComfyNodeABC):
         }
     RETURN_TYPES = (IO.CONDITIONING, IO.CONDITIONING, IO.STRING, IO.STRING)
     RETURN_NAMES = ("pos_cond", "neg_cond", "pos_text", "neg_text")
-
     OUTPUT_TOOLTIPS = ("A conditioning containing the embedded text used to guide the diffusion model. If neg is not hooked up, it'll be automatically zeroed.",)
     FUNCTION = "encode"
-
     CATEGORY = "Sage Utils/clip"
-    DESCRIPTION = "Turns a positive and negative prompt into conditionings, and passes through the prompts. Saves space over two CLIP Text Encoders, and zeros any input not hooked up."
-
-    def get_conditioning(self, pbar, clip, text=None):
-        pbar.update(1)
-        return condition_text(clip, text)
+    DESCRIPTION = (
+        "Turns a positive and negative prompt into conditionings, and passes through the prompts. "
+        "Saves space over two CLIP Text Encoders, and zeros any input not hooked up."
+    )
 
     def encode(self, clip, system_prompt, clean, pos=None, neg=None) -> tuple:
         pbar = comfy.utils.ProgressBar(2)
-        system_prompt = Sage_DualCLIPTextEncodeLumina2.SYSTEM_PROMPT[system_prompt]
-        
-        if pos is not None:
-            pos = f'{system_prompt} <Prompt Start> {pos}'
-            pos = clean_text(pos) if clean else pos
-        
-        if neg is not None:
-            neg = f'{system_prompt} <Prompt Start> {neg}'
-            neg = clean_text(neg) if clean else neg
-
+        sys_prompt = self.SYSTEM_PROMPT[system_prompt]
+        pos = f'{sys_prompt} <Prompt Start> {pos}' if pos is not None else None
+        neg = f'{sys_prompt} <Prompt Start> {neg}' if neg is not None else None
+        pos = _clean_if_needed(pos, clean)
+        neg = _clean_if_needed(neg, clean)
         return (
-            self.get_conditioning(pbar, clip, pos),
-            self.get_conditioning(pbar, clip, neg),
+            _get_conditioning(pbar, clip, pos),
+            _get_conditioning(pbar, clip, neg),
             pos or "",
             neg or ""
         )

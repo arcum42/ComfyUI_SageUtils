@@ -1,10 +1,11 @@
-
 from .helpers import pull_metadata
 from .lora_stack import get_lora_stack_keywords
 import comfy
 import folder_paths
 
 import torch
+import comfy.utils
+import comfy.sd
 
 loaded_loras = {}
 
@@ -13,10 +14,10 @@ def lora(model, clip, lora_name, strength_model, strength_clip):
         return model, clip
 
     lora_path = folder_paths.get_full_path_or_raise("loras", lora_name)
-    pull_metadata(lora_path, timestamp = True)
+    pull_metadata(lora_path, timestamp=True)
 
-    if lora_path in loaded_loras:
-        the_lora = loaded_loras[lora_path]
+    the_lora = loaded_loras.get(lora_path)
+    if the_lora is not None:
         print(f"Using comfyui's cached lora for {lora_path}")
     else:
         print(f"Loading lora from {lora_path}")
@@ -35,10 +36,16 @@ def lora_stack(model, clip, pbar, lora_stack=None):
         if a_lora:
             model, clip = lora(model, clip, *a_lora)
         pbar.update(1)
-    return model, clip, lora_stack, get_lora_stack_keywords(lora_stack)
+    keywords = get_lora_stack_keywords(lora_stack)
+    return model, clip, lora_stack, keywords
 
 def checkpoint(ckpt_path):
-    out = comfy.sd.load_checkpoint_guess_config(ckpt_path, output_vae=True, output_clip=True, embedding_directory=folder_paths.get_folder_paths("embeddings"))
+    out = comfy.sd.load_checkpoint_guess_config(
+        ckpt_path,
+        output_vae=True,
+        output_clip=True,
+        embedding_directory=folder_paths.get_folder_paths("embeddings")
+    )
     return out[:3]
 
 def unet(unet_path, weight_dtype):
@@ -51,5 +58,4 @@ def unet(unet_path, weight_dtype):
     elif weight_dtype == "fp8_e5m2":
         model_options["dtype"] = torch.float8_e5m2
 
-    model = comfy.sd.load_diffusion_model(unet_path, model_options=model_options)
-    return model
+    return comfy.sd.load_diffusion_model(unet_path, model_options=model_options)
