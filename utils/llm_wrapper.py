@@ -67,7 +67,7 @@ def get_ollama_models() -> list[str]:
         return []
 
 
-def ollama_generate_vision(model: str, prompt: str, images=None, options=None) -> str:
+def ollama_generate_vision(model: str, prompt: str, keep_alive = 0, images=None, options=None) -> str:
     """Generate a response from an Ollama vision model."""
     if not OLLAMA_AVAILABLE or ollama_client is None:
         raise ImportError("Ollama is not available. Please install it to use this function.")
@@ -86,6 +86,7 @@ def ollama_generate_vision(model: str, prompt: str, images=None, options=None) -
                 prompt=prompt,
                 images=input_images,
                 stream=False,
+                keep_alive=keep_alive,
                 options=options
             )
         else:
@@ -93,6 +94,7 @@ def ollama_generate_vision(model: str, prompt: str, images=None, options=None) -
                 model=model,
                 prompt=prompt,
                 images=input_images,
+                keep_alive=keep_alive,
                 stream=False
             )
         if not response or 'response' not in response:
@@ -103,7 +105,7 @@ def ollama_generate_vision(model: str, prompt: str, images=None, options=None) -
         return ""
 
 
-def ollama_generate(model: str, prompt: str, options=None) -> str:
+def ollama_generate(model: str, prompt: str, keep_alive = 0, options=None) -> str:
     """Generate a response from an Ollama model."""
     if not OLLAMA_AVAILABLE or ollama_client is None:
         raise ImportError("Ollama is not available. Please install it to use this function.")
@@ -116,7 +118,7 @@ def ollama_generate(model: str, prompt: str, options=None) -> str:
                 model=model,
                 prompt=prompt,
                 stream=False,
-                keep_alive=False,
+                keep_alive=keep_alive,
                 options=options
             )
         else:
@@ -124,7 +126,7 @@ def ollama_generate(model: str, prompt: str, options=None) -> str:
                 model=model,
                 prompt=prompt,
                 stream=False,
-                keep_alive=False
+                keep_alive=keep_alive
             )
         if not response or 'response' not in response:
             raise ValueError("No valid response received from the model.")
@@ -174,7 +176,7 @@ def get_lmstudio_vision_models() -> list[str]:
         return []
 
 
-def lmstudio_generate_vision(model: str, prompt: str, images=None, options=None) -> str:
+def lmstudio_generate_vision(model: str, prompt: str, keep_alive = 0, images=None, options=None) -> str:
     """Generate a response from an LM Studio vision model."""
     if not LMSTUDIO_AVAILABLE or lms is None:
         raise ImportError("LM Studio is not available. Please install it to use this function.")
@@ -185,7 +187,10 @@ def lmstudio_generate_vision(model: str, prompt: str, images=None, options=None)
     input_images = tensor_to_temp_image(images) if images is not None else []
     lms_model = None
     try:
-        lms_model = lms.llm(model)
+        if keep_alive >= 1:
+            lms_model = lms.llm(model, ttl=keep_alive)
+        else:
+            lms_model = lms.llm(model)
         chat = lms.Chat()
         if not input_images:
             chat.add_user_message(prompt)
@@ -193,18 +198,19 @@ def lmstudio_generate_vision(model: str, prompt: str, images=None, options=None)
             image_handles = [lms.prepare_image(image) for image in input_images]
             chat.add_user_message(prompt, images=image_handles)
         response = lms_model.respond(chat)
-        lms_model.unload()
+        if keep_alive < 1:
+            lms_model.unload()
         if not response:
             raise ValueError("No valid response received from the model.")
         return clean_response(response.content)
     except Exception as e:
         logging.error(f"Error generating response from LM Studio vision model: {e}")
-        if lms_model:
+        if lms_model is not None and keep_alive < 1:
             lms_model.unload()
         return ""
 
 
-def lmstudio_generate(model: str, prompt: str, options=None) -> str:
+def lmstudio_generate(model: str, prompt: str, keep_alive = 0, options=None) -> str:
     """Generate a response from an LM Studio model."""
     if not LMSTUDIO_AVAILABLE or lms is None:
         raise ImportError("LM Studio is not available. Please install it to use this function.")
@@ -214,19 +220,24 @@ def lmstudio_generate(model: str, prompt: str, options=None) -> str:
     seed = (options or {}).get('seed', 0)
     lms_model = None
     try:
-        lms_model = lms.llm(model)
+        if keep_alive >= 1:
+            lms_model = lms.llm(model, ttl=keep_alive)
+        else:
+            lms_model = lms.llm(model)
+
         if lms_model is None:
             raise ValueError(f"Model '{model}' could not be loaded from LM Studio.")
         chat = lms.Chat()
         chat.add_user_message(prompt)
         response = lms_model.respond(chat)
-        lms_model.unload()
+        if keep_alive < 1:
+            lms_model.unload()
         if not response:
             raise ValueError("No valid response received from the model.")
         return clean_response(response.content)
     except Exception as e:
         logging.error(f"Error generating response from LM Studio: {e}")
-        if lms_model:
+        if lms_model is not None and keep_alive < 1:
             lms_model.unload()
         return ""
 

@@ -194,7 +194,8 @@ class Sage_OllamaLLMPromptText(ComfyNodeABC):
             "required": {
                 "prompt": (IO.STRING, {"defaultInput": True, "multiline": True}),
                 "model": (models, ),
-                "seed": (IO.INT, {"default": 0, "min": 0, "max": 2**32 - 1, "step": 1, "tooltip": "Seed for random number generation."})  
+                "seed": (IO.INT, {"default": 0, "min": 0, "max": 2**32 - 1, "step": 1, "tooltip": "Seed for random number generation."}),
+                "load_for_seconds": (IO.FLOAT, {"default": 0.0, "min": -1.0, "max": 60.0 * 60.0, "step": 1, "tooltip": "Time in seconds to load the image for. -1 to load indefinitely."})
                 }
         }
 
@@ -207,7 +208,7 @@ class Sage_OllamaLLMPromptText(ComfyNodeABC):
     EXPERIMENTAL = True
     DESCRIPTION = "Send a prompt to a language model and get a response. The model must be installed via Ollama."
 
-    def get_response(self, prompt: str, model: str, seed: int = 0, options = {}) -> tuple:
+    def get_response(self, prompt: str, model: str, seed: int = 0, load_for_seconds: float = 0.0) -> tuple:
         options = {}
         if not llm.OLLAMA_AVAILABLE:
             raise ImportError("Ollama is not available. Please install it to use this node.")
@@ -216,7 +217,7 @@ class Sage_OllamaLLMPromptText(ComfyNodeABC):
             raise ValueError(f"Model '{model}' is not available. Available models: {llm.get_ollama_models()}")
         
         options["seed"] = seed  # Ensure the seed is included in the options
-        response = llm.ollama_generate(model=model, prompt=prompt, options=options)
+        response = llm.ollama_generate(model=model, prompt=prompt, keep_alive=load_for_seconds, options=options)
         return (response,)
 class Sage_OllamaLLMPromptVision(ComfyNodeABC):
     @classmethod
@@ -231,7 +232,8 @@ class Sage_OllamaLLMPromptVision(ComfyNodeABC):
                 "prompt": (IO.STRING, {"defaultInput": True, "multiline": True}),
                 "model": (models, ),
                 "image": (IO.IMAGE, {"defaultInput": True}),
-                "seed": (IO.INT, {"default": 0, "min": 0, "max": 2**32 - 1, "step": 1, "tooltip": "Seed for random number generation."})  
+                "seed": (IO.INT, {"default": 0, "min": 0, "max": 2**32 - 1, "step": 1, "tooltip": "Seed for random number generation."}),
+                "load_for_seconds": (IO.FLOAT, {"default": 0.0, "min": -1.0, "max": 60.0 * 60.0, "step": 0.1, "tooltip": "Time in seconds to load the image for. -1 to load indefinitely."})  
             }
         }
 
@@ -244,7 +246,7 @@ class Sage_OllamaLLMPromptVision(ComfyNodeABC):
     EXPERIMENTAL = True
     DESCRIPTION = "Send a prompt to a language model and get a response. Optionally, you can provide an image/s to the model if it supports multimodal input. The model must be installed via Ollama."
     
-    def get_response(self, prompt: str, model: str, image, seed: int, ) -> tuple:
+    def get_response(self, prompt: str, model: str, image, seed: int, load_for_seconds: float = 0.0) -> tuple:
         options = {}
         if not llm.OLLAMA_AVAILABLE:
             raise ImportError("Ollama is not available. Please install it to use this node.")
@@ -256,7 +258,7 @@ class Sage_OllamaLLMPromptVision(ComfyNodeABC):
             raise ValueError("Image input is required for vision models.")
 
         options["seed"] = seed  # Ensure the seed is included in the options
-        response = llm.ollama_generate_vision(model=model, prompt=prompt, images=image, options=options)
+        response = llm.ollama_generate_vision(model=model, prompt=prompt, images=image, keep_alive = load_for_seconds, options=options)
         return (response,)
 
 # Nodes for LM Studio.
@@ -273,7 +275,8 @@ class Sage_LMStudioLLMPromptText(ComfyNodeABC):
             "required": {
                 "prompt": (IO.STRING, {"defaultInput": True, "multiline": True}),
                 "model": (models, ),
-                "seed": (IO.INT, {"default": 0, "min": 0, "max": 2**32 - 1, "step": 1, "tooltip": "Seed for random number generation."})  
+                "seed": (IO.INT, {"default": 0, "min": 0, "max": 2**32 - 1, "step": 1, "tooltip": "Seed for random number generation."}),
+                "load_for_seconds": (IO.INT, {"default": 0, "min": -1, "max": 60*60, "step": 1, "tooltip": "Time in seconds to load the image for. -1 to load indefinitely."})
                 }
         }
 
@@ -286,7 +289,7 @@ class Sage_LMStudioLLMPromptText(ComfyNodeABC):
     EXPERIMENTAL = True
     DESCRIPTION = "Send a prompt to a language model and get a response. The model must be installed via Ollama."
 
-    def get_response(self, prompt: str, model: str, seed: int = 0, options = {}) -> tuple:
+    def get_response(self, prompt: str, model: str, seed: int = 0, load_for_seconds: int = 0) -> tuple:
         options = {}
         if not llm.OLLAMA_AVAILABLE:
             raise ImportError("Ollama is not available. Please install it to use this node.")
@@ -295,7 +298,7 @@ class Sage_LMStudioLLMPromptText(ComfyNodeABC):
             raise ValueError(f"Model '{model}' is not available. Available models: {llm.get_ollama_models()}")
         
         options["seed"] = seed  # Ensure the seed is included in the options
-        response = llm.lmstudio_generate(model=model, prompt=prompt, options=options)
+        response = llm.lmstudio_generate(model=model, prompt=prompt, keep_alive=load_for_seconds, options=options)
         return (response,)
 class Sage_LMStudioLLMPromptVision(ComfyNodeABC):
     @classmethod
@@ -310,7 +313,8 @@ class Sage_LMStudioLLMPromptVision(ComfyNodeABC):
                 "prompt": (IO.STRING, {"defaultInput": True, "multiline": True}),
                 "model": (models, ),
                 "image": (IO.IMAGE, {"defaultInput": True}),
-                "seed": (IO.INT, {"default": 0, "min": 0, "max": 2**32 - 1, "step": 1, "tooltip": "Seed for random number generation."})  
+                "seed": (IO.INT, {"default": 0, "min": 0, "max": 2**32 - 1, "step": 1, "tooltip": "Seed for random number generation."}),
+                "load_for_seconds": (IO.INT, {"default": 0, "min": -1, "max": 60*60, "step": 1, "tooltip": "Time in seconds to load the image for. -1 to load indefinitely."})
             }
         }
 
@@ -323,7 +327,7 @@ class Sage_LMStudioLLMPromptVision(ComfyNodeABC):
     EXPERIMENTAL = True
     DESCRIPTION = "Send a prompt to a language model and get a response. Optionally, you can provide an image/s to the model if it supports multimodal input. The model must be installed via Ollama."
     
-    def get_response(self, prompt: str, model: str, image, seed: int, ) -> tuple:
+    def get_response(self, prompt: str, model: str, image, seed: int = 0, load_for_seconds: int = 0) -> tuple:
         options = {}
         if not llm.OLLAMA_AVAILABLE:
             raise ImportError("Ollama is not available. Please install it to use this node.")
@@ -335,5 +339,5 @@ class Sage_LMStudioLLMPromptVision(ComfyNodeABC):
             raise ValueError("Image input is required for vision models.")
 
         options["seed"] = seed  # Ensure the seed is included in the options
-        response = llm.lmstudio_generate_vision(model=model, prompt=prompt, images=image, options=options)
+        response = llm.lmstudio_generate_vision(model=model, prompt=prompt, images=image, keep_alive=load_for_seconds, options=options)
         return (response,)
