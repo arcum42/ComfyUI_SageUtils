@@ -67,7 +67,7 @@ def get_ollama_models() -> list[str]:
         return []
 
 
-def ollama_generate_vision(model: str, prompt: str, keep_alive = 0, images=None, options=None) -> str:
+def ollama_generate_vision(model: str, prompt: str, keep_alive: float = 0.0, images=None, options=None) -> str:
     """Generate a response from an Ollama vision model."""
     if not OLLAMA_AVAILABLE or ollama_client is None:
         raise ImportError("Ollama is not available. Please install it to use this function.")
@@ -105,7 +105,7 @@ def ollama_generate_vision(model: str, prompt: str, keep_alive = 0, images=None,
         return ""
 
 
-def ollama_generate(model: str, prompt: str, keep_alive = 0, options=None) -> str:
+def ollama_generate(model: str, prompt: str, keep_alive: float = 0.0, options=None) -> str:
     """Generate a response from an Ollama model."""
     if not OLLAMA_AVAILABLE or ollama_client is None:
         raise ImportError("Ollama is not available. Please install it to use this function.")
@@ -176,7 +176,7 @@ def get_lmstudio_vision_models() -> list[str]:
         return []
 
 
-def lmstudio_generate_vision(model: str, prompt: str, keep_alive = 0, images=None, options=None) -> str:
+def lmstudio_generate_vision(model: str, prompt: str, keep_alive: int = 0, images=None, options=None) -> str:
     """Generate a response from an LM Studio vision model."""
     if not LMSTUDIO_AVAILABLE or lms is None:
         raise ImportError("LM Studio is not available. Please install it to use this function.")
@@ -210,7 +210,7 @@ def lmstudio_generate_vision(model: str, prompt: str, keep_alive = 0, images=Non
         return ""
 
 
-def lmstudio_generate(model: str, prompt: str, keep_alive = 0, options=None) -> str:
+def lmstudio_generate(model: str, prompt: str, keep_alive: int = 0, options=None) -> str:
     """Generate a response from an LM Studio model."""
     if not LMSTUDIO_AVAILABLE or lms is None:
         raise ImportError("LM Studio is not available. Please install it to use this function.")

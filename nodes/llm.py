@@ -23,6 +23,12 @@ try:
 except ImportError:
     OLLAMA_AVAILABLE = False
 
+# Default vision prompt for LLMs.
+DEFAULT_VISION_PROMPT = "Write a detailed description for this image. Use precise, unambiguous language. Avoid vague or general terms. This is going to be used as input for an AI image generator, so do not include anything other than the description, and do not break things into sections or use markdown."
+
+# Default text prompt for LLMs.
+DEFAULT_TEXT_PROMPT = "Write a detailed and coherent description of an image based on the provided list of tags."
+
 # Nodes to construct prompts for LLMs, including extra instructions and advanced options.
 
 class Sage_ConstructLLMPrompt(ComfyNodeABC):
@@ -192,7 +198,7 @@ class Sage_OllamaLLMPromptText(ComfyNodeABC):
 
         return {
             "required": {
-                "prompt": (IO.STRING, {"defaultInput": True, "multiline": True}),
+                "prompt": (IO.STRING, {"defaultInput": True, "default": DEFAULT_TEXT_PROMPT, "multiline": True}),
                 "model": (models, ),
                 "seed": (IO.INT, {"default": 0, "min": 0, "max": 2**32 - 1, "step": 1, "tooltip": "Seed for random number generation."}),
                 "load_for_seconds": (IO.FLOAT, {"default": 0.0, "min": -1.0, "max": 60.0 * 60.0, "step": 1, "tooltip": "Time in seconds to load the image for. -1 to load indefinitely."})
@@ -229,7 +235,7 @@ class Sage_OllamaLLMPromptVision(ComfyNodeABC):
 
         return {
             "required": {
-                "prompt": (IO.STRING, {"defaultInput": True, "multiline": True}),
+                "prompt": (IO.STRING, {"defaultInput": True, "default": DEFAULT_VISION_PROMPT, "multiline": True}),
                 "model": (models, ),
                 "image": (IO.IMAGE, {"defaultInput": True}),
                 "seed": (IO.INT, {"default": 0, "min": 0, "max": 2**32 - 1, "step": 1, "tooltip": "Seed for random number generation."}),
@@ -273,7 +279,7 @@ class Sage_LMStudioLLMPromptText(ComfyNodeABC):
 
         return {
             "required": {
-                "prompt": (IO.STRING, {"defaultInput": True, "multiline": True}),
+                "prompt": (IO.STRING, {"defaultInput": True, "default": DEFAULT_TEXT_PROMPT, "multiline": True}),
                 "model": (models, ),
                 "seed": (IO.INT, {"default": 0, "min": 0, "max": 2**32 - 1, "step": 1, "tooltip": "Seed for random number generation."}),
                 "load_for_seconds": (IO.INT, {"default": 0, "min": -1, "max": 60*60, "step": 1, "tooltip": "Time in seconds to load the image for. -1 to load indefinitely."})
@@ -310,7 +316,7 @@ class Sage_LMStudioLLMPromptVision(ComfyNodeABC):
 
         return {
             "required": {
-                "prompt": (IO.STRING, {"defaultInput": True, "multiline": True}),
+                "prompt": (IO.STRING, {"defaultInput": True, "default": DEFAULT_VISION_PROMPT, "multiline": True}),
                 "model": (models, ),
                 "image": (IO.IMAGE, {"defaultInput": True}),
                 "seed": (IO.INT, {"default": 0, "min": 0, "max": 2**32 - 1, "step": 1, "tooltip": "Seed for random number generation."}),
