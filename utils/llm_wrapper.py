@@ -135,6 +135,55 @@ def ollama_generate(model: str, prompt: str, keep_alive: float = 0.0, options=No
         logging.error(f"Error generating response from Ollama: {e}")
         return ""
 
+def ollama_generate_vision_refine( model: str, prompt: str, images=None, options=None, refine_model: str = "", refine_prompt: str = "", refine_options = None) -> tuple[str, str]:
+    """Generate a response from an Ollama vision model and refine it with another model."""
+    if not OLLAMA_AVAILABLE or ollama_client is None:
+        raise ImportError("Ollama is not available. Please install it to use this function.")
+    vision_models = get_ollama_vision_models()
+    if model not in vision_models:
+        raise ValueError(f"Model '{model}' is not available. Available models: {vision_models}")
+    if images is None:
+        raise ValueError("No images provided for vision model.")
+    input_images = tensor_to_base64(images)
+    if not input_images:
+        raise ValueError("No images provided for vision model.")
+    
+    try:
+        options = options or {}
+        options['seed'] = options.get('seed', 0)
+        refine_options = refine_options or {}
+        refine_options['seed'] = refine_options.get('seed', 0)
+        if refine_model == "":
+            refine_model = model
+        if refine_prompt == "":
+            refine_prompt = prompt
+
+        response = ollama_client.generate(
+            model=model,
+            prompt=prompt,
+            images=input_images,
+            options=options,
+            stream=False
+        )
+        if not response or 'response' not in response:
+            raise ValueError("No valid response received from the vision model.")
+        
+        initial_response = clean_response(response['response'])
+        refine_prompt = f"{refine_prompt}\n{initial_response}"
+        
+        refined_response = ollama_client.generate(
+            model=refine_model,
+            prompt=refine_prompt,
+            options=refine_options,
+            stream=False
+        )
+        if not refined_response or 'response' not in refined_response:
+            raise ValueError("No valid response received from the refining model.")
+        refined_response = clean_response(refined_response['response'])
+        return (initial_response, refined_response)
+    except Exception as e:
+        logging.error(f"Error generating response from Ollama vision model: {e}")
+        return ("", "")
 
 def is_lmstudio_running() -> bool:
     """Check if LM Studio server is running by attempting a lightweight API call."""
@@ -241,16 +290,66 @@ def lmstudio_generate(model: str, prompt: str, keep_alive: int = 0, options=None
             lms_model.unload()
         return ""
 
+def lmstudio_generate_vision_refine(model: str, prompt: str, images=None, options=None, refine_model: str = "", refine_prompt: str = "", refine_options=None) -> tuple[str, str]:
+    """Generate a response from an LM Studio vision model and refine it with another model."""
+    if not LMSTUDIO_AVAILABLE or lms is None:
+        raise ImportError("LM Studio is not available. Please install it to use this function.")
+    model_list = get_lmstudio_vision_models()
+    if model not in model_list:
+        raise ValueError(f"Model '{model}' is not available. Available models: {model_list}")
+    seed = (options or {}).get('seed', 0)
+    input_images = tensor_to_temp_image(images) if images is not None else []
+    lms_model = None
+    try:
+        lms_model = lms.llm(model)
+
+        chat = lms.Chat()
+        if not input_images:
+            chat.add_user_message(prompt)
+        else:
+            image_handles = [lms.prepare_image(image) for image in input_images]
+            chat.add_user_message(prompt, images=image_handles)
+
+        response = lms_model.respond(chat)
+        initial_response = clean_response(response.content)
+
+        if refine_model == "":
+            refine_model = model
+        if refine_prompt == "":
+            refine_prompt = prompt
+        
+        if refine_model != model:
+            lms_model.unload()
+            lms_model = lms.llm(refine_model)
+
+        chat = lms.Chat()
+        refine_prompt = f"{refine_prompt}\n{initial_response}"
+        refine_options = refine_options or {}
+        refine_options['seed'] = seed
+        chat.add_user_message(refine_prompt)
+        
+
+        refined_response = clean_response(lms_model.respond(chat).content)
+
+        if lms_model is not None:
+            lms_model.unload()
+
+        return (initial_response, refined_response)
+    except Exception as e:
+        logging.error(f"Error generating response from LM Studio model: {e}")
+        if lms_model is not None:
+            lms_model.unload()
+        return ("", "")
 
 def init_ollama():
     """Initialize Ollama if available. Print config values for Ollama."""
     from . import config_manager
     global ollama_client
     config = config_manager.settings_manager.data or {}
-    print("[Ollama Config]")
-    print(f"  enable_ollama: {config.get('enable_ollama', True)}")
-    print(f"  ollama_use_custom_url: {config.get('ollama_use_custom_url', False)}")
-    print(f"  ollama_custom_url: {config.get('ollama_custom_url', '')}")
+    #print("[Ollama Config]")
+    #print(f"  enable_ollama: {config.get('enable_ollama', True)}")
+    #print(f"  ollama_use_custom_url: {config.get('ollama_use_custom_url', False)}")
+    #print(f"  ollama_custom_url: {config.get('ollama_custom_url', '')}")
     if not OLLAMA_AVAILABLE or ollama is None:
         logging.info("Ollama is not available; skipping Ollama initialization.")
         return
@@ -273,10 +372,10 @@ def init_lmstudio():
     """Initialize LM Studio if available. Print config values for LM Studio."""
     from . import config_manager
     config = config_manager.settings_manager.data or {}
-    print("[LM Studio Config]")
-    print(f"  enable_lmstudio: {config.get('enable_lmstudio', True)}")
-    print(f"  lmstudio_use_custom_url: {config.get('lmstudio_use_custom_url', False)}")
-    print(f"  lmstudio_custom_url: {config.get('lmstudio_custom_url', '')}")
+    #print("[LM Studio Config]")
+    #print(f"  enable_lmstudio: {config.get('enable_lmstudio', True)}")
+    #print(f"  lmstudio_use_custom_url: {config.get('lmstudio_use_custom_url', False)}")
+    #print(f"  lmstudio_custom_url: {config.get('lmstudio_custom_url', '')}")
     if not LMSTUDIO_AVAILABLE or lms is None:
         logging.info("LM Studio is not available; skipping LM Studio initialization.")
         return

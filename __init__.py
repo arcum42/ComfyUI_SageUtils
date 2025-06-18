@@ -91,12 +91,14 @@ METADATA_CLASS_MAPPINGS = {
 
 OLLAMA_CLASS_MAPPINGS = {
     "Sage_OllamaLLMPromptText": Sage_OllamaLLMPromptText,
-    "Sage_OllamaLLMPromptVision": Sage_OllamaLLMPromptVision
+    "Sage_OllamaLLMPromptVision": Sage_OllamaLLMPromptVision,
+    "Sage_OllamaLLMPromptVisionRefine": Sage_OllamaLLMPromptVisionRefine
 }
 
 LMSTUDIO_CLASS_MAPPINGS = {
     "Sage_LMStudioLLMPromptVision": Sage_LMStudioLLMPromptVision,
-    "Sage_LMStudioLLMPromptText": Sage_LMStudioLLMPromptText
+    "Sage_LMStudioLLMPromptText": Sage_LMStudioLLMPromptText,
+    "Sage_LMStudioLLMPromptVisionRefine": Sage_LMStudioLLMPromptVisionRefine
 }
 
 LLM_CLASS_MAPPINGS = {
@@ -193,12 +195,14 @@ METADATA_NAME_MAPPINGS = {
 
 OLLAMA_NAME_MAPPINGS = {
     "Sage_OllamaLLMPromptText": "Ollama LLM Prompt (Text)",
-    "Sage_OllamaLLMPromptVision": "Ollama LLM Prompt (Vision)"
+    "Sage_OllamaLLMPromptVision": "Ollama LLM Prompt (Vision)",
+    "Sage_OllamaLLMPromptVisionRefine": "Ollama LLM Prompt (Vision) Refined"
 }
 
 LMSTUDIO_NAME_MAPPINGS = {
     "Sage_LMStudioLLMPromptVision": "LM Studio LLM Prompt (Vision)",
-    "Sage_LMStudioLLMPromptText": "LM Studio LLM Prompt (Text)"
+    "Sage_LMStudioLLMPromptText": "LM Studio LLM Prompt (Text)",
+    "Sage_LMStudioLLMPromptVisionRefine": "LM Studio LLM Prompt (Vision) Refined"
 }
 
 LLM_NAME_MAPPINGS = {

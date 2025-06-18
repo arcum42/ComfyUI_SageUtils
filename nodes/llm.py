@@ -267,6 +267,58 @@ class Sage_OllamaLLMPromptVision(ComfyNodeABC):
         response = llm.ollama_generate_vision(model=model, prompt=prompt, images=image, keep_alive = load_for_seconds, options=options)
         return (response,)
 
+class Sage_OllamaLLMPromptVisionRefine(ComfyNodeABC):
+    @classmethod
+    def INPUT_TYPES(cls) -> InputTypeDict:
+        models = llm.get_ollama_vision_models()
+        if not models:
+            models = []
+        models = sorted(models)
+        
+        refine_models = llm.get_ollama_models()
+        if not refine_models:
+            refine_models = []
+        refine_models = sorted(refine_models)
+
+        return {
+            "required": {
+                "prompt": (IO.STRING, {"defaultInput": True, "default": DEFAULT_VISION_PROMPT, "multiline": True}),
+                "model": (models, ),
+                "image": (IO.IMAGE, {"defaultInput": True}),
+                "seed": (IO.INT, {"default": 0, "min": 0, "max": 2**32 - 1, "step": 1, "tooltip": "Seed for random number generation."}),
+                "refine_prompt": (IO.STRING, {"default": "Take the provided text description and rewrite it to be more vivid, detailed, and engaging, while preserving the original meaning.", "multiline": True, "tooltip": "Prompt to refine the description of the image."}),
+                "refine_model": (refine_models, ),
+                "refine_seed": (IO.INT, {"default": 0, "min": 0, "max": 2**32 - 1, "step": 1, "tooltip": "Seed for random number generation."}),
+            }
+        } # type: ignore
+
+    RETURN_TYPES = (IO.STRING, IO.STRING)
+    RETURN_NAMES = ("initial_response", "refined_response")
+
+    FUNCTION = "get_response"
+
+    CATEGORY = "Sage Utils/LLM/Ollama"
+    EXPERIMENTAL = True
+    DESCRIPTION = "Send a prompt to a language model and get a response. Optionally, you can provide an image/s to the model if it supports multimodal input. The model must be installed via Ollama."
+    
+    def get_response(self, prompt: str, model: str, image, seed: int, refine_prompt: str, refine_model: str, refine_seed:int) -> tuple:
+        options = {}
+        refine_options = {}
+
+        if not llm.OLLAMA_AVAILABLE:
+            raise ImportError("Ollama is not available. Please install it to use this node.")
+        
+        if model not in llm.get_ollama_vision_models():
+            raise ValueError(f"Model '{model}' is not available or not a vision model. Available models: {llm.get_ollama_vision_models()}")
+        
+        if image is None:
+            raise ValueError("Image input is required for vision models.")
+
+        options["seed"] = seed  # Ensure the seed is included in the options
+        refine_options["seed"] = refine_seed  # Ensure the seed is included in the refine options
+        responses = llm.ollama_generate_vision_refine(model=model, prompt=prompt, images=image, options=options, refine_model=refine_model, refine_prompt=refine_prompt, refine_options=refine_options)
+        return (responses[0], responses[1])  # Return both the initial and refined responses as a tuple
+
 # Nodes for LM Studio.
 
 class Sage_LMStudioLLMPromptText(ComfyNodeABC):
@@ -347,3 +399,53 @@ class Sage_LMStudioLLMPromptVision(ComfyNodeABC):
         options["seed"] = seed  # Ensure the seed is included in the options
         response = llm.lmstudio_generate_vision(model=model, prompt=prompt, images=image, keep_alive=load_for_seconds, options=options)
         return (response,)
+
+class Sage_LMStudioLLMPromptVisionRefine(ComfyNodeABC):
+    @classmethod
+    def INPUT_TYPES(cls) -> InputTypeDict:
+        models = llm.get_lmstudio_vision_models()
+        if not models:
+            models = []
+        models = sorted(models)
+        
+        refine_models = llm.get_lmstudio_models()
+        if not refine_models:
+            refine_models = []
+        refine_models = sorted(refine_models)
+
+        return {
+            "required": {
+                "prompt": (IO.STRING, {"defaultInput": True, "default": DEFAULT_VISION_PROMPT, "multiline": True}),
+                "model": (models, ),
+                "image": (IO.IMAGE, {"defaultInput": True}),
+                "seed": (IO.INT, {"default": 0, "min": 0, "max": 2**32 - 1, "step": 1, "tooltip": "Seed for random number generation."}),
+                "refine_prompt": (IO.STRING, {"default": "Take the provided text description and rewrite it to be more vivid, detailed, and engaging, while preserving the original meaning.", "multiline": True, "tooltip": "Prompt to refine the description of the image."}),
+                "refine_model": (refine_models, ),
+                "refine_seed": (IO.INT, {"default": 0, "min": 0, "max": 2**32 - 1, "step": 1, "tooltip": "Seed for random number generation."}),
+            }
+        } # type: ignore
+
+    RETURN_TYPES = (IO.STRING, IO.STRING)
+    RETURN_NAMES = ("initial_response", "refined_response")
+
+    FUNCTION = "get_response"
+
+    CATEGORY = "Sage Utils/LLM/LM Studio"
+    EXPERIMENTAL = True
+    DESCRIPTION = "Send a prompt to a language model and get a response. Optionally, you can provide an image/s to the model if it supports multimodal input. The model must be installed via Ollama."
+    
+    def get_response(self, prompt: str, model: str, image, seed: int, refine_prompt: str, refine_model: str, refine_seed:int) -> tuple:
+        options = {}
+        refine_options = {}
+
+        if not llm.OLLAMA_AVAILABLE:
+            raise ImportError("Ollama is not available. Please install it to use this node.")
+        
+        if model not in llm.get_lmstudio_vision_models():
+            raise ValueError(f"Model '{model}' is not available or not a vision model. Available models: {llm.get_lmstudio_vision_models()}")
+        if image is None:
+            raise ValueError("Image input is required for vision models.")
+        options["seed"] = seed  # Ensure the seed is included in the options
+        refine_options["seed"] = refine_seed  # Ensure the seed is included in the refine options
+        responses = llm.lmstudio_generate_vision_refine(model=model, prompt=prompt, images=image, options=options, refine_model=refine_model, refine_prompt=refine_prompt, refine_options=refine_options)
+        return (responses[0], responses[1])  # Return both the initial and refined responses as a tuple
