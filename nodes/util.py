@@ -10,6 +10,66 @@ from ..utils import *
 
 import json
 
+class Sage_QuickResPicker(ComfyNodeABC):
+    @classmethod
+    def INPUT_TYPES(cls) -> InputTypeDict:
+        aspect_ratios = [
+            "1:1", # Square - 1024 x 1024
+            "5:12", # Portrait - 512 x 1216
+            "9:16", # Portrait - 720 x 1280
+            "10:16", # Portrait - 640 x 1024
+            "5:7", # Portrait - 1280 x 1792
+            "2:3", # Portrait - 768 x 1152
+            "3:4", # Portrait - 768 x 1024
+            "4:7", # Portrait - 768 x 1344
+            "7:9", # Portrait - 896 x 1152
+            "8:10", # Portrait - 1024 x 1280
+            "13:19" # Portrait - 832 x 1216
+            ]
+        orientations = ["Portrait", "Landscape"]
+
+        return {
+            "required": {
+                "aspect_ratio": (IO.COMBO, {"defaultInput": True, "options": aspect_ratios}),
+                "orientation": (IO.COMBO, {"defaultInput": True, "options": orientations}),
+                "multiplier": (IO.FLOAT, {"default": 1.0, "min": 0.1, "max": 10.0, "step": 0.1})
+            }
+        }
+
+    RETURN_TYPES = (IO.INT, IO.INT)
+    RETURN_NAMES = ("width", "height")
+    
+    FUNCTION = "get_resolution"
+    CATEGORY = "Sage Utils/util"
+    DESCRIPTION = "Pick a resolution from a list of common aspect ratios. The multiplier can be used to scale the resolution up or down, rounded to the nearest unit of 64."
+
+    def get_resolution(self, aspect_ratio, orientation, multiplier) -> tuple[int, int]:
+        aspect_ratios = {
+            "1:1": (1024, 1024),
+            "5:12": (512, 1216),
+            "9:16": (720, 1280),
+            "10:16": (640, 1024),
+            "5:7": (1280, 1792),
+            "2:3": (768, 1152),
+            "3:4": (768, 1024),
+            "4:7": (768, 1344),
+            "7:9": (896, 1152),
+            "8:10": (1024, 1280),
+            "13:19": (832, 1216)
+        }
+        if aspect_ratio not in aspect_ratios:
+            aspect_ratio = "1:1"  # Default to 1:1 if not found
+            print(f"Aspect ratio '{aspect_ratio}' not found, defaulting to 1:1.")
+
+        width, height = aspect_ratios[aspect_ratio]
+        if orientation == "Landscape":
+            width, height = height, width
+
+        width = int(round(width * multiplier / 64) * 64)
+        height = int(round(height * multiplier / 64) * 64)
+
+        return (width, height)
+
 class Sage_LogicalSwitch(ComfyNodeABC):
     @classmethod
     def INPUT_TYPES(cls) -> InputTypeDict:
