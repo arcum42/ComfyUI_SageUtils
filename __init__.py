@@ -2,7 +2,7 @@ import os
 
 from .nodes import *
 from .utils import *
-from .utils.llm_wrapper import init_ollama, init_lmstudio
+from .utils.llm_wrapper import init_llm
 
 cache.load()
 sage_styles = config_manager.styles_manager.data
@@ -10,8 +10,8 @@ llm_prompts = config_manager.prompts_manager.data
 sage_config = config_manager.settings_manager.data
 
 # Call LLM init functions
-init_ollama()
-init_lmstudio()
+
+init_llm()
 
 WEB_DIRECTORY = "./js"
 

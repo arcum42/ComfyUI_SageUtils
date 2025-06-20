@@ -1,5 +1,6 @@
 import logging
 from .helpers_image import tensor_to_base64, tensor_to_temp_image
+from . import cache
 
 # Attempt to import ollama, if available. Set a flag if it is not available.
 try:
@@ -20,7 +21,6 @@ except ImportError:
     LMSTUDIO_AVAILABLE = False
     logging.warning("LM Studio library not found.")
 
-
 def clean_response(response: str) -> str:
     """Clean the response from the model by removing unnecessary tags."""
     if not response:
@@ -40,15 +40,30 @@ def get_ollama_vision_models() -> list[str]:
         response = ollama_client.list()
         models = []
         for model in response.models:
+            if model.model in cache.ollama_models:
+                # If the model is cached, skip it to avoid reprocessing
+                if cache.ollama_models[model.model].get('vision', False):
+                    models.append(model.model)
+                continue
+            
+            if model.model is None:
+                continue
+
+            cache.ollama_models[model.model] = {
+                'vision': False
+            }
             capabilities = getattr(model, 'capabilities', None)
             if capabilities and 'vision' in capabilities:
                 if model.model is not None:
+                    cache.ollama_models[model.model]['vision'] = True
                     models.append(model.model)
             elif not capabilities:
                 show_response = ollama_client.show(str(model.model))
                 if 'vision' in getattr(show_response, 'capabilities', []):
                     if model.model is not None:
+                        cache.ollama_models[model.model]['vision'] = True
                         models.append(model.model)
+        cache.save()
         return models
     except Exception as e:
         logging.error(f"Error retrieving models from Ollama: {e}")
@@ -346,10 +361,6 @@ def init_ollama():
     from . import config_manager
     global ollama_client
     config = config_manager.settings_manager.data or {}
-    #print("[Ollama Config]")
-    #print(f"  enable_ollama: {config.get('enable_ollama', True)}")
-    #print(f"  ollama_use_custom_url: {config.get('ollama_use_custom_url', False)}")
-    #print(f"  ollama_custom_url: {config.get('ollama_custom_url', '')}")
     if not OLLAMA_AVAILABLE or ollama is None:
         logging.info("Ollama is not available; skipping Ollama initialization.")
         return
@@ -361,21 +372,15 @@ def init_ollama():
             logging.info(f"Ollama client initialized with custom host: {custom_url}")
         else:
             ollama_client = ollama.Client()
-            logging.info("Ollama client initialized with default host.")
     except Exception as e:
         ollama_client = None
         logging.error(f"Failed to initialize Ollama client: {e}")
-    logging.info("Ollama initialization complete.")
 
 
 def init_lmstudio():
     """Initialize LM Studio if available. Print config values for LM Studio."""
     from . import config_manager
     config = config_manager.settings_manager.data or {}
-    #print("[LM Studio Config]")
-    #print(f"  enable_lmstudio: {config.get('enable_lmstudio', True)}")
-    #print(f"  lmstudio_use_custom_url: {config.get('lmstudio_use_custom_url', False)}")
-    #print(f"  lmstudio_custom_url: {config.get('lmstudio_custom_url', '')}")
     if not LMSTUDIO_AVAILABLE or lms is None:
         logging.info("LM Studio is not available; skipping LM Studio initialization.")
         return
@@ -383,8 +388,13 @@ def init_lmstudio():
         use_custom_url = config.get('lmstudio_use_custom_url', False)
         custom_url = config.get('lmstudio_custom_url', '')
         if use_custom_url and custom_url:
-            lms.configure_default_client(custom_url)
+            lm_client = lms.get_default_client(custom_url)
             logging.info(f"LM Studio client configured with custom URL: {custom_url}")
     except Exception as e:
         logging.error(f"Failed to configure LM Studio client: {e}")
-    logging.info("LM Studio initialization complete.")
+
+def init_llm():
+    """Initialize LLM clients."""
+    init_ollama()
+    init_lmstudio()
+    logging.info("LLM clients initialized.")

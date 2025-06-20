@@ -51,12 +51,15 @@ class SageCache:
         self.main_path = sage_users_path / "sage_cache.json"
         self.info_path = sage_users_path / "sage_cache_info.json"
         self.hash_path = sage_users_path / "sage_cache_hash.json"
+        self.ollama_models_path = sage_users_path / "sage_cache_ollama.json"
 
         self.data: Dict[str, Any] = {}
         self.hash: Dict[str, str] = {}
         self.info: Dict[str, Any] = {}
+        self.ollama_models: Dict[str, Any] = {}
         self.last_hash: Dict[str, str] = {}
         self.last_info: Dict[str, Any] = {}
+        self.last_ollama_models: Dict[str, Any] = {}
 
         self.prune_all_backups_on_init()
 
@@ -199,7 +202,7 @@ class SageCache:
                         file_bytes = file_obj.read()
                         file_hash = hashlib.sha256(file_bytes).hexdigest()
                     if file_hash == data_hash:
-                        print(f"Identical backup already exists: {f}. Skipping new backup.")
+                        #print(f"Identical backup already exists: {f}. Skipping new backup.")
                         return
                 except Exception:
                     continue
@@ -243,9 +246,18 @@ class SageCache:
             self.hash_mtime = None
         if not hasattr(self, 'info_mtime'):
             self.info_mtime = None
+        if not hasattr(self, 'ollama_mtime'):
+            self.ollama_mtime = None
         try:
             hash_needs_reload = False
             info_needs_reload = False
+            ollama_needs_reload = False
+
+            if self.ollama_models_path.is_file():
+                ollama_mtime = self.ollama_models_path.stat().st_mtime
+                if not self.ollama_models or self.ollama_mtime != ollama_mtime:
+                    ollama_needs_reload = True
+            
             if self.hash_path.is_file():
                 hash_mtime = self.hash_path.stat().st_mtime
                 if not self.hash or self.hash_mtime != hash_mtime:
@@ -286,6 +298,18 @@ class SageCache:
                     self.convert_old_cache()
                 else:
                     self.data = {}
+            if self.ollama_models_path.is_file() and ollama_needs_reload:
+                print("Loading Ollama models cache from disk.")
+                ollama_data = self.load_json_file(self.ollama_models_path, "Ollama models cache", current_date)
+                if ollama_data is not None:
+                    self.ollama_models = ollama_data
+                    self.last_ollama_models = copy.deepcopy(self.ollama_models)
+                    self.ollama_mtime = self.ollama_models_path.stat().st_mtime
+                    self.backup_json("sage_cache_ollama", self.ollama_models, current_date)
+                else:
+                    self.ollama_models = {}
+                    self.last_ollama_models = {}
+                    self.ollama_mtime = None
         except Exception as e:
             print(f"Unable to load cache: {e}")
 
@@ -299,6 +323,10 @@ class SageCache:
         if self.info and self.info != self.last_info:
             self._save_json(self.info_path, self.info, "info cache")
             self.last_info = copy.deepcopy(self.info)
+            saved = True
+        if self.ollama_models and self.ollama_models != self.last_ollama_models:
+            self._save_json(self.ollama_models_path, self.ollama_models, "Ollama models cache")
+            self.last_ollama_models = copy.deepcopy(self.ollama_models)
             saved = True
         if saved:
             print("Saved cache to disk.")
