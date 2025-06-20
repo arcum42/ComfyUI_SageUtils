@@ -10,6 +10,7 @@ import nodes
 from ..utils import *
 
 import torch
+import torch.nn.functional as F
 import numpy as np
 from PIL import Image
 from PIL.PngImagePlugin import PngInfo
@@ -195,3 +196,260 @@ class Sage_SaveImageWithMetadata(ComfyNodeABC):
             counter += 1
 
         return {"ui": {"images": results}}
+
+
+class Sage_GuessResolutionByRatio(ComfyNodeABC):
+    @classmethod
+    def INPUT_TYPES(cls) -> InputTypeDict:
+        return {
+            "required": {
+                "width": (IO.INT, {"defaultInput": True, "min": 64, "max": 8192, "step": 1}),
+                "height": (IO.INT, {"defaultInput": True, "min": 64, "max": 8192, "step": 1}),
+            }
+        }
+
+    RETURN_TYPES = (IO.INT, IO.INT)
+    RETURN_NAMES = ("width", "height")
+
+    FUNCTION = "guess_resolution"
+
+    CATEGORY = "Sage Utils/image"
+    DESCRIPTION = "Based on the input width and height, guess a resolution that matches one of the common aspect ratios. The output is rounded to the nearest multiple of 64."
+
+    def guess_resolution(self, width: int, height: int) -> tuple[int, int]:
+        aspect_ratios = {
+            "1:1": (1024, 1024),
+            "5:12": (512, 1216),
+            "9:16": (720, 1280),
+            "10:16": (640, 1024),
+            "5:7": (1280, 1792),
+            "2:3": (768, 1152),
+            "3:4": (768, 1024),
+            "4:7": (768, 1344),
+            "7:9": (896, 1152),
+            "8:10": (1024, 1280),
+            "13:19": (832, 1216)
+        }
+        # Calculate the aspect ratio of the input dimensions, and pick dimensions that are closest to it.
+        landscape = width > height
+        if landscape:
+            width, height = height, width
+
+        input_aspect_ratio = width / height
+        closest_ratio = None
+        closest_diff = float('inf')
+        for ratio, (w, h) in aspect_ratios.items():
+            ratio_aspect = w / h
+            diff = abs(input_aspect_ratio - ratio_aspect)
+            if diff < closest_diff:
+                closest_diff = diff
+                closest_ratio = (w, h)
+        if closest_ratio is None:
+            print("No close resolution found, defaulting to 1024x1024.")
+            return (1024, 1024)
+        width, height = closest_ratio
+        # Round to the nearest multiple of 64
+        width = int(round(width / 64) * 64)
+        height = int(round(height / 64) * 64)
+        
+        if landscape:
+            width, height = height, width
+
+        print(f"Guessed resolution: {width}x{height}")
+        return (width, height)
+
+class Sage_QuickResPicker(ComfyNodeABC):
+    @classmethod
+    def INPUT_TYPES(cls) -> InputTypeDict:
+        aspect_ratios = [
+            "1:1", # Square - 1024 x 1024
+            "5:12", # Portrait - 512 x 1216
+            "9:16", # Portrait - 720 x 1280
+            "10:16", # Portrait - 640 x 1024
+            "5:7", # Portrait - 1280 x 1792
+            "2:3", # Portrait - 768 x 1152
+            "3:4", # Portrait - 768 x 1024
+            "4:7", # Portrait - 768 x 1344
+            "7:9", # Portrait - 896 x 1152
+            "8:10", # Portrait - 1024 x 1280
+            "13:19" # Portrait - 832 x 1216
+            ]
+        orientations = ["Portrait", "Landscape"]
+
+        return {
+            "required": {
+                "aspect_ratio": (IO.COMBO, {"defaultInput": True, "options": aspect_ratios}),
+                "orientation": (IO.COMBO, {"defaultInput": True, "options": orientations}),
+                "multiplier": (IO.FLOAT, {"default": 1.0, "min": 0.1, "max": 10.0, "step": 0.1})
+            }
+        }
+
+    RETURN_TYPES = (IO.INT, IO.INT)
+    RETURN_NAMES = ("width", "height")
+    
+    FUNCTION = "get_resolution"
+    CATEGORY = "Sage Utils/image"
+    DESCRIPTION = "Pick a resolution from a list of common aspect ratios. The multiplier can be used to scale the resolution up or down, rounded to the nearest unit of 64."
+
+    def get_resolution(self, aspect_ratio, orientation, multiplier) -> tuple[int, int]:
+        aspect_ratios = {
+            "1:1": (1024, 1024),
+            "5:12": (512, 1216),
+            "9:16": (720, 1280),
+            "10:16": (640, 1024),
+            "5:7": (1280, 1792),
+            "2:3": (768, 1152),
+            "3:4": (768, 1024),
+            "4:7": (768, 1344),
+            "7:9": (896, 1152),
+            "8:10": (1024, 1280),
+            "13:19": (832, 1216)
+        }
+        if aspect_ratio not in aspect_ratios:
+            aspect_ratio = "1:1"  # Default to 1:1 if not found
+            print(f"Aspect ratio '{aspect_ratio}' not found, defaulting to 1:1.")
+
+        width, height = aspect_ratios[aspect_ratio]
+        if orientation == "Landscape":
+            width, height = height, width
+
+        width = int(round(width * multiplier / 64) * 64)
+        height = int(round(height * multiplier / 64) * 64)
+
+        return (width, height)
+
+# Since ComfyUI_Essentials is not in maintainance mode, making a copy of the ImageResize node from there in my nodes package that I can modify it to suit my needs.
+# https://github.com/cubiq/ComfyUI_essentials
+# Original Author: cubiq - Copyright (c) 2023 Matteo Spinelli. MIT license applies to this code. (But then, the rest of my node pack is also MIT licensed.)
+class Sage_CubiqImageResize:
+    @classmethod
+    def INPUT_TYPES(s):
+        return {
+            "required": {
+                "image": ("IMAGE",),
+                "width": ("INT", { "default": 1024, "min": 0, "max": nodes.MAX_RESOLUTION, "step": 1, }),
+                "height": ("INT", { "default": 1024, "min": 0, "max": nodes.MAX_RESOLUTION, "step": 1, }),
+                "interpolation": (["nearest", "bilinear", "bicubic", "area", "nearest-exact", "lanczos", "bislerp"],),
+                "method": (["stretch", "keep proportion", "fill / crop", "pad"],),
+                "condition": (["always", "downscale if bigger", "upscale if smaller", "if bigger area", "if smaller area"],),
+                "multiple_of": ("INT", { "default": 0, "min": 0, "max": 1024, "step": 1, }),
+            }
+        }
+
+    RETURN_TYPES = ("IMAGE", "INT", "INT",)
+    RETURN_NAMES = ("IMAGE", "width", "height",)
+    FUNCTION = "execute"
+    CATEGORY = "Sage Utils/image"
+    
+    def padding(self, width, height, new_width, new_height):
+        """
+        Calculate the padding values for left, right, top, and bottom.
+        """
+        pad_left = (width - new_width) // 2
+        pad_right = width - new_width - pad_left
+        pad_top = (height - new_height) // 2
+        pad_bottom = height - new_height - pad_top
+        return pad_left, pad_right, pad_top, pad_bottom
+    
+    def resize_needed(self, condition, width, height, ow, oh):
+        if "always" in condition \
+            or ("downscale if bigger" == condition and (oh > height or ow > width)) \
+            or ("upscale if smaller" == condition and (oh < height or ow < width)) \
+            or ("bigger area" in condition and (oh * ow > height * width)) \
+            or ("smaller area" in condition and (oh * ow < height * width)):
+            return True
+        return False
+
+    def execute(self, image, width, height, method="stretch", interpolation="lanczos", condition="always", multiple_of=64, keep_proportion=False):
+        _, oh, ow, _ = image.shape
+        x = y = x2 = y2 = 0
+        pad_left = pad_right = pad_top = pad_bottom = 0
+        padding = False
+
+        if keep_proportion:
+            method = "keep proportion"
+
+        if multiple_of > 1:
+            width = width - (width % multiple_of)
+            height = height - (height % multiple_of)
+
+        if method == 'keep proportion' or method == 'pad':
+            if width == 0 and oh < height:
+                width = nodes.MAX_RESOLUTION
+            elif width == 0 and oh >= height:
+                width = ow
+
+            if height == 0 and ow < width:
+                height = nodes.MAX_RESOLUTION
+            elif height == 0 and ow >= width:
+                height = oh
+
+            ratio = min(width / ow, height / oh)
+            new_width = round(ow*ratio)
+            new_height = round(oh*ratio)
+
+            if method == 'pad':
+                pad_left, pad_right, pad_top, pad_bottom = self.padding(width, height, new_width, new_height)
+                if pad_left > 0 or pad_right > 0 or pad_top > 0 or pad_bottom > 0:
+                    padding = True
+
+            width = new_width
+            height = new_height
+        elif method.startswith('fill'):
+            width = width if width > 0 else ow
+            height = height if height > 0 else oh
+
+            ratio = max(width / ow, height / oh)
+            new_width = round(ow*ratio)
+            new_height = round(oh*ratio)
+
+            x = (new_width - width) // 2
+            y = (new_height - height) // 2
+            x2 = x + width
+            y2 = y + height
+
+            if x2 > new_width: x -= (x2 - new_width)
+            if x < 0: x = 0
+            if y2 > new_height: y -= (y2 - new_height)
+            if y < 0: y = 0
+
+            width = new_width
+            height = new_height
+        else:
+            width = width if width > 0 else ow
+            height = height if height > 0 else oh
+
+        if self.resize_needed(condition, width, height, ow, oh):
+            outputs = image.permute(0,3,1,2)
+
+            if interpolation == "lanczos":
+                outputs = comfy.utils.lanczos(outputs, width, height)
+            elif interpolation == "bislerp":
+                outputs = comfy.utils.bislerp(outputs, width, height)
+            else:
+                outputs = F.interpolate(outputs, size=(height, width), mode=interpolation)
+
+            if padding:
+                outputs = F.pad(outputs, (pad_left, pad_right, pad_top, pad_bottom), value=0)
+
+            outputs = outputs.permute(0,2,3,1)
+
+            if method.startswith('fill'):
+                if x > 0 or y > 0 or x2 > 0 or y2 > 0:
+                    outputs = outputs[:, y:y2, x:x2, :]
+        else:
+            outputs = image
+
+        if multiple_of > 1 and (outputs.shape[2] % multiple_of != 0 or outputs.shape[1] % multiple_of != 0):
+            width = outputs.shape[2]
+            height = outputs.shape[1]
+            x = (width % multiple_of) // 2
+            y = (height % multiple_of) // 2
+            x2 = width - ((width % multiple_of) - x)
+            y2 = height - ((height % multiple_of) - y)
+            outputs = outputs[:, y:y2, x:x2, :]
+        
+        outputs = torch.clamp(outputs, 0, 1)
+
+        return(outputs, outputs.shape[2], outputs.shape[1],)
+
