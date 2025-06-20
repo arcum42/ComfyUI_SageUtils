@@ -318,12 +318,17 @@ def clean_text(text):
     ret = ' '.join(filter(None, (x.strip() for x in text.split())))
     ret = ', '.join(filter(None, (x.strip() for x in ret.split(','))))
     ret = '\n'.join(filter(None, (x.strip() for x in ret.split('\n'))))
+    
+    
+    # Strip whitespace from the start and end of text in parentheses
+    ret = ' ('.join(part.strip() for part in ret.split('('))
+    ret = ')'.join(part.strip() for part in ret.split(')'))
     return ret
 
 def condition_text(clip, text = None):
     zero_text = text is None
     text = text or ""
-    
+
     tokens = clip.tokenize(text)
     output = clip.encode_from_tokens(tokens, return_pooled=True, return_dict=True)
     cond = output.pop("cond")

@@ -5,3 +5,4 @@
 # LLM support is a work in progress, and subject to revision.
 ollama>=0.5.1
 lmstudio
+dynamicprompts

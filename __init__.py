@@ -34,6 +34,7 @@ SETTINGS_CLASS_MAPPINGS = {
 
 TEXT_CLASS_MAPPINGS = {
     "Sage_SetText": Sage_SetText,
+    "SageSetWildcardText": SageSetWildcardText,
     "Sage_JoinText": Sage_JoinText,
     "Sage_TripleJoinText": Sage_TripleJoinText,
     "Sage_CleanText": Sage_CleanText,
@@ -141,6 +142,7 @@ SETTINGS_NAME_MAPPINGS = {
 
 TEXT_NAME_MAPPINGS = {
     "Sage_SetText": "Set Text",
+    "SageSetWildcardText": "Set Text (Wildcards)",
     "Sage_JoinText": "Join Text",
     "Sage_TripleJoinText": "Join Text x3",
     "Sage_CleanText": "Clean Text",

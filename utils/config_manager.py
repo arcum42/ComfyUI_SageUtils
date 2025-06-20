@@ -8,7 +8,11 @@ base_path = pathlib.Path(__file__).resolve().parent.parent
 users_path = pathlib.Path(folder_paths.get_user_directory())
 sage_users_path = users_path / "default" / "SageUtils"
 assets_path = base_path / "assets"
+sage_wildcard_path = sage_users_path / "wildcards"
+
+# Ensure the necessary directories exist
 sage_users_path.mkdir(parents=True, exist_ok=True)
+sage_wildcard_path.mkdir(parents=True, exist_ok=True)
 
 def deep_merge_dicts(a, b):
     """Recursively merge dict b into dict a and return the result."""

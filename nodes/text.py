@@ -5,6 +5,52 @@ from __future__ import annotations
 from comfy.comfy_types.node_typing import ComfyNodeABC, InputTypeDict, IO
 
 from ..utils import *
+from ..utils.config_manager import sage_wildcard_path
+
+from dynamicprompts.generators import RandomPromptGenerator
+from dynamicprompts.wildcards.wildcard_manager import WildcardManager
+
+class SageSetWildcardText(ComfyNodeABC):
+    @classmethod
+    def INPUT_TYPES(cls) -> InputTypeDict:
+        return {
+            "optional": {
+                "prefix": (IO.STRING, {"defaultInput": True, "multiline": True}),
+                "suffix": (IO.STRING, {"defaultInput": True, "multiline": True})
+            },
+            "required": {
+                "str": (IO.STRING, {"forceInput": False, "dynamicPrompts": True, "multiline": True}),
+                "seed": (IO.INT, {"defaultInput": False, "default": 0, "min": 0, "max": 2**32-1, "step": 1}),
+                "clean": (IO.BOOLEAN, {"defaultInput": False, "default": False})
+            }
+        }
+
+    RETURN_TYPES = (IO.STRING,)
+    RETURN_NAMES = ("str",)
+    FUNCTION = "set_wildcard_text"
+    CATEGORY = "Sage Utils/text"
+    DESCRIPTION = "Loads user defined wildcard from the wildcards directory, and applies them to any wildcards in the text."
+    
+    def set_wildcard_text(self, str, prefix=None, suffix=None, seed=0, clean = False) -> tuple[str]:
+        """
+        Sets the text with wildcards replaced by their values.
+        """
+        str = f"{prefix or ''}{str}{suffix or ''}"
+
+        # Initialize the wildcard manager
+        wildcard_manager = WildcardManager(sage_wildcard_path)
+
+        # Generate a random prompt using the wildcard manager
+        generator = RandomPromptGenerator(wildcard_manager, seed=seed)
+
+        # Replace wildcards in the string
+        str = generator.generate(str)[0]
+
+        # Clean the string if requested
+        if clean:
+            str = clean_text(str)
+
+        return (str,)
 
 class Sage_SetText(ComfyNodeABC):
     @classmethod
