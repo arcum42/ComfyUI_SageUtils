@@ -23,7 +23,8 @@ DEPRECATED_CLASS_MAPPINGS = {
 UTILITY_CLASS_MAPPINGS = {
     "Sage_GetFileHash": Sage_GetFileHash,
     "Sage_LogicalSwitch": Sage_LogicalSwitch,
-    "Sage_QuickResPicker": Sage_QuickResPicker
+    "Sage_QuickResPicker": Sage_QuickResPicker,
+    "Sage_GuessResolutionByRatio": Sage_GuessResolutionByRatio
 }
 
 SETTINGS_CLASS_MAPPINGS = {
@@ -128,7 +129,8 @@ DEPRECATED_NAME_MAPPINGS = {
 UTILITY_NAME_MAPPINGS = {
     "Sage_GetFileHash": "Get Sha256 Hash",
     "Sage_LogicalSwitch": "Switch",
-    "Sage_QuickResPicker": "Quick Resolution Picker"
+    "Sage_QuickResPicker": "Quick Resolution Picker",
+    "Sage_GuessResolutionByRatio": "Guess Close Resolution by Ratio"
 }
 
 SETTINGS_NAME_MAPPINGS = {

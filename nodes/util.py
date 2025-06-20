@@ -10,6 +10,66 @@ from ..utils import *
 
 import json
 
+class Sage_GuessResolutionByRatio(ComfyNodeABC):
+    @classmethod
+    def INPUT_TYPES(cls) -> InputTypeDict:
+        return {
+            "required": {
+                "width": (IO.INT, {"defaultInput": True, "min": 64, "max": 8192, "step": 1}),
+                "height": (IO.INT, {"defaultInput": True, "min": 64, "max": 8192, "step": 1}),
+            }
+        }
+
+    RETURN_TYPES = (IO.INT, IO.INT)
+    RETURN_NAMES = ("width", "height")
+
+    FUNCTION = "guess_resolution"
+
+    CATEGORY = "Sage Utils/util"
+    DESCRIPTION = "Based on the input width and height, guess a resolution that matches one of the common aspect ratios. The output is rounded to the nearest multiple of 64."
+
+    def guess_resolution(self, width: int, height: int) -> tuple[int, int]:
+        aspect_ratios = {
+            "1:1": (1024, 1024),
+            "5:12": (512, 1216),
+            "9:16": (720, 1280),
+            "10:16": (640, 1024),
+            "5:7": (1280, 1792),
+            "2:3": (768, 1152),
+            "3:4": (768, 1024),
+            "4:7": (768, 1344),
+            "7:9": (896, 1152),
+            "8:10": (1024, 1280),
+            "13:19": (832, 1216)
+        }
+        # Calculate the aspect ratio of the input dimensions, and pick dimensions that are closest to it.
+        landscape = width > height
+        if landscape:
+            width, height = height, width
+
+        input_aspect_ratio = width / height
+        closest_ratio = None
+        closest_diff = float('inf')
+        for ratio, (w, h) in aspect_ratios.items():
+            ratio_aspect = w / h
+            diff = abs(input_aspect_ratio - ratio_aspect)
+            if diff < closest_diff:
+                closest_diff = diff
+                closest_ratio = (w, h)
+        if closest_ratio is None:
+            print("No close resolution found, defaulting to 1024x1024.")
+            return (1024, 1024)
+        width, height = closest_ratio
+        # Round to the nearest multiple of 64
+        width = int(round(width / 64) * 64)
+        height = int(round(height / 64) * 64)
+        
+        if landscape:
+            width, height = height, width
+
+        print(f"Guessed resolution: {width}x{height}")
+        return (width, height)
+
 class Sage_QuickResPicker(ComfyNodeABC):
     @classmethod
     def INPUT_TYPES(cls) -> InputTypeDict:
