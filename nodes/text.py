@@ -82,7 +82,7 @@ class Sage_JoinText(ComfyNodeABC):
         return {
             "required": {
                 "separator": (IO.STRING, {"defaultInput": False, "default": ', '}),
-                "add_separator_to_end": (IO.BOOLEAN, {"defaultInput": False, "default": False, "description": "Add separator to the end of the joined string."}),
+                "add_separator_to_end": (IO.BOOLEAN, {"defaultInput": False, "default": False, "tooltip": "Add separator to the end of the joined string."}),
                 "str1": (IO.STRING, {"defaultInput": True, "multiline": True}),
                 "str2": (IO.STRING, {"defaultInput": True, "multiline": True}),
             }
@@ -113,7 +113,7 @@ class Sage_TripleJoinText(ComfyNodeABC):
         return {
             "required": {
                 "separator": (IO.STRING, {"defaultInput": False, "default": ', '}),
-                "add_separator_to_end": (IO.BOOLEAN, {"defaultInput": False, "default": False, "description": "Add separator to the end of the joined string."}),
+                "add_separator_to_end": (IO.BOOLEAN, {"defaultInput": False, "default": False, "tooltip": "Add separator to the end of the joined string."}),
                 "str1": (IO.STRING, {"defaultInput": True, "multiline": True}),
                 "str2": (IO.STRING, {"defaultInput": True, "multiline": True}),
                 "str3": (IO.STRING, {"defaultInput": True, "multiline": True})
