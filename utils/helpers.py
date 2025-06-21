@@ -4,6 +4,7 @@ import pathlib
 import hashlib
 import datetime
 import torch
+import logging
 import json
 
 import folder_paths
@@ -340,3 +341,105 @@ def condition_text(clip, text = None):
         return [[torch.zeros_like(cond), output]]
 
     return [[cond, output]]
+
+
+def get_save_file_path(filename_prefix: str = "text", filename_ext: str = "txt") -> str:
+    """
+    Generate a safe file path for saving files with automatic counter increment.
+
+    Args:
+        filename_prefix: Base filename, can include date/time variables like %year%, %month%, etc.
+        filename_ext: File extension (without dot)
+
+    Returns:
+        Complete file path including directory and filename with counter
+    """
+
+    def _extract_counter_from_filename(filename: str) -> tuple[int, str]:
+        """Extract counter from existing filename to determine next counter value."""
+        base_name = pathlib.Path(filename_prefix).name
+        prefix_len = len(base_name)
+
+        if len(filename) <= prefix_len + 1:
+            return 0, filename[:prefix_len + 1]
+
+        prefix = filename[:prefix_len + 1]
+        try:
+            # Remove file extension first, then extract counter
+            filename_no_ext = pathlib.Path(filename).stem
+            counter_part = filename_no_ext[prefix_len + 1:]
+            digits = int(counter_part)
+        except (ValueError, IndexError):
+            digits = 0
+        return digits, prefix
+
+    def _replace_date_variables(text: str) -> str:
+        """Replace date/time variables in the filename prefix."""
+        now = datetime.datetime.now()
+        replacements = {
+            "%year%": str(now.year),
+            "%month%": str(now.month).zfill(2),
+            "%day%": str(now.day).zfill(2),
+            "%hour%": str(now.hour).zfill(2),
+            "%minute%": str(now.minute).zfill(2),
+            "%second%": str(now.second).zfill(2),
+        }
+
+        for placeholder, value in replacements.items():
+            text = text.replace(placeholder, value)
+        return text
+
+    # Get output directory and process filename prefix
+    output_dir = folder_paths.get_output_directory()
+    
+    if "%" in filename_prefix:
+        filename_prefix = _replace_date_variables(filename_prefix)
+
+    # Parse the filename prefix path
+    filename_prefix_path = pathlib.Path(filename_prefix)
+    subfolder = filename_prefix_path.parent
+    base_filename = filename_prefix_path.name
+
+    # Construct full output path
+    output_path = pathlib.Path(output_dir)
+    full_output_folder = output_path / subfolder
+
+    # Security check: ensure we're not saving outside the output directory
+    try:
+        full_output_folder.resolve().relative_to(output_path.resolve())
+    except ValueError:
+        error_msg = (
+            "ERROR: Saving outside the output folder is not allowed.\n"
+            f"  Target folder: {full_output_folder.resolve()}\n"
+            f"  Output directory: {output_path.resolve()}"
+        )
+        logging.error(error_msg)
+        raise ValueError(error_msg)
+
+    # Ensure output directory exists
+    full_output_folder.mkdir(parents=True, exist_ok=True)
+
+    # Find the next available counter
+    counter = 1
+    try:
+        existing_files = [f.name for f in full_output_folder.iterdir() if f.is_file()]
+        matching_counters = []
+
+        for file in existing_files:
+            digits, prefix = _extract_counter_from_filename(file)
+            # Check if this file matches our pattern (same base name and ends with underscore)
+            if (prefix[:-1].lower() == base_filename.lower() and 
+                len(prefix) > 0 and prefix[-1] == "_"):
+                matching_counters.append(digits)
+
+        if matching_counters:
+            counter = max(matching_counters) + 1
+            
+    except Exception as e:
+        logging.warning(f"Error finding existing files, using counter=1: {e}")
+        counter = 1
+
+    # Generate final filename
+    final_filename = f"{base_filename}_{counter:05d}.{filename_ext}"
+
+    return str(full_output_folder / final_filename)

@@ -76,6 +76,39 @@ class Sage_SetText(ComfyNodeABC):
     def pass_str(self, str, prefix=None, suffix=None) -> tuple[str]:
         return (f"{prefix or ''}{str}{suffix or ''}",)
 
+class Sage_SaveText(ComfyNodeABC):
+
+    @classmethod
+    def INPUT_TYPES(cls) -> InputTypeDict:
+        return {
+            "required": {
+                "filename_prefix": (IO.STRING, {"default": "ComfyUI_Text", "tooltip": "The prefix for the file to save. This may include formatting information such as %date:yyyy-MM-dd% to include values from nodes."}),
+                "file_extension": (IO.STRING, {"defaultInput": False, "default": "txt", "tooltip": "The file extension to use for the saved file."}),
+                "text": (IO.STRING, {"forceInput": True, "multiline": True})
+            }
+        }
+
+    RETURN_TYPES = (IO.STRING,)
+    RETURN_NAMES = ("filepath",)
+
+    FUNCTION = "save_text"
+
+    CATEGORY = "Sage Utils/text"
+    DESCRIPTION = "Saves the text to a file."
+
+    def save_text(self, filename_prefix: str, file_extension: str, text: str) -> tuple[str]:
+        if file_extension.startswith('.'):
+            file_extension = file_extension[1:]
+        full_path = get_save_file_path(filename_prefix, file_extension)
+        if not full_path:
+            raise ValueError("Invalid file path.")
+
+        with open(full_path, 'w', encoding='utf-8') as file:
+            file.write(text)
+
+        print(f"Text saved to {full_path}")
+        return (full_path,)
+
 class Sage_JoinText(ComfyNodeABC):
     @classmethod
     def INPUT_TYPES(cls) -> InputTypeDict:
