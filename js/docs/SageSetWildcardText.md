@@ -6,13 +6,20 @@ A text processing node that supports wildcard functionality for dynamic text gen
 
 ## Inputs
 
-- **text** (STRING): The input text containing wildcard patterns
-- **seed** (INT): Random seed for consistent wildcard selection (optional)
-- **force_input** (BOOLEAN): Whether to force input connection
+### Required
+
+- **str** (STRING): The input text containing wildcard patterns
+- **seed** (INT): Random seed for consistent wildcard selection (default: 0, range: 0 to 4294967295)
+- **clean** (BOOLEAN): Whether to clean the output text (default: False)
+
+### Optional
+
+- **prefix** (STRING): Text to add before the main string
+- **suffix** (STRING): Text to add after the main string
 
 ## Outputs
 
-- **text** (STRING): The processed text with wildcards resolved
+- **str** (STRING): The processed text with wildcards resolved
 
 ## Usage
 
