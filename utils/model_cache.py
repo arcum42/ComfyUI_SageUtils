@@ -13,7 +13,7 @@ import copy
 import os
 from typing import Any, Dict, Optional, List
 
-import folder_paths
+from .path_manager import path_manager, file_manager
 
 def str_to_bool(value: Any) -> bool:
     if isinstance(value, bool):
@@ -37,21 +37,17 @@ def bool_to_str(value: Any) -> str:
             return "false"
     raise ValueError(f"Cannot convert {value} to string representation of boolean.")
 
-users_path = pathlib.Path(folder_paths.get_user_directory())
-sage_users_path = users_path / "default" / "SageUtils"
-sage_backup_path = sage_users_path / "backup"
-sage_users_path.mkdir(parents=True, exist_ok=True)
-sage_backup_path.mkdir(parents=True, exist_ok=True)
 
 class SageCache:
     """
     Persistent cache for model metadata, hashes, and info.
     """
     def __init__(self):
-        self.main_path = sage_users_path / "sage_cache.json"
-        self.info_path = sage_users_path / "sage_cache_info.json"
-        self.hash_path = sage_users_path / "sage_cache_hash.json"
-        self.ollama_models_path = sage_users_path / "sage_cache_ollama.json"
+        # Use centralized path management
+        self.main_path = path_manager.get_user_file_path("sage_cache.json")
+        self.info_path = path_manager.get_user_file_path("sage_cache_info.json")
+        self.hash_path = path_manager.get_user_file_path("sage_cache_hash.json")
+        self.ollama_models_path = path_manager.get_user_file_path("sage_cache_ollama.json")
 
         self.data: Dict[str, Any] = {}
         self.hash: Dict[str, str] = {}
@@ -115,7 +111,7 @@ class SageCache:
         """Prune old backup files, keeping only the newest file for each unique hash, then enforce min_count and min_days."""
         pattern = re.compile(rf"{re.escape(prefix)}-(\d{{4}}-\d{{2}}-\d{{2}}T\d{{2}}-\d{{2}}-\d{{2}}).*\\.json$")
         backups = []
-        for f in sage_backup_path.iterdir():
+        for f in path_manager.backup_path.iterdir():
             if f.is_file() and f.name.startswith(prefix) and f.suffix == ".json":
                 m = pattern.search(f.name)
                 if m:
@@ -166,13 +162,7 @@ class SageCache:
 
     def _atomic_write_json(self, path: pathlib.Path, data: Any) -> None:
         """Write JSON data to a file atomically."""
-        temp_dir = path.parent
-        with tempfile.NamedTemporaryFile('w', dir=temp_dir, delete=False, encoding='utf-8') as tf:
-            json.dump(data, tf, separators=(",", ":"), sort_keys=True, indent=4)
-            tf.flush()
-            os.fsync(tf.fileno())
-            tempname = tf.name
-        os.replace(tempname, path)
+        file_manager.atomic_write_json(path, data)
 
     def _save_json(self, path: pathlib.Path, data: Any, label: str) -> None:
         """Save data to a JSON file atomically, backing up and pruning old backups on error."""
@@ -183,7 +173,7 @@ class SageCache:
             current_date = datetime.datetime.now().strftime("%Y-%m-%dT%H-%M-%S")
             if path.is_file():
                 error_prefix = f"{path.stem}-save-error"
-                error_backup_path = sage_backup_path / f"{error_prefix}-{current_date}.json"
+                error_backup_path = path_manager.get_backup_file_path(f"{error_prefix}-{current_date}.json")
                 try:
                     with path.open("r") as src_file, error_backup_path.open("w") as dst_file:
                         dst_file.write(src_file.read())
@@ -195,7 +185,7 @@ class SageCache:
         """Backup data to a JSON file atomically, pruning old backups. Skip if identical backup already exists."""
         data_json = json.dumps(data, separators=(",", ":"), sort_keys=True, indent=4)
         data_hash = hashlib.sha256(data_json.encode("utf-8")).hexdigest()
-        for f in sage_backup_path.iterdir():
+        for f in path_manager.backup_path.iterdir():
             if f.is_file() and f.name.startswith(backup_prefix) and f.suffix == ".json":
                 try:
                     with f.open("rb") as file_obj:
@@ -207,7 +197,7 @@ class SageCache:
                 except Exception:
                     continue
         safe_date = current_date.replace(":", "-")
-        backup_path = sage_backup_path / f"{backup_prefix}-{safe_date}.json"
+        backup_path = path_manager.get_backup_file_path(f"{backup_prefix}-{safe_date}.json")
         try:
             temp_dir = backup_path.parent
             with tempfile.NamedTemporaryFile('w', dir=temp_dir, delete=False, encoding='utf-8') as tf:
@@ -230,7 +220,7 @@ class SageCache:
             if path.is_file():
                 safe_date = current_date.replace(":", "-")
                 error_prefix = f"{path.stem}-error"
-                error_backup_path = sage_backup_path / f"{error_prefix}-{safe_date}.json"
+                error_backup_path = path_manager.get_backup_file_path(f"{error_prefix}-{safe_date}.json")
                 try:
                     with path.open("r") as src_file, error_backup_path.open("w") as dst_file:
                         dst_file.write(src_file.read())

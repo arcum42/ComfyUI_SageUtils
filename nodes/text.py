@@ -5,7 +5,7 @@ from __future__ import annotations
 from comfy.comfy_types.node_typing import ComfyNodeABC, InputTypeDict, IO
 
 from ..utils import *
-from ..utils.config_manager import sage_wildcard_path
+from ..utils.sage_utils import sage_wildcard_path
 
 from dynamicprompts.generators import RandomPromptGenerator
 from dynamicprompts.wildcards.wildcard_manager import WildcardManager

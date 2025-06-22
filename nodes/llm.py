@@ -345,15 +345,15 @@ class Sage_LMStudioLLMPromptText(ComfyNodeABC):
 
     CATEGORY = "Sage Utils/LLM/LM Studio"
     EXPERIMENTAL = True
-    DESCRIPTION = "Send a prompt to a language model and get a response. The model must be installed via Ollama."
+    DESCRIPTION = "Send a prompt to a language model and get a response. The model must be installed via LM Studio."
 
     def get_response(self, prompt: str, model: str, seed: int = 0, load_for_seconds: int = 0) -> tuple:
         options = {}
-        if not llm.OLLAMA_AVAILABLE:
-            raise ImportError("Ollama is not available. Please install it to use this node.")
+        if not llm.LMSTUDIO_AVAILABLE:
+            raise ImportError("LM Studio is not available. Please install it to use this node.")
         
         if model not in llm.get_lmstudio_models():
-            raise ValueError(f"Model '{model}' is not available. Available models: {llm.get_ollama_models()}")
+            raise ValueError(f"Model '{model}' is not available. Available models: {llm.get_lmstudio_models()}")
         
         options["seed"] = seed  # Ensure the seed is included in the options
         response = llm.lmstudio_generate(model=model, prompt=prompt, keep_alive=load_for_seconds, options=options)
@@ -387,11 +387,11 @@ class Sage_LMStudioLLMPromptVision(ComfyNodeABC):
     
     def get_response(self, prompt: str, model: str, image, seed: int = 0, load_for_seconds: int = 0) -> tuple:
         options = {}
-        if not llm.OLLAMA_AVAILABLE:
-            raise ImportError("Ollama is not available. Please install it to use this node.")
+        if not llm.LMSTUDIO_AVAILABLE:
+            raise ImportError("LM Studio is not available. Please install it to use this node.")
         
-        if model not in llm.get_lmstudio_models():
-            raise ValueError(f"Model '{model}' is not available or not a vision model. Available models: {llm.get_ollama_vision_models()}")
+        if model not in llm.get_lmstudio_vision_models():
+            raise ValueError(f"Model '{model}' is not available or not a vision model. Available models: {llm.get_lmstudio_vision_models()}")
         
         if image is None:
             raise ValueError("Image input is required for vision models.")
@@ -432,14 +432,14 @@ class Sage_LMStudioLLMPromptVisionRefine(ComfyNodeABC):
 
     CATEGORY = "Sage Utils/LLM/LM Studio"
     EXPERIMENTAL = True
-    DESCRIPTION = "Send a prompt to a language model and get a response. Optionally, you can provide an image/s to the model if it supports multimodal input. The model must be installed via Ollama."
+    DESCRIPTION = "Send a prompt to a language model and get a response. Optionally, you can provide an image/s to the model if it supports multimodal input. The model must be installed via LM Studio."
     
     def get_response(self, prompt: str, model: str, image, seed: int, refine_prompt: str, refine_model: str, refine_seed:int) -> tuple:
         options = {}
         refine_options = {}
 
-        if not llm.OLLAMA_AVAILABLE:
-            raise ImportError("Ollama is not available. Please install it to use this node.")
+        if not llm.LMSTUDIO_AVAILABLE:
+            raise ImportError("LM Studio is not available. Please install it to use this node.")
         
         if model not in llm.get_lmstudio_vision_models():
             raise ValueError(f"Model '{model}' is not available or not a vision model. Available models: {llm.get_lmstudio_vision_models()}")
