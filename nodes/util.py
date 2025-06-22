@@ -6,7 +6,13 @@ from comfy.comfy_types.node_typing import ComfyNodeABC, InputTypeDict, IO
 
 import folder_paths
 
-from ..utils import *
+# Import specific utilities instead of wildcard import
+from ..utils import (
+    cache, get_file_sha256, blank_image, url_to_torch_image,
+    get_model_info, get_latest_model_version, get_civitai_model_json,
+    get_civitai_model_version_json_by_hash, pull_lora_image_urls,
+    get_lora_hash, pull_metadata
+)
 
 import json
 

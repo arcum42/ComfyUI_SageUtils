@@ -7,7 +7,11 @@ from comfy.comfy_types.node_typing import ComfyNodeABC, InputTypeDict, IO
 import folder_paths
 from nodes import CheckpointLoaderSimple, UNETLoader
 
-from ..utils import *
+# Import specific utilities instead of wildcard import
+from ..utils import (
+    cache, pull_metadata, str_to_bool, get_recently_used_models,
+    model_scan, path_manager, loaders
+)
 
 import pathlib
 import json

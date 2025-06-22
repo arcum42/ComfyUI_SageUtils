@@ -7,12 +7,21 @@ from comfy.comfy_types.node_typing import ComfyNodeABC, InputTypeDict, IO
 import comfy
 import nodes
 
-from ..utils import *
+# Import specific utilities instead of wildcard import  
+from ..utils import (
+    load_image_from_path, pull_metadata, cache, sage_users_path,
+    path_manager, file_manager
+)
 
 import torch
 import torch.nn.functional as F
 import numpy as np
 from PIL import Image
+from PIL.PngImagePlugin import PngInfo
+import pathlib
+import hashlib
+import json
+import folder_paths
 from PIL.PngImagePlugin import PngInfo
 import os
 

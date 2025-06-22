@@ -5,9 +5,15 @@ from __future__ import annotations
 from comfy.comfy_types.node_typing import ComfyNodeABC, InputTypeDict, IO
 import folder_paths
 
-from ..utils import *
+# Import specific utilities instead of wildcard import
+from ..utils import (
+    config_manager, lora_to_prompt, civitai_sampler_name,
+    pull_metadata, get_model_info, cache, name_from_path
+)
 
 import numpy as np
+import pathlib
+import json
 
 class Sage_ConstructMetadata(ComfyNodeABC):
     def __init__(self):

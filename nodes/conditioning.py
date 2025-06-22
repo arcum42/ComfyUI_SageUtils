@@ -5,7 +5,8 @@ from __future__ import annotations
 from comfy.comfy_types.node_typing import ComfyNodeABC, InputTypeDict, IO
 import comfy
 
-from ..utils import *
+# Import specific utilities instead of wildcard import
+from ..utils import condition_text, clean_text
 
 import torch
 

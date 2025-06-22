@@ -1,7 +1,7 @@
 from __future__ import annotations
 from comfy.comfy_types.node_typing import ComfyNodeABC, InputTypeDict, IO
 
-from ..utils import *
+# This file has deprecated nodes so we'll minimize imports
 from .. import nodes
 
 class Sage_KSamplerDecoder(ComfyNodeABC):

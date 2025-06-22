@@ -1,17 +1,23 @@
 import os
 
+# Import all node classes
 from .nodes import *
-from .utils import *
+
+# Import utility functions and objects
+from .utils import cache, config_manager
 from .utils.llm_wrapper import init_llm
 
+# Initialize components
 cache.load()
 sage_styles = config_manager.styles_manager.data
 llm_prompts = config_manager.prompts_manager.data
 sage_config = config_manager.settings_manager.data
 
-# Call LLM init functions
-
+# Initialize LLM functionality
 init_llm()
+
+# Import LLM availability flags for conditional node registration
+from .utils import llm_wrapper as llm
 
 WEB_DIRECTORY = "./js"
 
