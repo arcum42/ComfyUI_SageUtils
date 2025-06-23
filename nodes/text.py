@@ -322,3 +322,55 @@ class Sage_PonyStyle(ComfyNodeABC):
 
     def return_style(self, style) -> tuple[str]:
         return (", ".join(style),)
+
+class Sage_ViewNotes(ComfyNodeABC):
+    @classmethod
+    def INPUT_TYPES(cls):
+        # Get list of files in notes directory
+        notes_files = []
+        try:
+            notes_path = path_manager.notes_path
+            if notes_path.exists():
+                notes_files = [f.name for f in notes_path.iterdir() if f.is_file()]
+                notes_files.sort()  # Sort alphabetically
+        except Exception as e:
+            print(f"Error reading notes directory: {e}")
+            notes_files = ["No files found"]
+        
+        if not notes_files:
+            notes_files = ["No files found"]
+            
+        # type: ignore
+        return {
+            "required": {
+                "filename": (IO.COMBO, {"options": notes_files})
+            }
+        }
+
+    RETURN_TYPES = (IO.STRING,)
+    RETURN_NAMES = ("content",)
+
+    FUNCTION = "view_notes"
+
+    CATEGORY = "Sage Utils/text"
+    DESCRIPTION = "Views the contents of a selected file from the notes directory."
+    OUTPUT_NODE = True
+
+    def view_notes(self, filename) -> dict:
+        """
+        Reads and returns the content of the selected notes file.
+        """
+        try:
+            if filename == "No files found":
+                content = "No notes files found in the notes directory."
+            else:
+                notes_file_path = path_manager.notes_path / filename
+                if notes_file_path.exists() and notes_file_path.is_file():
+                    with open(notes_file_path, 'r', encoding='utf-8') as file:
+                        content = file.read()
+                else:
+                    content = f"File '{filename}' not found in notes directory."
+        except Exception as e:
+            content = f"Error reading file '{filename}': {str(e)}"
+        
+        return {"ui": {"text": content}, "result": (content,) }

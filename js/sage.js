@@ -40,6 +40,7 @@ function setupMultiModelPickerNode(nodeType, nodeData, app) {
     return me;
   };
 
+
   const onConnectionsChange = nodeType.prototype.onConnectionsChange;
   nodeType.prototype.onConnectionsChange = function (slotType, slot_idx, event, link_info, node_slot) {
     const me = onConnectionsChange?.apply(this, arguments);
@@ -170,7 +171,7 @@ app.registerExtension({
       setupMultiModelPickerNode(nodeType, nodeData, app);
       return;
     }
-    if (nodeData.name === _ID + "ViewText" || nodeData.name === _ID + "ViewAnything") {
+    if (nodeData.name === _ID + "ViewAnything" || nodeData.name === _ID + "ViewNotes") {
       setupViewTextOrAnythingNode(nodeType, nodeData, app);
     }
   },

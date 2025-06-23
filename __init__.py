@@ -19,6 +19,12 @@ init_llm()
 # Import LLM availability flags for conditional node registration
 from .utils import llm_wrapper as llm
 
+# Import server routes to register custom HTTP endpoints
+try:
+    from . import server_routes
+except Exception as e:
+    print(f"Warning: Failed to load SageUtils custom routes: {e}")
+
 WEB_DIRECTORY = "./js"
 
 # Deprecated class mappings (correct spelling)
@@ -47,6 +53,7 @@ TEXT_CLASS_MAPPINGS = {
     "Sage_CleanText": Sage_CleanText,
     "Sage_TextWeight": Sage_TextWeight,
     "Sage_ViewAnything": Sage_ViewAnything,
+    #"Sage_ViewNotes": Sage_ViewNotes,
     "Sage_PonyPrefix": Sage_PonyPrefix,
     "Sage_PonyStyle": Sage_PonyStyle,
     "Sage_HiDreamE1_Instruction": Sage_HiDreamE1_Instruction
@@ -156,6 +163,7 @@ TEXT_NAME_MAPPINGS = {
     "Sage_CleanText": "Clean Text",
     "Sage_TextWeight": "Text Weight",
     "Sage_ViewAnything": "View Any Node as Text",
+    #"Sage_ViewNotes": "View Notes",
     "Sage_PonyPrefix": "Add Pony v6 Prefixes",
     "Sage_PonyStyle": "Add Pony Style",
     "Sage_HiDreamE1_Instruction": "HiDreamE1 Instruction"
