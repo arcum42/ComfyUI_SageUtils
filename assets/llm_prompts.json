@@ -171,11 +171,11 @@
             "type": "boolean",
             "prompt": "Use blunt, casual phrasing instead of polite euphemisms."
         },
-        "use_vulgar_language": {
-            "name": "Use Vulgar Slang and Profanity",
+        "non_technical": {
+            "name": "Non-technical Terms",
             "category": "style",
             "type": "boolean",
-            "prompt": "Use vulgar slang and profanity, such as (but not limited to) fucking, slut, cock, pussy, etc."
+            "prompt": "The writing should avoid highly technical or advanced wording and phrasing."
         },
         "be_specific": {
             "name": "Be Specific",
@@ -183,11 +183,23 @@
             "type": "boolean",
             "prompt": "Use precise, unambiguous language. Avoid vague or general terms."
         },
+        "use_vulgar_language": {
+            "name": "Use Vulgar Slang and Profanity",
+            "category": "style",
+            "type": "boolean",
+            "prompt": "Use vulgar slang and profanity, such as (but not limited to) fucking, slut, cock, pussy, etc."
+        },
         "erotic_imagery": {
             "name": "Erotic Imagery",
             "category": "content_focus",
             "type": "boolean",
             "prompt": "Assume that the image is erotic. Describe it in lurid detail, focusing on characters' sexual attributes when describing them and assuming anything that might be sexual in the image is. Describe breast size, if applicable."
+        },
+        "adult_content": {
+            "name": "Adult Content",
+            "category": "content_focus",
+            "type": "boolean",
+            "prompt": "This is for an adult, X rated audience."
         },
         "exclude_sexual": {
             "name": "Exclude Sexual Content",
