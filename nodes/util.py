@@ -5,6 +5,7 @@ from __future__ import annotations
 from comfy.comfy_types.node_typing import ComfyNodeABC, InputTypeDict, IO
 
 import folder_paths
+from comfy_execution.graph import ExecutionBlocker
 
 # Import specific utilities instead of wildcard import
 from ..utils import (
@@ -15,6 +16,70 @@ from ..utils import (
 )
 
 import json
+
+import comfy.model_management as mm
+import gc
+
+class Sage_FreeMemory(ComfyNodeABC):
+    @classmethod
+    def INPUT_TYPES(cls) -> InputTypeDict:
+        return {
+            "required": {
+                "free_memory": (IO.BOOLEAN, {"defaultInput": False}),
+                "value": (IO.ANY,{"defaultInput": False})
+            }
+        }
+
+    @classmethod
+    def VALIDATE_INPUTS(s, input_types) -> bool:
+        return True
+
+    RETURN_TYPES = (IO.ANY,)
+    RETURN_NAMES = ("value",)
+
+    FUNCTION = "free_memory"
+
+    CATEGORY = "Sage Utils/util"
+    DESCRIPTION = "Free up memory by unloading all models, clearing the model cache, and garbage collecting."
+
+    def free_memory(self, free_memory, value):
+        if free_memory:
+            mm.unload_all_models()
+            gc.collect()
+            mm.soft_empty_cache()
+
+        return (value,)
+class Sage_Halt(ComfyNodeABC):
+    @classmethod
+    def INPUT_TYPES(cls) -> InputTypeDict:
+        return {
+            "required": {
+                "continue_executing": (IO.BOOLEAN, {"label_on": "Continue", "label_off": "Halt", "defaultInput": False}),
+                "value": (IO.ANY,{"defaultInput": False})
+            }
+        }
+
+    @classmethod
+    def VALIDATE_INPUTS(s, input_types) -> bool:
+        return True
+
+    RETURN_TYPES = (IO.ANY,)
+    RETURN_NAMES = ("value",)
+
+    FUNCTION = "halt_or_continue"
+
+    CATEGORY = "Sage Utils/util"
+    DESCRIPTION = "Continue or Halt the workflow from this point."
+
+    def halt_or_continue(self, continue_executing, value):
+        """
+        If the condition is True, return the value.
+        If the condition is False, halt execution.
+        """
+        if continue_executing:
+            return (value,)
+        else:
+            return (ExecutionBlocker(None))
 
 class Sage_LogicalSwitch(ComfyNodeABC):
     @classmethod

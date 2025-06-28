@@ -34,7 +34,9 @@ DEPRECATED_CLASS_MAPPINGS = {
 
 UTILITY_CLASS_MAPPINGS = {
     "Sage_GetFileHash": Sage_GetFileHash,
-    "Sage_LogicalSwitch": Sage_LogicalSwitch
+    "Sage_LogicalSwitch": Sage_LogicalSwitch,
+    "Sage_Halt": Sage_Halt,
+    "Sage_FreeMemory": Sage_FreeMemory
 }
 
 SETTINGS_CLASS_MAPPINGS = {
@@ -144,7 +146,9 @@ DEPRECATED_NAME_MAPPINGS = {
 
 UTILITY_NAME_MAPPINGS = {
     "Sage_GetFileHash": "Get Sha256 Hash",
-    "Sage_LogicalSwitch": "Switch"
+    "Sage_LogicalSwitch": "Switch",
+    "Sage_Halt": "Halt Workflow",
+    "Sage_FreeMemory": "Free Memory"
 }
 
 SETTINGS_NAME_MAPPINGS = {
