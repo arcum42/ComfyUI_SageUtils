@@ -48,40 +48,6 @@ class Sage_LoraStack(ComfyNodeABC):
 
         return (stack,)
 
-class Sage_LoraStackRecent(ComfyNodeABC):
-    def __init__(self):
-        pass
-
-    @classmethod
-    def INPUT_TYPES(cls) -> InputTypeDict:
-        lora_list = get_recently_used_models("loras")
-        return {
-            "required": {
-                "enabled": (IO.BOOLEAN, {"defaultInput": False, "default": True}),
-                "lora_name": (lora_list, {"options": lora_list, "defaultInput": False, "tooltip": "The name of the LoRA."}),
-                "model_weight": (IO.FLOAT, {"defaultInput": False, "default": 1.0, "min": -100.0, "max": 100.0, "step": 0.01, "tooltip": "How strongly to modify the diffusion model. This value can be negative."}),
-                "clip_weight": (IO.FLOAT, {"defaultInput": False, "default": 1.0, "min": -100.0, "max": 100.0, "step": 0.01, "tooltip": "How strongly to modify the CLIP model. This value can be negative."}),
-                },
-            "optional": {
-                "lora_stack": ("LORA_STACK", {"defaultInput": True}),
-            }
-        }
-
-    RETURN_TYPES = ("LORA_STACK",)
-    RETURN_NAMES = ("lora_stack",)
-
-    FUNCTION = "add_lora_to_stack"
-    CATEGORY = "Sage Utils/lora"
-    DESCRIPTION = "Choose a lora with weights, and add it to a lora_stack. Compatable with other node packs that have lora_stacks."
-
-    def add_lora_to_stack(self, enabled, lora_name, model_weight, clip_weight, lora_stack = None) -> tuple:
-        if enabled == True:
-            stack = add_lora_to_stack(lora_name, model_weight, clip_weight, lora_stack)
-        else:
-            stack = lora_stack
-
-        return (stack,)
-
 class Sage_TripleLoraStack(ComfyNodeABC):
     def __init__(self):
         pass

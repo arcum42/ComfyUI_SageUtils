@@ -1,8 +1,12 @@
 from __future__ import annotations
 from comfy.comfy_types.node_typing import ComfyNodeABC, InputTypeDict, IO
+import folder_paths
 
 # This file has deprecated nodes so we'll minimize imports
 from .. import nodes
+from ..utils import get_recently_used_models, add_lora_to_stack
+from .model import Sage_CheckpointLoaderSimple
+from .lora import Sage_LoraStack
 
 class Sage_KSamplerDecoder(ComfyNodeABC):
     @classmethod
@@ -51,3 +55,38 @@ class Sage_KSamplerDecoder(ComfyNodeABC):
             images = images.reshape(-1, images.shape[-3], images.shape[-2], images.shape[-1])
         
         return (latent_result[0], images)
+
+class Sage_CheckpointLoaderRecent(Sage_CheckpointLoaderSimple):
+    @classmethod
+    def INPUT_TYPES(cls) -> InputTypeDict:
+        model_list = get_recently_used_models("checkpoints")
+
+        return {
+            "required": {
+                "ckpt_name": (model_list, {"tooltip": "The name of the checkpoint (model) to load."}),
+            }
+        }
+
+    CATEGORY = "Sage Utils/depreciated"
+    DESCRIPTION = "DEPRECATED: Use Sage_CheckpointLoaderSimple instead. Loads a diffusion model checkpoint from recently used models. Also returns a model_info output to pass to the construct metadata node, and the hash."
+    DEPRECATED = True
+
+class Sage_LoraStackRecent(Sage_LoraStack):
+    @classmethod
+    def INPUT_TYPES(cls) -> InputTypeDict:
+        lora_list = get_recently_used_models("loras")
+        return {
+            "required": {
+                "enabled": (IO.BOOLEAN, {"defaultInput": False, "default": True}),
+                "lora_name": (lora_list, {"options": lora_list, "defaultInput": False, "tooltip": "The name of the LoRA."}),
+                "model_weight": (IO.FLOAT, {"defaultInput": False, "default": 1.0, "min": -100.0, "max": 100.0, "step": 0.01, "tooltip": "How strongly to modify the diffusion model. This value can be negative."}),
+                "clip_weight": (IO.FLOAT, {"defaultInput": False, "default": 1.0, "min": -100.0, "max": 100.0, "step": 0.01, "tooltip": "How strongly to modify the CLIP model. This value can be negative."}),
+                },
+            "optional": {
+                "lora_stack": ("LORA_STACK", {"defaultInput": True}),
+            }
+        }
+
+    CATEGORY = "Sage Utils/depreciated"
+    DESCRIPTION = "DEPRECATED: Use Sage_LoraStack instead. Choose a lora from recently used models with weights, and add it to a lora_stack. Compatible with other node packs that have lora_stacks."
+    DEPRECATED = True

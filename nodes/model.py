@@ -16,40 +16,6 @@ from ..utils import (
 import pathlib
 import json
 
-class Sage_CheckpointLoaderRecent(ComfyNodeABC):
-    def __init__(self):
-        pass
-
-    @classmethod
-    def INPUT_TYPES(cls) -> InputTypeDict:
-        model_list = get_recently_used_models("checkpoints")
-
-        return {
-            "required": {
-                "ckpt_name": (model_list, {"tooltip": "The name of the checkpoint (model) to load."}),
-            }
-        }
-    RETURN_TYPES = (IO.MODEL, IO.CLIP, IO.VAE, "MODEL_INFO")
-    RETURN_NAMES = ("model", "clip", "vae", "model_info")
-    OUTPUT_TOOLTIPS = ("The model used for denoising latents.",
-                    "The CLIP model used for encoding text prompts.",
-                    "The VAE model used for encoding and decoding images to and from latent space.",
-                    "The model path and hash, all in one output.")
-    FUNCTION = "load_checkpoint"
-
-    CATEGORY  =  "Sage Utils/model"
-    DESCRIPTION = "Loads a diffusion model checkpoint. Also returns a model_info output to pass to the construct metadata node, and the hash. (And hashes and pulls civitai info for the file.)"
-
-    def load_checkpoint(self, ckpt_name) -> tuple:
-        model_info = { "type": "CKPT", "path": folder_paths.get_full_path_or_raise("checkpoints", ckpt_name) }
-        pull_metadata(model_info["path"], timestamp = True)
-
-        model_info["hash"] = cache.hash[model_info["path"]]
-
-        model, clip, vae = loaders.checkpoint(model_info["path"])
-        result = (model, clip, vae, model_info)
-        return (result)
-
 class Sage_CheckpointLoaderSimple(CheckpointLoaderSimple):
     def __init__(self):
             pass
@@ -79,7 +45,7 @@ class Sage_CheckpointLoaderSimple(CheckpointLoaderSimple):
         model_info["hash"] = cache.hash[model_info["path"]]
         model, clip, vae = loaders.checkpoint(model_info["path"])
         return (model, clip, vae, model_info)
-    
+
 class Sage_UNETLoader(UNETLoader):
     @classmethod
     def INPUT_TYPES(cls) -> InputTypeDict:
