@@ -63,6 +63,7 @@ TEXT_CLASS_MAPPINGS = {
 
 MODEL_CLASS_MAPPINGS = {
     "Sage_CheckpointSelector": Sage_CheckpointSelector,
+    "Sage_LoadCheckpointFromModelInfo": Sage_LoadCheckpointFromModelInfo,
     "Sage_UNETLoader": Sage_UNETLoader,
     "Sage_CheckpointLoaderSimple": Sage_CheckpointLoaderSimple,
     "Sage_CheckpointLoaderRecent": Sage_CheckpointLoaderRecent,
@@ -174,7 +175,8 @@ TEXT_NAME_MAPPINGS = {
 }
 
 MODEL_NAME_MAPPINGS = {
-    "Sage_CheckpointSelector": "Checkpoint Selector", #
+    "Sage_CheckpointSelector": "Checkpoint Selector",
+    "Sage_LoadCheckpointFromModelInfo": "Load Checkpoint from Model Info",
     "Sage_UNETLoader": "Load Diffusion Model w/ Metadata",
     "Sage_CheckpointLoaderSimple": "Load Checkpoint w/ Metadata",
     "Sage_CheckpointLoaderRecent": "Load Recently Used Checkpoint",

@@ -16,6 +16,52 @@ from ..utils import (
 import pathlib
 import json
 
+class Sage_CheckpointSelector(ComfyNodeABC):
+    @classmethod
+    def INPUT_TYPES(cls) -> InputTypeDict:
+        model_list = folder_paths.get_filename_list("checkpoints")
+        return {
+                "required": {
+                    "ckpt_name": (model_list, {"tooltip": "The name of the checkpoint (model) to load."})
+                }
+            }
+
+    RETURN_TYPES = ("MODEL_INFO",)
+    RETURN_NAMES = ("model_info",)
+
+    OUTPUT_TOOLTIPS = ("The model path and hash, all in one output.")
+    FUNCTION = "get_checkpoint_info"
+
+    CATEGORY  =  "Sage Utils/model"
+    DESCRIPTION = "Returns a model_info output to pass to the construct metadata node or a model info node. (And hashes and pulls civitai info for the file.)"
+    def get_checkpoint_info(self, ckpt_name) -> tuple:
+        model_info = { "type": "CKPT", "path": folder_paths.get_full_path_or_raise("checkpoints", ckpt_name) }
+        pull_metadata(model_info["path"], timestamp = True)
+        model_info["hash"] = cache.hash[model_info["path"]]
+        return (model_info,)
+
+class Sage_LoadCheckpointFromModelInfo(ComfyNodeABC):
+    @classmethod
+    def INPUT_TYPES(cls) -> InputTypeDict:
+        return {
+            "required": {
+                "model_info": ("MODEL_INFO", {"tooltip": "The model info to load the checkpoint from."})
+            }
+        }
+
+    RETURN_TYPES = (IO.MODEL, IO.CLIP, IO.VAE, "MODEL_INFO")
+    RETURN_NAMES = ("model", "clip", "vae", "model_info")
+
+    FUNCTION = "load_checkpoint"
+    CATEGORY  =  "Sage Utils/model"
+    DESCRIPTION = "Loads a diffusion model checkpoint from a model_info input. Also returns a model_info output to pass to the construct metadata node, and the hash. (And hashes and pulls civitai info for the file.)"
+
+    def load_checkpoint(self, model_info) -> tuple:
+        path = model_info["path"]
+        pull_metadata(path, timestamp = True)
+        model_info["hash"] = cache.hash[path]
+        return loaders.checkpoint(path) + (model_info,)
+
 class Sage_CheckpointLoaderSimple(CheckpointLoaderSimple):
     def __init__(self):
             pass
@@ -73,29 +119,6 @@ class Sage_UNETLoader(UNETLoader):
         model_info["hash"] = cache.hash[model_info["path"]]
         return (loaders.unet(model_info["path"], weight_dtype), model_info)
 
-class Sage_CheckpointSelector(ComfyNodeABC):
-    @classmethod
-    def INPUT_TYPES(cls) -> InputTypeDict:
-        model_list = folder_paths.get_filename_list("checkpoints")
-        return {
-                "required": {
-                    "ckpt_name": (model_list, {"tooltip": "The name of the checkpoint (model) to load."})
-                }
-            }
-
-    RETURN_TYPES = ("MODEL_INFO",)
-    RETURN_NAMES = ("model_info",)
-
-    OUTPUT_TOOLTIPS = ("The model path and hash, all in one output.")
-    FUNCTION = "get_checkpoint_info"
-
-    CATEGORY  =  "Sage Utils/model"
-    DESCRIPTION = "Returns a model_info output to pass to the construct metadata node or a model info node. (And hashes and pulls civitai info for the file.)"
-    def get_checkpoint_info(self, ckpt_name) -> tuple:
-        model_info = { "type": "CKPT", "path": folder_paths.get_full_path_or_raise("checkpoints", ckpt_name) }
-        pull_metadata(model_info["path"], timestamp = True)
-        model_info["hash"] = cache.hash[model_info["path"]]
-        return (model_info,)
 
 class Sage_MultiModelPicker(ComfyNodeABC):
     @classmethod
