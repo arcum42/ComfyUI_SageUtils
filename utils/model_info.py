@@ -1,5 +1,6 @@
 # This module provides utilities for working with the model_info input/output in ComfyUI.
 
+from typing import Optional
 import folder_paths
 from .helpers import name_from_path, pull_metadata
 from .model_cache import cache
@@ -103,21 +104,29 @@ def get_model_info_vae(vae_name: str) -> tuple:
 
 def get_model_clip_vae_from_info(model_info) -> tuple:
     """
-    Extracts the model, clip, and vae from a model_info dictionary.
+    Extracts the model, clip, and vae from a model_info dictionary or tuple.
     
     Args:
-        model_info (dict): The model_info dictionary containing the model path.
+        model_info (dict or tuple): The model_info dictionary containing the model path,
+                                   or a tuple of model_info dictionaries where we'll look
+                                   for a CKPT type.
     
     Returns:
         tuple: A tuple containing the model, clip, and vae.
+        
+    Raises:
+        ValueError: If no CKPT model is found or if path is missing.
     """
     from . import loaders  # Import here to avoid circular dependency
 
-    # If model_info is a tuple, extract the first element
+    # If model_info is a tuple, find the CKPT component
     if isinstance(model_info, tuple):
-        model_info = model_info[0]
+        ckpt_info = get_model_info_component(model_info, "CKPT")
+        if not ckpt_info:
+            raise ValueError("No CKPT model found in model_info tuple. Please ensure a checkpoint is included.")
+        model_info = ckpt_info
 
-    if model_info["type"] != "CKPT":
+    if model_info.get("type") != "CKPT":
         raise ValueError("Clip information is missing. Please use a checkpoint for model_info, not a diffusion model.")
 
     if "path" not in model_info:
@@ -137,36 +146,144 @@ def model_name_and_hash_as_str(model_info) -> str:
     if isinstance(model_info, tuple):
         model_list = []
         for info in model_info:    
-            model_name = name_from_path(info['path'])
-            model_hash = info['hash']
+            model_name = _get_model_name_from_info(info)
+            model_hash = _get_model_hash_from_info(info)
             model_list.append(f"Model: {model_name}, Model hash: {model_hash}")
         model_string = ", ".join(model_list)
     else:
         if isinstance(model_info, dict) and "path" in model_info and "hash" in model_info:
-            model_name = name_from_path(model_info['path'])
-            model_hash = model_info['hash']
+            model_name = _get_model_name_from_info(model_info)
+            model_hash = _get_model_hash_from_info(model_info)
             model_string = f"Model: {model_name}, Model hash: {model_hash}"
 
     return model_string
 
-def get_model_info_component(models_info: tuple, component_type: str) -> dict:
+
+def _get_model_name_from_info(model_info: dict) -> str:
     """
-    Returns the model_info for a specific component type (UNET, CLIP, VAE) from a list of model_info dictionaries.
+    Extract model name from model_info, handling both single paths and path lists (for CLIP).
     
     Args:
-        model_info_list (list): A list of model_info dictionaries.
-        component_type (str): The type of component to retrieve (UNET, CLIP, VAE).
+        model_info (dict): The model_info dictionary.
+        
+    Returns:
+        str: The model name(s).
+    """
+    path = model_info['path']
+    if isinstance(path, list):
+        # Handle CLIP models with multiple paths
+        names = [name_from_path(p) for p in path]
+        return " + ".join(names)
+    else:
+        # Handle single path models (CKPT, UNET, VAE)
+        return name_from_path(path)
+
+
+def _get_model_hash_from_info(model_info: dict) -> str:
+    """
+    Extract model hash from model_info, handling both single hashes and hash lists (for CLIP).
+    
+    Args:
+        model_info (dict): The model_info dictionary.
+        
+    Returns:
+        str: The model hash(es).
+    """
+    hash_value = model_info['hash']
+    if isinstance(hash_value, list):
+        # Handle CLIP models with multiple hashes
+        return " + ".join(hash_value)
+    else:
+        # Handle single hash models (CKPT, UNET, VAE)
+        return hash_value
+
+def get_model_info_component(models_info: tuple, component_type: str) -> dict:
+    """
+    Returns the model_info for a specific component type (UNET, CLIP, VAE) from a tuple of model_info dictionaries.
+    
+    Handles model_info dictionaries where:
+    - For most types (CKPT, UNET, VAE): "path" is a string, "hash" is a string
+    - For CLIP type: "path" can be a list of paths, "hash" can be a list of hashes
+    
+    Args:
+        models_info (tuple): A tuple of model_info dictionaries to search through.
+        component_type (str): The type of component to retrieve (UNET, CLIP, VAE, CKPT).
     
     Returns:
-        dict: The model_info dictionary for the specified component type.
+        dict: The model_info dictionary for the specified component type, or empty dict if not found.
     """
-    print (f"Searching for component type: {component_type} in models_info: {models_info}")
+    print(f"Searching for component type: {component_type} in models_info: {models_info}")
     if not isinstance(models_info, tuple):
         models_info = (models_info,)
+    
     for model_info in models_info:
         print(f"Checking model_info: {model_info}")
         if model_info is None:
             continue
-        if model_info["type"] == component_type:
+        if model_info.get("type") == component_type:
             return model_info
+    
     return {}
+
+
+def collect_resource_hashes(model_info, lora_stack: Optional[list] = None) -> list[dict]:
+    """Collect all resource hashes for metadata generation.
+    
+    Args:
+        model_info (dict or tuple): The model information dictionary or tuple containing path and other details.
+                                   For CLIP models, "path" may be a list of paths.
+        lora_stack (list, optional): List of LoRA configurations. Each item should be a tuple/list
+                                   with format [lora_name, model_weight, clip_weight]. Defaults to None.
+    
+    Returns:
+        list[dict]: List of resource hash dictionaries for the model and any LoRAs.
+    """
+    from .helpers import get_model_dict
+    
+    resource_hashes = []
+    
+    # Handle model_info - could be a tuple or a single dictionary
+    if isinstance(model_info, tuple):
+        # Process each model_info in the tuple
+        for info in model_info:
+            if info is None or not isinstance(info, dict):
+                continue
+            model_path = info.get('path')
+            if model_path:
+                if isinstance(model_path, list):
+                    # CLIP model with multiple paths - add each path separately
+                    for path in model_path:
+                        model_dict = get_model_dict(path)
+                        if model_dict:
+                            resource_hashes.append(model_dict)
+                else:
+                    # Single path model (CKPT, UNET, VAE)
+                    model_dict = get_model_dict(model_path)
+                    if model_dict:
+                        resource_hashes.append(model_dict)
+    else:
+        # Handle single model_info dictionary
+        if isinstance(model_info, dict) and 'path' in model_info:
+            model_path = model_info['path']
+            if isinstance(model_path, list):
+                # CLIP model with multiple paths - add each path separately
+                for path in model_path:
+                    model_dict = get_model_dict(path)
+                    if model_dict:
+                        resource_hashes.append(model_dict)
+            else:
+                # Single path model (CKPT, UNET, VAE)
+                model_dict = get_model_dict(model_path)
+                if model_dict:
+                    resource_hashes.append(model_dict)
+    
+    # Add LoRA resources
+    if lora_stack:
+        for lora in lora_stack:
+            lora_path = folder_paths.get_full_path_or_raise("loras", lora[0])
+            pull_metadata(lora_path)
+            lora_data = get_model_dict(lora_path, lora[1])
+            if lora_data:
+                resource_hashes.append(lora_data)
+    
+    return resource_hashes

@@ -1,131 +1,182 @@
-# Metadata nodes.
-# This includes nodes for constructing metadata, and related nodes. Saving metadata is handled in the image nodes.
+"""Metadata nodes for constructing A1111-style metadata.
+
+This module includes nodes for constructing metadata and related nodes.
+Saving metadata is handled in the image nodes.
+"""
 
 from __future__ import annotations
-from comfy.comfy_types.node_typing import ComfyNodeABC, InputTypeDict, IO
-import folder_paths
-
-# Import specific utilities instead of wildcard import
-from ..utils import (
-    config_manager, lora_to_prompt, civitai_sampler_name,
-    pull_metadata, get_model_dict, cache, name_from_path
-)
-
-import numpy as np
-import pathlib
+from pathlib import Path
 import json
+from typing import Optional, Any
+
+import folder_paths
+from comfy.comfy_types.node_typing import ComfyNodeABC, InputTypeDict, IO
+
+from ..utils import (
+    lora_to_prompt, 
+    civitai_sampler_name,
+    pull_metadata, 
+    get_model_dict, 
+    cache,
+)
 from ..utils import model_info as mi
-class Sage_ConstructMetadata(ComfyNodeABC):
-    def __init__(self):
-        pass
+from ..utils.model_info import collect_resource_hashes
 
+# Constants
+COMFYUI_VERSION = "v1.10-RC-6-comfyui"
+
+
+class _BaseMetadataConstructor(ComfyNodeABC):
+    """Base class for metadata construction nodes."""
+    
     @classmethod
-    def INPUT_TYPES(cls) -> InputTypeDict:
+    def _get_common_input_types(cls):
+        """Get common input types shared by all metadata constructors."""
         return {
             "required": {
-                "model_info": ('MODEL_INFO',{ "defaultInput": True}),
-                "positive_string": (IO.STRING,{ "defaultInput": True}),
-                "negative_string": (IO.STRING,{ "defaultInput": True}),
-                "sampler_info": ('SAMPLER_INFO', { "defaultInput": True}),
-                "width": (IO.INT, { "defaultInput": True}),
-                "height": (IO.INT, { "defaultInput": True})
+                "model_info": ('MODEL_INFO', {"defaultInput": True}),
+                "positive_string": (IO.STRING, {"defaultInput": True}),
+                "negative_string": (IO.STRING, {"defaultInput": True}),
+                "sampler_info": ('SAMPLER_INFO', {"defaultInput": True}),
+                "width": (IO.INT, {"defaultInput": True}),
+                "height": (IO.INT, {"defaultInput": True})
             },
             "optional": {
-                "lora_stack": ('LORA_STACK',{ "defaultInput": True})
+                "lora_stack": ('LORA_STACK', {"defaultInput": True})
             },
         }
-
+    
     RETURN_TYPES = (IO.STRING,)
     RETURN_NAMES = ('param_metadata',)
     FUNCTION = "construct_metadata"
-
     CATEGORY = "Sage Utils/metadata"
-    DESCRIPTION = "Puts together metadata in a A1111-like format. Uses the custom sampler info node. The return value is a string, so can be manipulated by other nodes."
 
-    def construct_metadata(self, model_info, positive_string, negative_string, width, height, sampler_info, lora_stack = None) -> tuple[str]:
-        metadata = ''
+    def _get_sampler_name(self, sampler_info: dict) -> str:
+        """Get the standardized sampler name."""
+        return civitai_sampler_name(sampler_info['sampler'], sampler_info['scheduler'])
+    
+    def _build_base_params(self, sampler_info: dict, width: int, height: int) -> str:
+        """Build the base parameter string."""
+        sampler_name = self._get_sampler_name(sampler_info)
+        return (
+            f"Steps: {sampler_info['steps']}, "
+            f"Sampler: {sampler_name}, "
+            f"Scheduler type: {sampler_info['scheduler']}, "
+            f"CFG scale: {sampler_info['cfg']}, "
+            f"Seed: {sampler_info['seed']}, "
+            f"Size: {width}x{height}"
+        )
 
+
+class Sage_ConstructMetadata(_BaseMetadataConstructor):
+    """Constructs comprehensive A1111-style metadata with full LoRA hash information."""
+
+    @classmethod
+    def INPUT_TYPES(cls):  # type: ignore
+        return cls._get_common_input_types()
+
+    DESCRIPTION = ("Constructs comprehensive A1111-style metadata with full LoRA hash information. "
+                  "Uses the custom sampler info node. Returns a string that can be manipulated by other nodes.")
+
+    def _process_lora_stack(self, lora_stack: Optional[list]) -> tuple[list[str], list[dict]]:
+        """Process LoRA stack to extract hashes and resource information."""
+        if not lora_stack:
+            return [], []
+        
         lora_hashes = []
-        lora_hash_string = ''
-
         resource_hashes = []
-        civitai_string = ''
+        
+        for lora in lora_stack:
+            lora_path = folder_paths.get_full_path_or_raise("loras", lora[0])
+            lora_name = Path(lora_path).name
+            
+            pull_metadata(lora_path)
+            lora_data = get_model_dict(lora_path, lora[1])
+            if lora_data:
+                resource_hashes.append(lora_data)
 
-        sampler_name = civitai_sampler_name(sampler_info['sampler'], sampler_info['scheduler'])
+            lora_hash = cache.hash[lora_path]
+            lora_hashes.append(f"{lora_name}: {lora_hash}")
+        
+        return lora_hashes, resource_hashes
 
-        if lora_stack is not None:
-            # We're going through generating A1111 style <lora> tags to insert in the prompt, adding the lora hashes to the resource hashes in exactly the format
-            # that CivitAI's approved extension for A1111 does, and inserting the Lora hashes at the end in the way they appeared looking at the embedded metadata
-            # generated by Forge.
-            for lora in lora_stack:
-                lora_path = folder_paths.get_full_path_or_raise("loras", lora[0])
-                lora_name = str(pathlib.Path(lora_path).name)
-                pull_metadata(lora_path)
-                lora_data = get_model_dict(lora_path, lora[1])
-                if lora_data != {}:
-                    resource_hashes.append(lora_data)
+    def _build_metadata_string(self, positive_string: str, negative_string: str, 
+                              sampler_info: dict, width: int, height: int,
+                              model_info: dict, lora_stack: Optional[list] = None) -> str:
+        """Build the complete metadata string."""
+        lora_hashes, resource_hashes = self._process_lora_stack(lora_stack)
+        
+        # Build prompt section
+        prompt_with_loras = f"{positive_string} {lora_to_prompt(lora_stack)}"
+        lines = [prompt_with_loras]
+        
+        if negative_string.strip():
+            lines.append(f"Negative prompt: {negative_string}")
+        
+        # Build parameter section using base class method
+        base_params = self._build_base_params(sampler_info, width, height)
+        params = (
+            f"{base_params}, "
+            f"{mi.model_name_and_hash_as_str(model_info)}, "
+            f"Version: {COMFYUI_VERSION}"
+        )
+        
+        # Add additional metadata if available
+        if resource_hashes:
+            params += f", Civitai resources: {json.dumps(resource_hashes)}"
+        if lora_hashes:
+            params += f", Lora hashes: {', '.join(lora_hashes)}"
+        
+        lines.append(params)
+        return '\n'.join(lines[:-1]) + ', ' + lines[-1] if len(lines) > 1 else lines[0]
 
-                lora_hash = cache.hash[lora_path]
-                lora_hashes += [f"{lora_name}: {lora_hash}"]
+    def construct_metadata(self, model_info: dict, positive_string: str, negative_string: str, 
+                          width: int, height: int, sampler_info: dict, 
+                          lora_stack: Optional[list] = None) -> tuple[str]:
+        """Construct comprehensive A1111-style metadata."""
+        metadata = self._build_metadata_string(
+            positive_string, negative_string, sampler_info, 
+            width, height, model_info, lora_stack
+        )
+        return (metadata,)
 
-        lora_hash_string = "Lora hashes: " + ",".join(lora_hashes)
-        civitai_string = f"Civitai resources: {json.dumps(resource_hashes)}"
-
-        metadata = f"{positive_string} {lora_to_prompt(lora_stack)}" + "\n"
-        if negative_string != "":
-            metadata += f"Negative prompt: {negative_string}" + "\n"
-
-        metadata += f"Steps: {sampler_info['steps']}, Sampler: {sampler_name}, Scheduler type: {sampler_info['scheduler']}, CFG scale: {sampler_info['cfg']}, Seed: {sampler_info['seed']}, Size: {width}x{height},"
-        metadata += f"{mi.model_name_and_hash_as_str(model_info)}, Version: v1.10-RC-6-comfyui, {civitai_string}, {lora_hash_string}"
-        return metadata,
-
-class Sage_ConstructMetadataLite(ComfyNodeABC):
-    def __init__(self):
-        pass
+class Sage_ConstructMetadataLite(_BaseMetadataConstructor):
+    """Constructs simplified A1111-style metadata without LoRA hash details."""
 
     @classmethod
-    def INPUT_TYPES(cls) -> InputTypeDict:
-        return {
-            "required": {
-                "model_info": ('MODEL_INFO', { "defaultInput": True}),
-                "positive_string": (IO.STRING, { "defaultInput": True}),
-                "negative_string": (IO.STRING, { "defaultInput": True}),
-                "sampler_info": ('SAMPLER_INFO', { "defaultInput": True}),
-                "width": (IO.INT, { "defaultInput": True}),
-                "height": (IO.INT, { "defaultInput": True})
-            },
-            "optional": {
-                "lora_stack": ('LORA_STACK',{ "defaultInput": True})
-            },
-        }
+    def INPUT_TYPES(cls):  # type: ignore
+        return cls._get_common_input_types()
 
-    RETURN_TYPES = (IO.STRING,)
-    RETURN_NAMES = ('param_metadata',)
-    FUNCTION = "construct_metadata"
+    DESCRIPTION = ("Constructs simplified A1111-style metadata with resource information "
+                  "but without detailed LoRA hashes. Uses the custom sampler info node.")
 
-    CATEGORY = "Sage Utils/metadata"
-    DESCRIPTION = "Puts together metadata in a A1111-like format. Uses the custom sampler info node. The return value is a string, so can be manipulated by other nodes."
+    def _build_lite_metadata_string(self, positive_string: str, negative_string: str,
+                                   sampler_info: dict, width: int, height: int,
+                                   resource_hashes: list[dict]) -> str:
+        """Build the lite metadata string."""
+        lines = [positive_string]
+        
+        if negative_string.strip():
+            lines.append(f"Negative prompt: {negative_string}")
+        
+        # Build parameter section using base class method
+        base_params = self._build_base_params(sampler_info, width, height)
+        params = (
+            f"{base_params}, "
+            f"Version: {COMFYUI_VERSION}, "
+            f"Civitai resources: {json.dumps(resource_hashes)}"
+        )
+        lines.append(params)
+        
+        return '\n'.join(lines[:-1]) + ', ' + lines[-1] if len(lines) > 1 else lines[0]
 
-    def construct_metadata(self, model_info, positive_string, negative_string, width, height, sampler_info, lora_stack = None) -> tuple[str]:
-        metadata = ''
-
-        resource_hashes = []
-
-        sampler_name = civitai_sampler_name(sampler_info['sampler'], sampler_info['scheduler'])
-        resource_hashes.append(get_model_dict(model_info['path']))
-
-        if lora_stack is not None:
-            # We're going through generating A1111 style prompt information, but not doing the loras and model A1111 style, rather
-            # just adding the lora and model information in the resource section.
-            for lora in lora_stack:
-                lora_path = folder_paths.get_full_path_or_raise("loras", lora[0])
-                pull_metadata(lora_path)
-                lora_data = get_model_dict(lora_path, lora[1])
-                if lora_data != {}:
-                    resource_hashes.append(lora_data)
-
-        metadata = f"{positive_string}" + "\n"
-        if negative_string != "": metadata += f"Negative prompt: {negative_string}" + "\n"
-        metadata += f"Steps: {sampler_info['steps']}, Sampler: {sampler_name}, Scheduler type: {sampler_info['scheduler']}, CFG scale: {sampler_info['cfg']}, Seed: {sampler_info['seed']}, Size: {width}x{height},"
-        metadata += f"Version: v1.10-RC-6-comfyui, Civitai resources: {json.dumps(resource_hashes)}"
-        return metadata,
+    def construct_metadata(self, model_info: dict, positive_string: str, negative_string: str,
+                          width: int, height: int, sampler_info: dict,
+                          lora_stack: Optional[list] = None) -> tuple[str]:
+        """Construct simplified A1111-style metadata."""
+        resource_hashes = collect_resource_hashes(model_info, lora_stack)
+        metadata = self._build_lite_metadata_string(
+            positive_string, negative_string, sampler_info,
+            width, height, resource_hashes
+        )
+        return (metadata,)
