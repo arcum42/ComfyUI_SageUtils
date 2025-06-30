@@ -83,7 +83,7 @@ class Sage_CLIPSelector(ComfyNodeABC):
         return {
                 "required": {
                     "clip_name": (model_list, {"tooltip": "The name of the CLIP model to load."}),
-                    "clip_type": (mi.single_clip_loader_options, {"defaultInput": True, "default": "", "tooltip": "The type of CLIP model. If empty, will use the default type."})
+                    "clip_type": (mi.single_clip_loader_options, {"defaultInput": True, "default": "chroma", "tooltip": "The type of CLIP model. If empty, will use the default type."})
                 }
             }
 
@@ -96,7 +96,9 @@ class Sage_CLIPSelector(ComfyNodeABC):
     CATEGORY  =  "Sage Utils/selectors"
     DESCRIPTION = "Returns a model_info output to pass to the construct metadata node or a model info node. (And hashes and pulls civitai info for the file.)"
     def get_clip_info(self, clip_name, clip_type) -> tuple:
+        print(f"Loading CLIP model: {clip_name} with type {clip_type}")
         info = mi.get_model_info_clips([clip_name], clip_type)
+        print(f"CLIP model info: {info}")
         return info
 
 class Sage_DualCLIPSelector(ComfyNodeABC):
@@ -107,7 +109,7 @@ class Sage_DualCLIPSelector(ComfyNodeABC):
                 "required": {
                     "clip_name_1": (model_list, {"tooltip": "The name of the first CLIP model to load."}),
                     "clip_name_2": (model_list, {"tooltip": "The name of the second CLIP model to load."}),
-                    "clip_type": (mi.dual_clip_loader_options, {"defaultInput": True, "default": "", "tooltip": "The type of CLIP models. If empty, will use the default type."})
+                    "clip_type": (mi.dual_clip_loader_options, {"defaultInput": True, "default": "sdxl", "tooltip": "The type of CLIP models. If empty, will use the default type."})
                 }
             }
 

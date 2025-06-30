@@ -88,11 +88,18 @@ def clip_from_info(clip_info):
         clip_info = clip_info[0]
     if "path" not in clip_info:
         raise ValueError("clip_info must contain a 'path' key.")
+    if "clip_type" not in clip_info:
+        if len(clip_info["path"]) == 1:
+            clip_info["clip_type"] = "stable_diffusion"
+        elif len(clip_info["path"]) == 2:
+            clip_info["clip_type"] = "sdxl"
+        else:
+            clip_info["clip_type"] = "default"
     if "type" not in clip_info:
-        clip_info["type"] = ""
-    return clip(clip_info["path"], clip_info["type"])
+        clip_info["type"] = "CLIP"
+    return clip(clip_info["path"], clip_info["clip_type"])
 
-def clip(clip_path, clip_type=""):
+def clip(clip_path, clip_type="stable_diffusion"):
     num_of_clips = len(clip_path) if isinstance(clip_path, list) else 1
     if num_of_clips == 0:
         raise ValueError("clip_path must contain at least one CLIP file name.")
@@ -109,16 +116,20 @@ def clip(clip_path, clip_type=""):
     
     if num_of_clips == 1:
         clip = CLIPLoader()
-        return clip.load_clip(clip_path[0], clip_type)[0]
+        print(f"Loading single CLIP model from {clip_path[0]} with type {clip_type}")
+        return clip.load_clip(clip_name=clip_path[0], type=clip_type)[0]
     elif num_of_clips == 2:
+        print(f"Loading dual CLIP models from {clip_path[0]} and {clip_path[1]} with type {clip_type}")
         clipclip = DualCLIPLoader()
-        return clipclip.load_clip(clip_path[0], clip_path[1], clip_type)[0]
+        return clipclip.load_clip(clip_name=clip_path[0], clip_name2=clip_path[1], type=clip_type)[0]
     elif num_of_clips == 3:
+        print(f"Loading triple CLIP models from {clip_path[0]}, {clip_path[1]}, and {clip_path[2]}")
         clipclipclip = TripleCLIPLoader()
-        return clipclipclip.load_clip(clip_path[0], clip_path[1], clip_path[2])[0]
+        return clipclipclip.load_clip(clip_name1=clip_path[0], clip_name2=clip_path[1], clip_name3=clip_path[2])[0]
     elif num_of_clips == 4:
+        print(f"Loading quadruple CLIP models from {clip_path[0]}, {clip_path[1]}, {clip_path[2]}, and {clip_path[3]}")
         clipclipclipclip = QuadrupleCLIPLoader()
-        return clipclipclipclip.load_clip(clip_path[0], clip_path[1], clip_path[2], clip_path[3])[0]
+        return clipclipclipclip.load_clip(clip_name1=clip_path[0], clip_name2=clip_path[1], clip_name3=clip_path[2], clip_name4=clip_path[3])[0]
     return None
 
 def vae(vae_info):
