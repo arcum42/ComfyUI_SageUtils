@@ -25,7 +25,8 @@ from .helpers import (
     clean_keywords,
     clean_text,
     condition_text,
-    get_save_file_path
+    get_save_file_path,
+    unwrap_tuple
 )
 
 # Image utilities
@@ -43,7 +44,7 @@ from .helpers_civitai import (
     get_civitai_model_version_json_by_hash,
     get_civitai_model_version_json_by_id,
     get_civitai_model_json,
-    get_model_info,
+    get_model_dict,
     get_latest_model_version,
     pull_lora_image_urls,
     civitai_sampler_name
@@ -55,6 +56,20 @@ from .lora_stack import (
     get_lora_stack_keywords,
     add_lora_to_stack
 )
+
+# Model loading utilities
+from .loaders import load_model_component, load_lora_stack_with_keywords, load_lora_and_apply_shifts
+
+# Model info utilities - import function directly to avoid circular dependency
+def get_model_types(model_info):
+    """Determine which model types are present in model_info."""
+    return {
+        model_type: any(
+            isinstance(info, dict) and info.get("type") == model_type 
+            for info in model_info
+        )
+        for model_type in ["CKPT", "UNET", "CLIP", "VAE"]
+    }
 
 # Path and file management
 from .path_manager import path_manager, file_manager
@@ -93,7 +108,7 @@ __all__ = [
     'add_file_to_cache', 'recheck_hash', 'pull_metadata',
     'lora_to_string', 'lora_to_prompt', 'get_lora_hash', 'model_scan',
     'get_recently_used_models', 'clean_keywords', 'clean_text', 'condition_text',
-    'get_save_file_path',
+    'get_save_file_path', 'unwrap_tuple',
     
     # Image utilities
     'blank_image', 'url_to_torch_image', 'tensor_to_base64', 'tensor_to_temp_image',
@@ -101,11 +116,14 @@ __all__ = [
     
     # CivitAI utilities
     'get_civitai_model_version_json_by_hash', 'get_civitai_model_version_json_by_id',
-    'get_civitai_model_json', 'get_model_info', 'get_latest_model_version',
+    'get_civitai_model_json', 'get_model_dict', 'get_latest_model_version',
     'pull_lora_image_urls', 'civitai_sampler_name',
     
     # LoRA utilities
     'get_lora_keywords', 'get_lora_stack_keywords', 'add_lora_to_stack',
+    
+    # Model loading utilities
+    'load_model_component', 'get_model_types', 'load_lora_stack_with_keywords', 'load_lora_and_apply_shifts',
     
     # Core objects
     'path_manager', 'file_manager', 'cache', 'config_manager', 'llm',

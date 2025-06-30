@@ -43,7 +43,15 @@ SETTINGS_CLASS_MAPPINGS = {
     "Sage_SamplerInfo": Sage_SamplerInfo,
     "Sage_AdvSamplerInfo": Sage_AdvSamplerInfo,
     "Sage_TilingInfo": Sage_TilingInfo,
-    "Sage_ModelShifts": Sage_ModelShifts
+    "Sage_ModelShifts": Sage_ModelShifts,
+    "Sage_CheckpointSelector": Sage_CheckpointSelector,
+    "Sage_UNETSelector": Sage_UNETSelector,
+    "Sage_CLIPSelector": Sage_CLIPSelector,
+    "Sage_DualCLIPSelector": Sage_DualCLIPSelector,
+    "Sage_TripleCLIPSelector": Sage_TripleCLIPSelector,
+    "Sage_QuadCLIPSelector": Sage_QuadCLIPSelector,
+    "Sage_VAESelector": Sage_VAESelector,
+    "Sage_UnetClipVaeToModelInfo": Sage_UnetClipVaeToModelInfo
 }
 
 TEXT_CLASS_MAPPINGS = {
@@ -62,7 +70,6 @@ TEXT_CLASS_MAPPINGS = {
 }
 
 MODEL_CLASS_MAPPINGS = {
-    "Sage_CheckpointSelector": Sage_CheckpointSelector,
     "Sage_LoadCheckpointFromModelInfo": Sage_LoadCheckpointFromModelInfo,
     "Sage_UNETLoader": Sage_UNETLoader,
     "Sage_CheckpointLoaderSimple": Sage_CheckpointLoaderSimple,
@@ -156,7 +163,15 @@ SETTINGS_NAME_MAPPINGS = {
     "Sage_SamplerInfo": "Sampler Info",
     "Sage_AdvSamplerInfo": "Adv Sampler Info",
     "Sage_TilingInfo": "Tiling Info",
-    "Sage_ModelShifts": "Model Shifts"
+    "Sage_ModelShifts": "Model Shifts",
+    "Sage_CheckpointSelector": "Checkpoint Selector",
+    "Sage_UNETSelector": "UNET Selector",
+    "Sage_CLIPSelector": "CLIP Selector",
+    "Sage_DualCLIPSelector": "Dual CLIP Selector",
+    "Sage_TripleCLIPSelector": "Triple CLIP Selector",
+    "Sage_QuadCLIPSelector": "Quad CLIP Selector",
+    "Sage_VAESelector": "VAE Selector",
+    "Sage_UnetClipVaeToModelInfo": "UNET + CLIP + VAE to Model Info"
 }
 
 TEXT_NAME_MAPPINGS = {
@@ -175,7 +190,6 @@ TEXT_NAME_MAPPINGS = {
 }
 
 MODEL_NAME_MAPPINGS = {
-    "Sage_CheckpointSelector": "Checkpoint Selector",
     "Sage_LoadCheckpointFromModelInfo": "Load Checkpoint from Model Info",
     "Sage_UNETLoader": "Load Diffusion Model w/ Metadata",
     "Sage_CheckpointLoaderSimple": "Load Checkpoint w/ Metadata",

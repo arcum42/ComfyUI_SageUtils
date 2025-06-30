@@ -6,6 +6,7 @@ from comfy.comfy_types.node_typing import ComfyNodeABC, InputTypeDict, IO
 import comfy
 from comfy_extras import nodes_freelunch
 import folder_paths
+from comfy.utils import ProgressBar
 
 # Import specific utilities instead of wildcard import
 from ..utils import (
@@ -13,7 +14,9 @@ from ..utils import (
     pull_metadata, get_recently_used_models, clean_keywords,
     get_civitai_model_json, get_latest_model_version, loaders
 )
+from ..utils.common import unwrap_tuple, get_model_types, load_model_component, load_lora_stack_with_keywords, load_lora_and_apply_shifts
 
+from ..utils import model_info as mi
 class Sage_LoraStack(ComfyNodeABC):
     def __init__(self):
         pass
@@ -209,22 +212,10 @@ class Sage_LoraStackLoader(ComfyNodeABC):
         return model
 
     def load_lora_stack(self, model, clip, pbar, lora_stack):
-        print("Loading lora stack...")
-        keywords = ""
-        if lora_stack is not None:
-            model, clip, lora_stack, keywords = loaders.lora_stack(model, clip, pbar, lora_stack)
-        return (model, clip, lora_stack, keywords)
+        return load_lora_stack_with_keywords(model, clip, pbar, lora_stack)
 
     def load_lora_and_shift(self, model, clip, lora_stack=None, model_shifts=None) -> tuple:
-        keywords = ""
-        stack_length = len(lora_stack) if lora_stack else 1
-        pbar = comfy.utils.ProgressBar(stack_length + 1)
-        model, clip, lora_stack, keywords = self.load_lora_stack(model, clip, pbar, lora_stack)
-        pbar.update(1)
-        if model_shifts is not None:
-            print(f"Applying model shifts: {model_shifts}")
-            model = self.apply_model_shifts(model, model_shifts)
-        return (model, clip, lora_stack, keywords)
+        return load_lora_and_apply_shifts(model, clip, lora_stack, model_shifts, self.apply_model_shifts)
 
 class Sage_ModelShifts(ComfyNodeABC):
     def __init__(self):
@@ -259,47 +250,90 @@ class Sage_ModelShifts(ComfyNodeABC):
         },)
 
 class Sage_ModelLoraStackLoader(Sage_LoraStackLoader):
+    """Load model components from model info and apply LoRA stack."""
+    
     def __init__(self):
         super().__init__()
-        self.loaded_lora = {}
 
     @classmethod
-    def INPUT_TYPES(cls) -> InputTypeDict:
+    def INPUT_TYPES(cls):
         return {
             "required": {
-                "model_info": ("MODEL_INFO", {"tooltip": "The diffusion model the LoRA will be applied to. Note: Should be from the checkpoint info node, not a loader node, or the model will be loaded twice."}),
+                "model_info": ("MODEL_INFO", {
+                    "tooltip": "The diffusion model the LoRA will be applied to. "
+                              "Note: Should be from the checkpoint info node, not a loader node, "
+                              "or the model will be loaded twice."
+                }),
             },
             "optional": {
                 "lora_stack": ("LORA_STACK", {"defaultInput": True}),
-                "model_shifts": ("MODEL_SHIFTS", {"defaultInput": True, "tooltip": "The model shifts & free_u2 settings to apply to the model."}),
+                "model_shifts": ("MODEL_SHIFTS", {
+                    "defaultInput": True, 
+                    "tooltip": "The model shifts & free_u2 settings to apply to the model."
+                }),
             }
         }
 
     RETURN_TYPES = (IO.MODEL, IO.CLIP, IO.VAE, "LORA_STACK", IO.STRING)
     RETURN_NAMES = ("model", "clip", "vae", "lora_stack", "keywords")
-    OUTPUT_TOOLTIPS = ("The modified diffusion model.", "The modified CLIP model.", "The VAE model.", "The stack of loras.", "Keywords from the lora stack.")
+    OUTPUT_TOOLTIPS = (
+        "The modified diffusion model.", 
+        "The modified CLIP model.", 
+        "The VAE model.", 
+        "The stack of loras.", 
+        "Keywords from the lora stack."
+    )
 
     FUNCTION = "load_everything"
     CATEGORY = "Sage Utils/model"
-    DESCRIPTION = "Accept model info and a lora_stack, load the model, and apply all the loras in the stack to it at once. Apply changes to the model after loading it."
+    DESCRIPTION = ("Accept model info and a lora_stack, load the model, and apply all the "
+                  "loras in the stack to it at once. Apply changes to the model after loading it.")
 
-    def load_model_clip_vae(self, model_info):
-        if model_info["type"] != "CKPT":
-            raise ValueError("Clip information is missing. Please use a checkpoint for model_info, not a diffusion model.")
-        model, clip, vae = loaders.checkpoint(model_info["path"])
-        return (model, clip, vae)
-    
     def load_everything(self, model_info, lora_stack=None, model_shifts=None) -> tuple:
+        """Load all model components and apply LoRA stack."""
         print("Loading model and lora stack...")
+        
+        # Initialize components
+        model = clip = vae = None
         stack_length = len(lora_stack) if lora_stack else 1
-        pbar = comfy.utils.ProgressBar(stack_length + 2)
-        print(f"Loading model from {model_info['path']}")
-        model, clip, vae = self.load_model_clip_vae(model_info)
-        pbar.update(1)
-        print("Loading lora stack...")
-        model, clip, lora_stack, keywords = self.load_lora_stack(model, clip, pbar, lora_stack)
-        pbar.update(1)
-        print("Applying model shifts...")
-        model = self.apply_model_shifts(model, model_shifts)
+        
+        # Determine which model types are present
+        model_types = get_model_types(model_info)
+        total_operations = stack_length + sum(model_types.values()) + 1
+        pbar = ProgressBar(total_operations)
+        
+        # Load checkpoint if present (provides model, clip, vae)
+        if model_types["CKPT"]:
+            ckpt_result = load_model_component(model_info, "CKPT", pbar)
+            if ckpt_result:
+                model, clip, vae = ckpt_result
+        
+        # Load individual components (override checkpoint components if present)
+        if model_types["UNET"]:
+            model = load_model_component(model_info, "UNET", pbar)
+        
+        if model_types["CLIP"]:
+            clip = load_model_component(model_info, "CLIP", pbar)
+        
+        if model_types["VAE"]:
+            vae = load_model_component(model_info, "VAE", pbar)
 
-        return (model, clip, vae, lora_stack, keywords)
+        # Apply LoRA stack
+        print("Loading lora stack...")
+        model, clip, lora_stack, keywords = load_lora_stack_with_keywords(model, clip, pbar, lora_stack)
+        
+        # Apply model shifts (currently commented out in original)
+        if model_shifts:
+            model = self.apply_model_shifts(model, model_shifts)
+        
+        pbar.update(1)
+        print("Model loading and LoRA application complete.")
+
+        # Unwrap any single-item tuples
+        return (
+            unwrap_tuple(model),
+            unwrap_tuple(clip), 
+            unwrap_tuple(vae),
+            lora_stack, 
+            keywords
+        )

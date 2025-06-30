@@ -15,30 +15,30 @@ from ..utils import (
 
 import pathlib
 import json
+from ..utils import model_info as mi
 
-class Sage_CheckpointSelector(ComfyNodeABC):
+class Sage_UnetClipVaeToModelInfo(ComfyNodeABC):
     @classmethod
     def INPUT_TYPES(cls) -> InputTypeDict:
-        model_list = folder_paths.get_filename_list("checkpoints")
         return {
-                "required": {
-                    "ckpt_name": (model_list, {"tooltip": "The name of the checkpoint (model) to load."})
-                }
+            "required": {
+                "unet_info": ("UNET_INFO", {"tooltip": "The UNET model info to load."}),
+                "clip_info": ("CLIP_INFO", {"tooltip": "The CLIP model info to load."}),
+                "vae_info": ("VAE_INFO", {"tooltip": "The VAE model info to load."}),
             }
-
+        }
+    
     RETURN_TYPES = ("MODEL_INFO",)
     RETURN_NAMES = ("model_info",)
-
-    OUTPUT_TOOLTIPS = ("The model path and hash, all in one output.")
-    FUNCTION = "get_checkpoint_info"
-
+    
+    FUNCTION = "get_model_info"
     CATEGORY  =  "Sage Utils/model"
-    DESCRIPTION = "Returns a model_info output to pass to the construct metadata node or a model info node. (And hashes and pulls civitai info for the file.)"
-    def get_checkpoint_info(self, ckpt_name) -> tuple:
-        model_info = { "type": "CKPT", "path": folder_paths.get_full_path_or_raise("checkpoints", ckpt_name) }
-        pull_metadata(model_info["path"], timestamp = True)
-        model_info["hash"] = cache.hash[model_info["path"]]
-        return (model_info,)
+    DESCRIPTION = "Returns a list with the unets, clips, and vae in it to be loaded."
+
+    def get_model_info(self, unet_info, clip_info, vae_info) -> tuple:
+        print(f"Constructing model info from UNET: {unet_info}, CLIP: {clip_info}, VAE: {vae_info}")
+
+        return ((unet_info, clip_info, vae_info),)
 
 class Sage_LoadCheckpointFromModelInfo(ComfyNodeABC):
     @classmethod
@@ -57,10 +57,13 @@ class Sage_LoadCheckpointFromModelInfo(ComfyNodeABC):
     DESCRIPTION = "Loads a diffusion model checkpoint from a model_info input. Also returns a model_info output to pass to the construct metadata node, and the hash. (And hashes and pulls civitai info for the file.)"
 
     def load_checkpoint(self, model_info) -> tuple:
-        path = model_info["path"]
+        info = mi.get_model_info_component(model_info, "CKPT")
+        if info is None or info == {}:
+            raise ValueError("Please provide valid model info.")
+        path = info["path"]
         pull_metadata(path, timestamp = True)
-        model_info["hash"] = cache.hash[path]
-        return loaders.checkpoint(path) + (model_info,)
+        info["hash"] = cache.hash[path]
+        return loaders.checkpoint(path) + (info,)
 
 class Sage_CheckpointLoaderSimple(CheckpointLoaderSimple):
     def __init__(self):
@@ -85,21 +88,20 @@ class Sage_CheckpointLoaderSimple(CheckpointLoaderSimple):
     CATEGORY  =  "Sage Utils/model"
     DESCRIPTION = "Loads a diffusion model checkpoint. Also returns a model_info output to pass to the construct metadata node, and the hash. (And hashes and pulls civitai info for the file.)"
     def load_checkpoint(self, ckpt_name) -> tuple:
-        model_info = { "type": "CKPT", "path": folder_paths.get_full_path_or_raise("checkpoints", ckpt_name) }
-        pull_metadata(model_info["path"], timestamp = True)
-
-        model_info["hash"] = cache.hash[model_info["path"]]
-        model, clip, vae = loaders.checkpoint(model_info["path"])
-        return (model, clip, vae, model_info)
+        info = mi.get_model_info_ckpt(ckpt_name)
+        if isinstance(info, tuple):
+            info = info[0]
+        model, clip, vae = loaders.checkpoint(info["path"])
+        return (model, clip, vae, info)
 
 class Sage_UNETLoader(UNETLoader):
     @classmethod
-    def INPUT_TYPES(cls) -> InputTypeDict:
+    def INPUT_TYPES(cls):
         unet_list = folder_paths.get_filename_list("diffusion_models")
         return {
             "required": {
                 "unet_name": (unet_list,),
-                "weight_dtype": (["default", "fp8_e4m3fn", "fp8_e4m3fn_fast", "fp8_e5m2"],)
+                "weight_dtype": (mi.weight_dtype_options,)
                 }
             }
     RETURN_TYPES = (IO.MODEL, "MODEL_INFO")
@@ -109,15 +111,11 @@ class Sage_UNETLoader(UNETLoader):
     CATEGORY  =  "Sage Utils/model"
 
     def load_unet(self, unet_name, weight_dtype) -> tuple:
-        model_info = {
-            "type": "UNET",
-            "name": pathlib.Path(unet_name).name,
-            "path": folder_paths.get_full_path_or_raise("diffusion_models", unet_name)
-        }
-        print(f"Loading UNET from {model_info['path']} with dtype {weight_dtype}")
-        pull_metadata(model_info["path"], timestamp = True)
-        model_info["hash"] = cache.hash[model_info["path"]]
-        return (loaders.unet(model_info["path"], weight_dtype), model_info)
+        info = mi.get_model_info_unet(unet_name, weight_dtype)
+        print(f"Loading UNET from {info[0]['path']} with dtype {weight_dtype}")
+        pull_metadata(info[0]["path"], timestamp = True)
+        info[0]["hash"] = cache.hash[info[0]["path"]]
+        return (loaders.unet(info[0]["path"], weight_dtype), info)
 
 
 class Sage_MultiModelPicker(ComfyNodeABC):
@@ -157,7 +155,7 @@ class Sage_CacheMaintenance(ComfyNodeABC):
     def INPUT_TYPES(cls) -> InputTypeDict:
         return {
             "required": {
-                "remove_ghost_entries": ("BOOLEAN", {"defaultInput": True})
+                "remove_ghost_entries": (IO.BOOLEAN, {"defaultInput": True})
             }
         }
 
@@ -186,8 +184,8 @@ class Sage_CacheMaintenance(ComfyNodeABC):
                 cache_by_hash[model_hash] = []
             cache_by_hash[model_hash].append(model_path)
 
-            model_info = cache.by_path(model_path)
-            model_id = model_info.get("modelId", None)
+            info = cache.by_path(model_path)
+            model_id = info.get("modelId", None)
             if model_id:
                 if model_id not in cache_by_id:
                     cache_by_id[model_id] = []

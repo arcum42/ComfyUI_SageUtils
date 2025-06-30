@@ -8,13 +8,13 @@ import folder_paths
 # Import specific utilities instead of wildcard import
 from ..utils import (
     config_manager, lora_to_prompt, civitai_sampler_name,
-    pull_metadata, get_model_info, cache, name_from_path
+    pull_metadata, get_model_dict, cache, name_from_path
 )
 
 import numpy as np
 import pathlib
 import json
-
+from ..utils import model_info as mi
 class Sage_ConstructMetadata(ComfyNodeABC):
     def __init__(self):
         pass
@@ -61,7 +61,7 @@ class Sage_ConstructMetadata(ComfyNodeABC):
                 lora_path = folder_paths.get_full_path_or_raise("loras", lora[0])
                 lora_name = str(pathlib.Path(lora_path).name)
                 pull_metadata(lora_path)
-                lora_data = get_model_info(lora_path, lora[1])
+                lora_data = get_model_dict(lora_path, lora[1])
                 if lora_data != {}:
                     resource_hashes.append(lora_data)
 
@@ -74,8 +74,9 @@ class Sage_ConstructMetadata(ComfyNodeABC):
         metadata = f"{positive_string} {lora_to_prompt(lora_stack)}" + "\n"
         if negative_string != "":
             metadata += f"Negative prompt: {negative_string}" + "\n"
+
         metadata += f"Steps: {sampler_info['steps']}, Sampler: {sampler_name}, Scheduler type: {sampler_info['scheduler']}, CFG scale: {sampler_info['cfg']}, Seed: {sampler_info['seed']}, Size: {width}x{height},"
-        metadata += f"Model: {name_from_path(model_info['path'])}, Model hash: {model_info['hash']}, Version: v1.10-RC-6-comfyui, {civitai_string}, {lora_hash_string}"
+        metadata += f"{mi.model_name_and_hash_as_str(model_info)}, Version: v1.10-RC-6-comfyui, {civitai_string}, {lora_hash_string}"
         return metadata,
 
 class Sage_ConstructMetadataLite(ComfyNodeABC):
@@ -111,7 +112,7 @@ class Sage_ConstructMetadataLite(ComfyNodeABC):
         resource_hashes = []
 
         sampler_name = civitai_sampler_name(sampler_info['sampler'], sampler_info['scheduler'])
-        resource_hashes.append(get_model_info(model_info['path']))
+        resource_hashes.append(get_model_dict(model_info['path']))
 
         if lora_stack is not None:
             # We're going through generating A1111 style prompt information, but not doing the loras and model A1111 style, rather
@@ -119,7 +120,7 @@ class Sage_ConstructMetadataLite(ComfyNodeABC):
             for lora in lora_stack:
                 lora_path = folder_paths.get_full_path_or_raise("loras", lora[0])
                 pull_metadata(lora_path)
-                lora_data = get_model_info(lora_path, lora[1])
+                lora_data = get_model_dict(lora_path, lora[1])
                 if lora_data != {}:
                     resource_hashes.append(lora_data)
 

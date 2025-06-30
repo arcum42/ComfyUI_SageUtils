@@ -7,6 +7,10 @@ import torch
 import comfy.utils
 import comfy.sd
 
+from nodes import VAELoader, UNETLoader, CLIPLoader, DualCLIPLoader
+from comfy_extras.nodes_sd3 import TripleCLIPLoader
+from comfy_extras.nodes_hidream import QuadrupleCLIPLoader
+
 loaded_loras = {}
 
 def lora(model, clip, lora_name, strength_model, strength_clip):
@@ -49,13 +53,128 @@ def checkpoint(ckpt_path):
     return out[:3]
 
 def unet(unet_path, weight_dtype):
-    model_options = {}
-    if weight_dtype == "fp8_e4m3fn":
-        model_options["dtype"] = torch.float8_e4m3fn
-    elif weight_dtype == "fp8_e4m3fn_fast":
-        model_options["dtype"] = torch.float8_e4m3fn
-        model_options["fp8_optimizations"] = True
-    elif weight_dtype == "fp8_e5m2":
-        model_options["dtype"] = torch.float8_e5m2
+    if not unet_path:
+        raise ValueError("unet_path must be provided.")
+    if not isinstance(unet_path, str):
+        raise ValueError("unet_path must be a string.")
+    if not weight_dtype:
+        weight_dtype = "default"
 
-    return comfy.sd.load_diffusion_model(unet_path, model_options=model_options)
+    unet_name = ""
+    for base in folder_paths.get_folder_paths("diffusion_models"):
+        if unet_path.startswith(base):
+            unet_name = unet_path[len(base):].lstrip("/\\")
+            break
+    
+    unet = UNETLoader()
+    ret = unet.load_unet(unet_name, weight_dtype)
+
+    return ret
+
+def unet_from_info(unet_info):
+    if isinstance(unet_info, tuple):
+        unet_info = unet_info[0]
+    if "path" not in unet_info:
+        raise ValueError("unet_info must contain a 'path' key.")
+    if "weight_dtype" not in unet_info:
+        unet_info["weight_dtype"] = "default"
+    return unet(unet_info["path"], unet_info["weight_dtype"])[0]
+
+def clip_from_info(clip_info):
+    clip_paths =[]
+    clip_type = ""
+
+    if isinstance(clip_info, tuple):
+        clip_info = clip_info[0]
+    if "path" not in clip_info:
+        raise ValueError("clip_info must contain a 'path' key.")
+    if "type" not in clip_info:
+        clip_info["type"] = ""
+    return clip(clip_info["path"], clip_info["type"])
+
+def clip(clip_path, clip_type=""):
+    num_of_clips = len(clip_path) if isinstance(clip_path, list) else 1
+    if num_of_clips == 0:
+        raise ValueError("clip_path must contain at least one CLIP file name.")
+    if num_of_clips > 4:
+        raise ValueError("clip_path can contain a maximum of 4 CLIP file names.")
+    if isinstance(clip_path, str):
+        clip_path = [clip_path]
+    
+    for path in clip_path:
+        for base in folder_paths.get_folder_paths("text_encoders"):
+            if path.startswith(base):
+                clip_path[clip_path.index(path)] = path[len(base):].lstrip("/\\")
+                break
+    
+    if num_of_clips == 1:
+        clip = CLIPLoader()
+        return clip.load_clip(clip_path[0], clip_type)[0]
+    elif num_of_clips == 2:
+        clipclip = DualCLIPLoader()
+        return clipclip.load_clip(clip_path[0], clip_path[1], clip_type)[0]
+    elif num_of_clips == 3:
+        clipclipclip = TripleCLIPLoader()
+        return clipclipclip.load_clip(clip_path[0], clip_path[1], clip_path[2])[0]
+    elif num_of_clips == 4:
+        clipclipclipclip = QuadrupleCLIPLoader()
+        return clipclipclipclip.load_clip(clip_path[0], clip_path[1], clip_path[2], clip_path[3])[0]
+    return None
+
+def vae(vae_info):
+    if isinstance(vae_info, tuple):
+        vae_info = vae_info[0]
+    if "path" not in vae_info:
+        raise ValueError("vae_info must contain a 'path' key.")
+    
+    vae_name = vae_info["path"]
+    
+    for base in folder_paths.get_folder_paths("vae"):
+        if vae_name.startswith(base):
+            vae_name = vae_name[len(base):].lstrip("/\\")
+            break
+    return VAELoader.load_vae(None, vae_name)[0]
+
+def load_lora_stack_with_keywords(model, clip, pbar, lora_stack_data):
+    """Load lora stack and return keywords."""
+    print("Loading lora stack...")
+    keywords = ""
+    if lora_stack_data is not None:
+        model, clip, lora_stack_data, keywords = lora_stack(model, clip, pbar, lora_stack_data)
+    return (model, clip, lora_stack_data, keywords)
+
+def load_lora_and_apply_shifts(model, clip, lora_stack_data=None, model_shifts=None, apply_shifts_func=None):
+    """Load lora stack and apply model shifts."""
+    keywords = ""
+    stack_length = len(lora_stack_data) if lora_stack_data else 1
+    pbar = comfy.utils.ProgressBar(stack_length + 1)
+    
+    model, clip, lora_stack_data, keywords = load_lora_stack_with_keywords(model, clip, pbar, lora_stack_data)
+    pbar.update(1)
+    
+    if model_shifts is not None and apply_shifts_func is not None:
+        print(f"Applying model shifts: {model_shifts}")
+        model = apply_shifts_func(model, model_shifts)
+    
+    return (model, clip, lora_stack_data, keywords)
+
+def load_model_component(model_info, component_type, pbar):
+    """Load a specific model component if present."""
+    from . import model_info as mi  # Import here to avoid circular import
+    
+    component_info = mi.get_model_info_component(model_info, component_type)
+    if not component_info:
+        return None
+        
+    print(f"Loading {component_type} from {component_info['path']}")
+    
+    loaders_map = {
+        "CKPT": lambda info: mi.get_model_clip_vae_from_info(info),
+        "UNET": lambda info: unet_from_info(info),
+        "CLIP": lambda info: clip_from_info(info),
+        "VAE": lambda info: vae(info)
+    }
+    
+    result = loaders_map[component_type](component_info)
+    pbar.update(1)
+    return result

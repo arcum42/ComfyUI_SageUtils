@@ -66,6 +66,8 @@ class Sage_DualCLIPTextEncode(ComfyNodeABC):
     )
 
     def encode(self, clip, clean, pos=None, neg=None) -> tuple:
+        if isinstance(clip, tuple):
+            clip = clip[0]
         pbar = comfy.utils.ProgressBar(2)
         pos = _clean_if_needed(pos, clean)
         neg = _clean_if_needed(neg, clean)

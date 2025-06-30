@@ -443,3 +443,7 @@ def get_save_file_path(filename_prefix: str = "text", filename_ext: str = "txt")
     final_filename = f"{base_filename}_{counter:05d}.{filename_ext}"
 
     return str(full_output_folder / final_filename)
+
+def unwrap_tuple(value):
+    """Unwrap single-item tuples to their contained value."""
+    return value[0] if isinstance(value, tuple) and len(value) == 1 else value

@@ -36,17 +36,17 @@ def get_civitai_model_json(model_id):
     url = f"https://civitai.com/api/v1/models/{model_id}"
     return _get_civitai_json(url)
 
-def get_model_info(lora_path, weight=None):
+def get_model_dict(lora_path, weight=None):
     """Get model info from cache by path."""
     ret = {}
     try:
-        model_info = cache.by_path(lora_path)
-        ret["type"] = model_info["model"]["type"]
+        info = cache.by_path(lora_path)
+        ret["type"] = info["model"]["type"]
         if ret["type"] == "LORA" and weight is not None:
             ret["weight"] = weight
-        ret["modelVersionId"] = model_info["id"]
-        ret["modelName"] = model_info["model"]["name"]
-        ret["modelVersionName"] = model_info["name"]
+        ret["modelVersionId"] = info["id"]
+        ret["modelName"] = info["model"]["name"]
+        ret["modelVersionName"] = info["name"]
     except Exception:
         ret = {}
     return ret

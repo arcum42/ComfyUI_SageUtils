@@ -10,7 +10,7 @@ from comfy_execution.graph import ExecutionBlocker
 # Import specific utilities instead of wildcard import
 from ..utils import (
     cache, get_file_sha256, blank_image, url_to_torch_image,
-    get_model_info, get_latest_model_version, get_civitai_model_json,
+    get_model_dict, get_latest_model_version, get_civitai_model_json,
     get_civitai_model_version_json_by_hash, pull_lora_image_urls,
     get_lora_hash, pull_metadata
 )
@@ -20,6 +20,7 @@ import json
 import comfy.model_management as mm
 import gc
 
+from ..utils import model_info as mi
 class Sage_FreeMemory(ComfyNodeABC):
     @classmethod
     def INPUT_TYPES(cls) -> InputTypeDict:
@@ -125,12 +126,13 @@ class Sage_ModelInfo(ComfyNodeABC):
     DESCRIPTION = "Pull the civitai model info, and return what the base model is, the name with version, the url, the url for the latest version, and a preview image. Note that last model in the stack is not necessarily the one this node is hooked to, since that node may be disabled."
 
     def get_last_info(self, model_info) -> tuple:
-        if model_info is None:
+        info = mi.get_model_info_component(model_info, "CKPT")
+        if info is None or info == {}:
             return ("", "", "", "", None)
 
         image = blank_image()
         try:
-            json_data = get_civitai_model_version_json_by_hash(model_info["hash"])
+            json_data = get_civitai_model_version_json_by_hash(info["hash"])
             if "modelId" in json_data:
                 url = f"https://civitai.com/models/{json_data['modelId']}?modelVersionId={json_data['id']}"
                 latest_version = get_latest_model_version(json_data["modelId"])
