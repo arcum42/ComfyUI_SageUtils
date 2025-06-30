@@ -158,7 +158,7 @@ def load_lora_and_apply_shifts(model, clip, lora_stack_data=None, model_shifts=N
     
     return (model, clip, lora_stack_data, keywords)
 
-def load_model_component(model_info, component_type, pbar):
+def load_model_component(model_info, component_type, pbar = None):
     """Load a specific model component if present."""
     from . import model_info as mi  # Import here to avoid circular import
     
@@ -176,5 +176,6 @@ def load_model_component(model_info, component_type, pbar):
     }
     
     result = loaders_map[component_type](component_info)
-    pbar.update(1)
+    if pbar:
+        pbar.update(1)
     return result

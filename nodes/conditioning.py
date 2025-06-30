@@ -10,15 +10,12 @@ from ..utils import condition_text, clean_text
 
 import torch
 
-
 def _get_conditioning(pbar, clip, text=None):
     pbar.update(1)
     return condition_text(clip, text)
 
-
 def _clean_if_needed(text, clean):
     return clean_text(text) if clean and text is not None else text
-
 
 class Sage_ConditioningZeroOut(ComfyNodeABC):
     @classmethod
@@ -40,7 +37,6 @@ class Sage_ConditioningZeroOut(ComfyNodeABC):
         output["pooled_output"] = torch.zeros_like(output.get("pooled_output", torch.tensor([])))
         conditioning = torch.zeros_like(output.pop("cond"))
         return ([conditioning, output],)
-
 
 class Sage_DualCLIPTextEncode(ComfyNodeABC):
     @classmethod
@@ -77,7 +73,6 @@ class Sage_DualCLIPTextEncode(ComfyNodeABC):
             pos or "",
             neg or ""
         )
-
 
 class Sage_DualCLIPTextEncodeLumina2(ComfyNodeABC):
     SYSTEM_PROMPT = {

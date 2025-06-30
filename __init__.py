@@ -27,19 +27,7 @@ except Exception as e:
 
 WEB_DIRECTORY = "./js"
 
-# Deprecated class mappings (correct spelling)
-DEPRECATED_CLASS_MAPPINGS = {
-    "Sage_KSamplerDecoder": Sage_KSamplerDecoder
-}
-
-UTILITY_CLASS_MAPPINGS = {
-    "Sage_GetFileHash": Sage_GetFileHash,
-    "Sage_LogicalSwitch": Sage_LogicalSwitch,
-    "Sage_Halt": Sage_Halt,
-    "Sage_FreeMemory": Sage_FreeMemory
-}
-
-SETTINGS_CLASS_MAPPINGS = {
+SELECTOR_CLASS_MAPPINGS = {
     "Sage_SamplerInfo": Sage_SamplerInfo,
     "Sage_AdvSamplerInfo": Sage_AdvSamplerInfo,
     "Sage_TilingInfo": Sage_TilingInfo,
@@ -69,15 +57,21 @@ TEXT_CLASS_MAPPINGS = {
     "Sage_HiDreamE1_Instruction": Sage_HiDreamE1_Instruction
 }
 
-MODEL_CLASS_MAPPINGS = {
+LOADER_CLASS_MAPPINGS = {
     "Sage_LoadCheckpointFromModelInfo": Sage_LoadCheckpointFromModelInfo,
-    "Sage_UNETLoader": Sage_UNETLoader,
-    "Sage_CheckpointLoaderSimple": Sage_CheckpointLoaderSimple,
-    "Sage_CheckpointLoaderRecent": Sage_CheckpointLoaderRecent,
+    "Sage_UNETLoaderFromInfo": Sage_UNETLoaderFromInfo,
+    "Sage_CLIPLoaderFromInfo": Sage_CLIPLoaderFromInfo,
+    "Sage_VAELoaderFromInfo": Sage_VAELoaderFromInfo,
+    "Sage_LoraStackLoader": Sage_LoraStackLoader,
+    "Sage_ModelLoraStackLoader": Sage_ModelLoraStackLoader
+}
+
+MODEL_CLASS_MAPPINGS = {
     "Sage_ModelInfo": Sage_ModelInfo,
+    "Sage_LastLoraInfo": Sage_LastLoraInfo,
+    "Sage_CheckLorasForUpdates": Sage_CheckLorasForUpdates,
     "Sage_CacheMaintenance": Sage_CacheMaintenance,
     "Sage_ModelReport": Sage_ModelReport,
-    "Sage_ModelLoraStackLoader": Sage_ModelLoraStackLoader,
     "Sage_MultiModelPicker": Sage_MultiModelPicker
 }
 
@@ -85,10 +79,7 @@ LORA_CLASS_MAPPINGS = {
     "Sage_LoraStack": Sage_LoraStack,
     "Sage_LoraStackRecent": Sage_LoraStackRecent,
     "Sage_TripleLoraStack": Sage_TripleLoraStack,
-    "Sage_LoraStackLoader": Sage_LoraStackLoader,
-    "Sage_CollectKeywordsFromLoraStack": Sage_CollectKeywordsFromLoraStack,
-    "Sage_LastLoraInfo": Sage_LastLoraInfo,
-    "Sage_CheckLorasForUpdates": Sage_CheckLorasForUpdates
+    "Sage_CollectKeywordsFromLoraStack": Sage_CollectKeywordsFromLoraStack
 }
 
 CLIP_CLASS_MAPPINGS = {
@@ -134,6 +125,21 @@ LLM_CLASS_MAPPINGS = {
     "Sage_ConstructLLMPromptExtra": Sage_ConstructLLMPromptExtra
 }
 
+UTILITY_CLASS_MAPPINGS = {
+    "Sage_GetFileHash": Sage_GetFileHash,
+    "Sage_LogicalSwitch": Sage_LogicalSwitch,
+    "Sage_Halt": Sage_Halt,
+    "Sage_FreeMemory": Sage_FreeMemory
+}
+
+# Deprecated class mappings (correct spelling)
+DEPRECATED_CLASS_MAPPINGS = {
+    "Sage_KSamplerDecoder": Sage_KSamplerDecoder,
+    "Sage_UNETLoader": Sage_UNETLoader,
+    "Sage_CheckpointLoaderSimple": Sage_CheckpointLoaderSimple,
+    "Sage_CheckpointLoaderRecent": Sage_CheckpointLoaderRecent
+}
+
 if llm.OLLAMA_AVAILABLE:
     LLM_CLASS_MAPPINGS = LLM_CLASS_MAPPINGS | OLLAMA_CLASS_MAPPINGS
 
@@ -142,24 +148,12 @@ if llm.LMSTUDIO_AVAILABLE:
 
 # A dictionary that contains all nodes you want to export with their names
 # NOTE: names should be globally unique
-NODE_CLASS_MAPPINGS = DEPRECATED_CLASS_MAPPINGS | UTILITY_CLASS_MAPPINGS | SETTINGS_CLASS_MAPPINGS |  TEXT_CLASS_MAPPINGS | \
-    MODEL_CLASS_MAPPINGS | LORA_CLASS_MAPPINGS | CLIP_CLASS_MAPPINGS | SAMPLER_CLASS_MAPPINGS | IMAGE_CLASS_MAPPINGS | \
-    METADATA_CLASS_MAPPINGS | LLM_CLASS_MAPPINGS
+NODE_CLASS_MAPPINGS = DEPRECATED_CLASS_MAPPINGS | UTILITY_CLASS_MAPPINGS | SELECTOR_CLASS_MAPPINGS |  TEXT_CLASS_MAPPINGS | \
+    LOADER_CLASS_MAPPINGS| MODEL_CLASS_MAPPINGS | LORA_CLASS_MAPPINGS | CLIP_CLASS_MAPPINGS | SAMPLER_CLASS_MAPPINGS | \
+    IMAGE_CLASS_MAPPINGS | METADATA_CLASS_MAPPINGS | LLM_CLASS_MAPPINGS
 
 
-# Deprecated name mappings (correct spelling)
-DEPRECATED_NAME_MAPPINGS = {
-    "Sage_KSamplerDecoder": "KSampler + Decoder"
-}
-
-UTILITY_NAME_MAPPINGS = {
-    "Sage_GetFileHash": "Get Sha256 Hash",
-    "Sage_LogicalSwitch": "Switch",
-    "Sage_Halt": "Halt Workflow",
-    "Sage_FreeMemory": "Free Memory"
-}
-
-SETTINGS_NAME_MAPPINGS = {
+SELECTOR_NAME_MAPPINGS = {
     "Sage_SamplerInfo": "Sampler Info",
     "Sage_AdvSamplerInfo": "Adv Sampler Info",
     "Sage_TilingInfo": "Tiling Info",
@@ -189,26 +183,29 @@ TEXT_NAME_MAPPINGS = {
     "Sage_HiDreamE1_Instruction": "HiDreamE1 Instruction"
 }
 
-MODEL_NAME_MAPPINGS = {
+LOADER_NAME_MAPPINGS = {
     "Sage_LoadCheckpointFromModelInfo": "Load Checkpoint from Model Info",
-    "Sage_UNETLoader": "Load Diffusion Model w/ Metadata",
-    "Sage_CheckpointLoaderSimple": "Load Checkpoint w/ Metadata",
-    "Sage_CheckpointLoaderRecent": "Load Recently Used Checkpoint",
-    "Sage_ModelInfo": "Model Info",
+    "Sage_UNETLoaderFromInfo": "Load UNET Model from Info",
+    "Sage_CLIPLoaderFromInfo": "Load CLIP Model from Info",
+    "Sage_VAELoaderFromInfo": "Load VAE Model from Info",
+    "Sage_LoraStackLoader": "Lora Stack Loader",
+    "Sage_ModelLoraStackLoader": "Model + Lora Stack Loader"
+}
+
+MODEL_NAME_MAPPINGS = {
+    "Sage_ModelInfo": "Pull Model Info",
+    "Sage_LastLoraInfo": "Last Lora Info",
+    "Sage_CollectKeywordsFromLoraStack": "Lora Stack -> Keywords",
+    "Sage_CheckLorasForUpdates": "Check Loras for Updates",
     "Sage_CacheMaintenance": "Cache Maintenance",
     "Sage_ModelReport": "Model Scan & Report",
-    "Sage_ModelLoraStackLoader": "Model + Lora Stack Loader",
     "Sage_MultiModelPicker": "Multi Model Picker"
 }
 
 LORA_NAME_MAPPINGS = {
     "Sage_LoraStack": "Simple Lora Stack",
     "Sage_LoraStackRecent": "Recent Lora Stack",
-    "Sage_TripleLoraStack": "Triple Lora Stack",
-    "Sage_LoraStackLoader": "Lora Stack Loader",
-    "Sage_CollectKeywordsFromLoraStack": "Lora Stack -> Keywords",
-    "Sage_LastLoraInfo": "Last Lora Info",
-    "Sage_CheckLorasForUpdates": "Check Loras for Updates"
+    "Sage_TripleLoraStack": "Triple Lora Stack"
 }
 
 CLIP_NAME_MAPPINGS = {
@@ -254,15 +251,30 @@ LLM_NAME_MAPPINGS = {
     "Sage_ConstructLLMPromptExtra": "Construct LLM Prompt Extra"
 }
 
+UTILITY_NAME_MAPPINGS = {
+    "Sage_GetFileHash": "Get Sha256 Hash",
+    "Sage_LogicalSwitch": "Switch",
+    "Sage_Halt": "Halt Workflow",
+    "Sage_FreeMemory": "Free Memory"
+}
+
+# Deprecated name mappings (correct spelling)
+DEPRECATED_NAME_MAPPINGS = {
+    "Sage_KSamplerDecoder": "KSampler + Decoder",
+    "Sage_UNETLoader": "Load UNET Model",
+    "Sage_CheckpointLoaderSimple": "Load Checkpoint w/ Metadata",
+    "Sage_CheckpointLoaderRecent": "Load Recently Used Checkpoint"
+}
+
 if llm.OLLAMA_AVAILABLE:
     LLM_NAME_MAPPINGS = LLM_NAME_MAPPINGS | OLLAMA_NAME_MAPPINGS
 
 if llm.LMSTUDIO_AVAILABLE:
     LLM_NAME_MAPPINGS = LLM_NAME_MAPPINGS | LMSTUDIO_NAME_MAPPINGS
 
-# A dictionary that contains the friendly/humanly readable titles for the nodes
-NODE_DISPLAY_NAME_MAPPINGS = DEPRECATED_NAME_MAPPINGS | UTILITY_NAME_MAPPINGS | SETTINGS_NAME_MAPPINGS | TEXT_NAME_MAPPINGS | \
-    MODEL_NAME_MAPPINGS | LORA_NAME_MAPPINGS | CLIP_NAME_MAPPINGS | SAMPLER_NAME_MAPPINGS | IMAGE_NAME_MAPPINGS | \
-    METADATA_NAME_MAPPINGS | LLM_NAME_MAPPINGS
+# A dictionary that contains the friendly/human readable titles for the nodes
+NODE_DISPLAY_NAME_MAPPINGS = DEPRECATED_NAME_MAPPINGS | UTILITY_NAME_MAPPINGS | SELECTOR_NAME_MAPPINGS | TEXT_NAME_MAPPINGS | \
+    LOADER_NAME_MAPPINGS | MODEL_NAME_MAPPINGS | LORA_NAME_MAPPINGS | CLIP_NAME_MAPPINGS | SAMPLER_NAME_MAPPINGS | \
+    IMAGE_NAME_MAPPINGS | METADATA_NAME_MAPPINGS | LLM_NAME_MAPPINGS
 
 __all__ = ['NODE_CLASS_MAPPINGS', 'NODE_DISPLAY_NAME_MAPPINGS', 'WEB_DIRECTORY']

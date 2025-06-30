@@ -249,6 +249,83 @@ class Sage_ModelShifts(ComfyNodeABC):
             "s2": s2
         },)
 
+class Sage_UNETLoaderFromInfo(ComfyNodeABC):
+    """Load UNET model component from model info."""
+    
+    @classmethod
+    def INPUT_TYPES(cls) -> InputTypeDict:
+        return {
+            "required": {
+                "unet_info": ("UNET_INFO", {
+                    "tooltip": "The diffusion model you want to load."
+                              "Note: Should be from the unet selector node, not a loader node, "
+                              "or the model will be loaded twice."
+                }),
+            }
+        }
+
+    RETURN_TYPES = (IO.MODEL,)
+    RETURN_NAMES = ("model",)
+    FUNCTION = "load_unet"
+    CATEGORY = "Sage Utils/model"
+    DESCRIPTION = "Load the UNET model component from unet_info."
+
+    def load_unet(self, unet_info) -> tuple:
+        """Load UNET from model info."""
+        print("Loading UNET...")
+        return (load_model_component(unet_info, "UNET"),)
+
+class Sage_CLIPLoaderFromInfo(ComfyNodeABC):
+    """Load CLIP model component from model info."""
+    
+    @classmethod
+    def INPUT_TYPES(cls) -> InputTypeDict:
+        return {
+            "required": {
+                "clip_info": ("CLIP_INFO", {
+                    "tooltip": "The text encoder model you want to load. "
+                              "Note: Should be from the clip selector node, not a loader node, "
+                              "or the model will be loaded twice."
+                }),
+            }
+        }
+
+    RETURN_TYPES = (IO.CLIP,)
+    RETURN_NAMES = ("clip",)
+    FUNCTION = "load_clip"
+    CATEGORY = "Sage Utils/model"
+    DESCRIPTION = "Load the CLIP model component from clip_info."
+
+    def load_clip(self, clip_info) -> tuple:
+        """Load CLIP from model info."""
+        print("Loading CLIP...")
+        return (load_model_component(clip_info, "CLIP"),)
+
+class Sage_VAELoaderFromInfo(ComfyNodeABC):
+    """Load VAE model component from model info."""
+    
+    @classmethod
+    def INPUT_TYPES(cls) -> InputTypeDict:
+        return {
+            "required": {
+                "vae_info": ("VAE_INFO", {
+                    "tooltip": "The VAE model you want to load. "
+                              "Note: Should be from the checkpoint info node, not a loader node, "
+                              "or the model will be loaded twice."
+                }),
+            }
+        }
+
+    RETURN_TYPES = (IO.VAE,)
+    RETURN_NAMES = ("vae",)
+    FUNCTION = "load_vae"
+    CATEGORY = "Sage Utils/model"
+    DESCRIPTION = "Load the VAE model component from vae_info."
+
+    def load_vae(self, vae_info) -> tuple:
+        """Load VAE from model info."""
+        print("Loading VAE...")
+        return (load_model_component(vae_info, "VAE"),)
 class Sage_ModelLoraStackLoader(Sage_LoraStackLoader):
     """Load model components from model info and apply LoRA stack."""
     
