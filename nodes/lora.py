@@ -376,7 +376,7 @@ class Sage_ModelLoraStackLoader(Sage_LoraStackLoader):
         
         # Determine which model types are present
         model_types = get_model_types(model_info)
-        total_operations = stack_length + sum(model_types.values()) + 1
+        total_operations = stack_length + sum(model_types.values())
         pbar = ProgressBar(total_operations)
         
         # Load checkpoint if present (provides model, clip, vae)
@@ -386,20 +386,19 @@ class Sage_ModelLoraStackLoader(Sage_LoraStackLoader):
                 model, clip, vae = ckpt_result
         
         # Load individual components (override checkpoint components if present)
-        if model_types["UNET"]:
-            model = load_model_component(model_info, "UNET", pbar)
-        
         if model_types["CLIP"]:
             clip = load_model_component(model_info, "CLIP", pbar)
         
         if model_types["VAE"]:
             vae = load_model_component(model_info, "VAE", pbar)
 
+        if model_types["UNET"]:
+            model = load_model_component(model_info, "UNET", pbar)
+        
         # Apply LoRA stack
         print("Loading lora stack...")
         model, clip, lora_stack, keywords = load_lora_stack_with_keywords(model, clip, pbar, lora_stack)
         
-        # Apply model shifts (currently commented out in original)
         if model_shifts:
             model = self.apply_model_shifts(model, model_shifts)
         

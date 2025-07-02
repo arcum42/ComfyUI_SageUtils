@@ -6,6 +6,7 @@ from comfy.comfy_types.node_typing import ComfyNodeABC, InputTypeDict, IO
 
 import comfy
 import nodes
+from comfy_execution.graph_utils import GraphBuilder
 
 # Import specific utilities instead of wildcard import  
 from ..utils import (
@@ -462,3 +463,31 @@ class Sage_CubiqImageResize:
 
         return(outputs, outputs.shape[2], outputs.shape[1],)
 
+class Sage_ReferenceImage(ComfyNodeABC):
+    @classmethod
+    def INPUT_TYPES(cls) -> InputTypeDict:
+        return {
+            "required": {
+                "conditioning": (IO.CONDITIONING, ),
+                "image": (IO.IMAGE, ),
+                "vae": (IO.VAE, )
+            }
+        }
+
+    RETURN_TYPES = (IO.CONDITIONING, IO.LATENT)
+    RETURN_NAMES = ("conditioning", "latent")
+    FUNCTION = "execute"
+    CATEGORY = "Sage Utils/image"
+    
+    CATEGORY = "Sage Utils/image"
+    DESCRIPTION = "This node sets the guiding latent for an edit model. If the model supports it you can chain multiple to set multiple reference images."
+
+    def execute(self, conditioning, image, vae):
+        graph = GraphBuilder()
+        encoder_node = graph.node("VAEEncode", pixels = image, vae = vae)
+        ref_latent_node = graph.node("ReferenceLatent", conditioning=conditioning, latent=encoder_node.out(0))
+
+        return {
+            "result": (ref_latent_node.out(0), encoder_node.out(0)), 
+            "expand": graph.finalize(),
+            }
