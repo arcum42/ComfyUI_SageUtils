@@ -14,7 +14,7 @@ from ..utils import (
     pull_metadata, get_recently_used_models, clean_keywords,
     get_civitai_model_json, get_latest_model_version, loaders
 )
-from ..utils.common import unwrap_tuple, get_model_types, load_model_component, load_lora_stack_with_keywords, load_lora_and_apply_shifts
+from ..utils.common import unwrap_tuple, get_model_types, load_model_component, load_lora_stack_with_keywords
 
 from ..utils import model_info as mi
 class Sage_LoraStack(ComfyNodeABC):
@@ -188,6 +188,7 @@ class Sage_LoraStackLoader(ComfyNodeABC):
     DESCRIPTION = "Accept a lora_stack with Model and Clip, and apply all the loras in the stack at once."
 
     def apply_model_shifts(self, model, model_shifts):
+        print(f"The model is {model}")
         if model_shifts is not None:
             if model_shifts["shift_type"] != "None":
                 multiplier = 0.0
@@ -208,14 +209,28 @@ class Sage_LoraStackLoader(ComfyNodeABC):
             
             if model_shifts["freeu_v2"] == True:
                 print("FreeU v2 is enabled, applying to model.")
-                model = nodes_freelunch.FreeU_V2.patch(None, model, model_shifts["b1"], model_shifts["b2"], model_shifts["s1"], model_shifts["s2"])[0]
+                print(f"model: {model}")
+                freeu = nodes_freelunch.FreeU_V2()
+                model = freeu.patch(model, model_shifts["b1"], model_shifts["b2"], model_shifts["s1"], model_shifts["s2"])[0]
         return model
 
     def load_lora_stack(self, model, clip, pbar, lora_stack):
         return load_lora_stack_with_keywords(model, clip, pbar, lora_stack)
 
     def load_lora_and_shift(self, model, clip, lora_stack=None, model_shifts=None) -> tuple:
-        return load_lora_and_apply_shifts(model, clip, lora_stack, model_shifts, self.apply_model_shifts)
+        keywords = ""
+        print(f"Model: {model}, Clip: {clip}, Lora Stack: {lora_stack}, Model Shifts: {model_shifts}")
+        stack_length = len(lora_stack) if lora_stack else 1
+        pbar = comfy.utils.ProgressBar(stack_length + 1)
+        print("Loading lora stack and applying shifts...")
+
+        model, clip, lora_stack_data, keywords = load_lora_stack_with_keywords(model, clip, pbar, lora_stack_data)
+        pbar.update(1)
+
+        if model_shifts is not None:
+            print(f"Applying model shifts: {model_shifts}")
+            model = self.apply_model_shifts(model, model_shifts)
+        return (model, clip, lora_stack_data, keywords)
 
 class Sage_ModelShifts(ComfyNodeABC):
     def __init__(self):
@@ -375,25 +390,34 @@ class Sage_ModelLoraStackLoader(Sage_LoraStackLoader):
         stack_length = len(lora_stack) if lora_stack else 1
         
         # Determine which model types are present
+        print(f"Model info: {model_info}")
         model_types = get_model_types(model_info)
-        total_operations = stack_length + sum(model_types.values())
+        print(f"Model types: {model_types}")
+        total_operations = stack_length + len(model_types)
         pbar = ProgressBar(total_operations)
         
         # Load checkpoint if present (provides model, clip, vae)
-        if model_types["CKPT"]:
-            ckpt_result = load_model_component(model_info, "CKPT", pbar)
+        if "CKPT" in model_types:
+            print("Loading checkpoint...")
+            ckpt_result = None
+            model, clip, vae = load_model_component(model_info, "CKPT", pbar)
             if ckpt_result:
                 model, clip, vae = ckpt_result
+            else:
+                print("No checkpoint found in model_info, skipping CKPT load.")
         
         # Load individual components (override checkpoint components if present)
-        if model_types["CLIP"]:
-            clip = load_model_component(model_info, "CLIP", pbar)
-        
-        if model_types["VAE"]:
-            vae = load_model_component(model_info, "VAE", pbar)
+        if "CLIP" in model_types:
+            print("Loading CLIP model...")
+            clip = unwrap_tuple(load_model_component(model_info, "CLIP", pbar))
 
-        if model_types["UNET"]:
-            model = load_model_component(model_info, "UNET", pbar)
+        if "VAE" in model_types:
+            print("Loading VAE model...")
+            vae = unwrap_tuple(load_model_component(model_info, "VAE", pbar))
+
+        if "UNET" in model_types:
+            print("Loading UNET model...")
+            model = unwrap_tuple(load_model_component(model_info, "UNET", pbar))
         
         # Apply LoRA stack
         print("Loading lora stack...")
@@ -407,9 +431,9 @@ class Sage_ModelLoraStackLoader(Sage_LoraStackLoader):
 
         # Unwrap any single-item tuples
         return (
-            unwrap_tuple(model),
-            unwrap_tuple(clip), 
-            unwrap_tuple(vae),
+            model,
+            clip,
+            vae,
             lora_stack, 
             keywords
         )

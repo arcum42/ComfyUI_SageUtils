@@ -154,21 +154,6 @@ def load_lora_stack_with_keywords(model, clip, pbar, lora_stack_data):
         model, clip, lora_stack_data, keywords = lora_stack(model, clip, pbar, lora_stack_data)
     return (model, clip, lora_stack_data, keywords)
 
-def load_lora_and_apply_shifts(model, clip, lora_stack_data=None, model_shifts=None, apply_shifts_func=None):
-    """Load lora stack and apply model shifts."""
-    keywords = ""
-    stack_length = len(lora_stack_data) if lora_stack_data else 1
-    pbar = comfy.utils.ProgressBar(stack_length + 1)
-    
-    model, clip, lora_stack_data, keywords = load_lora_stack_with_keywords(model, clip, pbar, lora_stack_data)
-    pbar.update(1)
-    
-    if model_shifts is not None and apply_shifts_func is not None:
-        print(f"Applying model shifts: {model_shifts}")
-        model = apply_shifts_func(model, model_shifts)
-    
-    return (model, clip, lora_stack_data, keywords)
-
 def load_model_component(model_info, component_type, pbar = None):
     """Load a specific model component if present."""
     from . import model_info as mi  # Import here to avoid circular import
