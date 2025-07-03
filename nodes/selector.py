@@ -96,9 +96,7 @@ class Sage_CLIPSelector(ComfyNodeABC):
     CATEGORY  =  "Sage Utils/selectors"
     DESCRIPTION = "Returns a model_info output to pass to the construct metadata node or a model info node. (And hashes and pulls civitai info for the file.)"
     def get_clip_info(self, clip_name, clip_type) -> tuple:
-        print(f"Loading CLIP model: {clip_name} with type {clip_type}")
         info = mi.get_model_info_clips([clip_name], clip_type)
-        print(f"CLIP model info: {info}")
         return info
 
 class Sage_DualCLIPSelector(ComfyNodeABC):
@@ -121,8 +119,8 @@ class Sage_DualCLIPSelector(ComfyNodeABC):
 
     CATEGORY  =  "Sage Utils/selectors"
     DESCRIPTION = "Returns a model_info output to pass to the construct metadata node or a model info node. (And hashes and pulls civitai info for the file.)"
-    def get_clip_info(self, clip_name_1, clip_name_2) -> tuple:
-        info = mi.get_model_info_clips([clip_name_1, clip_name_2])
+    def get_clip_info(self, clip_name_1, clip_name_2, clip_type) -> tuple:
+        info = mi.get_model_info_clips([clip_name_1, clip_name_2], clip_type)
         return info
 
 class Sage_TripleCLIPSelector(ComfyNodeABC):

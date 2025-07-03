@@ -121,7 +121,7 @@ def clip(clip_path, clip_type="stable_diffusion"):
     elif num_of_clips == 2:
         print(f"Loading dual CLIP models from {clip_path[0]} and {clip_path[1]} with type {clip_type}")
         clipclip = DualCLIPLoader()
-        return clipclip.load_clip(clip_name=clip_path[0], clip_name2=clip_path[1], type=clip_type)[0]
+        return clipclip.load_clip(clip_name1=clip_path[0], clip_name2=clip_path[1], type=clip_type)[0]
     elif num_of_clips == 3:
         print(f"Loading triple CLIP models from {clip_path[0]}, {clip_path[1]}, and {clip_path[2]}")
         clipclipclip = TripleCLIPLoader()
