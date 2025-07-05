@@ -12,7 +12,6 @@ from __future__ import annotations
 from comfy.comfy_types.node_typing import ComfyNodeABC, InputTypeDict, IO
 
 # Import specific utilities instead of wildcard import
-from ..utils import blank_image
 from ..utils.config_manager import llm_prompts
 from ..utils import llm_wrapper as llm
 

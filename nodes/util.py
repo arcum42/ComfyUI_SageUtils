@@ -9,13 +9,10 @@ from comfy_execution.graph import ExecutionBlocker
 
 # Import specific utilities instead of wildcard import
 from ..utils import (
-    cache, get_file_sha256, blank_image, url_to_torch_image,
-    get_model_dict, get_latest_model_version, get_civitai_model_json,
-    get_civitai_model_version_json_by_hash, pull_lora_image_urls,
-    get_lora_hash, pull_metadata
+    cache, blank_image, url_to_torch_image,
+    get_latest_model_version, get_lora_hash, pull_metadata,
+    get_civitai_model_version_json_by_hash, pull_lora_image_urls
 )
-
-import json
 
 import comfy.model_management as mm
 import gc

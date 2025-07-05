@@ -27,6 +27,17 @@ except Exception as e:
 
 WEB_DIRECTORY = "./js"
 
+# Currently, we have to have two mappings: one for the class names and one for the display names.
+# I've broken them up into sections to make it easier to manage.
+# 
+# When the new node api is released, this information will be in the individual classes, and
+# this will be obsolete.
+#
+# See: https://github.com/comfyanonymous/ComfyUI/tree/v3-definition
+# and: https://github.com/comfyanonymous/ComfyUI/tree/v3-definition-wip
+#
+# v3 will require reimplementation of all nodes.
+
 SELECTOR_CLASS_MAPPINGS = {
     "Sage_SamplerInfo": Sage_SamplerInfo,
     "Sage_AdvSamplerInfo": Sage_AdvSamplerInfo,

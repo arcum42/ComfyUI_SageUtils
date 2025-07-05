@@ -4,7 +4,7 @@ import folder_paths
 
 # This file has deprecated nodes so we'll minimize imports
 from .. import nodes
-from ..utils import get_recently_used_models, add_lora_to_stack
+from ..utils import get_recently_used_models
 from .model import Sage_CheckpointLoaderSimple
 from .lora import Sage_LoraStack
 

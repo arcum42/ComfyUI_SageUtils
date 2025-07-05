@@ -3,7 +3,6 @@ from .lora_stack import get_lora_stack_keywords
 import comfy
 import folder_paths
 
-import torch
 import comfy.utils
 import comfy.sd
 

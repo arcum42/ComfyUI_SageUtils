@@ -7,6 +7,7 @@ import comfy
 from comfy_extras import nodes_freelunch
 import folder_paths
 from comfy.utils import ProgressBar
+from comfy_execution.graph_utils import GraphBuilder
 
 # Import specific utilities instead of wildcard import
 from ..utils import (
@@ -39,11 +40,11 @@ class Sage_LoraStack(ComfyNodeABC):
     RETURN_TYPES = ("LORA_STACK",)
     RETURN_NAMES = ("lora_stack",)
 
-    FUNCTION = "add_lora_to_stack"
+    FUNCTION = "add_to_stack"
     CATEGORY = "Sage Utils/lora"
     DESCRIPTION = "Choose a lora with weights, and add it to a lora_stack. Compatable with other node packs that have lora_stacks."
 
-    def add_lora_to_stack(self, enabled, lora_name, model_weight, clip_weight, lora_stack = None) -> tuple:
+    def add_to_stack(self, enabled, lora_name, model_weight, clip_weight, lora_stack = None) -> tuple:
         if enabled == True:
             stack = add_lora_to_stack(lora_name, model_weight, clip_weight, lora_stack)
         else:
@@ -51,10 +52,9 @@ class Sage_LoraStack(ComfyNodeABC):
 
         return (stack,)
 
+#example usage of graph builder:
+# encoder_node = graph.node("VAEEncode", pixels = image, vae = vae)
 class Sage_TripleLoraStack(ComfyNodeABC):
-    def __init__(self):
-        pass
-
     @classmethod
     def INPUT_TYPES(cls) -> InputTypeDict:
         lora_list = folder_paths.get_filename_list("loras")
@@ -64,7 +64,7 @@ class Sage_TripleLoraStack(ComfyNodeABC):
             required_list[f"lora_{i}_name"] = (lora_list, {"options": lora_list, "defaultInput": False, "tooltip": "The name of the LoRA."})
             required_list[f"model_{i}_weight"] = (IO.FLOAT, {"defaultInput": False, "default": 1.0, "min": -100.0, "max": 100.0, "step": 0.01, "tooltip": "How strongly to modify the diffusion model. This value can be negative."})
             required_list[f"clip_{i}_weight"] = (IO.FLOAT, {"defaultInput": False, "default": 1.0, "min": -100.0, "max": 100.0, "step": 0.01, "tooltip": "How strongly to modify the CLIP model. This value can be negative."})
-        
+
         return {
             "required": required_list,
             "optional": {
@@ -75,23 +75,44 @@ class Sage_TripleLoraStack(ComfyNodeABC):
     RETURN_TYPES = ("LORA_STACK",)
     RETURN_NAMES = ("lora_stack",)
 
-    FUNCTION = "add_lora_to_stack"
+    FUNCTION = "add_to_stack"
     CATEGORY = "Sage Utils/lora"
     DESCRIPTION = "Choose three loras with weights, and add them to a lora_stack. Compatable with other node packs that have lora_stacks."
 
-    def add_lora_to_stack(self, **args) -> tuple:
+    def add_to_stack(self, **args):
+        graph = GraphBuilder()
         stack = args.get("lora_stack", None)
+        nodes = []
+        lora_stack_node = None
 
         for i in range(1, len(args) // 4 + 1):
-            enabled = args[f"enabled_{i}"]
-            lora_name = args[f"lora_{i}_name"]
-            model_weight = args[f"model_{i}_weight"]
-            clip_weight = args[f"clip_{i}_weight"]
+            if args[f"enabled_{i}"] == False:
+                continue
+            if lora_stack_node is not None:
+                lora_stack_node = graph.node("Sage_LoraStack",
+                    enabled = args[f"enabled_{i}"],
+                    lora_name = args[f"lora_{i}_name"],
+                    model_weight = args[f"model_{i}_weight"],
+                    clip_weight = args[f"clip_{i}_weight"],
+                    lora_stack = lora_stack_node.out(0)
+                )
+            else:
+                lora_stack_node = graph.node("Sage_LoraStack",
+                    enabled = args[f"enabled_{i}"],
+                    lora_name = args[f"lora_{i}_name"],
+                    model_weight = args[f"model_{i}_weight"],
+                    clip_weight = args[f"clip_{i}_weight"],
+                    lora_stack = stack
+                )
+            nodes.append(lora_stack_node)
 
-            if enabled == True:
-                print(f"Adding {lora_name} to stack with model weight {model_weight} and clip weight {clip_weight}")
-                stack = add_lora_to_stack(lora_name, model_weight, clip_weight, stack)
-        return (stack,)
+        if not nodes:
+            return (stack,)
+
+        return {
+            "result": (nodes[-1].out(0),),
+            "expand": graph.finalize()
+        }
 
 class Sage_CollectKeywordsFromLoraStack(ComfyNodeABC):
     @classmethod

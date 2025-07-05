@@ -6,8 +6,8 @@ from comfy.comfy_types.node_typing import ComfyNodeABC, InputTypeDict, IO
 
 # Import specific utilities instead of wildcard import
 from ..utils import (
-    clean_text, condition_text, get_save_file_path,
-    sage_wildcard_path, sage_users_path,
+    clean_text, get_save_file_path,
+    sage_wildcard_path,
     path_manager
 )
 

@@ -5,7 +5,6 @@ import hashlib
 import datetime
 import torch
 import logging
-import json
 
 import folder_paths
 import comfy.utils
