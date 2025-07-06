@@ -79,6 +79,20 @@ class Sage_TripleLoraStack(ComfyNodeABC):
     CATEGORY = "Sage Utils/lora"
     DESCRIPTION = "Choose three loras with weights, and add them to a lora_stack. Compatable with other node packs that have lora_stacks."
 
+    def lora_stack_node(self, graph: GraphBuilder, args, idx, lora_stack = None):
+        lora_enabled = args[f"enabled_{idx}"]
+        lora_name = args[f"lora_{idx}_name"]
+        model_weight = args[f"model_{idx}_weight"]
+        clip_weight = args[f"clip_{idx}_weight"]
+
+        return graph.node("Sage_LoraStack",
+                enabled = lora_enabled,
+                lora_name = lora_name,
+                model_weight = model_weight,
+                clip_weight = clip_weight,
+                lora_stack = lora_stack
+            )
+
     def add_to_stack(self, **args):
         graph = GraphBuilder()
         stack = args.get("lora_stack", None)
@@ -88,22 +102,8 @@ class Sage_TripleLoraStack(ComfyNodeABC):
         for i in range(1, len(args) // 4 + 1):
             if args[f"enabled_{i}"] == False:
                 continue
-            if lora_stack_node is not None:
-                lora_stack_node = graph.node("Sage_LoraStack",
-                    enabled = args[f"enabled_{i}"],
-                    lora_name = args[f"lora_{i}_name"],
-                    model_weight = args[f"model_{i}_weight"],
-                    clip_weight = args[f"clip_{i}_weight"],
-                    lora_stack = lora_stack_node.out(0)
-                )
-            else:
-                lora_stack_node = graph.node("Sage_LoraStack",
-                    enabled = args[f"enabled_{i}"],
-                    lora_name = args[f"lora_{i}_name"],
-                    model_weight = args[f"model_{i}_weight"],
-                    clip_weight = args[f"clip_{i}_weight"],
-                    lora_stack = stack
-                )
+            stack_out = stack if lora_stack_node is None else lora_stack_node.out(0)
+            lora_stack_node = self.lora_stack_node(graph, args, i, stack_out)
             nodes.append(lora_stack_node)
 
         if not nodes:
@@ -181,12 +181,7 @@ class Sage_CheckLorasForUpdates(ComfyNodeABC):
                 
         return (lora_stack, str(lora_list), str(lora_url_list))
 
-# Modified version of the main lora loader.
 class Sage_LoraStackLoader(ComfyNodeABC):
-    def __init__(self):
-        super().__init__()
-        self.loaded_lora = {}
-
     @classmethod
     def INPUT_TYPES(cls) -> InputTypeDict:
         return {
@@ -196,62 +191,245 @@ class Sage_LoraStackLoader(ComfyNodeABC):
             },
             "optional": {
                 "lora_stack": ("LORA_STACK", {"defaultInput": True}),
-                "model_shifts": ("MODEL_SHIFTS", {"defaultInput": True, "tooltip": "The model shifts & free_u2 settings to apply to the model."}),
+                "model_shifts": ("MODEL_SHIFTS", {"defaultInput": True, "tooltip": "The model shifts & free_u2 settings to apply to the model."})
             }
         }
 
     RETURN_TYPES = (IO.MODEL, IO.CLIP, "LORA_STACK", IO.STRING)
     RETURN_NAMES = ("model", "clip", "lora_stack", "keywords")
     OUTPUT_TOOLTIPS = ("The modified diffusion model.", "The modified CLIP model.", "The stack of loras.", "Keywords from the lora stack.")
-    FUNCTION = "load_lora_and_shift"
-
+    FUNCTION = "load_lora"
     CATEGORY = "Sage Utils/lora"
     DESCRIPTION = "Accept a lora_stack with Model and Clip, and apply all the loras in the stack at once."
 
-    def apply_model_shifts(self, model, model_shifts):
-        print(f"The model is {model}")
+    def finalize(self, graph: GraphBuilder = None):
+        pbar = ProgressBar(len(graph.nodes.items()))
+        output = {}
+        for node_id, node in graph.nodes.items():
+            output[node_id] = node.serialize()
+            pbar.update(1)
+        return output
+
+    def create_lora_nodes(self, graph: GraphBuilder, model, clip, lora_stack):
+        lora_node = None
+        for lora in lora_stack:
+            lora_node = graph.node("LoraLoader",
+                model=model,
+                clip=clip,
+                lora_name=lora[0],
+                strength_model=lora[1],
+                strength_clip=lora[2],
+            )
+            model = lora_node.out(0)
+            clip = lora_node.out(1)
+        return lora_node
+
+    def create_model_shift_nodes(self, graph: GraphBuilder, lora_node, model, model_shifts):
+        exit_node = lora_node
+        if model_shifts is None:
+            return exit_node
+        if model_shifts["shift_type"] != "None":
+            if model_shifts["shift_type"] == "x1":
+                print("Applying x1 shift - AuraFlow/Lumina2")
+                if lora_node is None:
+                    exit_node = graph.node("ModelSamplingAuraFlow", model=model, shift=model_shifts["shift"])
+                else:
+                    exit_node = graph.node("ModelSamplingAuraFlow", model=lora_node.out(0), shift=model_shifts["shift"])
+            elif model_shifts["shift_type"] == "x1000":
+                print("Applying x1000 shift - SD3")
+                if lora_node is None:
+                    exit_node = graph.node("ModelSamplingSD3", model=model, shift=model_shifts["shift"])
+                else:
+                    exit_node = graph.node("ModelSamplingSD3", model=lora_node.out(0), shift=model_shifts["shift"])
+
+        if model_shifts["freeu_v2"] == True:
+            print("FreeU v2 is enabled, applying to model.")
+            if exit_node is None:
+                exit_node = graph.node("FreeU_V2",
+                    model=model,
+                    b1=model_shifts["b1"],
+                    b2=model_shifts["b2"],
+                    s1=model_shifts["s1"],
+                    s2=model_shifts["s2"]
+                )
+            else:
+                exit_node = graph.node("FreeU_V2",
+                    model=exit_node.out(0),
+                    b1=model_shifts["b1"],
+                    b2=model_shifts["b2"],
+                    s1=model_shifts["s1"],
+                s2=model_shifts["s2"]
+            )
+        return exit_node
+
+    def load_lora(self, model, clip, lora_stack=None, model_shifts=None) -> dict:
+        # Use graph expansion to build a graph with lora loaders for each lora in the stack.
+        if lora_stack is None and model_shifts is None:
+            return {
+                "result": (model, clip, None, ""),
+            }
+
+        graph = GraphBuilder()
+        lora_node = None
+        exit_node = None
+
+        if lora_stack is not None:
+            lora_node = self.create_lora_nodes(graph, model, clip, lora_stack)
+        
         if model_shifts is not None:
-            if model_shifts["shift_type"] != "None":
-                multiplier = 0.0
-                if model_shifts["shift_type"] == "x1":
-                    multiplier = 1000.0
-                elif model_shifts["shift_type"] == "x1000":
-                    multiplier = 1.0
-                print(f"Applying {model_shifts['shift_type']} shift with shift {model_shifts['shift']} to model.")
+            exit_node = self.create_model_shift_nodes(graph, lora_node, model, model_shifts)
 
-                sampling_base = comfy.model_sampling.ModelSamplingDiscreteFlow
-                sampling_type = comfy.model_sampling.CONST
-                class ModelSamplingAdvanced(sampling_base, sampling_type):
-                    pass
+        keywords = get_lora_stack_keywords(lora_stack)
 
-                model_sampling = ModelSamplingAdvanced(model.model.model_config)
-                model_sampling.set_parameters(shift=model_shifts["shift"], multiplier=multiplier)
-                model.add_object_patch("model_sampling", model_sampling)
-            
-            if model_shifts["freeu_v2"] == True:
-                print("FreeU v2 is enabled, applying to model.")
-                print(f"model: {model}")
-                freeu = nodes_freelunch.FreeU_V2()
-                model = freeu.patch(model, model_shifts["b1"], model_shifts["b2"], model_shifts["s1"], model_shifts["s2"])[0]
-        return model
+        if exit_node is None:
+            if lora_node is None:
+                print("No loras in stack, returning original model and clip.")
+                model_out = model
+            else:
+                print("No model shifts applied, returning original model.")
+                model_out = lora_node.out(0)
+        else:
+            print("Model shifts applied, returning modified model.")
+            model_out = exit_node.out(0)
+        
+        if lora_node is None:
+            print("No loras in stack, returning original clip.")
+            clip_out = clip
+        else:
+            print("Returning modified clip.")
+            clip_out = lora_node.out(1)
 
-    def load_lora_stack(self, model, clip, pbar, lora_stack):
-        return load_lora_stack_with_keywords(model, clip, pbar, lora_stack)
+        return {
+            "result": (model_out, clip_out, lora_stack, keywords),
+            "expand": self.finalize(graph)
+        }
 
-    def load_lora_and_shift(self, model, clip, lora_stack=None, model_shifts=None) -> tuple:
-        keywords = ""
-        print(f"Model: {model}, Clip: {clip}, Lora Stack: {lora_stack}, Model Shifts: {model_shifts}")
-        stack_length = len(lora_stack) if lora_stack else 1
-        pbar = comfy.utils.ProgressBar(stack_length + 1)
-        print("Loading lora stack and applying shifts...")
+class Sage_LoadModelFromInfo(ComfyNodeABC):
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "model_info": ("MODEL_INFO", {
+                    "tooltip": "The model to load. Note: Should be from a info node, not a loader node, or the model will be loaded twice."
+                }),
+            }
+        }
 
-        model, clip, lora_stack_data, keywords = load_lora_stack_with_keywords(model, clip, pbar, lora_stack_data)
-        pbar.update(1)
+    RETURN_TYPES = (IO.MODEL, IO.CLIP, IO.VAE)
+    RETURN_NAMES = ("model", "clip", "vae")
 
+    FUNCTION = "load_model"
+    CATEGORY = "Sage Utils/model"
+    DESCRIPTION = "Load model components from model info."
+    
+    def load_model(self, model_info) -> tuple:
+        # Initialize components
+        model = clip = vae = None
+        model_types = get_model_types(model_info)
+        total_operations = len(model_types)
+        pbar = ProgressBar(total_operations)
+
+        if "CKPT" in model_types:
+            model, clip, vae = load_model_component(model_info, "CKPT", pbar)
+        
+        # Load individual components (override checkpoint components if present)
+        if "CLIP" in model_types:
+            clip = unwrap_tuple(load_model_component(model_info, "CLIP", pbar))
+
+        if "VAE" in model_types:
+            vae = unwrap_tuple(load_model_component(model_info, "VAE", pbar))
+
+        if "UNET" in model_types:
+            model = unwrap_tuple(load_model_component(model_info, "UNET", pbar))
+
+        return (model, clip, vae)
+
+class Sage_ModelLoraStackLoader(Sage_LoraStackLoader):
+    """Load model components from model info and apply LoRA stack."""
+    
+    def __init__(self):
+        super().__init__()
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "model_info": ("MODEL_INFO", {
+                    "tooltip": "The diffusion model the LoRA will be applied to. "
+                              "Note: Should be from the checkpoint info node, not a loader node, "
+                              "or the model will be loaded twice."
+                }),
+            },
+            "optional": {
+                "lora_stack": ("LORA_STACK", {"defaultInput": True}),
+                "model_shifts": ("MODEL_SHIFTS", {
+                    "defaultInput": True, 
+                    "tooltip": "The model shifts & free_u2 settings to apply to the model."
+                }),
+            }
+        }
+
+    RETURN_TYPES = (IO.MODEL, IO.CLIP, IO.VAE, "LORA_STACK", IO.STRING)
+    RETURN_NAMES = ("model", "clip", "vae", "lora_stack", "keywords")
+    OUTPUT_TOOLTIPS = (
+        "The modified diffusion model.", 
+        "The modified CLIP model.", 
+        "The VAE model.", 
+        "The stack of loras.", 
+        "Keywords from the lora stack."
+    )
+
+    FUNCTION = "load_everything"
+    CATEGORY = "Sage Utils/model"
+    DESCRIPTION = ("Accept model info and a lora_stack, load the model, and apply all the "
+                  "loras in the stack to it at once. Apply changes to the model after loading it.")
+
+    def load_everything(self, model_info, lora_stack=None, model_shifts=None) -> dict:
+        # Load model components
+        model, clip, vae = Sage_LoadModelFromInfo().load_model(model_info)
+        print(f"Loaded model: {model}, clip: {clip}, vae: {vae}")
+
+        if lora_stack is None and model_shifts is None:
+            return {
+                "result": (model, clip, None, ""),
+            }
+
+        graph = GraphBuilder()
+        lora_node = None
+        exit_node = None
+
+        if lora_stack is not None:
+            lora_node = self.create_lora_nodes(graph, model, clip, lora_stack)
+        
         if model_shifts is not None:
-            print(f"Applying model shifts: {model_shifts}")
-            model = self.apply_model_shifts(model, model_shifts)
-        return (model, clip, lora_stack_data, keywords)
+            exit_node = self.create_model_shift_nodes(graph, lora_node, model, model_shifts)
+
+        keywords = get_lora_stack_keywords(lora_stack)
+
+        if exit_node is None:
+            if lora_node is None:
+                print("No loras in stack, returning original model and clip.")
+                model_out = model
+            else:
+                print("No model shifts applied, returning original model.")
+                model_out = lora_node.out(0)
+        else:
+            print("Model shifts applied, returning modified model.")
+            model_out = exit_node.out(0)
+        
+        if lora_node is None:
+            print("No loras in stack, returning original clip.")
+            clip_out = clip
+        else:
+            print("Returning modified clip.")
+            clip_out = lora_node.out(1)
+
+        return {
+            "result": (model_out, clip_out, vae, lora_stack, keywords),
+            "expand": self.finalize(graph)
+        }
+
+
 
 class Sage_ModelShifts(ComfyNodeABC):
     def __init__(self):
@@ -260,7 +438,7 @@ class Sage_ModelShifts(ComfyNodeABC):
     def INPUT_TYPES(cls) -> InputTypeDict:
         return {
             "required": {
-                "shift_type": (["None", "x1", "x1000"], {"defaultInput": True, "tooltip": "The type of shift to apply to the model. x1 for most models, x1000 for Auraflow and Lumina2."}),
+                "shift_type": (["None", "x1", "x1000"], {"defaultInput": True, "tooltip": "The type of shift to apply to the model. x1 for Auraflow and Lumina2, x1000 for other models."}),
                 "shift": (IO.FLOAT, {"defaultInput": False, "default": 3.0, "min": 0.0, "max": 100.0, "step": 0.01}),
                 "freeu_v2": (IO.BOOLEAN, {"defaultInput": False, "default": False}),
                 "b1": (IO.FLOAT, {"defaultInput": False, "default": 1.3, "min": 0.0, "max": 10.0, "step": 0.01}),
@@ -362,99 +540,3 @@ class Sage_VAELoaderFromInfo(ComfyNodeABC):
         """Load VAE from model info."""
         print("Loading VAE...")
         return (load_model_component(vae_info, "VAE"),)
-class Sage_ModelLoraStackLoader(Sage_LoraStackLoader):
-    """Load model components from model info and apply LoRA stack."""
-    
-    def __init__(self):
-        super().__init__()
-
-    @classmethod
-    def INPUT_TYPES(cls):
-        return {
-            "required": {
-                "model_info": ("MODEL_INFO", {
-                    "tooltip": "The diffusion model the LoRA will be applied to. "
-                              "Note: Should be from the checkpoint info node, not a loader node, "
-                              "or the model will be loaded twice."
-                }),
-            },
-            "optional": {
-                "lora_stack": ("LORA_STACK", {"defaultInput": True}),
-                "model_shifts": ("MODEL_SHIFTS", {
-                    "defaultInput": True, 
-                    "tooltip": "The model shifts & free_u2 settings to apply to the model."
-                }),
-            }
-        }
-
-    RETURN_TYPES = (IO.MODEL, IO.CLIP, IO.VAE, "LORA_STACK", IO.STRING)
-    RETURN_NAMES = ("model", "clip", "vae", "lora_stack", "keywords")
-    OUTPUT_TOOLTIPS = (
-        "The modified diffusion model.", 
-        "The modified CLIP model.", 
-        "The VAE model.", 
-        "The stack of loras.", 
-        "Keywords from the lora stack."
-    )
-
-    FUNCTION = "load_everything"
-    CATEGORY = "Sage Utils/model"
-    DESCRIPTION = ("Accept model info and a lora_stack, load the model, and apply all the "
-                  "loras in the stack to it at once. Apply changes to the model after loading it.")
-
-    def load_everything(self, model_info, lora_stack=None, model_shifts=None) -> tuple:
-        """Load all model components and apply LoRA stack."""
-        print("Loading model and lora stack...")
-        
-        # Initialize components
-        model = clip = vae = None
-        stack_length = len(lora_stack) if lora_stack else 1
-        
-        # Determine which model types are present
-        print(f"Model info: {model_info}")
-        model_types = get_model_types(model_info)
-        print(f"Model types: {model_types}")
-        total_operations = stack_length + len(model_types)
-        pbar = ProgressBar(total_operations)
-        
-        # Load checkpoint if present (provides model, clip, vae)
-        if "CKPT" in model_types:
-            print("Loading checkpoint...")
-            ckpt_result = None
-            model, clip, vae = load_model_component(model_info, "CKPT", pbar)
-            if ckpt_result:
-                model, clip, vae = ckpt_result
-            else:
-                print("No checkpoint found in model_info, skipping CKPT load.")
-        
-        # Load individual components (override checkpoint components if present)
-        if "CLIP" in model_types:
-            print("Loading CLIP model...")
-            clip = unwrap_tuple(load_model_component(model_info, "CLIP", pbar))
-
-        if "VAE" in model_types:
-            print("Loading VAE model...")
-            vae = unwrap_tuple(load_model_component(model_info, "VAE", pbar))
-
-        if "UNET" in model_types:
-            print("Loading UNET model...")
-            model = unwrap_tuple(load_model_component(model_info, "UNET", pbar))
-        
-        # Apply LoRA stack
-        print("Loading lora stack...")
-        model, clip, lora_stack, keywords = load_lora_stack_with_keywords(model, clip, pbar, lora_stack)
-        
-        if model_shifts:
-            model = self.apply_model_shifts(model, model_shifts)
-        
-        pbar.update(1)
-        print("Model loading and LoRA application complete.")
-
-        # Unwrap any single-item tuples
-        return (
-            model,
-            clip,
-            vae,
-            lora_stack, 
-            keywords
-        )

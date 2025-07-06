@@ -70,6 +70,7 @@ TEXT_CLASS_MAPPINGS = {
 
 LOADER_CLASS_MAPPINGS = {
     "Sage_LoadCheckpointFromModelInfo": Sage_LoadCheckpointFromModelInfo,
+    "Sage_LoadModelFromInfo": Sage_LoadModelFromInfo,
     "Sage_UNETLoaderFromInfo": Sage_UNETLoaderFromInfo,
     "Sage_CLIPLoaderFromInfo": Sage_CLIPLoaderFromInfo,
     "Sage_VAELoaderFromInfo": Sage_VAELoaderFromInfo,
@@ -197,6 +198,7 @@ TEXT_NAME_MAPPINGS = {
 
 LOADER_NAME_MAPPINGS = {
     "Sage_LoadCheckpointFromModelInfo": "Load Checkpoint from Model Info",
+    "Sage_LoadModelFromInfo": "Load Model from Info",
     "Sage_UNETLoaderFromInfo": "Load UNET Model from Info",
     "Sage_CLIPLoaderFromInfo": "Load CLIP Model from Info",
     "Sage_VAELoaderFromInfo": "Load VAE Model from Info",

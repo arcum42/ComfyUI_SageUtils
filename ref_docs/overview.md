@@ -8,7 +8,7 @@ https://github.com/Comfy-Org/ComfyUI_frontend
 
 Pretty much any of the custom node documentation is going to be relevant.
 
-## Status: All Links Verified ✅ (January 2025)
+## Status: All Links Verified ✅ (July 2025)
 
 Backend:
     - https://docs.comfy.org/custom-nodes/walkthrough
