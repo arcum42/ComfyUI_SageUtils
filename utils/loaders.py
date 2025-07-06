@@ -174,3 +174,22 @@ def load_model_component(model_info, component_type, pbar = None):
     if pbar:
         pbar.update(1)
     return result
+
+def get_model_component(model_info, component_type):
+    """Get a specific model component without loading."""
+    from . import model_info as mi  # Import here to avoid circular import
+    
+    component_info = mi.get_model_info_component(model_info, component_type)
+    if not component_info:
+        return None
+        
+    print(f"Getting {component_type} from {component_info['path']}")
+    
+    getters_map = {
+        "CKPT": lambda info: mi.get_model_clip_vae_from_info(info),
+        "UNET": lambda info: unet_from_info(info),
+        "CLIP": lambda info: clip_from_info(info),
+        "VAE": lambda info: vae(info)
+    }
+    
+    return getters_map[component_type](component_info)
