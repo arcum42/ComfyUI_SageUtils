@@ -51,10 +51,21 @@ ComfyUI custom node providing utilities for model management, prompting, metadat
 - [ComfyUI GitHub Repository](https://github.com/comfyanonymous/ComfyUI)
 - [ComfyUI Frontend Repository](https://github.com/Comfy-Org/ComfyUI_frontend)
 
-Key Documentation Links:
-- [Walkthrough](https://docs.comfy.org/custom-nodes/walkthrough)
-- [Backend Overview](https://docs.comfy.org/custom-nodes/backend/server_overview)
-- [Data Types](https://docs.comfy.org/custom-nodes/backend/datatypes)
-- [JavaScript Overview](https://docs.comfy.org/custom-nodes/js/javascript_overview)
+**Local Documentation (ref_docs/):**
+- `ref_docs/overview.md` - Overview of all documentation links and status
+- `ref_docs/backend/` - Backend development documentation
+- `ref_docs/frontend/` - Frontend JavaScript development documentation  
+- `ref_docs/extra/` - Additional resources (workflow templates, tips)
+
+Key Local Documentation Files:
+- `ref_docs/backend/walkthrough.md` - Complete node development walkthrough
+- `ref_docs/backend/server_overview.md` - Server architecture and components
+- `ref_docs/backend/datatypes.md` - Data types and type handling
+- `ref_docs/backend/lifecycle.md` - Node lifecycle and execution flow
+- `ref_docs/frontend/javascript_overview.md` - JavaScript development overview
+- `ref_docs/frontend/javascript_hooks.md` - Hook system and lifecycle
+- `ref_docs/frontend/javascript_settings.md` - Settings API and configuration
+- `ref_docs/extra/workflow_templates.md` - Workflow template system
+- `ref_docs/extra/tips.md` - Development tips and best practices
 
 **Character Encoding:** Use only standard ASCII characters - no Unicode symbols, smart quotes, or emojis.
