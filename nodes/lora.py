@@ -429,8 +429,6 @@ class Sage_ModelLoraStackLoader(Sage_LoraStackLoader):
             "expand": self.finalize(graph)
         }
 
-
-
 class Sage_ModelShifts(ComfyNodeABC):
     def __init__(self):
         pass

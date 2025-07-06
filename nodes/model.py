@@ -40,31 +40,6 @@ class Sage_UnetClipVaeToModelInfo(ComfyNodeABC):
 
         return ((unet_info, clip_info, vae_info),)
 
-class Sage_LoadCheckpointFromModelInfo(ComfyNodeABC):
-    @classmethod
-    def INPUT_TYPES(cls) -> InputTypeDict:
-        return {
-            "required": {
-                "model_info": ("MODEL_INFO", {"tooltip": "The model info to load the checkpoint from."})
-            }
-        }
-
-    RETURN_TYPES = (IO.MODEL, IO.CLIP, IO.VAE, "MODEL_INFO")
-    RETURN_NAMES = ("model", "clip", "vae", "model_info")
-
-    FUNCTION = "load_checkpoint"
-    CATEGORY  =  "Sage Utils/model"
-    DESCRIPTION = "Loads a diffusion model checkpoint from a model_info input. Also returns a model_info output to pass to the construct metadata node, and the hash. (And hashes and pulls civitai info for the file.)"
-
-    def load_checkpoint(self, model_info) -> tuple:
-        info = mi.get_model_info_component(model_info, "CKPT")
-        if info is None or info == {}:
-            raise ValueError("Please provide valid model info.")
-        path = info["path"]
-        pull_metadata(path, timestamp = True)
-        info["hash"] = cache.hash[path]
-        return loaders.checkpoint(path) + (info,)
-
 class Sage_CheckpointLoaderSimple(CheckpointLoaderSimple):
     def __init__(self):
             pass
