@@ -3,21 +3,17 @@
 
 from __future__ import annotations
 from comfy.comfy_types.node_typing import ComfyNodeABC, InputTypeDict, IO
-import comfy
-from comfy_extras import nodes_freelunch
 import folder_paths
 from comfy.utils import ProgressBar
 from comfy_execution.graph_utils import GraphBuilder
 
 # Import specific utilities instead of wildcard import
 from ..utils import (
-    cache, get_lora_keywords, get_lora_stack_keywords, add_lora_to_stack,
-    pull_metadata, get_recently_used_models, clean_keywords,
-    get_civitai_model_json, get_latest_model_version, loaders
+    cache, get_lora_stack_keywords, add_lora_to_stack,
+    pull_metadata, get_latest_model_version, loaders
 )
-from ..utils.common import unwrap_tuple, get_model_types, load_model_component, load_lora_stack_with_keywords
+from ..utils.common import unwrap_tuple, get_model_types, load_model_component
 
-from ..utils import model_info as mi
 class Sage_LoraStack(ComfyNodeABC):
     def __init__(self):
         pass
