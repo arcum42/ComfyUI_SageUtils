@@ -290,7 +290,7 @@ class Sage_QuickResPicker(ComfyNodeABC):
             "required": {
                 "aspect_ratio": (IO.COMBO, {"defaultInput": True, "options": aspect_ratios}),
                 "orientation": (IO.COMBO, {"defaultInput": True, "options": orientations}),
-                "multiplier": (IO.FLOAT, {"default": 1.0, "min": 0.1, "max": 10.0, "step": 0.1})
+                "multiplier": (IO.FLOAT, {"default": 1.0, "min": 0.1, "max": 10.0, "step": 0.1, "round": 0.001})
             }
         }
 

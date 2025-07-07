@@ -88,8 +88,13 @@ MODEL_CLASS_MAPPINGS = {
 
 LORA_CLASS_MAPPINGS = {
     "Sage_LoraStack": Sage_LoraStack,
+    "Sage_QuickLoraStack": Sage_QuickLoraStack,
     "Sage_LoraStackRecent": Sage_LoraStackRecent,
     "Sage_TripleLoraStack": Sage_TripleLoraStack,
+    "Sage_SixLoraStack": Sage_SixLoraStack,
+    "Sage_TripleQuickLoraStack": Sage_TripleQuickLoraStack,
+    "Sage_QuickSixLoraStack": Sage_QuickSixLoraStack,
+    "Sage_QuickNineLoraStack": Sage_QuickNineLoraStack,
     "Sage_CollectKeywordsFromLoraStack": Sage_CollectKeywordsFromLoraStack
 }
 
@@ -216,8 +221,12 @@ MODEL_NAME_MAPPINGS = {
 
 LORA_NAME_MAPPINGS = {
     "Sage_LoraStack": "Simple Lora Stack",
-    "Sage_LoraStackRecent": "Recent Lora Stack",
-    "Sage_TripleLoraStack": "Triple Lora Stack"
+    "Sage_QuickLoraStack": "Quick Lora Stack",
+    "Sage_TripleLoraStack": "Lora Stack (x3)",
+    "Sage_SixLoraStack": "Lora Stack (x6)",
+    "Sage_TripleQuickLoraStack": "Quick Lora Stack (x3)",
+    "Sage_QuickSixLoraStack": "Quick Lora Stack (x6)",
+    "Sage_QuickNineLoraStack": "Quick Lora Stack (x9)"
 }
 
 CLIP_NAME_MAPPINGS = {
@@ -276,7 +285,8 @@ DEPRECATED_NAME_MAPPINGS = {
     "Sage_KSamplerDecoder": "KSampler + Decoder",
     "Sage_UNETLoader": "Load UNET Model",
     "Sage_CheckpointLoaderSimple": "Load Checkpoint w/ Metadata",
-    "Sage_CheckpointLoaderRecent": "Load Recently Used Checkpoint"
+    "Sage_CheckpointLoaderRecent": "Load Recently Used Checkpoint",
+    "Sage_LoraStackRecent": "Recent Lora Stack"
 }
 
 if llm.OLLAMA_AVAILABLE:
