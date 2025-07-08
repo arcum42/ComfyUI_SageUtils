@@ -130,7 +130,7 @@ class Sage_TripleLoraStack(ComfyNodeABC):
         nodes = []
         lora_stack_node = None
 
-        for i in range(1, len(args) // self.NUM_OF_ENTRIES + 1):
+        for i in range(1, len(args) // 4 + 1):
             if args[f"enabled_{i}"] == False:
                 continue
             stack_out = stack if lora_stack_node is None else lora_stack_node.out(0)
@@ -194,7 +194,7 @@ class Sage_TripleQuickLoraStack(ComfyNodeABC):
         nodes = []
         lora_stack_node = None
 
-        for i in range(1, len(args) // self.NUM_OF_ENTRIES + 1):
+        for i in range(1, len(args) // 3 + 1):
             if args[f"enabled_{i}"] == False:
                 continue
             stack_out = stack if lora_stack_node is None else lora_stack_node.out(0)
