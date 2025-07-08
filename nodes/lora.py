@@ -496,7 +496,7 @@ class Sage_ModelLoraStackLoader(Sage_LoraStackLoader):
 
         if lora_stack is None and model_shifts is None:
             return {
-                "result": (model, clip, None, ""),
+                "result": (model, clip, vae, ""),
             }
 
         graph = GraphBuilder()
