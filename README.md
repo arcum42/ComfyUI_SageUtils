@@ -3,8 +3,6 @@
 Sage Utils is a suite of custom nodes for ComfyUI, designed to simplify metadata creation, model and LoRA management, and other frequent tasks. It supports A1111/Civitai metadata formats and includes a variety of utility nodes to streamline your workflow.  
 **Model information downloaded from Civitai is cached locally in `sage_cache_hash.json` and `sage_cache_info.json` for fast access and reporting.** These are located in comfyui/user/default/SageUtils/.
 
-![Example Workflow Image](examples/example_workflow.png)
-
 ## Key Nodes
 
 - **Save Image w/ Added Metadata**  
