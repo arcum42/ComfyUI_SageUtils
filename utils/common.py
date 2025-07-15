@@ -8,6 +8,7 @@ from .helpers import (
     str_to_bool,
     bool_to_str,
     name_from_path,
+    get_files_in_dir,
     get_file_sha256,
     last_used,
     days_since_last_used,
@@ -106,7 +107,7 @@ from . import llm_wrapper as llm
 
 __all__ = [
     # Helper functions
-    'str_to_bool', 'bool_to_str', 'name_from_path', 'get_file_sha256',
+    'str_to_bool', 'bool_to_str', 'name_from_path', 'get_file_sha256', 'get_files_in_dir',
     'last_used', 'days_since_last_used', 'get_file_modification_date',
     'update_cache_from_civitai_json', 'update_cache_without_civitai_json',
     'add_file_to_cache', 'recheck_hash', 'pull_metadata',

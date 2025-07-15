@@ -49,6 +49,37 @@ def get_file_sha256(path):
     print(f"Got hash {result}")
     return result
 
+
+def get_files_in_dir(input_dirs=None, extensions=None):
+    if extensions is None:
+        extensions = ".*"
+    if input_dirs is None:
+        raise ValueError("input_dirs cannot be None")
+
+    input_files = []
+    # Check if input_dirs is a tuple or a list. If not, make it a list.
+    if not isinstance(input_dirs, (list, tuple)):
+        input_dirs = [input_dirs]
+
+    for dir in input_dirs:
+        if dir is None or dir == "":
+            continue
+        if pathlib.Path(dir).exists():
+            file_list = pathlib.Path(dir).rglob("*")
+            for file in file_list:
+                if file.exists() and not file.is_dir():
+                    file_path = ""
+                    if file.suffix.lower() in extensions:
+                        # Get path relative to the input directory
+                        try:
+                            file_path = str(file.relative_to(dir))
+                        except ValueError:
+                            file_path = str(file)
+                    input_files.append(file_path)
+
+    input_files = sorted(set(input_files))
+    return input_files
+
 def last_used(file_path):
     cache.load()
 

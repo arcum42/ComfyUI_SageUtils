@@ -7,6 +7,8 @@ from .nodes import *
 from .utils import cache, config_manager
 from .utils.llm_wrapper import init_llm
 
+ENABLE_TRAINING_NODES = True
+
 # Initialize components
 cache.load()
 sage_styles = config_manager.styles_manager.data
@@ -120,6 +122,12 @@ IMAGE_CLASS_MAPPINGS = {
     "Sage_ReferenceImage": Sage_ReferenceImage
 }
 
+TRAINING_CLASS_MAPPINGS = {
+    #"Sage_LoadImageTextSetFromFolderNode": Sage_LoadImageTextSetFromFolderNode,
+    "Sage_Load_Dataset_From_Folder": Sage_Load_Dataset_From_Folder,
+    "Sage_TrainingCaptionsToConditioning": Sage_TrainingCaptionsToConditioning
+}
+
 METADATA_CLASS_MAPPINGS = {
     "Sage_ConstructMetadata": Sage_ConstructMetadata,
     "Sage_ConstructMetadataLite": Sage_ConstructMetadataLite
@@ -169,6 +177,8 @@ NODE_CLASS_MAPPINGS = DEPRECATED_CLASS_MAPPINGS | UTILITY_CLASS_MAPPINGS | SELEC
     LOADER_CLASS_MAPPINGS| MODEL_CLASS_MAPPINGS | LORA_CLASS_MAPPINGS | CLIP_CLASS_MAPPINGS | SAMPLER_CLASS_MAPPINGS | \
     IMAGE_CLASS_MAPPINGS | METADATA_CLASS_MAPPINGS | LLM_CLASS_MAPPINGS
 
+if ENABLE_TRAINING_NODES:
+    NODE_CLASS_MAPPINGS = NODE_CLASS_MAPPINGS | TRAINING_CLASS_MAPPINGS
 
 SELECTOR_NAME_MAPPINGS = {
     "Sage_SamplerInfo": "Sampler Info",
@@ -251,6 +261,12 @@ IMAGE_NAME_MAPPINGS = {
     "Sage_ReferenceImage": "Reference Image"
 }
 
+TRAINING_NAME_MAPPINGS = {
+    #"Sage_LoadImageTextSetFromFolderNode": "Load Image(s) from Folder (Set Text)",
+    "Sage_Load_Dataset_From_Folder": "Load Dataset from Folder",
+    "Sage_TrainingCaptionsToConditioning": "Captions to Conditioning"
+}
+
 METADATA_NAME_MAPPINGS = {
     "Sage_ConstructMetadata": "Construct Metadata",
     "Sage_ConstructMetadataLite": "Construct Metadata Lite"
@@ -299,5 +315,8 @@ if llm.LMSTUDIO_AVAILABLE:
 NODE_DISPLAY_NAME_MAPPINGS = DEPRECATED_NAME_MAPPINGS | UTILITY_NAME_MAPPINGS | SELECTOR_NAME_MAPPINGS | TEXT_NAME_MAPPINGS | \
     LOADER_NAME_MAPPINGS | MODEL_NAME_MAPPINGS | LORA_NAME_MAPPINGS | CLIP_NAME_MAPPINGS | SAMPLER_NAME_MAPPINGS | \
     IMAGE_NAME_MAPPINGS | METADATA_NAME_MAPPINGS | LLM_NAME_MAPPINGS
+
+if ENABLE_TRAINING_NODES:
+    NODE_DISPLAY_NAME_MAPPINGS = NODE_DISPLAY_NAME_MAPPINGS | TRAINING_NAME_MAPPINGS
 
 __all__ = ['NODE_CLASS_MAPPINGS', 'NODE_DISPLAY_NAME_MAPPINGS', 'WEB_DIRECTORY']

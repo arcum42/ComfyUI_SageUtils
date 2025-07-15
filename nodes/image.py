@@ -9,10 +9,7 @@ import nodes
 from comfy_execution.graph_utils import GraphBuilder
 
 # Import specific utilities instead of wildcard import  
-from ..utils import (
-    load_image_from_path, pull_metadata, cache, sage_users_path,
-    path_manager, file_manager
-)
+from ..utils import load_image_from_path
 
 import torch
 import torch.nn.functional as F
@@ -23,8 +20,12 @@ import pathlib
 import hashlib
 import json
 import folder_paths
-from PIL.PngImagePlugin import PngInfo
 import os
+import comfy.model_management
+import comfy.utils
+import comfy.cli_args
+from ..utils.common import get_files_in_dir
+import datetime
 
 class Sage_EmptyLatentImagePassthrough(ComfyNodeABC):
     def __init__(self):
@@ -62,20 +63,32 @@ class Sage_EmptyLatentImagePassthrough(ComfyNodeABC):
         )
         return ({"samples": latent}, width, height)
 
-
 class Sage_LoadImage(ComfyNodeABC):
+
     @classmethod
     def INPUT_TYPES(cls) -> InputTypeDict:
-        files = sorted(
-            str(x.relative_to(folder_paths.get_input_directory()))
-            for x in pathlib.Path(folder_paths.get_input_directory()).rglob("*")
-            if x.is_file()
-        )
+        print("Grabbing input files for Sage_LoadImage node...")
+        input_files = []
+        if hasattr(cls, 'input_cache') and cls.input_cache is not None:
+            if hasattr(cls, 'input_cache_creation_time') and (datetime.datetime.now() - cls.input_cache_creation_time).total_seconds() < 20:
+                # ComfyUI, why are you like this?
+                # INPUT_TYPES is called multiple times during workflow loading, so cache the results for 20 seconds to avoid rescanning the input directory repeatedly.
+                input_files = cls.input_cache
+                print("Last called within 20 seconds. Using cached input files.")
+
+        if not input_files:
+            input_files = get_files_in_dir(
+                input_dirs=folder_paths.get_input_directory(),
+                extensions=[".png", ".jpg", ".jpeg", ".bmp", ".tiff", ".tif", ".webp"]
+            )
+            cls.input_cache = input_files  # Cache the list to avoid re-scanning on every call
+            cls.input_cache_creation_time = datetime.datetime.now()
+
         return {
             "required": {
-                "image": (files, { "image_upload": True})
-                }
+                "image": (IO.COMBO, {"options": input_files, "image_upload": True})
             }
+        }
 
     CATEGORY = "Sage Utils/image"
 
