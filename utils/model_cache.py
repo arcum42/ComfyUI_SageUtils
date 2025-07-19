@@ -107,58 +107,40 @@ class SageCache:
             if current_hash and in_civitai:
                 self.info[current_hash] = val
 
-    def prune_old_backups(self, prefix: str, min_count: int = 7, min_days: int = 7) -> None:
-        """Prune old backup files, keeping only the newest file for each unique hash, then enforce min_count and min_days."""
-        pattern = re.compile(rf"{re.escape(prefix)}-(\d{{4}}-\d{{2}}-\d{{2}}T\d{{2}}-\d{{2}}-\d{{2}}).*\\.json$")
+    def prune_old_backups(self, prefix: str, max_backups: int = 7) -> None:
+        """Prune old backup files, keeping only the most recent max_backups by creation time, and deduplicate by file content."""
         backups = []
         for f in path_manager.backup_path.iterdir():
             if f.is_file() and f.name.startswith(prefix) and f.suffix == ".json":
-                m = pattern.search(f.name)
-                if m:
-                    try:
-                        dt = datetime.datetime.fromisoformat(m.group(1))
-                        backups.append((dt, f))
-                    except Exception:
-                        continue
-        backups.sort(reverse=True)
-        file_hash_map = {}
-        for dt, f in backups:
+                try:
+                    ctime = f.stat().st_ctime
+                    backups.append((ctime, f))
+                except Exception:
+                    continue
+        backups.sort(reverse=True)  # Newest first
+        # Deduplicate by file content hash
+        hash_to_file = {}
+        deduped_backups = []
+        for ctime, f in backups:
             try:
                 with f.open('rb') as file_obj:
                     file_bytes = file_obj.read()
                     file_hash = hashlib.sha256(file_bytes).hexdigest()
-                file_hash_map[f] = file_hash
+                if file_hash not in hash_to_file:
+                    hash_to_file[file_hash] = (ctime, f)
+                    deduped_backups.append((ctime, f))
+                else:
+                    f.unlink(missing_ok=True)
             except Exception:
                 continue
-        hash_to_file = {}
-        deduped_backups = []
-        for dt, f in backups:
-            file_hash = file_hash_map.get(f)
-            if not file_hash:
-                continue
-            if file_hash not in hash_to_file:
-                hash_to_file[file_hash] = (dt, f)
-                deduped_backups.append((dt, f))
-            else:
-                try:
-                    f.unlink(missing_ok=True)
-                except Exception:
-                    pass
         deduped_backups.sort(reverse=True)
-        keep = deduped_backups[:min_count]
-        now = datetime.datetime.now()
-        days_kept = set(dt.date() for dt, _ in keep)
-        for dt, f in deduped_backups[min_count:]:
-            if (now - dt).days < min_days and dt.date() not in days_kept:
-                keep.append((dt, f))
-                days_kept.add(dt.date())
+        keep = deduped_backups[:max_backups]
         keep_files = set(f for _, f in keep)
-        for _, f in deduped_backups:
-            if f not in keep_files:
-                try:
-                    f.unlink(missing_ok=True)
-                except Exception:
-                    pass
+        for _, f in deduped_backups[max_backups:]:
+            try:
+                f.unlink(missing_ok=True)
+            except Exception:
+                pass
 
     def _atomic_write_json(self, path: pathlib.Path, data: Any) -> None:
         """Write JSON data to a file atomically."""
