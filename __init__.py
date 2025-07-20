@@ -62,6 +62,7 @@ TEXT_CLASS_MAPPINGS = {
     "Sage_JoinText": Sage_JoinText,
     "Sage_TripleJoinText": Sage_TripleJoinText,
     "Sage_CleanText": Sage_CleanText,
+    "Sage_TextRandomLine": Sage_TextRandomLine,
     "Sage_TextWeight": Sage_TextWeight,
     "Sage_ViewAnything": Sage_ViewAnything,
     #"Sage_ViewNotes": Sage_ViewNotes,
@@ -119,6 +120,7 @@ IMAGE_CLASS_MAPPINGS = {
     "Sage_QuickResPicker": Sage_QuickResPicker,
     "Sage_GuessResolutionByRatio": Sage_GuessResolutionByRatio,
     "Sage_CubiqImageResize": Sage_CubiqImageResize,
+    "Sage_CropImage": Sage_CropImage,
     "Sage_ReferenceImage": Sage_ReferenceImage
 }
 
@@ -202,6 +204,7 @@ TEXT_NAME_MAPPINGS = {
     "Sage_JoinText": "Join Text",
     "Sage_TripleJoinText": "Join Text x3",
     "Sage_CleanText": "Clean Text",
+    "Sage_TextRandomLine": "Random Line from Text",
     "Sage_TextWeight": "Text Weight",
     "Sage_ViewAnything": "View Any Node as Text",
     #"Sage_ViewNotes": "View Notes",
@@ -258,6 +261,7 @@ IMAGE_NAME_MAPPINGS = {
     "Sage_QuickResPicker": "Quick Resolution Picker",
     "Sage_GuessResolutionByRatio": "Guess Close Resolution by Ratio",
     "Sage_CubiqImageResize": "Image Resize (from Essentials)",
+    "Sage_CropImage": "Sage Image Crop",
     "Sage_ReferenceImage": "Reference Image"
 }
 

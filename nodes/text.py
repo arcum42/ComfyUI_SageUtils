@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 from comfy.comfy_types.node_typing import ComfyNodeABC, InputTypeDict, IO
+import random
 
 # Import specific utilities instead of wildcard import
 from ..utils import (
@@ -221,6 +222,32 @@ class Sage_ViewAnything(ComfyNodeABC):
         #print(f"String is '{str}'")
         return { "ui": {"text": str}, "result" : (str,) }
 
+class Sage_TextRandomLine(ComfyNodeABC):
+    @classmethod
+    def INPUT_TYPES(cls) -> InputTypeDict:
+        return {
+            "required": {
+                "text": (IO.STRING, {"defaultInput": True, "multiline": True}),
+                "seed": (IO.INT, {"defaultInput": False, "default": 0, "min": 0, "max": 2**32-1, "step": 1})
+            }
+        }
+
+    RETURN_TYPES = (IO.STRING,)
+    RETURN_NAMES = ("random_line",)
+
+    FUNCTION = "get_random_line"
+
+    CATEGORY = "Sage Utils/text"
+    DESCRIPTION = "Returns a random line from the given text."
+
+    def get_random_line(self, text: str, seed: int) -> tuple[str]:
+        lines = text.splitlines()
+        if not lines:
+            return ("",)
+        # Set the random seed for reproducibility
+        random.seed(seed)
+        random_line = lines[random.randint(0, len(lines) - 1)].strip()  # Use seed to select a line
+        return (random_line,)
 class Sage_PonyPrefix(ComfyNodeABC):
     @classmethod
     def INPUT_TYPES(cls) -> InputTypeDict:

@@ -7,6 +7,7 @@ from comfy.comfy_types.node_typing import ComfyNodeABC, InputTypeDict, IO
 import comfy
 import nodes
 from comfy_execution.graph_utils import GraphBuilder
+from comfy_extras.nodes_images import ImageCrop
 
 # Import specific utilities instead of wildcard import  
 from ..utils import load_image_from_path
@@ -220,6 +221,29 @@ class Sage_SaveImageWithMetadata(ComfyNodeABC):
 
         return {"ui": {"images": results}}
 
+class Sage_CropImage(ImageCrop):
+    @classmethod
+    def INPUT_TYPES(s):
+        return {"required": { "image": ("IMAGE",),
+                              "left": ("INT", {"default": 0, "min": 0, "max": 2147483647, "step": 1}),
+                              "top": ("INT", {"default": 0, "min": 0, "max": 2147483647, "step": 1}),
+                              "right": ("INT", {"default": 0, "min": 0, "max": 2147483647, "step": 1}),
+                              "bottom": ("INT", {"default": 0, "min": 0, "max": 2147483647, "step": 1}),
+                              }}
+    RETURN_TYPES = ("IMAGE",)
+    FUNCTION = "execute_crop"
+
+    CATEGORY = "Sage Utils/image"
+    DESCRIPTION = "Crop an image by the number of pixels specified in the left, top, right, and bottom parameters. The image is cropped to the specified width and height, starting from the top-left corner (left, top) and ending at the bottom-right corner (right, bottom)."
+    
+    def execute_crop(self, image, left, top, right, bottom):
+        # The parent class ImageCrop already has the logic to handle cropping, so we just need to call it, but we need to adjust the arguments.
+        # The method is crop(self, image, width, height, x, y), so we need to calculate the width and height from the right and bottom parameters.
+        width = image.shape[2] - left - right
+        height = image.shape[1] - top - bottom
+        x = left
+        y = top
+        return super().crop(image, width, height, x, y)
 
 class Sage_GuessResolutionByRatio(ComfyNodeABC):
     @classmethod
