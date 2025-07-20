@@ -81,6 +81,26 @@ class Sage_SetText(ComfyNodeABC):
     def pass_str(self, str, prefix=None, suffix=None) -> tuple[str]:
         return (f"{prefix or ''}{str}{suffix or ''}",)
 
+class Sage_TextSwitch(ComfyNodeABC):
+    @classmethod
+    def INPUT_TYPES(cls) -> InputTypeDict:
+        return {
+            "required": {
+                "str": (IO.STRING, {"forceInput": True, "multiline": True}),
+                "active": (IO.BOOLEAN, {"defaultInput": False, "default": True})
+            }
+        }
+
+    RETURN_TYPES = (IO.STRING,)
+    RETURN_NAMES = ("str",)
+
+    FUNCTION = "text_switch"
+
+    CATEGORY = "Sage Utils/text"
+    DESCRIPTION = "Passes the text if active is true, otherwise passes an empty string."
+
+    def text_switch(self, str: str, active: bool) -> tuple[str]:
+        return (str if active else "",)
 class Sage_SaveText(ComfyNodeABC):
 
     @classmethod
@@ -248,6 +268,73 @@ class Sage_TextRandomLine(ComfyNodeABC):
         random.seed(seed)
         random_line = lines[random.randint(0, len(lines) - 1)].strip()  # Use seed to select a line
         return (random_line,)
+
+class Sage_TextSelectLine(ComfyNodeABC):
+    @classmethod
+    def INPUT_TYPES(cls) -> InputTypeDict:
+        return {
+            "required": {
+                "text": (IO.STRING, {"defaultInput": True, "multiline": True}),
+                "line_number": (IO.INT, {"defaultInput": False, "default": 0, "min": 0, "max": 10000, "step": 1})
+            }
+        }
+
+    RETURN_TYPES = (IO.STRING,)
+    RETURN_NAMES = ("selected_line",)
+
+    FUNCTION = "select_line"
+
+    CATEGORY = "Sage Utils/text"
+    DESCRIPTION = "Selects a specific line from the given text based on the line number. Line numbers start from 0. If the line number is out of range, it will select the first or last line as appropriate."
+
+    def select_line(self, text: str, line_number: int) -> tuple[str]:
+        lines = text.splitlines()
+        if line_number < 0:
+            line_number = 0
+        elif line_number >= len(lines):
+            line_number = len(lines) - 1
+
+        return (lines[line_number].strip(),)
+
+# This node takes a text box (with a prefix and suffix) and three optional strings, and substitutes the strings for the 
+# placeholders in the text box.
+class Sage_TextSubstitution(ComfyNodeABC):
+    @classmethod
+    def INPUT_TYPES(cls) -> InputTypeDict:
+        return {
+            "required": {
+                "text": (IO.STRING, {"defaultInput": True, "multiline": True})
+            },
+            "optional": {
+                "prefix": (IO.STRING, {"defaultInput": True, "multiline": True}),
+                "suffix": (IO.STRING, {"defaultInput": True, "multiline": True}),
+                "str1": (IO.STRING, {"defaultInput": True, "multiline": True}),
+                "str2": (IO.STRING, {"defaultInput": True, "multiline": True}),
+                "str3": (IO.STRING, {"defaultInput": True, "multiline": True}),
+            }
+        }
+
+    RETURN_TYPES = (IO.STRING,)
+    RETURN_NAMES = ("result",)
+
+    FUNCTION = "substitute_text"
+    CATEGORY = "Sage Utils/text"
+    DESCRIPTION = "Substitutes the placeholders in the text with the provided strings. The placeholders are {str1}, {str2}, and {str3}. The prefix and suffix are added to the final result."
+
+    def substitute_text(self, text: str, prefix: str = "", suffix: str = "", str1: str = "", str2: str = "", str3: str = "") -> tuple[str]:
+        """
+        Substitutes the placeholders in the text with the provided strings.
+        The placeholders are {str1}, {str2}, and {str3}.
+        The prefix and suffix are added to the final result.
+        """
+        # Replace placeholders with actual strings
+        result = text.format(str1=str1, str2=str2, str3=str3)
+
+        # Add prefix and suffix
+        result = f"{prefix}{result}{suffix}"
+
+        return (result,)
+
 class Sage_PonyPrefix(ComfyNodeABC):
     @classmethod
     def INPUT_TYPES(cls) -> InputTypeDict:
@@ -276,7 +363,8 @@ class Sage_TextWeight(ComfyNodeABC):
         return {
             "required": {
                 "text": (IO.STRING, {"defaultInput": True, "multiline": True}),
-                "weight": (IO.FLOAT, {"defaultInput": False, "default": 1.0, "min": -10.0, "max": 10.0, "step": 0.05})
+                "weight": (IO.FLOAT, {"defaultInput": False, "default": 1.0, "min": -10.0, "max": 10.0, "step": 0.05}),
+                "separator": (IO.STRING, {"defaultInput": False, "default": ', '})
             }
         }
 
@@ -288,8 +376,8 @@ class Sage_TextWeight(ComfyNodeABC):
     CATEGORY = "Sage Utils/text"
     DESCRIPTION = "Applies a weight to a text string."
 
-    def weight_text(self, text: str, weight: float) -> tuple[str]:
-        return (f"({text}:{weight:.2f}),",)
+    def weight_text(self, text: str, weight: float, separator: str) -> tuple[str]:
+        return (f"({text}:{weight:.2f}){separator}",)
 
 class Sage_HiDreamE1_Instruction(ComfyNodeABC):
     @classmethod

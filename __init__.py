@@ -57,15 +57,18 @@ SELECTOR_CLASS_MAPPINGS = {
 
 TEXT_CLASS_MAPPINGS = {
     "Sage_SetText": Sage_SetText,
-    "Sage_SaveText": Sage_SaveText,
+    "Sage_TextSwitch": Sage_TextSwitch,
     "SageSetWildcardText": SageSetWildcardText,
+    "Sage_TextSubstitution": Sage_TextSubstitution,
     "Sage_JoinText": Sage_JoinText,
     "Sage_TripleJoinText": Sage_TripleJoinText,
     "Sage_CleanText": Sage_CleanText,
+    "Sage_TextSelectLine": Sage_TextSelectLine,
     "Sage_TextRandomLine": Sage_TextRandomLine,
     "Sage_TextWeight": Sage_TextWeight,
     "Sage_ViewAnything": Sage_ViewAnything,
     #"Sage_ViewNotes": Sage_ViewNotes,
+    "Sage_SaveText": Sage_SaveText,
     "Sage_PonyPrefix": Sage_PonyPrefix,
     "Sage_PonyStyle": Sage_PonyStyle,
     "Sage_HiDreamE1_Instruction": Sage_HiDreamE1_Instruction
@@ -199,15 +202,18 @@ SELECTOR_NAME_MAPPINGS = {
 
 TEXT_NAME_MAPPINGS = {
     "Sage_SetText": "Set Text",
-    "Sage_SaveText": "Save Text",
+    "Sage_TextSwitch": "Text Switch",
     "SageSetWildcardText": "Set Text (Wildcards)",
+    "Sage_TextSubstitution": "Text Substitution",
     "Sage_JoinText": "Join Text",
     "Sage_TripleJoinText": "Join Text x3",
     "Sage_CleanText": "Clean Text",
+    "Sage_TextSelectLine": "Select Line from Text",
     "Sage_TextRandomLine": "Random Line from Text",
     "Sage_TextWeight": "Text Weight",
     "Sage_ViewAnything": "View Any Node as Text",
     #"Sage_ViewNotes": "View Notes",
+    "Sage_SaveText": "Save Text",
     "Sage_PonyPrefix": "Add Pony v6 Prefixes",
     "Sage_PonyStyle": "Add Pony Style",
     "Sage_HiDreamE1_Instruction": "HiDreamE1 Instruction"
