@@ -192,7 +192,7 @@ class Sage_OllamaLLMPromptText(ComfyNodeABC):
     def INPUT_TYPES(cls) -> InputTypeDict:
         models = llm.get_ollama_models()
         if not models:
-            models = []
+            models = ["(Ollama not available)"]
         models = sorted(models)
 
         return {
@@ -218,6 +218,10 @@ class Sage_OllamaLLMPromptText(ComfyNodeABC):
         if not llm.OLLAMA_AVAILABLE:
             raise ImportError("Ollama is not available. Please install it to use this node.")
         
+        # Check if model is placeholder
+        if model == "(Ollama not available)":
+            raise ValueError("Ollama is not available or no models are loaded.")
+        
         if model not in llm.get_ollama_models():
             raise ValueError(f"Model '{model}' is not available. Available models: {llm.get_ollama_models()}")
         
@@ -229,7 +233,8 @@ class Sage_OllamaLLMPromptVision(ComfyNodeABC):
     def INPUT_TYPES(cls) -> InputTypeDict:
         models = llm.get_ollama_vision_models()
         if not models:
-            models = []
+            models = ["(No Ollama vision models available)"]
+            print("No Ollama vision models are available.")
         models = sorted(models)
 
         return {
@@ -256,6 +261,10 @@ class Sage_OllamaLLMPromptVision(ComfyNodeABC):
         if not llm.OLLAMA_AVAILABLE:
             raise ImportError("Ollama is not available. Please install it to use this node.")
         
+        # Check if model is placeholder
+        if model == "(No Ollama vision models available)":
+            raise ValueError("No Ollama vision models are available.")
+        
         if model not in llm.get_ollama_vision_models():
             raise ValueError(f"Model '{model}' is not available or not a vision model. Available models: {llm.get_ollama_vision_models()}")
         
@@ -271,12 +280,13 @@ class Sage_OllamaLLMPromptVisionRefine(ComfyNodeABC):
     def INPUT_TYPES(cls) -> InputTypeDict:
         models = llm.get_ollama_vision_models()
         if not models:
-            models = []
+            models = ["(No Ollama vision models available)"]
+            print("No Ollama vision models are available.")
         models = sorted(models)
         
         refine_models = llm.get_ollama_models()
         if not refine_models:
-            refine_models = []
+            refine_models = ["(Ollama not available)"]
         refine_models = sorted(refine_models)
 
         return {
@@ -307,6 +317,13 @@ class Sage_OllamaLLMPromptVisionRefine(ComfyNodeABC):
         if not llm.OLLAMA_AVAILABLE:
             raise ImportError("Ollama is not available. Please install it to use this node.")
         
+        # Check if models are placeholders
+        if model == "(No Ollama vision models available)":
+            raise ValueError("No Ollama vision models are available.")
+        
+        if refine_model == "(Ollama not available)":
+            raise ValueError("Ollama is not available or no models are loaded.")
+        
         if model not in llm.get_ollama_vision_models():
             raise ValueError(f"Model '{model}' is not available or not a vision model. Available models: {llm.get_ollama_vision_models()}")
         
@@ -325,7 +342,8 @@ class Sage_LMStudioLLMPromptText(ComfyNodeABC):
     def INPUT_TYPES(cls) -> InputTypeDict:
         models = llm.get_lmstudio_models()
         if not models:
-            models = []
+            models = ["(LM Studio not available)"]
+            print("LM Studio is not available or no models are loaded.")
         models = sorted(models)
 
         return {
@@ -351,6 +369,10 @@ class Sage_LMStudioLLMPromptText(ComfyNodeABC):
         if not llm.LMSTUDIO_AVAILABLE:
             raise ImportError("LM Studio is not available. Please install it to use this node.")
         
+        # Check if model is placeholder
+        if model == "(LM Studio not available)":
+            raise ValueError("LM Studio is not available or no models are loaded.")
+        
         if model not in llm.get_lmstudio_models():
             raise ValueError(f"Model '{model}' is not available. Available models: {llm.get_lmstudio_models()}")
         
@@ -362,7 +384,8 @@ class Sage_LMStudioLLMPromptVision(ComfyNodeABC):
     def INPUT_TYPES(cls) -> InputTypeDict:
         models = llm.get_lmstudio_vision_models()
         if not models:
-            models = []
+            models = ["(No LM Studio vision models available)"]
+            print("No LM Studio vision models are available.")
         models = sorted(models)
 
         return {
@@ -382,12 +405,16 @@ class Sage_LMStudioLLMPromptVision(ComfyNodeABC):
 
     CATEGORY = "Sage Utils/LLM/LM Studio"
     EXPERIMENTAL = True
-    DESCRIPTION = "Send a prompt to a language model and get a response. Optionally, you can provide an image/s to the model if it supports multimodal input. The model must be installed via Ollama."
+    DESCRIPTION = "Send a prompt to a language model and get a response. Optionally, you can provide an image/s to the model if it supports multimodal input. The model must be installed via LM Studio."
     
     def get_response(self, prompt: str, model: str, image, seed: int = 0, load_for_seconds: int = 0) -> tuple:
         options = {}
         if not llm.LMSTUDIO_AVAILABLE:
             raise ImportError("LM Studio is not available. Please install it to use this node.")
+        
+        # Check if model is placeholder
+        if model == "(No LM Studio vision models available)":
+            raise ValueError("No LM Studio vision models are available.")
         
         if model not in llm.get_lmstudio_vision_models():
             raise ValueError(f"Model '{model}' is not available or not a vision model. Available models: {llm.get_lmstudio_vision_models()}")
@@ -404,12 +431,13 @@ class Sage_LMStudioLLMPromptVisionRefine(ComfyNodeABC):
     def INPUT_TYPES(cls) -> InputTypeDict:
         models = llm.get_lmstudio_vision_models()
         if not models:
-            models = []
+            models = ["(No LM Studio vision models available)"]
+            print("No LM Studio vision models are available.")
         models = sorted(models)
         
         refine_models = llm.get_lmstudio_models()
         if not refine_models:
-            refine_models = []
+            refine_models = ["(LM Studio not available)"]
         refine_models = sorted(refine_models)
 
         return {
@@ -440,10 +468,19 @@ class Sage_LMStudioLLMPromptVisionRefine(ComfyNodeABC):
         if not llm.LMSTUDIO_AVAILABLE:
             raise ImportError("LM Studio is not available. Please install it to use this node.")
         
+        # Check if models are placeholders
+        if model == "(No LM Studio vision models available)":
+            raise ValueError("No LM Studio vision models are available.")
+        
+        if refine_model == "(LM Studio not available)":
+            raise ValueError("LM Studio is not available or no models are loaded.")
+        
         if model not in llm.get_lmstudio_vision_models():
             raise ValueError(f"Model '{model}' is not available or not a vision model. Available models: {llm.get_lmstudio_vision_models()}")
+        
         if image is None:
             raise ValueError("Image input is required for vision models.")
+            
         options["seed"] = seed  # Ensure the seed is included in the options
         refine_options["seed"] = refine_seed  # Ensure the seed is included in the refine options
         responses = llm.lmstudio_generate_vision_refine(model=model, prompt=prompt, images=image, options=options, refine_model=refine_model, refine_prompt=refine_prompt, refine_options=refine_options)

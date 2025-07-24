@@ -1,6 +1,6 @@
 import logging
 from .helpers_image import tensor_to_base64, tensor_to_temp_image
-from . import cache
+from .llm_cache import get_llm_cache
 
 # Attempt to import ollama, if available. Set a flag if it is not available.
 try:
@@ -21,6 +21,36 @@ except ImportError:
     LMSTUDIO_AVAILABLE = False
     logging.warning("LM Studio library not found.")
 
+
+def _is_ollama_enabled() -> bool:
+    """Check if Ollama is enabled in settings."""
+    try:
+        from .settings import is_feature_enabled
+        return is_feature_enabled('enable_ollama')
+    except ImportError:
+        # Fallback to config manager
+        try:
+            from . import config_manager
+            config = config_manager.settings_manager.data or {}
+            return config.get('enable_ollama', True)
+        except:
+            return True  # Default to enabled if no config available
+
+
+def _is_lmstudio_enabled() -> bool:
+    """Check if LM Studio is enabled in settings."""
+    try:
+        from .settings import is_feature_enabled
+        return is_feature_enabled('enable_lmstudio')
+    except ImportError:
+        # Fallback to config manager
+        try:
+            from . import config_manager
+            config = config_manager.settings_manager.data or {}
+            return config.get('enable_lmstudio', True)
+        except:
+            return True  # Default to enabled if no config available
+
 def clean_response(response: str) -> str:
     """Clean the response from the model by removing unnecessary tags."""
     if not response:
@@ -36,50 +66,89 @@ def get_ollama_vision_models() -> list[str]:
     """Retrieve a list of available vision models from Ollama."""
     if not OLLAMA_AVAILABLE or ollama_client is None:
         return []
-    try:
-        response = ollama_client.list()
-        models = []
-        for model in response.models:
-            if model.model in cache.ollama_models:
-                # If the model is cached, skip it to avoid reprocessing
-                if cache.ollama_models[model.model].get('vision', False):
-                    models.append(model.model)
-                continue
-            
-            if model.model is None:
-                continue
-
-            cache.ollama_models[model.model] = {
-                'vision': False
-            }
-            capabilities = getattr(model, 'capabilities', None)
-            if capabilities and 'vision' in capabilities:
-                if model.model is not None:
-                    cache.ollama_models[model.model]['vision'] = True
-                    models.append(model.model)
-            elif not capabilities:
-                show_response = ollama_client.show(str(model.model))
-                if 'vision' in getattr(show_response, 'capabilities', []):
-                    if model.model is not None:
-                        cache.ollama_models[model.model]['vision'] = True
-                        models.append(model.model)
-        cache.save()
-        return models
-    except Exception as e:
-        logging.error(f"Error retrieving models from Ollama: {e}")
+    
+    if not _is_ollama_enabled():
         return []
+    
+    def _fetch_ollama_vision_models(cache_instance):
+        """Internal function to fetch vision models from Ollama."""
+        if ollama_client is None:
+            return []
+            
+        try:
+            logging.debug("Fetching vision models from Ollama...")
+            response = ollama_client.list()
+            models = []
+            
+            for model in response.models:
+                if model.model is None:
+                    continue
+                
+                logging.debug(f"Checking model: {model.model}")
+                
+                # Check cache first (this doesn't acquire lock in fetch function)
+                cached_vision = cache_instance.is_ollama_vision_model(model.model)
+                if cached_vision is not None:
+                    logging.debug(f"Model {model.model} cached as vision: {cached_vision}")
+                    if cached_vision:
+                        models.append(model.model)
+                    continue
+                
+                # Determine vision capability
+                is_vision = False
+                capabilities = getattr(model, 'capabilities', None)
+                if capabilities and 'vision' in capabilities:
+                    is_vision = True
+                elif not capabilities:
+                    # Fallback to detailed model info
+                    try:
+                        show_response = ollama_client.show(str(model.model))
+                        if 'vision' in getattr(show_response, 'capabilities', []):
+                            is_vision = True
+                    except Exception as e:
+                        logging.debug(f"Failed to get capabilities for {model.model}: {e}")
+                
+                # Cache the result using unlocked method (we're already inside the lock)
+                logging.debug(f"Caching vision capability for {model.model}: {is_vision}")
+                cache_instance._set_ollama_vision_capability_unlocked(model.model, is_vision)
+                if is_vision:
+                    models.append(model.model)
+            
+            logging.debug(f"Found {len(models)} vision models.")
+            return models
+        except Exception as e:
+            logging.error(f"Error retrieving vision models from Ollama: {e}")
+            return []
+    
+    cache = get_llm_cache()
+    return cache.get_ollama_vision_models(_fetch_ollama_vision_models)
 
 
 def get_ollama_models() -> list[str]:
     """Retrieve a list of available models from Ollama."""
     if not OLLAMA_AVAILABLE or ollama_client is None:
         return []
-    try:
-        response = ollama_client.list()
-        return [model.model for model in response.models if model.model is not None]
-    except Exception as e:
-        logging.error(f"Error retrieving models from Ollama: {e}")
+    
+    if not _is_ollama_enabled():
         return []
+    
+    def _fetch_ollama_models():
+        """Internal function to fetch models from Ollama."""
+        if ollama_client is None:
+            return []
+            
+        try:
+            print("Fetching models from Ollama...")
+            response = ollama_client.list()
+            print(f"Found {len(response.models)} models.")
+            return [model.model for model in response.models if model.model is not None]
+        except Exception as e:
+            logging.error(f"Error retrieving models from Ollama: {e}")
+            return []
+    
+    cache = get_llm_cache()
+    print("Fetching Ollama models from cache...")
+    return cache.get_ollama_models(_fetch_ollama_models)
 
 
 def ollama_generate_vision(model: str, prompt: str, keep_alive: float = 0.0, images=None, options=None) -> str:
@@ -204,6 +273,10 @@ def is_lmstudio_running() -> bool:
     """Check if LM Studio server is running by attempting a lightweight API call."""
     if not LMSTUDIO_AVAILABLE or lms is None:
         return False
+    
+    if not _is_lmstudio_enabled():
+        return False
+    
     try:
         lms.list_downloaded_models("llm")
         return True
@@ -212,32 +285,74 @@ def is_lmstudio_running() -> bool:
 
 
 def get_lmstudio_models() -> list[str]:
-    print("Retrieving models from LM Studio...")
     """Retrieve a list of available models from LM Studio."""
-    if not LMSTUDIO_AVAILABLE or lms is None or not is_lmstudio_running():
+    if not LMSTUDIO_AVAILABLE or lms is None:
         return []
-    try:
-        response = lms.list_downloaded_models("llm")
-        return [model.model_key for model in response if hasattr(model, 'model_key') and model.model_key is not None]
-    except Exception as e:
-        logging.error(f"Error retrieving models from LM Studio: {e}")
+    
+    if not _is_lmstudio_enabled():
         return []
+    
+    def _fetch_lmstudio_models():
+        """Internal function to fetch models from LM Studio."""
+        if lms is None or not is_lmstudio_running():
+            return []
+            
+        try:
+            logging.debug("Retrieving models from LM Studio...")
+            response = lms.list_downloaded_models("llm")
+            return [model.model_key for model in response if hasattr(model, 'model_key') and model.model_key is not None]
+        except Exception as e:
+            logging.error(f"Error retrieving models from LM Studio: {e}")
+            return []
+    
+    cache = get_llm_cache()
+    return cache.get_lmstudio_models(_fetch_lmstudio_models)
 
 
 def get_lmstudio_vision_models() -> list[str]:
-    print("Retrieving vision models from LM Studio...")
     """Retrieve a list of available vision models from LM Studio."""
-    if not LMSTUDIO_AVAILABLE or lms is None or not is_lmstudio_running():
+    if not LMSTUDIO_AVAILABLE or lms is None:
         return []
-    try:
-        response = lms.list_downloaded_models("llm")
-        return [
-            model.model_key for model in response
-            if hasattr(model, 'model_key') and model.model_key is not None and hasattr(model, 'info') and getattr(model.info, 'vision', False)
-        ]
-    except Exception as e:
-        logging.error(f"Error retrieving models from LM Studio: {e}")
+    
+    if not _is_lmstudio_enabled():
         return []
+    
+    def _fetch_lmstudio_vision_models(cache_instance):
+        """Internal function to fetch vision models from LM Studio."""
+        if lms is None or not is_lmstudio_running():
+            return []
+            
+        try:
+            logging.debug("Retrieving vision models from LM Studio...")
+            response = lms.list_downloaded_models("llm")
+            models = []
+            
+            for model in response:
+                if not (hasattr(model, 'model_key') and model.model_key is not None):
+                    continue
+                
+                # Check cache first
+                cached_vision = cache_instance.is_lmstudio_vision_model(model.model_key)
+                if cached_vision is not None:
+                    if cached_vision:
+                        models.append(model.model_key)
+                    continue
+                
+                # Check if model supports vision
+                is_vision = hasattr(model, 'info') and getattr(model.info, 'vision', False)
+                
+                # Cache the result using unlocked method (we're already inside the lock)
+                cache_instance._set_lmstudio_vision_capability_unlocked(model.model_key, is_vision)
+                if is_vision:
+                    models.append(model.model_key)
+            
+            return models
+        except Exception as e:
+            logging.error(f"Error retrieving vision models from LM Studio: {e}")
+            return []
+    
+    cache = get_llm_cache()
+    return cache.get_lmstudio_vision_models(_fetch_lmstudio_vision_models)
 
 
 def lmstudio_generate_vision(model: str, prompt: str, keep_alive: int = 0, images=None, options=None) -> str:
