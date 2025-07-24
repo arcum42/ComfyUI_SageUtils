@@ -4,6 +4,7 @@
 from __future__ import annotations
 from comfy.comfy_types.node_typing import ComfyNodeABC, InputTypeDict, IO
 import random
+import string
 
 # Import specific utilities instead of wildcard import
 from ..utils import (
@@ -296,21 +297,19 @@ class Sage_TextSelectLine(ComfyNodeABC):
 
         return (lines[line_number].strip(),)
 
-# This node takes a text box (with a prefix and suffix) and three optional strings, and substitutes the strings for the 
+# This node takes a text box (with a prefix and suffix) and dynamic string inputs, and substitutes the strings for the 
 # placeholders in the text box.
 class Sage_TextSubstitution(ComfyNodeABC):
     @classmethod
     def INPUT_TYPES(cls) -> InputTypeDict:
         return {
             "required": {
-                "text": (IO.STRING, {"defaultInput": True, "multiline": True})
+                "text": (IO.STRING, {"defaultInput": True, "multiline": True}),
+                "delimiter": (IO.STRING, {"defaultInput": False, "default": "$"})
             },
             "optional": {
                 "prefix": (IO.STRING, {"defaultInput": True, "multiline": True}),
                 "suffix": (IO.STRING, {"defaultInput": True, "multiline": True}),
-                "str1": (IO.STRING, {"defaultInput": True, "multiline": True}),
-                "str2": (IO.STRING, {"defaultInput": True, "multiline": True}),
-                "str3": (IO.STRING, {"defaultInput": True, "multiline": True}),
             }
         }
 
@@ -319,16 +318,40 @@ class Sage_TextSubstitution(ComfyNodeABC):
 
     FUNCTION = "substitute_text"
     CATEGORY = "Sage Utils/text"
-    DESCRIPTION = "Substitutes the placeholders in the text with the provided strings. The placeholders are {str1}, {str2}, and {str3}. The prefix and suffix are added to the final result."
+    DESCRIPTION = "Substitutes the placeholders in the text with the provided strings. The placeholders use the specified delimiter (default $) followed by str_1, str_2, etc. based on the number of connected inputs. The prefix and suffix are added to the final result."
 
-    def substitute_text(self, text: str, prefix: str = "", suffix: str = "", str1: str = "", str2: str = "", str3: str = "") -> tuple[str]:
+    def substitute_text(self, text: str, delimiter: str = "$", prefix: str = "", suffix: str = "", **kwargs) -> tuple[str]:
         """
         Substitutes the placeholders in the text with the provided strings.
-        The placeholders are {str1}, {str2}, and {str3}.
+        The placeholders use the specified delimiter followed by str_1, str_2, etc. based on the number of connected inputs.
         The prefix and suffix are added to the final result.
         """
-        # Replace placeholders with actual strings
-        result = text.format(str1=str1, str2=str2, str3=str3)
+        # Build substitution dictionary from dynamic inputs
+        sub_dict = {}
+        
+        # Extract str_X inputs from kwargs
+        for key, value in kwargs.items():
+            if key.startswith("str_"):
+                sub_dict[key] = value or ""
+        
+        # Create a dynamic Template class with the specified delimiter
+        # We need to create this dynamically to avoid class-level variable conflicts
+        def create_template_class(delim):
+            class CustomTemplate(string.Template):
+                delimiter = delim
+            return CustomTemplate
+        
+        # Get the custom Template class with our delimiter
+        TemplateClass = create_template_class(delimiter)
+        
+        # Create Template and perform substitution
+        template = TemplateClass(text)
+        try:
+            result = template.substitute(sub_dict)
+        except KeyError as e:
+            # If a placeholder is missing, use safe_substitute to leave it as-is
+            result = template.safe_substitute(sub_dict)
+            print(f"Warning: Placeholder {e} not found in inputs, leaving as-is")
 
         # Add prefix and suffix
         result = f"{prefix}{result}{suffix}"
