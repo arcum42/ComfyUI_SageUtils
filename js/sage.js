@@ -14,6 +14,9 @@ import { setupViewTextOrAnythingNode } from "./nodes/viewAnything.js";
 import { setupViewNotesNode } from "./nodes/viewNotes.js";
 import { setupModelInfoDisplayNode } from "./nodes/modelInfoDisplay.js";
 
+// Import settings UI
+import "./settingsUI.js";
+
 app.registerExtension({
   name: "arcum42.sage.utils",
   async setup() {

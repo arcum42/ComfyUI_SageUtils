@@ -178,6 +178,9 @@ class SageSettings:
         
         schema_entry = SETTINGS_SCHEMA[key].copy()
         schema_entry["current_value"] = self._settings.get(key)
+        # Convert type to string representation for JSON serialization
+        if "type" in schema_entry:
+            schema_entry["type"] = schema_entry["type"].__name__
         return schema_entry
     
     def list_all_settings(self) -> Dict[str, Dict[str, Any]]:
@@ -186,6 +189,7 @@ class SageSettings:
         for key in SETTINGS_SCHEMA.keys():
             setting_info = self.get_setting_info(key)
             if setting_info is not None:
+                # The setting_info is already JSON-safe from get_setting_info()
                 result[key] = setting_info
         return result
     

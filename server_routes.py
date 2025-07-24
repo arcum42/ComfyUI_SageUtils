@@ -1,16 +1,127 @@
 """
-Custom routes for SageUtils to expose cache data via HTTP endpoints.
+Custom routes for SageUtils to expose cache data and settings via HTTP endpoints.
 """
 
 try:
     from server import PromptServer
     from aiohttp import web
     from .utils.model_cache import cache
+    from .utils.settings import get_settings, SETTINGS_SCHEMA
 
     # Check if PromptServer instance is available
     if hasattr(PromptServer, 'instance') and PromptServer.instance is not None:
         # Get the PromptServer instance
         routes = PromptServer.instance.routes
+
+        # Settings management routes
+        @routes.get('/sage_utils/settings')
+        async def get_sage_settings(request):
+            """
+            Returns all SageUtils settings with their current values and schema information.
+            """
+            try:
+                import json
+                settings = get_settings()
+                settings_info = settings.list_all_settings()
+                
+                # Double-check that the result is JSON serializable
+                json.dumps(settings_info)  # This will raise an exception if not serializable
+                
+                return web.json_response({
+                    "success": True,
+                    "settings": settings_info
+                })
+            except (TypeError, ValueError) as e:
+                return web.json_response(
+                    {"success": False, "error": f"JSON serialization error: {str(e)}"}, 
+                    status=500
+                )
+            except Exception as e:
+                import traceback
+                error_details = traceback.format_exc()
+                print(f"SageUtils settings error: {error_details}")
+                return web.json_response(
+                    {"success": False, "error": f"Failed to retrieve settings: {str(e)}", "details": error_details}, 
+                    status=500
+                )
+
+        @routes.post('/sage_utils/settings')
+        async def update_sage_settings(request):
+            """
+            Updates SageUtils settings. Expects JSON body with setting key-value pairs.
+            """
+            try:
+                data = await request.json()
+                settings = get_settings()
+                
+                updated_settings = []
+                errors = []
+                
+                for key, value in data.items():
+                    if key in SETTINGS_SCHEMA:
+                        try:
+                            if settings.set(key, value):
+                                updated_settings.append(key)
+                        except Exception as e:
+                            errors.append(f"Failed to set '{key}': {str(e)}")
+                    else:
+                        errors.append(f"Unknown setting: '{key}'")
+                
+                # Save if any settings were updated
+                if updated_settings:
+                    if settings.save():
+                        # Check if LLM-related settings were updated and trigger lazy initialization
+                        llm_settings = {'enable_ollama', 'enable_lmstudio', 'custom_ollama_url', 'custom_lmstudio_url'}
+                        if any(setting in llm_settings for setting in updated_settings):
+                            try:
+                                from .utils.llm_wrapper import ensure_llm_initialized
+                                ensure_llm_initialized()
+                            except Exception as llm_e:
+                                errors.append(f"Warning: Failed to initialize LLM services: {str(llm_e)}")
+                        
+                        return web.json_response({
+                            "success": True,
+                            "updated": updated_settings,
+                            "errors": errors,
+                            "message": f"Updated {len(updated_settings)} setting(s)"
+                        })
+                    else:
+                        return web.json_response({
+                            "success": False,
+                            "error": "Failed to save settings",
+                            "updated": updated_settings,
+                            "errors": errors
+                        }, status=500)
+                else:
+                    return web.json_response({
+                        "success": False,
+                        "error": "No valid settings to update",
+                        "errors": errors
+                    }, status=400)
+                    
+            except Exception as e:
+                return web.json_response(
+                    {"success": False, "error": f"Failed to update settings: {str(e)}"}, 
+                    status=500
+                )
+
+        @routes.post('/sage_utils/settings/reset')
+        async def reset_sage_settings(request):
+            """
+            Resets all SageUtils settings to their default values.
+            """
+            try:
+                settings = get_settings()
+                settings.reset_to_defaults()
+                return web.json_response({
+                    "success": True,
+                    "message": "All settings reset to defaults"
+                })
+            except Exception as e:
+                return web.json_response(
+                    {"success": False, "error": f"Failed to reset settings: {str(e)}"}, 
+                    status=500
+                )
 
         @routes.get('/sage_cache/info')
         async def get_sage_cache_info(request):

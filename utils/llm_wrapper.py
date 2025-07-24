@@ -2,6 +2,10 @@ import logging
 from .helpers_image import tensor_to_base64, tensor_to_temp_image
 from .llm_cache import get_llm_cache
 
+# Initialization flags to track if services have been initialized
+_ollama_initialized = False
+_lmstudio_initialized = False
+
 # Attempt to import ollama, if available. Set a flag if it is not available.
 try:
     import ollama
@@ -153,6 +157,9 @@ def get_ollama_models() -> list[str]:
 
 def ollama_generate_vision(model: str, prompt: str, keep_alive: float = 0.0, images=None, options=None) -> str:
     """Generate a response from an Ollama vision model."""
+    # Ensure Ollama is initialized before use
+    ensure_ollama_initialized()
+    
     if not OLLAMA_AVAILABLE or ollama_client is None:
         raise ImportError("Ollama is not available. Please install it to use this function.")
     vision_models = get_ollama_vision_models()
@@ -191,6 +198,9 @@ def ollama_generate_vision(model: str, prompt: str, keep_alive: float = 0.0, ima
 
 def ollama_generate(model: str, prompt: str, keep_alive: float = 0.0, options=None) -> str:
     """Generate a response from an Ollama model."""
+    # Ensure Ollama is initialized before use
+    ensure_ollama_initialized()
+    
     if not OLLAMA_AVAILABLE or ollama_client is None:
         raise ImportError("Ollama is not available. Please install it to use this function.")
     models = get_ollama_models()
@@ -357,6 +367,9 @@ def get_lmstudio_vision_models() -> list[str]:
 
 def lmstudio_generate_vision(model: str, prompt: str, keep_alive: int = 0, images=None, options=None) -> str:
     """Generate a response from an LM Studio vision model."""
+    # Ensure LM Studio is initialized before use
+    ensure_lmstudio_initialized()
+    
     if not LMSTUDIO_AVAILABLE or lms is None:
         raise ImportError("LM Studio is not available. Please install it to use this function.")
     model_list = get_lmstudio_vision_models()
@@ -391,6 +404,9 @@ def lmstudio_generate_vision(model: str, prompt: str, keep_alive: int = 0, image
 
 def lmstudio_generate(model: str, prompt: str, keep_alive: int = 0, options=None) -> str:
     """Generate a response from an LM Studio model."""
+    # Ensure LM Studio is initialized before use
+    ensure_lmstudio_initialized()
+    
     if not LMSTUDIO_AVAILABLE or lms is None:
         raise ImportError("LM Studio is not available. Please install it to use this function.")
     model_list = get_lmstudio_models()
@@ -472,73 +488,71 @@ def lmstudio_generate_vision_refine(model: str, prompt: str, images=None, option
         return ("", "")
 
 def init_ollama():
-    """Initialize Ollama if available. Print config values for Ollama."""
-    global ollama_client
+    """Initialize Ollama client"""
+    global ollama_client, _ollama_initialized
+    from .settings import get_setting
     
-    if not OLLAMA_AVAILABLE or ollama is None:
-        logging.info("Ollama is not available; skipping Ollama initialization.")
-        return
+    # Check if Ollama is available and enabled
+    if not OLLAMA_AVAILABLE:
+        logging.warning("Ollama library is not available.")
+        return False
+        
+    if not get_setting("enable_ollama", False):
+        logging.info("Ollama is disabled in settings.")
+        _ollama_initialized = False
+        ollama_client = None
+        return False
     
     try:
-        # Try to use new settings system
-        try:
-            from .settings import get_setting, is_feature_enabled
-            
-            if not is_feature_enabled('enable_ollama'):
-                logging.info("Ollama is disabled in settings; skipping initialization.")
-                return
-            
-            use_custom_url = get_setting('ollama_use_custom_url', False)
-            custom_url = get_setting('ollama_custom_url', '')
-        except ImportError:
-            # Fallback to old config system
-            from . import config_manager
-            config = config_manager.settings_manager.data or {}
-            use_custom_url = config.get('ollama_use_custom_url', False)
-            custom_url = config.get('ollama_custom_url', '')
-        
-        if use_custom_url and custom_url:
+        # Get custom URL or use default
+        custom_url = get_setting("custom_ollama_url", "http://localhost:11434")
+        if custom_url and custom_url.strip():
             ollama_client = ollama.Client(host=custom_url)
-            logging.info(f"Ollama client initialized with custom host: {custom_url}")
+            logging.info(f"Ollama client initialized with custom URL: {custom_url}")
         else:
             ollama_client = ollama.Client()
-            logging.info("Ollama client initialized with default settings.")
+            logging.info("Ollama client initialized with default URL")
+        
+        _ollama_initialized = True
+        return True
     except Exception as e:
-        ollama_client = None
         logging.error(f"Failed to initialize Ollama client: {e}")
+        _ollama_initialized = False
+        ollama_client = None
+        return False
 
 
 def init_lmstudio():
     """Initialize LM Studio if available. Print config values for LM Studio."""
+    global _lmstudio_initialized
+    from .settings import get_setting
+    
     if not LMSTUDIO_AVAILABLE or lms is None:
         logging.info("LM Studio is not available; skipping LM Studio initialization.")
-        return
+        _lmstudio_initialized = False
+        return False
+    
+    # Check if LM Studio is enabled
+    if not get_setting("enable_lmstudio", False):
+        logging.info("LM Studio is disabled in settings; skipping initialization.")
+        _lmstudio_initialized = False
+        return False
     
     try:
-        # Try to use new settings system
-        try:
-            from .settings import get_setting, is_feature_enabled
-            
-            if not is_feature_enabled('enable_lmstudio'):
-                logging.info("LM Studio is disabled in settings; skipping initialization.")
-                return
-            
-            use_custom_url = get_setting('lmstudio_use_custom_url', False)
-            custom_url = get_setting('lmstudio_custom_url', '')
-        except ImportError:
-            # Fallback to old config system
-            from . import config_manager
-            config = config_manager.settings_manager.data or {}
-            use_custom_url = config.get('lmstudio_use_custom_url', False)
-            custom_url = config.get('lmstudio_custom_url', '')
+        custom_url = get_setting('custom_lmstudio_url', '')
         
-        if use_custom_url and custom_url:
+        if custom_url and custom_url.strip():
             lm_client = lms.get_default_client(custom_url)
             logging.info(f"LM Studio client configured with custom URL: {custom_url}")
         else:
             logging.info("LM Studio using default configuration.")
+        
+        _lmstudio_initialized = True
+        return True
     except Exception as e:
         logging.error(f"Failed to configure LM Studio: {e}")
+        _lmstudio_initialized = False
+        return False
 
 
 def init_llm():
@@ -546,3 +560,32 @@ def init_llm():
     init_ollama()
     init_lmstudio()
     logging.info("LLM clients initialized.")
+
+
+def ensure_ollama_initialized():
+    """Ensure Ollama is initialized if it's enabled in settings and not already initialized."""
+    global _ollama_initialized
+    from .settings import get_setting
+    
+    if get_setting("enable_ollama", False) and not _ollama_initialized:
+        logging.info("Ollama is enabled but not initialized, initializing now...")
+        return init_ollama()
+    return _ollama_initialized
+
+
+def ensure_lmstudio_initialized():
+    """Ensure LM Studio is initialized if it's enabled in settings and not already initialized."""
+    global _lmstudio_initialized
+    from .settings import get_setting
+    
+    if get_setting("enable_lmstudio", False) and not _lmstudio_initialized:
+        logging.info("LM Studio is enabled but not initialized, initializing now...")
+        return init_lmstudio()
+    return _lmstudio_initialized
+
+
+def ensure_llm_initialized():
+    """Ensure all enabled LLM services are initialized."""
+    ollama_ok = ensure_ollama_initialized()
+    lmstudio_ok = ensure_lmstudio_initialized()
+    return ollama_ok or lmstudio_ok
