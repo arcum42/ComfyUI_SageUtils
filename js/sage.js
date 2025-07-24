@@ -294,8 +294,13 @@ function setupViewTextOrAnythingNode(nodeType, nodeData, app) {
 
   const onExecuted = nodeType.prototype.onExecuted;
   nodeType.prototype.onExecuted = function (message) {
-    // Log output for debugging
-    console.log(message["text"]);
+    // Log output for debugging - show processed text instead of raw array
+    if (message && message["text"]) {
+      const processedText = Array.isArray(message["text"]) 
+        ? message["text"].join("") 
+        : String(message["text"]);
+      console.log("ViewAnything processed text:", processedText.substring(0, 100) + "...");
+    }
     if (onExecuted) onExecuted.apply(this, arguments);
     updateOutputWidget(this, message);
     this.onResize?.(this.size);
@@ -855,10 +860,393 @@ function setupViewNotesNode(nodeType, nodeData, app) {
 
   const onExecuted = nodeType.prototype.onExecuted;
   nodeType.prototype.onExecuted = function (message) {
-    // Log output for debugging
-    console.log(message["text"]);
+    // Log output for debugging - show processed text instead of raw array
+    if (message && message["text"]) {
+      const processedText = Array.isArray(message["text"]) 
+        ? message["text"].join("") 
+        : String(message["text"]);
+      console.log("ViewNotes processed text:", processedText.substring(0, 100) + "...");
+    }
     if (onExecuted) onExecuted.apply(this, arguments);
     updateOutputWidget(this, message, this.widgets.find(w => w.name === 'filename')?.value);
+    this.onResize?.(this.size);
+  };
+}
+
+/**
+ * Sets up the Sage_ModelInfoDisplay node to display markdown-formatted model information.
+ * @param {object} nodeType - The node type being registered.
+ * @param {object} nodeData - The node data from the python node definition.
+ * @param {object} app - The ComfyUI app instance.
+ */
+function setupModelInfoDisplayNode(nodeType, nodeData, app) {
+  /**
+   * Helper to find or create the output widget and update its value.
+   * @param {Object} node - The node instance.
+   * @param {Object} message - The message object containing text.
+   */
+  function updateOutputWidget(node, message) {
+    const isMarkdown = true; // Always treat ModelInfoDisplay content as markdown
+    let w = node.widgets?.find((w) => w.name === "output");
+    
+    // Create widget if it doesn't exist
+    if (!w) {
+      // Option 1: Use native MARKDOWN widget (currently disabled due to image support issues)
+      // if (isMarkdown && ComfyWidgets["MARKDOWN"]) {
+      //   try {
+      //     w = ComfyWidgets["MARKDOWN"](
+      //       node,
+      //       "output",
+      //       ["STRING", { multiline: true }],
+      //       app
+      //     ).widget;
+      //   } catch (error) {
+      //     console.log("MARKDOWN widget not available, falling back to STRING:", error);
+      //     w = null;
+      //   }
+      // }
+      
+      // Option 2: Always use STRING widget with our custom renderer for full control over markdown display
+      // The native MARKDOWN widget doesn't support images, so we use our custom implementation
+      if (!w) {
+        w = ComfyWidgets["STRING"](
+          node,
+          "output",
+          ["STRING", { multiline: true }],
+          app
+        ).widget;
+        w.inputEl.readOnly = true;
+        w.inputEl.style.opacity = 0.6;
+        w.inputEl.style.fontSize = "9pt";
+      }
+    }
+    
+    // Update content - FIX: Properly handle the message data structure
+    let content;
+    if (message && message.text) {
+      if (Array.isArray(message.text)) {
+        content = message.text.join("");
+        console.log("updateOutputWidget: Converted array to string, length:", content.length);
+      } else if (typeof message.text === "string") {
+        content = message.text;
+        console.log("updateOutputWidget: Using string directly, length:", content.length);
+      } else {
+        content = String(message.text);
+        console.log("updateOutputWidget: Converted to string, length:", content.length);
+      }
+    } else {
+      content = "";
+      console.log("updateOutputWidget: No message text, using empty string");
+    }
+    
+    console.log("Content after processing (final):", content.substring(0, 100) + "...");
+    
+    // Always use our custom markdown renderer for images and full formatting support
+    // But first ensure the widget is properly initialized
+    if (!w.inputEl) {
+      console.log("Widget not yet initialized, waiting for DOM...");
+      // Try again after a short delay to let the widget initialize
+      setTimeout(() => {
+        setupMarkdownDisplay(w, content);
+      }, 50);
+      return;
+    }
+    
+    setupMarkdownDisplay(w, content);
+  }
+
+  /**
+   * Sets up proper HTML markdown display for a text widget.
+   * @param {Object} widget - The text widget.
+   * @param {string} content - The markdown content to render.
+   */
+  function setupMarkdownDisplay(widget, content) {
+    // Set the textarea value for fallback
+    widget.value = content;
+    
+    console.log("Setting up markdown display, content length:", content.length);
+    
+    // Ensure widget is properly initialized
+    if (!widget.inputEl) {
+      console.warn("Widget inputEl not available, retrying in 100ms...");
+      setTimeout(() => {
+        if (widget.inputEl) {
+          setupMarkdownDisplay(widget, content);
+        } else {
+          console.error("Widget still not initialized after delay, falling back to text display");
+        }
+      }, 100);
+      return;
+    }
+    
+    if (!widget.inputEl.parentElement) {
+      console.warn("Widget parentElement not available, retrying in 100ms...");
+      setTimeout(() => {
+        if (widget.inputEl && widget.inputEl.parentElement) {
+          setupMarkdownDisplay(widget, content);
+        } else {
+          console.error("Widget parent still not available after delay, falling back to text display");
+        }
+      }, 100);
+      return;
+    }
+    
+    console.log("Widget is properly initialized, proceeding with markdown setup");
+    
+    // Remove any existing markdown overlay
+    if (widget.markdownOverlay) {
+      widget.markdownOverlay.remove();
+      widget.markdownOverlay = null;
+    }
+    
+    // Create markdown display overlay
+    const markdownDiv = document.createElement('div');
+    markdownDiv.className = 'markdown-overlay';
+    const renderedHTML = renderMarkdown(content);
+    console.log("Rendered HTML length:", renderedHTML.length);
+    markdownDiv.innerHTML = renderedHTML;
+    
+    console.log("Created markdown div with HTML:", markdownDiv.innerHTML.substring(0, 200) + "...");
+    
+    // Style the overlay to match the textarea exactly
+    markdownDiv.style.cssText = `
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: #1e1e1e;
+      color: #d4d4d4;
+      padding: 8px 12px;
+      border: 1px solid #3e3e3e;
+      border-radius: 6px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-size: 13px;
+      line-height: 1.5;
+      overflow-y: auto;
+      overflow-x: hidden;
+      word-wrap: break-word;
+      box-sizing: border-box;
+      z-index: 1;
+      pointer-events: auto;
+    `;
+    
+    // Hide the textarea
+    widget.inputEl.style.opacity = '0';
+    console.log("Hiding textarea, opacity set to 0");
+    
+    // Make sure the parent has position relative for absolute positioning
+    const parent = widget.inputEl.parentElement;
+    if (getComputedStyle(parent).position === 'static') {
+      parent.style.position = 'relative';
+    }
+    
+    // Insert the overlay
+    parent.appendChild(markdownDiv);
+    console.log("Appended markdown overlay to parent, parent children count:", parent.children.length);
+    
+    // Store reference for cleanup
+    widget.markdownOverlay = markdownDiv;
+    
+    // Add styles for markdown elements
+    if (!document.querySelector('#sage-markdown-styles')) {
+      const style = document.createElement('style');
+      style.id = 'sage-markdown-styles';
+      style.textContent = `
+        .markdown-overlay h1, .markdown-overlay h2, .markdown-overlay h3,
+        .markdown-overlay h4, .markdown-overlay h5, .markdown-overlay h6 {
+          color: #569cd6;
+          margin: 12px 0 6px 0;
+          font-weight: 600;
+        }
+        .markdown-overlay h1 { font-size: 1.5em; border-bottom: 1px solid #3e3e3e; padding-bottom: 4px; }
+        .markdown-overlay h2 { font-size: 1.3em; border-bottom: 1px solid #3e3e3e; padding-bottom: 2px; }
+        .markdown-overlay h3 { font-size: 1.1em; }
+        .markdown-overlay h4 { font-size: 1em; }
+        .markdown-overlay p { margin: 8px 0; }
+        .markdown-overlay pre {
+          background: #2d2d2d;
+          border: 1px solid #404040;
+          border-radius: 4px;
+          padding: 8px;
+          margin: 8px 0;
+          overflow-x: auto;
+        }
+        .markdown-overlay code {
+          background: #2d2d2d;
+          padding: 2px 4px;
+          border-radius: 3px;
+          font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+        }
+        .markdown-overlay pre code {
+          background: transparent;
+          padding: 0;
+        }
+        .markdown-overlay a {
+          color: #4fc3f7;
+          text-decoration: none;
+        }
+        .markdown-overlay a:hover {
+          text-decoration: underline;
+        }
+        .markdown-overlay ul, .markdown-overlay ol {
+          margin: 8px 0;
+          padding-left: 20px;
+        }
+        .markdown-overlay li {
+          margin: 4px 0;
+        }
+        .markdown-overlay blockquote {
+          border-left: 4px solid #569cd6;
+          margin: 8px 0;
+          padding-left: 12px;
+          font-style: italic;
+          color: #b0b0b0;
+        }
+        .markdown-overlay strong {
+          font-weight: 600;
+          color: #f0f0f0;
+        }
+        .markdown-overlay em {
+          font-style: italic;
+          color: #e0e0e0;
+        }
+      `;
+      document.head.appendChild(style);
+      console.log("Added markdown styles to document head");
+    } else {
+      console.log("Markdown styles already exist in document");
+    }
+    
+    // Add a small delay to ensure the overlay is properly rendered
+    setTimeout(() => {
+      console.log("Final check - overlay visibility:", getComputedStyle(markdownDiv).visibility);
+      console.log("Final check - overlay display:", getComputedStyle(markdownDiv).display);
+      console.log("Final check - overlay z-index:", getComputedStyle(markdownDiv).zIndex);
+    }, 100);
+  }
+
+  /**
+   * Enhanced markdown renderer with better formatting support.
+   * @param {string} text - The markdown text to render.
+   * @returns {string} - The rendered HTML.
+   */
+  function renderMarkdown(text) {
+    if (!text) return '';
+    
+    console.log("renderMarkdown: Processing text length:", text.length);
+    
+    let result = text;
+    
+    // Escape HTML first to prevent injection, but preserve newlines
+    result = result
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+    
+    // Then apply markdown transformations in correct order
+    // Code blocks first (must be before inline code and other formatting)
+    result = result.replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>');
+    
+    // Headers (process from h6 to h1 to avoid conflicts)
+    result = result.replace(/^#{6}\s+(.+)$/gm, '<h6>$1</h6>');
+    result = result.replace(/^#{5}\s+(.+)$/gm, '<h5>$1</h5>');
+    result = result.replace(/^#{4}\s+(.+)$/gm, '<h4>$1</h4>');
+    result = result.replace(/^#{3}\s+(.+)$/gm, '<h3>$1</h3>');
+    result = result.replace(/^#{2}\s+(.+)$/gm, '<h2>$1</h2>');
+    result = result.replace(/^#{1}\s+(.+)$/gm, '<h1>$1</h1>');
+    
+    // Bold text (must be before italic)
+    result = result.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+    result = result.replace(/__(.*?)__/g, '<strong>$1</strong>');
+    
+    // Italic text
+    result = result.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+    result = result.replace(/_([^_]+)_/g, '<em>$1</em>');
+    
+    // Inline code (after bold/italic to avoid conflicts)
+    result = result.replace(/`([^`]+)`/g, '<code>$1</code>');
+    
+    // Images (must be before links to avoid conflicts)
+    result = result.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, 
+      '<img src="$2" alt="$1" style="max-width: 100%; height: auto; border-radius: 4px; margin: 8px 0; display: block;" onerror="this.style.display=\'none\';">');
+    
+    // Links (after images)
+    result = result.replace(/\[([^\]]+)\]\(([^)]+)\)/g, 
+      '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
+    
+    // Blockquotes
+    result = result.replace(/^>\s+(.+)$/gm, '<blockquote>$1</blockquote>');
+    
+    // Lists - handle them more carefully to avoid extra breaks
+    result = result.replace(/^[\*\-\+]\s+(.+)$/gm, '<li>$1</li>');
+    result = result.replace(/^\d+\.\s+(.+)$/gm, '<li>$1</li>');
+    
+    // Wrap consecutive list items in ul tags
+    result = result.replace(/(<li>.*?<\/li>(?:\s*<li>.*?<\/li>)*)/gs, '<ul>$1</ul>');
+    
+    // Horizontal rules
+    result = result.replace(/^---+$/gm, '<hr>');
+    
+    // Split into lines for better processing
+    const lines = result.split('\n');
+    const processedLines = [];
+    
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].trim();
+      
+      // Skip empty lines
+      if (!line) {
+        continue;
+      }
+      
+      // Check if this line is already a block element
+      const isBlockElement = line.match(/^<(h[1-6]|ul|li|ol|p|div|blockquote|pre|hr)/);
+      const isClosingTag = line.match(/^<\/(h[1-6]|ul|li|ol|p|div|blockquote|pre)>/);
+      
+      if (isBlockElement || isClosingTag) {
+        // It's already a block element, add it as-is
+        processedLines.push(line);
+      } else {
+        // It's regular text, wrap it in a paragraph
+        if (line.length > 0) {
+          processedLines.push(`<p>${line}</p>`);
+        }
+      }
+    }
+    
+    result = processedLines.join('');
+      
+    console.log("renderMarkdown: Generated HTML length:", result.length);
+    console.log("renderMarkdown: First 200 chars of HTML:", result.substring(0, 200));
+    return result;
+  }
+
+  const onExecuted = nodeType.prototype.onExecuted;
+  nodeType.prototype.onExecuted = function (message) {
+    // Log output for debugging - show both raw message and processed content
+    console.log("ModelInfoDisplay message:", message);
+    
+    // Also log the processed content to verify the fix works
+    if (message && message.text) {
+      let processedContent;
+      if (Array.isArray(message.text)) {
+        processedContent = message.text.join("");
+        console.log("Processed array to string, length:", processedContent.length);
+      } else {
+        processedContent = String(message.text);
+        console.log("Used string directly, length:", processedContent.length);
+      }
+      console.log("Final processed content preview:", processedContent.substring(0, 100) + "...");
+    }
+    
+    if (onExecuted) onExecuted.apply(this, arguments);
+    
+    // Handle UI output for display nodes - look for the text data in message.text
+    if (message && message.text) {
+      updateOutputWidget(this, message);
+    }
+    
     this.onResize?.(this.size);
   };
 }
@@ -884,6 +1272,14 @@ app.registerExtension({
     }
     if (nodeData.name === _ID + "ViewNotes") {
       setupViewNotesNode(nodeType, nodeData, app);
+      return;
+    }
+    if (nodeData.name === _ID + "ModelInfoDisplay") {
+      setupModelInfoDisplayNode(nodeType, nodeData, app);
+      return;
+    }
+    if (nodeData.name === _ID + "LoraStackInfoDisplay") {
+      setupModelInfoDisplayNode(nodeType, nodeData, app); // Reuse the same setup function
       return;
     }
   },

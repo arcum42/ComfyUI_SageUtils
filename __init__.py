@@ -85,6 +85,7 @@ LOADER_CLASS_MAPPINGS = {
 
 MODEL_CLASS_MAPPINGS = {
     "Sage_ModelInfo": Sage_ModelInfo,
+    "Sage_ModelInfoDisplay": Sage_ModelInfoDisplay,
     "Sage_LastLoraInfo": Sage_LastLoraInfo,
     "Sage_CheckLorasForUpdates": Sage_CheckLorasForUpdates,
     "Sage_CacheMaintenance": Sage_CacheMaintenance,
@@ -101,7 +102,8 @@ LORA_CLASS_MAPPINGS = {
     "Sage_TripleQuickLoraStack": Sage_TripleQuickLoraStack,
     "Sage_QuickSixLoraStack": Sage_QuickSixLoraStack,
     "Sage_QuickNineLoraStack": Sage_QuickNineLoraStack,
-    "Sage_CollectKeywordsFromLoraStack": Sage_CollectKeywordsFromLoraStack
+    "Sage_CollectKeywordsFromLoraStack": Sage_CollectKeywordsFromLoraStack,
+    "Sage_LoraStackInfoDisplay": Sage_LoraStackInfoDisplay
 }
 
 CLIP_CLASS_MAPPINGS = {
@@ -230,6 +232,7 @@ LOADER_NAME_MAPPINGS = {
 
 MODEL_NAME_MAPPINGS = {
     "Sage_ModelInfo": "Pull Model Info",
+    "Sage_ModelInfoDisplay": "Display Model Info",
     "Sage_LastLoraInfo": "Last Lora Info",
     "Sage_CollectKeywordsFromLoraStack": "Lora Stack -> Keywords",
     "Sage_CheckLorasForUpdates": "Check Loras for Updates",
@@ -245,7 +248,8 @@ LORA_NAME_MAPPINGS = {
     "Sage_SixLoraStack": "Lora Stack (x6)",
     "Sage_TripleQuickLoraStack": "Quick Lora Stack (x3)",
     "Sage_QuickSixLoraStack": "Quick Lora Stack (x6)",
-    "Sage_QuickNineLoraStack": "Quick Lora Stack (x9)"
+    "Sage_QuickNineLoraStack": "Quick Lora Stack (x9)",
+    "Sage_LoraStackInfoDisplay": "Display LoRA Stack Info"
 }
 
 CLIP_NAME_MAPPINGS = {
