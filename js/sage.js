@@ -62,9 +62,7 @@ function createDynamicInputSetup(prefix, type) {
                 count++;
               }
             }
-            const oldName = node_slot.name;
             node_slot.name = `${realbaseName}_${count}`;
-            console.log(`GENERIC CONNECT: Changed slot name from "${oldName}" to "${node_slot.name}"`);
           }
         }
       } else if (event === TypeSlotEvent.Disconnect) {
@@ -76,17 +74,13 @@ function createDynamicInputSetup(prefix, type) {
       const slot_tracker = {};
       for (const slot of this.inputs) {
         if (slot.link === null) {
-          console.log("GENERIC REMOVING disconnected input:", slot.name);
           this.removeInput(idx);
-          console.log("GENERIC REMOVED disconnected input:", slot.name);
           continue;
         }
         idx += 1;
         const name = slot.name.split("_")[0];
         slot_tracker[name] = (slot_tracker[name] || 0) + 1;
-        const oldName = slot.name;
         slot.name = `${name}_${slot_tracker[name]}`;
-        console.log(`GENERIC RENUMBER: Changed slot name from "${oldName}" to "${slot.name}"`);
       }
 
       // Ensure the last slot is a dynamic entry
@@ -140,9 +134,6 @@ function setupTextSubstitutionNode(nodeType, nodeData, app) {
     // Don't call the original onNodeCreated as it might be adding the static inputs incorrectly
     // const me = onNodeCreated?.apply(this);
     
-    // Debug: log input names on creation
-    console.log("TextSubstitution - Input names on creation:", this.inputs?.map(slot => slot?.name || "undefined") || "No inputs yet");
-    
     // Clean up any corrupted static inputs that have "_1" suffixes
     const staticInputs = ["prefix", "suffix", "text", "delimiter"];
     for (let i = this.inputs.length - 1; i >= 0; i--) {
@@ -153,9 +144,7 @@ function setupTextSubstitutionNode(nodeType, nodeData, app) {
       }
       // Remove any static inputs with "_1" suffixes (these are corrupted duplicates)
       if (staticInputs.some(name => slot.name === name + "_1")) {
-        console.log("Removing corrupted static input:", slot.name);
         this.removeInput(i);
-        console.log("REMOVED: Corrupted static input:", slot.name);
       }
     }
     
@@ -165,55 +154,11 @@ function setupTextSubstitutionNode(nodeType, nodeData, app) {
     const slot = this.inputs[this.inputs.length - 1];
     if (slot) slot.color_off = "#666";
     
-    // Debug: log input names after cleanup and adding dynamic input
-    console.log("TextSubstitution - Input names after cleanup and adding dynamic input:", this.inputs.map(slot => slot?.name || "undefined"));
-    
-    // Set up periodic cleanup to catch corruption that happens outside our handlers
-    this.cleanupTimer = setInterval(() => {
-      const staticInputs = ["prefix", "suffix", "text", "delimiter"];
-      let foundCorruption = false;
-      
-      for (let i = this.inputs.length - 1; i >= 0; i--) {
-        const slot = this.inputs[i];
-        if (!slot || !slot.name) continue;
-        
-        // Remove any static inputs with "_1" suffixes
-        if (staticInputs.some(name => slot.name === name + "_1")) {
-          console.log("TIMER CLEANUP: Removing corrupted static input:", slot.name);
-          this.removeInput(i);
-          console.log("TIMER REMOVED:", slot.name);
-          foundCorruption = true;
-        }
-      }
-      
-      if (foundCorruption) {
-        this?.graph?.setDirtyCanvas(true);
-      }
-    }, 100); // Check every 100ms
-    
     return;
   };
 
   const onConnectionsChange = nodeType.prototype.onConnectionsChange;
   nodeType.prototype.onConnectionsChange = function (slotType, slot_idx, event, link_info, node_slot) {
-    // Debug: log current input names before processing
-    console.log("Before processing - Input names:", this.inputs.map(slot => slot?.name || "undefined"));
-    
-    // AGGRESSIVE CLEANUP: Remove ALL corrupted static inputs with "_1" suffixes
-    // This needs to happen every time because something else is creating them
-    const staticInputs = ["prefix", "suffix", "text", "delimiter"];
-    for (let i = this.inputs.length - 1; i >= 0; i--) {
-      const slot = this.inputs[i];
-      if (!slot || !slot.name) continue;
-      
-      // Remove any static inputs with "_1" suffixes (these are corrupted duplicates)
-      if (staticInputs.some(name => slot.name === name + "_1")) {
-        console.log("AGGRESSIVE CLEANUP: Removing corrupted static input:", slot.name);
-        this.removeInput(i);
-        console.log("AGGRESSIVE REMOVED:", slot.name);
-      }
-    }
-    
     // Don't call the original onConnectionsChange as it might be renaming inputs
     // const me = onConnectionsChange?.apply(this, arguments);
     if (slotType !== TypeSlot.Input) return;
@@ -242,15 +187,10 @@ function setupTextSubstitutionNode(nodeType, nodeData, app) {
             }
             const oldName = node_slot.name;
             node_slot.name = `${realbaseName}_${count}`;
-            console.log(`CONNECT: Changed slot name from "${oldName}" to "${node_slot.name}"`);
-          } else {
-            console.log(`CONNECT: Preserving static input name "${node_slot.name}" (no rename)`);
           }
         }
       }
     }
-    // Note: We don't handle disconnect here anymore, let the cleanup logic handle it
-
     // Track each slot name so we can index the uniques, but preserve static inputs
     // Static inputs like "text", "delimiter", "prefix", "suffix" should never be renamed
     // First pass: remove disconnected dynamic inputs (iterate backwards to avoid index issues)
@@ -268,9 +208,7 @@ function setupTextSubstitutionNode(nodeType, nodeData, app) {
       // Remove dynamic str_ inputs that have no connection
       // But keep the base "str" input (it should be the empty one for new connections)
       if (slot.link === null && slot.name.startsWith(prefix + "_")) {
-        console.log("REMOVING disconnected dynamic input:", slot.name);
         this.removeInput(i);
-        console.log("REMOVED disconnected dynamic input:", slot.name);
       }
     }
     
@@ -285,9 +223,7 @@ function setupTextSubstitutionNode(nodeType, nodeData, app) {
       if (slot.link !== null && slot.name.startsWith(prefix + "_")) {
         const name = slot.name.split("_")[0]; // Should be "str"
         slot_tracker[name] = (slot_tracker[name] || 0) + 1;
-        const oldName = slot.name;
         slot.name = `${name}_${slot_tracker[name]}`;
-        console.log(`RENUMBER: Changed slot name from "${oldName}" to "${slot.name}"`);
       }
     }
 
@@ -305,19 +241,12 @@ function setupTextSubstitutionNode(nodeType, nodeData, app) {
     // Force the node to resize itself for the new/deleted connections
     this?.graph?.setDirtyCanvas(true);
     
-    // Debug: log final input names after processing
-    console.log("After processing - Input names:", this.inputs.map(slot => slot?.name || "undefined"));
-    
     return;
   };
 
   // Clean up timer when node is removed
   const onRemoved = nodeType.prototype.onRemoved;
   nodeType.prototype.onRemoved = function() {
-    if (this.cleanupTimer) {
-      clearInterval(this.cleanupTimer);
-      this.cleanupTimer = null;
-    }
     if (onRemoved) onRemoved.apply(this, arguments);
   };
 }
