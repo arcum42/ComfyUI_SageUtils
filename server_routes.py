@@ -183,6 +183,57 @@ try:
                     status=500
                 )
 
+        @routes.post('/sage_utils/read_notes_file')
+        async def read_notes_file(request):
+            """
+            Reads the content of a notes file by filename.
+            Expects JSON body with 'filename' field.
+            """
+            try:
+                from .utils.path_manager import path_manager
+                
+                # Parse request body
+                data = await request.json()
+                filename = data.get('filename')
+                
+                if not filename:
+                    return web.json_response(
+                        {"error": "Filename is required"}, 
+                        status=400
+                    )
+                
+                # Construct the full file path
+                notes_file_path = path_manager.notes_path / filename
+                
+                # Security check: ensure the path is within the notes directory
+                if not str(notes_file_path.resolve()).startswith(str(path_manager.notes_path.resolve())):
+                    return web.json_response(
+                        {"error": "Invalid file path"}, 
+                        status=400
+                    )
+                
+                # Check if file exists
+                if not notes_file_path.exists() or not notes_file_path.is_file():
+                    return web.json_response(
+                        {"error": f"File '{filename}' not found in notes directory"}, 
+                        status=404
+                    )
+                
+                # Read file content
+                with open(notes_file_path, 'r', encoding='utf-8') as file:
+                    content = file.read()
+                
+                return web.json_response({
+                    "filename": filename,
+                    "content": content
+                })
+                
+            except Exception as e:
+                return web.json_response(
+                    {"error": f"Failed to read notes file: {str(e)}"}, 
+                    status=500
+                )
+
         print("SageUtils custom routes loaded successfully!")
     else:
         print("Warning: PromptServer instance not available, skipping route registration")

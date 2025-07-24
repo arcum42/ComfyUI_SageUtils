@@ -269,6 +269,109 @@ function setupViewTextOrAnythingNode(nodeType, nodeData, app) {
   };
 }
 
+/**
+ * Sets up the ViewNotes node with file selection and preview functionality.
+ * @param {Object} nodeType - The node type prototype.
+ * @param {Object} nodeData - The node data.
+ * @param {Object} app - The app instance.
+ */
+function setupViewNotesNode(nodeType, nodeData, app) {
+  const onNodeCreated = nodeType.prototype.onNodeCreated;
+  nodeType.prototype.onNodeCreated = function () {
+    if (onNodeCreated) onNodeCreated.apply(this, []);
+    
+    // Find the filename widget and add callback for file selection
+    const filenameWidget = this.widgets?.find(w => w.name === "filename");
+    if (filenameWidget) {
+      const originalCallback = filenameWidget.callback;
+      filenameWidget.callback = async function(value) {
+        // Call original callback if it exists
+        if (originalCallback) originalCallback.call(this, value);
+        
+        // Load and display file content when filename changes
+        await loadFileContent(this.node, value);
+      }.bind({ node: this });
+    }
+    
+    // Load initial file content if a filename is already selected
+    setTimeout(() => {
+      const currentFilename = filenameWidget?.value;
+      if (currentFilename && currentFilename !== "No files found") {
+        loadFileContent(this, currentFilename);
+      }
+    }, 100); // Small delay to ensure node is fully initialized
+  };
+
+  /**
+   * Loads file content from the notes directory and updates the output widget.
+   * @param {Object} node - The node instance.
+   * @param {string} filename - The filename to load.
+   */
+  async function loadFileContent(node, filename) {
+    try {
+      if (filename === "No files found" || !filename) {
+        updateOutputWidget(node, { text: "No file selected or no files found in notes directory." });
+        return;
+      }
+
+      // Make API call to get file content
+      const response = await api.fetchApi('/sage_utils/read_notes_file', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ filename: filename })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        updateOutputWidget(node, { text: data.content || "File is empty." });
+      } else {
+        const errorData = await response.json().catch(() => ({ error: "Failed to parse error response" }));
+        updateOutputWidget(node, { text: `Error loading file: ${errorData.error || response.statusText}` });
+      }
+    } catch (error) {
+      console.error("Error loading notes file:", error);
+      updateOutputWidget(node, { text: `Error loading file: ${error.message}` });
+    }
+  }
+
+  /**
+   * Helper to find or create the output widget and update its value.
+   * @param {Object} node - The node instance.
+   * @param {Object} message - The message object containing text.
+   */
+  function updateOutputWidget(node, message) {
+    let w = node.widgets?.find((w) => w.name === "output");
+    if (!w) {
+      w = ComfyWidgets["STRING"](
+        node,
+        "output",
+        ["STRING", { multiline: true }],
+        app
+      ).widget;
+      w.inputEl.readOnly = true;
+      w.inputEl.style.opacity = 0.6;
+      w.inputEl.style.fontSize = "9pt";
+    }
+    // Defensive: handle message["text"] as array or string
+    if (Array.isArray(message["text"])) {
+      w.value = message["text"].join("");
+    } else if (typeof message["text"] === "string") {
+      w.value = message["text"];
+    } else {
+      w.value = String(message["text"] ?? "");
+    }
+  }
+
+  const onExecuted = nodeType.prototype.onExecuted;
+  nodeType.prototype.onExecuted = function (message) {
+    // Log output for debugging
+    console.log(message["text"]);
+    if (onExecuted) onExecuted.apply(this, arguments);
+    updateOutputWidget(this, message);
+    this.onResize?.(this.size);
+  };
+}
+
 app.registerExtension({
   name: "arcum42.sage.utils",
   async setup() {
@@ -284,8 +387,13 @@ app.registerExtension({
       setupTextSubstitutionNode(nodeType, nodeData, app);
       return;
     }
-    if (nodeData.name === _ID + "ViewAnything" || nodeData.name === _ID + "ViewNotes") {
+    if (nodeData.name === _ID + "ViewAnything") {
       setupViewTextOrAnythingNode(nodeType, nodeData, app);
+      return;
+    }
+    if (nodeData.name === _ID + "ViewNotes") {
+      setupViewNotesNode(nodeType, nodeData, app);
+      return;
     }
   },
 });
