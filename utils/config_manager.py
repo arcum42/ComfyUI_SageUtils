@@ -34,12 +34,30 @@ class ConfigManager:
             print(f"Saved {self.config_name} to {target_file}.")
         return success
 
+# Traditional config managers for styles and prompts
 styles_manager = ConfigManager("sage_styles")
 sage_styles = styles_manager.load()
 
 prompts_manager = ConfigManager("llm_prompts")
 llm_prompts = prompts_manager.load()
 
-settings_manager = ConfigManager("config")
-sage_config = settings_manager.load()
+# Enhanced settings management using the new settings system
+# This maintains backwards compatibility while providing enhanced functionality
+try:
+    from .settings import get_settings, get_sage_config
+    # Use the new settings system
+    _enhanced_settings = get_settings()
+    settings_manager = _enhanced_settings._config_manager  # Access the underlying ConfigManager
+    sage_config = get_sage_config()  # Get settings in the old format for backwards compatibility
+    
+    # Update the settings_manager.data to point to the enhanced settings
+    settings_manager.data = sage_config
+    
+    print("SageUtils: Enhanced settings system loaded successfully.")
+except ImportError as e:
+    print(f"SageUtils: Warning - Could not load enhanced settings system: {e}")
+    print("SageUtils: Falling back to basic settings management.")
+    # Fallback to basic config manager
+    settings_manager = ConfigManager("config")
+    sage_config = settings_manager.load()
 

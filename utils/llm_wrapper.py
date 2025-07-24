@@ -358,20 +358,36 @@ def lmstudio_generate_vision_refine(model: str, prompt: str, images=None, option
 
 def init_ollama():
     """Initialize Ollama if available. Print config values for Ollama."""
-    from . import config_manager
     global ollama_client
-    config = config_manager.settings_manager.data or {}
+    
     if not OLLAMA_AVAILABLE or ollama is None:
         logging.info("Ollama is not available; skipping Ollama initialization.")
         return
+    
     try:
-        use_custom_url = config.get('ollama_use_custom_url', False)
-        custom_url = config.get('ollama_custom_url', '')
+        # Try to use new settings system
+        try:
+            from .settings import get_setting, is_feature_enabled
+            
+            if not is_feature_enabled('enable_ollama'):
+                logging.info("Ollama is disabled in settings; skipping initialization.")
+                return
+            
+            use_custom_url = get_setting('ollama_use_custom_url', False)
+            custom_url = get_setting('ollama_custom_url', '')
+        except ImportError:
+            # Fallback to old config system
+            from . import config_manager
+            config = config_manager.settings_manager.data or {}
+            use_custom_url = config.get('ollama_use_custom_url', False)
+            custom_url = config.get('ollama_custom_url', '')
+        
         if use_custom_url and custom_url:
             ollama_client = ollama.Client(host=custom_url)
             logging.info(f"Ollama client initialized with custom host: {custom_url}")
         else:
             ollama_client = ollama.Client()
+            logging.info("Ollama client initialized with default settings.")
     except Exception as e:
         ollama_client = None
         logging.error(f"Failed to initialize Ollama client: {e}")
@@ -379,19 +395,36 @@ def init_ollama():
 
 def init_lmstudio():
     """Initialize LM Studio if available. Print config values for LM Studio."""
-    from . import config_manager
-    config = config_manager.settings_manager.data or {}
     if not LMSTUDIO_AVAILABLE or lms is None:
         logging.info("LM Studio is not available; skipping LM Studio initialization.")
         return
+    
     try:
-        use_custom_url = config.get('lmstudio_use_custom_url', False)
-        custom_url = config.get('lmstudio_custom_url', '')
+        # Try to use new settings system
+        try:
+            from .settings import get_setting, is_feature_enabled
+            
+            if not is_feature_enabled('enable_lmstudio'):
+                logging.info("LM Studio is disabled in settings; skipping initialization.")
+                return
+            
+            use_custom_url = get_setting('lmstudio_use_custom_url', False)
+            custom_url = get_setting('lmstudio_custom_url', '')
+        except ImportError:
+            # Fallback to old config system
+            from . import config_manager
+            config = config_manager.settings_manager.data or {}
+            use_custom_url = config.get('lmstudio_use_custom_url', False)
+            custom_url = config.get('lmstudio_custom_url', '')
+        
         if use_custom_url and custom_url:
             lm_client = lms.get_default_client(custom_url)
             logging.info(f"LM Studio client configured with custom URL: {custom_url}")
+        else:
+            logging.info("LM Studio using default configuration.")
     except Exception as e:
-        logging.error(f"Failed to configure LM Studio client: {e}")
+        logging.error(f"Failed to configure LM Studio: {e}")
+
 
 def init_llm():
     """Initialize LLM clients."""

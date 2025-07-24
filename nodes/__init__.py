@@ -7,6 +7,7 @@ from .metadata import *
 from .model import *
 from .sampler import *
 from .selector import *
+from .settings import *
 from .text import *
 from .util import *
 from .llm import *
