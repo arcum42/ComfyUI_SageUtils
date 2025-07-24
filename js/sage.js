@@ -310,7 +310,7 @@ function setupViewNotesNode(nodeType, nodeData, app) {
   async function loadFileContent(node, filename) {
     try {
       if (filename === "No files found" || !filename) {
-        updateOutputWidget(node, { text: "No file selected or no files found in notes directory." });
+        updateOutputWidget(node, { text: "No file selected or no files found in notes directory." }, filename);
         return;
       }
 
@@ -323,14 +323,14 @@ function setupViewNotesNode(nodeType, nodeData, app) {
 
       if (response.ok) {
         const data = await response.json();
-        updateOutputWidget(node, { text: data.content || "File is empty." });
+        updateOutputWidget(node, { text: data.content || "File is empty." }, filename);
       } else {
         const errorData = await response.json().catch(() => ({ error: "Failed to parse error response" }));
-        updateOutputWidget(node, { text: `Error loading file: ${errorData.error || response.statusText}` });
+        updateOutputWidget(node, { text: `Error loading file: ${errorData.error || response.statusText}` }, filename);
       }
     } catch (error) {
       console.error("Error loading notes file:", error);
-      updateOutputWidget(node, { text: `Error loading file: ${error.message}` });
+      updateOutputWidget(node, { text: `Error loading file: ${error.message}` }, filename);
     }
   }
 
@@ -338,9 +338,13 @@ function setupViewNotesNode(nodeType, nodeData, app) {
    * Helper to find or create the output widget and update its value.
    * @param {Object} node - The node instance.
    * @param {Object} message - The message object containing text.
+   * @param {string} filename - The filename (used to determine if markdown rendering is needed).
    */
-  function updateOutputWidget(node, message) {
+  function updateOutputWidget(node, message, filename) {
+    const isMarkdown = filename && filename.toLowerCase().endsWith('.md');
     let w = node.widgets?.find((w) => w.name === "output");
+    
+    // Create widget if it doesn't exist
     if (!w) {
       w = ComfyWidgets["STRING"](
         node,
@@ -352,14 +356,164 @@ function setupViewNotesNode(nodeType, nodeData, app) {
       w.inputEl.style.opacity = 0.6;
       w.inputEl.style.fontSize = "9pt";
     }
-    // Defensive: handle message["text"] as array or string
-    if (Array.isArray(message["text"])) {
-      w.value = message["text"].join("");
-    } else if (typeof message["text"] === "string") {
-      w.value = message["text"];
+    
+    // Update content
+    const content = Array.isArray(message["text"]) 
+      ? message["text"].join("") 
+      : (typeof message["text"] === "string" ? message["text"] : String(message["text"] ?? ""));
+    
+    if (isMarkdown) {
+      // For markdown files, create a div overlay with rendered content
+      setupMarkdownDisplay(w, content);
     } else {
-      w.value = String(message["text"] ?? "");
+      // For regular text files, just set the value
+      w.value = content;
+      // Remove any markdown overlay if it exists
+      if (w.markdownOverlay) {
+        w.markdownOverlay.remove();
+        w.markdownOverlay = null;
+      }
     }
+  }
+
+  /**
+   * Sets up markdown display overlay for a text widget.
+   * @param {Object} widget - The text widget.
+   * @param {string} content - The markdown content to render.
+   */
+  function setupMarkdownDisplay(widget, content) {
+    // Hide the original textarea
+    widget.inputEl.style.display = 'none';
+    
+    // Create or update markdown overlay
+    if (!widget.markdownOverlay) {
+      widget.markdownOverlay = document.createElement('div');
+      widget.markdownOverlay.className = 'markdown-content';
+      widget.markdownOverlay.style.cssText = `
+        background: #1e1e1e;
+        color: #d4d4d4;
+        padding: 12px;
+        border: 1px solid #3e3e3e;
+        border-radius: 6px;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        max-height: 400px;
+        overflow-y: auto;
+        font-size: 13px;
+        line-height: 1.5;
+        box-sizing: border-box;
+        width: 100%;
+        min-height: 100px;
+      `;
+      
+      // Insert after the hidden textarea
+      widget.inputEl.parentNode.insertBefore(widget.markdownOverlay, widget.inputEl.nextSibling);
+      
+      // Add styles if not already added
+      if (!document.querySelector('#markdown-styles')) {
+        const style = document.createElement('style');
+        style.id = 'markdown-styles';
+        style.textContent = `
+          .markdown-content h1, .markdown-content h2, .markdown-content h3,
+          .markdown-content h4, .markdown-content h5, .markdown-content h6 {
+            color: #569cd6;
+            margin-top: 16px;
+            margin-bottom: 8px;
+            font-weight: 600;
+          }
+          .markdown-content h1 { font-size: 1.5em; border-bottom: 1px solid #3e3e3e; padding-bottom: 4px; }
+          .markdown-content h2 { font-size: 1.3em; }
+          .markdown-content h3 { font-size: 1.1em; }
+          .markdown-content p { margin: 8px 0; }
+          .markdown-content ul, .markdown-content ol { margin: 8px 0; padding-left: 20px; }
+          .markdown-content li { margin: 2px 0; }
+          .markdown-content code {
+            background: #2d2d2d;
+            color: #ce9178;
+            padding: 2px 4px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+          }
+          .markdown-content pre {
+            background: #2d2d2d;
+            color: #d4d4d4;
+            padding: 12px;
+            border-radius: 6px;
+            overflow-x: auto;
+            margin: 12px 0;
+          }
+          .markdown-content pre code {
+            background: none;
+            padding: 0;
+            color: inherit;
+          }
+          .markdown-content blockquote {
+            border-left: 4px solid #569cd6;
+            margin: 12px 0;
+            padding-left: 12px;
+            color: #b4b4b4;
+            font-style: italic;
+          }
+          .markdown-content a {
+            color: #569cd6;
+            text-decoration: none;
+          }
+          .markdown-content a:hover {
+            text-decoration: underline;
+          }
+          .markdown-content table {
+            border-collapse: collapse;
+            margin: 12px 0;
+            width: 100%;
+          }
+          .markdown-content th, .markdown-content td {
+            border: 1px solid #3e3e3e;
+            padding: 6px 12px;
+            text-align: left;
+          }
+          .markdown-content th {
+            background: #2d2d2d;
+            font-weight: 600;
+          }
+        `;
+        document.head.appendChild(style);
+      }
+    }
+    
+    // Update the overlay content
+    widget.markdownOverlay.innerHTML = renderMarkdown(content);
+    // Keep the original value for the hidden textarea
+    widget.value = content;
+  }
+
+  /**
+   * Simple markdown renderer (basic implementation).
+   * For production, consider using a library like 'marked' or 'markdown-it'.
+   * @param {string} text - The markdown text to render.
+   * @returns {string} - The rendered HTML.
+   */
+  function renderMarkdown(text) {
+    if (!text) return '';
+    
+    return text
+      // Headers
+      .replace(/^### (.*$)/gim, '<h3>$1</h3>')
+      .replace(/^## (.*$)/gim, '<h2>$1</h2>')
+      .replace(/^# (.*$)/gim, '<h1>$1</h1>')
+      // Bold
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      .replace(/__(.*?)__/g, '<strong>$1</strong>')
+      // Italic
+      .replace(/\*(.*?)\*/g, '<em>$1</em>')
+      .replace(/_(.*?)_/g, '<em>$1</em>')
+      // Code blocks
+      .replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>')
+      // Inline code
+      .replace(/`([^`]+)`/g, '<code>$1</code>')
+      // Links
+      .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>')
+      // Line breaks
+      .replace(/\n/g, '<br>');
   }
 
   const onExecuted = nodeType.prototype.onExecuted;
@@ -367,7 +521,7 @@ function setupViewNotesNode(nodeType, nodeData, app) {
     // Log output for debugging
     console.log(message["text"]);
     if (onExecuted) onExecuted.apply(this, arguments);
-    updateOutputWidget(this, message);
+    updateOutputWidget(this, message, this.widgets.find(w => w.name === 'filename')?.value);
     this.onResize?.(this.size);
   };
 }
