@@ -333,6 +333,8 @@ class Sage_TextSubstitution(ComfyNodeABC):
         for key, value in kwargs.items():
             if key.startswith("str_"):
                 sub_dict[key] = value or ""
+            else:
+                print(f"Warning: Key '{key}' does not start with 'str_', skipping substitution.")
         
         # Create a dynamic Template class with the specified delimiter
         # We need to create this dynamically to avoid class-level variable conflicts
@@ -341,6 +343,8 @@ class Sage_TextSubstitution(ComfyNodeABC):
                 delimiter = delim
             return CustomTemplate
         
+        print(f"Prefix: '{prefix}', Suffix: '{suffix}', Delimiter: '{delimiter}', Substitutions: {sub_dict}")
+        
         # Get the custom Template class with our delimiter
         TemplateClass = create_template_class(delimiter)
         
@@ -348,6 +352,22 @@ class Sage_TextSubstitution(ComfyNodeABC):
         template = TemplateClass(text)
         try:
             result = template.substitute(sub_dict)
+        except ValueError as e:
+            # Handle invalid placeholder errors - likely due to delimiter conflicts
+            print(f"Template error with delimiter '{delimiter}': {e}")
+            print(f"Text content: {repr(text)}")
+            # Fall back to safe_substitute which is more forgiving
+            try:
+                result = template.safe_substitute(sub_dict)
+                print(f"Used safe_substitute as fallback")
+            except Exception as fallback_error:
+                print(f"Even safe_substitute failed: {fallback_error}")
+                # Last resort: manual string replacement
+                result = text
+                for key, value in sub_dict.items():
+                    placeholder = f"{delimiter}{key}"
+                    result = result.replace(placeholder, str(value))
+                print(f"Used manual string replacement as final fallback")
         except KeyError as e:
             # If a placeholder is missing, use safe_substitute to leave it as-is
             result = template.safe_substitute(sub_dict)

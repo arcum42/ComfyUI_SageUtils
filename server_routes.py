@@ -183,6 +183,132 @@ try:
                     status=500
                 )
 
+        @routes.get('/sage_utils/read_notes_file')
+        async def read_notes_file_get(request):
+            """
+            Serves notes files (including images) via GET request.
+            Query parameters: filename (required), type (optional: 'image' or 'text')
+            """
+            try:
+                from .utils.path_manager import path_manager
+                import mimetypes
+                
+                # Get filename from query parameters
+                filename = request.query.get('filename')
+                file_type = request.query.get('type', 'text')
+                
+                if not filename:
+                    return web.json_response(
+                        {"error": "Filename is required"}, 
+                        status=400
+                    )
+                
+                # Construct the full file path
+                notes_file_path = path_manager.notes_path / filename
+                
+                # Security check: ensure the path is within the notes directory
+                if not str(notes_file_path.resolve()).startswith(str(path_manager.notes_path.resolve())):
+                    return web.json_response(
+                        {"error": "Invalid file path"}, 
+                        status=400
+                    )
+                
+                # Check if file exists
+                if not notes_file_path.exists() or not notes_file_path.is_file():
+                    return web.json_response(
+                        {"error": f"File '{filename}' not found in notes directory"}, 
+                        status=404
+                    )
+                
+                # For images, serve as binary data with appropriate content type
+                if file_type == 'image':
+                    # Guess the MIME type based on file extension
+                    content_type, _ = mimetypes.guess_type(str(notes_file_path))
+                    if not content_type or not content_type.startswith('image/'):
+                        # Default to a common image type if we can't determine it
+                        content_type = 'image/jpeg'
+                    
+                    # Read and serve the image file
+                    with open(notes_file_path, 'rb') as file:
+                        image_data = file.read()
+                    
+                    return web.Response(
+                        body=image_data,
+                        content_type=content_type,
+                        headers={
+                            'Cache-Control': 'max-age=3600',  # Cache for 1 hour
+                            'Content-Disposition': f'inline; filename="{filename}"'
+                        }
+                    )
+                elif file_type == 'video':
+                    # Guess the MIME type based on file extension
+                    content_type, _ = mimetypes.guess_type(str(notes_file_path))
+                    if not content_type or not content_type.startswith('video/'):
+                        # Default to MP4 if we can't determine it
+                        content_type = 'video/mp4'
+                    
+                    # Get file size for range requests
+                    file_size = notes_file_path.stat().st_size
+                    
+                    # Handle range requests for video streaming
+                    range_header = request.headers.get('Range')
+                    if range_header:
+                        # Parse range header
+                        range_match = range_header.replace('bytes=', '').split('-')
+                        start = int(range_match[0]) if range_match[0] else 0
+                        end = int(range_match[1]) if range_match[1] else file_size - 1
+                        
+                        # Ensure end doesn't exceed file size
+                        end = min(end, file_size - 1)
+                        content_length = end - start + 1
+                        
+                        # Read the requested range
+                        with open(notes_file_path, 'rb') as file:
+                            file.seek(start)
+                            video_data = file.read(content_length)
+                        
+                        return web.Response(
+                            body=video_data,
+                            status=206,  # Partial Content
+                            content_type=content_type,
+                            headers={
+                                'Content-Range': f'bytes {start}-{end}/{file_size}',
+                                'Accept-Ranges': 'bytes',
+                                'Content-Length': str(content_length),
+                                'Cache-Control': 'max-age=3600'
+                            }
+                        )
+                    else:
+                        # Serve entire video file
+                        with open(notes_file_path, 'rb') as file:
+                            video_data = file.read()
+                        
+                        return web.Response(
+                            body=video_data,
+                            content_type=content_type,
+                            headers={
+                                'Accept-Ranges': 'bytes',
+                                'Content-Length': str(file_size),
+                                'Cache-Control': 'max-age=3600',
+                                'Content-Disposition': f'inline; filename="{filename}"'
+                            }
+                        )
+                else:
+                    # For text files, return JSON response
+                    with open(notes_file_path, 'r', encoding='utf-8') as file:
+                        content = file.read()
+                    
+                    return web.json_response({
+                        "filename": filename,
+                        "content": content
+                    })
+                
+            except Exception as e:
+                return web.json_response(
+                    {"error": f"Failed to read notes file: {str(e)}"}, 
+                    status=500
+                )
+
         @routes.post('/sage_utils/read_notes_file')
         async def read_notes_file(request):
             """

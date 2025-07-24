@@ -62,7 +62,9 @@ function createDynamicInputSetup(prefix, type) {
                 count++;
               }
             }
+            const oldName = node_slot.name;
             node_slot.name = `${realbaseName}_${count}`;
+            console.log(`GENERIC CONNECT: Changed slot name from "${oldName}" to "${node_slot.name}"`);
           }
         }
       } else if (event === TypeSlotEvent.Disconnect) {
@@ -74,13 +76,17 @@ function createDynamicInputSetup(prefix, type) {
       const slot_tracker = {};
       for (const slot of this.inputs) {
         if (slot.link === null) {
+          console.log("GENERIC REMOVING disconnected input:", slot.name);
           this.removeInput(idx);
+          console.log("GENERIC REMOVED disconnected input:", slot.name);
           continue;
         }
         idx += 1;
         const name = slot.name.split("_")[0];
         slot_tracker[name] = (slot_tracker[name] || 0) + 1;
+        const oldName = slot.name;
         slot.name = `${name}_${slot_tracker[name]}`;
+        console.log(`GENERIC RENUMBER: Changed slot name from "${oldName}" to "${slot.name}"`);
       }
 
       // Ensure the last slot is a dynamic entry
@@ -131,19 +137,86 @@ function setupTextSubstitutionNode(nodeType, nodeData, app) {
   
   const onNodeCreated = nodeType.prototype.onNodeCreated;
   nodeType.prototype.onNodeCreated = async function () {
-    const me = onNodeCreated?.apply(this);
+    // Don't call the original onNodeCreated as it might be adding the static inputs incorrectly
+    // const me = onNodeCreated?.apply(this);
+    
+    // Debug: log input names on creation
+    console.log("TextSubstitution - Input names on creation:", this.inputs?.map(slot => slot?.name || "undefined") || "No inputs yet");
+    
+    // Clean up any corrupted static inputs that have "_1" suffixes
+    const staticInputs = ["prefix", "suffix", "text", "delimiter"];
+    for (let i = this.inputs.length - 1; i >= 0; i--) {
+      const slot = this.inputs[i];
+      // Skip if slot is undefined or doesn't have a name
+      if (!slot || !slot.name) {
+        continue;
+      }
+      // Remove any static inputs with "_1" suffixes (these are corrupted duplicates)
+      if (staticInputs.some(name => slot.name === name + "_1")) {
+        console.log("Removing corrupted static input:", slot.name);
+        this.removeInput(i);
+        console.log("REMOVED: Corrupted static input:", slot.name);
+      }
+    }
+    
     // Add a new dynamic input slot
     this.addInput(prefix, type);
     // Set appearance for the new slot
     const slot = this.inputs[this.inputs.length - 1];
     if (slot) slot.color_off = "#666";
-    return me;
+    
+    // Debug: log input names after cleanup and adding dynamic input
+    console.log("TextSubstitution - Input names after cleanup and adding dynamic input:", this.inputs.map(slot => slot?.name || "undefined"));
+    
+    // Set up periodic cleanup to catch corruption that happens outside our handlers
+    this.cleanupTimer = setInterval(() => {
+      const staticInputs = ["prefix", "suffix", "text", "delimiter"];
+      let foundCorruption = false;
+      
+      for (let i = this.inputs.length - 1; i >= 0; i--) {
+        const slot = this.inputs[i];
+        if (!slot || !slot.name) continue;
+        
+        // Remove any static inputs with "_1" suffixes
+        if (staticInputs.some(name => slot.name === name + "_1")) {
+          console.log("TIMER CLEANUP: Removing corrupted static input:", slot.name);
+          this.removeInput(i);
+          console.log("TIMER REMOVED:", slot.name);
+          foundCorruption = true;
+        }
+      }
+      
+      if (foundCorruption) {
+        this?.graph?.setDirtyCanvas(true);
+      }
+    }, 100); // Check every 100ms
+    
+    return;
   };
 
   const onConnectionsChange = nodeType.prototype.onConnectionsChange;
   nodeType.prototype.onConnectionsChange = function (slotType, slot_idx, event, link_info, node_slot) {
-    const me = onConnectionsChange?.apply(this, arguments);
-    if (slotType !== TypeSlot.Input) return me;
+    // Debug: log current input names before processing
+    console.log("Before processing - Input names:", this.inputs.map(slot => slot?.name || "undefined"));
+    
+    // AGGRESSIVE CLEANUP: Remove ALL corrupted static inputs with "_1" suffixes
+    // This needs to happen every time because something else is creating them
+    const staticInputs = ["prefix", "suffix", "text", "delimiter"];
+    for (let i = this.inputs.length - 1; i >= 0; i--) {
+      const slot = this.inputs[i];
+      if (!slot || !slot.name) continue;
+      
+      // Remove any static inputs with "_1" suffixes (these are corrupted duplicates)
+      if (staticInputs.some(name => slot.name === name + "_1")) {
+        console.log("AGGRESSIVE CLEANUP: Removing corrupted static input:", slot.name);
+        this.removeInput(i);
+        console.log("AGGRESSIVE REMOVED:", slot.name);
+      }
+    }
+    
+    // Don't call the original onConnectionsChange as it might be renaming inputs
+    // const me = onConnectionsChange?.apply(this, arguments);
+    if (slotType !== TypeSlot.Input) return;
 
     if (link_info && event === TypeSlotEvent.Connect) {
       // Get the parent (left side node) from the link
@@ -154,26 +227,40 @@ function setupTextSubstitutionNode(nodeType, nodeData, app) {
         const parent_link = fromNode.outputs[link_info.origin_slot];
         if (parent_link) {
           node_slot.type = parent_link.type;
-          // Set the slot name with the correct count suffix immediately
-          const baseName = prefix;
-          const realbaseName = node_slot.name.split("_")[0] || baseName;
-          let count = 1;
-          for (const slot of this.inputs) {
-            if (slot !== node_slot && slot.name.startsWith(baseName + "_")) {
-              count++;
+          
+          // ONLY rename dynamic "str" inputs, NOT static inputs like prefix, suffix, text, delimiter
+          const staticInputs = ["prefix", "suffix", "text", "delimiter"];
+          if (!staticInputs.includes(node_slot.name)) {
+            // Set the slot name with the correct count suffix immediately for dynamic inputs only
+            const baseName = prefix;
+            const realbaseName = node_slot.name.split("_")[0] || baseName;
+            let count = 1;
+            for (const slot of this.inputs) {
+              if (slot !== node_slot && slot.name.startsWith(baseName + "_")) {
+                count++;
+              }
             }
+            const oldName = node_slot.name;
+            node_slot.name = `${realbaseName}_${count}`;
+            console.log(`CONNECT: Changed slot name from "${oldName}" to "${node_slot.name}"`);
+          } else {
+            console.log(`CONNECT: Preserving static input name "${node_slot.name}" (no rename)`);
           }
-          node_slot.name = `${realbaseName}_${count}`;
         }
       }
     }
     // Note: We don't handle disconnect here anymore, let the cleanup logic handle it
 
     // Track each slot name so we can index the uniques, but preserve static inputs
+    // Static inputs like "text", "delimiter", "prefix", "suffix" should never be renamed
     // First pass: remove disconnected dynamic inputs (iterate backwards to avoid index issues)
     for (let i = this.inputs.length - 1; i >= 0; i--) {
       const slot = this.inputs[i];
-      // Skip static inputs (anything that's not "str" or "str_X")
+      // Skip if slot is undefined or doesn't have a name
+      if (!slot || !slot.name) {
+        continue;
+      }
+      // Only process dynamic str inputs (prefix="str") - skip all static inputs
       if (slot.name !== prefix && !slot.name.startsWith(prefix + "_")) {
         continue;
       }
@@ -181,23 +268,26 @@ function setupTextSubstitutionNode(nodeType, nodeData, app) {
       // Remove dynamic str_ inputs that have no connection
       // But keep the base "str" input (it should be the empty one for new connections)
       if (slot.link === null && slot.name.startsWith(prefix + "_")) {
+        console.log("REMOVING disconnected dynamic input:", slot.name);
         this.removeInput(i);
+        console.log("REMOVED disconnected dynamic input:", slot.name);
       }
     }
     
-    // Second pass: renumber remaining dynamic inputs (connected ones and the base "str")
+    // Second pass: renumber remaining connected dynamic inputs sequentially
     const slot_tracker = {};
     for (const slot of this.inputs) {
-      // Skip static inputs (anything that's not "str" or "str_X")
-      if (slot.name !== prefix && !slot.name.startsWith(prefix + "_")) {
+      // Skip if slot is undefined or doesn't have a name
+      if (!slot || !slot.name) {
         continue;
       }
-      
-      // Only rename connected dynamic str_ inputs (not the base "str" input)
+      // Only process dynamic str inputs that are connected and have the suffix pattern
       if (slot.link !== null && slot.name.startsWith(prefix + "_")) {
-        const name = slot.name.split("_")[0];
+        const name = slot.name.split("_")[0]; // Should be "str"
         slot_tracker[name] = (slot_tracker[name] || 0) + 1;
+        const oldName = slot.name;
         slot.name = `${name}_${slot_tracker[name]}`;
+        console.log(`RENUMBER: Changed slot name from "${oldName}" to "${slot.name}"`);
       }
     }
 
@@ -214,7 +304,21 @@ function setupTextSubstitutionNode(nodeType, nodeData, app) {
 
     // Force the node to resize itself for the new/deleted connections
     this?.graph?.setDirtyCanvas(true);
-    return me;
+    
+    // Debug: log final input names after processing
+    console.log("After processing - Input names:", this.inputs.map(slot => slot?.name || "undefined"));
+    
+    return;
+  };
+
+  // Clean up timer when node is removed
+  const onRemoved = nodeType.prototype.onRemoved;
+  nodeType.prototype.onRemoved = function() {
+    if (this.cleanupTimer) {
+      clearInterval(this.cleanupTimer);
+      this.cleanupTimer = null;
+    }
+    if (onRemoved) onRemoved.apply(this, arguments);
   };
 }
 
@@ -342,19 +446,42 @@ function setupViewNotesNode(nodeType, nodeData, app) {
    */
   function updateOutputWidget(node, message, filename) {
     const isMarkdown = filename && filename.toLowerCase().endsWith('.md');
+    const isImage = filename && /\.(jpg|jpeg|png|gif|bmp|webp|svg)$/i.test(filename);
+    // Separate browser-supported and unsupported video formats
+    const isSupportedVideo = filename && /\.(mp4|webm|ogg|m4v)$/i.test(filename);
+    const isUnsupportedVideo = filename && /\.(avi|mov|wmv|flv|mkv)$/i.test(filename);
+    const isVideo = isSupportedVideo || isUnsupportedVideo;
     let w = node.widgets?.find((w) => w.name === "output");
     
     // Create widget if it doesn't exist
     if (!w) {
-      w = ComfyWidgets["STRING"](
-        node,
-        "output",
-        ["STRING", { multiline: true }],
-        app
-      ).widget;
-      w.inputEl.readOnly = true;
-      w.inputEl.style.opacity = 0.6;
-      w.inputEl.style.fontSize = "9pt";
+      // Try to use MARKDOWN widget for markdown files if available
+      if (isMarkdown && ComfyWidgets["MARKDOWN"]) {
+        try {
+          w = ComfyWidgets["MARKDOWN"](
+            node,
+            "output",
+            ["STRING", { multiline: true }],
+            app
+          ).widget;
+        } catch (error) {
+          console.log("MARKDOWN widget not available, falling back to STRING:", error);
+          w = null;
+        }
+      }
+      
+      // Fallback to STRING widget if MARKDOWN not available or creation failed
+      if (!w) {
+        w = ComfyWidgets["STRING"](
+          node,
+          "output",
+          ["STRING", { multiline: true }],
+          app
+        ).widget;
+        w.inputEl.readOnly = true;
+        w.inputEl.style.opacity = 0.6;
+        w.inputEl.style.fontSize = "9pt";
+      }
     }
     
     // Update content
@@ -362,133 +489,392 @@ function setupViewNotesNode(nodeType, nodeData, app) {
       ? message["text"].join("") 
       : (typeof message["text"] === "string" ? message["text"] : String(message["text"] ?? ""));
     
-    if (isMarkdown) {
-      // For markdown files, create a div overlay with rendered content
+    // If we have a MARKDOWN widget, just set the value directly
+    if (w.type === "MARKDOWN") {
+      w.value = content;
+    } else if (isVideo) {
+      // For video files, display the video player or show format info
+      setupVideoDisplay(w, filename, isSupportedVideo);
+    } else if (isImage) {
+      // For image files, display the image
+      setupImageDisplay(w, filename);
+    } else if (isMarkdown) {
+      // For STRING widgets displaying markdown, use our custom renderer
       setupMarkdownDisplay(w, content);
     } else {
-      // For regular text files, just set the value
+      // For regular text files, just set the value and clean up overlays
       w.value = content;
-      // Remove any markdown overlay if it exists
+      
+      // Remove any overlays if they exist
       if (w.markdownOverlay) {
         w.markdownOverlay.remove();
         w.markdownOverlay = null;
+      }
+      if (w.imageOverlay) {
+        w.imageOverlay.remove();
+        w.imageOverlay = null;
+      }
+      if (w.videoOverlay) {
+        w.videoOverlay.remove();
+        w.videoOverlay = null;
+      }
+      
+      // Restore original textarea styling and show it
+      if (w.inputEl) {
+        w.inputEl.style.opacity = '';
+        if (w.inputEl._originalStyle) {
+          w.inputEl.style.cssText = w.inputEl._originalStyle;
+          w.inputEl.readOnly = w.inputEl._originalReadOnly || false;
+          w.inputEl.className = '';
+        }
       }
     }
   }
 
   /**
-   * Sets up markdown display overlay for a text widget.
+   * Sets up proper HTML markdown display for a text widget.
    * @param {Object} widget - The text widget.
    * @param {string} content - The markdown content to render.
    */
   function setupMarkdownDisplay(widget, content) {
-    // Hide the original textarea
-    widget.inputEl.style.display = 'none';
+    // Set the textarea value for fallback
+    widget.value = content;
     
-    // Create or update markdown overlay
-    if (!widget.markdownOverlay) {
-      widget.markdownOverlay = document.createElement('div');
-      widget.markdownOverlay.className = 'markdown-content';
-      widget.markdownOverlay.style.cssText = `
+    if (widget.inputEl && widget.inputEl.parentElement) {
+      // Remove any existing markdown overlay
+      const existingOverlay = widget.inputEl.parentElement.querySelector('.markdown-overlay');
+      if (existingOverlay) {
+        existingOverlay.remove();
+      }
+      
+      // Create markdown display overlay
+      const markdownDiv = document.createElement('div');
+      markdownDiv.className = 'markdown-overlay';
+      markdownDiv.innerHTML = renderMarkdown(content);
+      
+      // Style the overlay to match the textarea exactly
+      markdownDiv.style.cssText = `
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
         background: #1e1e1e;
         color: #d4d4d4;
-        padding: 12px;
+        padding: 8px 12px;
         border: 1px solid #3e3e3e;
         border-radius: 6px;
         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-        max-height: 400px;
-        overflow-y: auto;
         font-size: 13px;
         line-height: 1.5;
+        overflow-y: auto;
+        overflow-x: hidden;
+        word-wrap: break-word;
         box-sizing: border-box;
-        width: 100%;
-        min-height: 100px;
+        z-index: 1;
+        pointer-events: auto;
       `;
       
-      // Insert after the hidden textarea
-      widget.inputEl.parentNode.insertBefore(widget.markdownOverlay, widget.inputEl.nextSibling);
+      // Hide the textarea
+      widget.inputEl.style.opacity = '0';
       
-      // Add styles if not already added
-      if (!document.querySelector('#markdown-styles')) {
+      // Make sure the parent has position relative for absolute positioning
+      const parent = widget.inputEl.parentElement;
+      if (getComputedStyle(parent).position === 'static') {
+        parent.style.position = 'relative';
+      }
+      
+      // Insert the overlay
+      parent.appendChild(markdownDiv);
+      
+      // Store reference for cleanup
+      widget.markdownOverlay = markdownDiv;
+      
+      // Add styles for markdown elements
+      if (!document.querySelector('#sage-markdown-styles')) {
         const style = document.createElement('style');
-        style.id = 'markdown-styles';
+        style.id = 'sage-markdown-styles';
         style.textContent = `
-          .markdown-content h1, .markdown-content h2, .markdown-content h3,
-          .markdown-content h4, .markdown-content h5, .markdown-content h6 {
+          .markdown-overlay h1, .markdown-overlay h2, .markdown-overlay h3,
+          .markdown-overlay h4, .markdown-overlay h5, .markdown-overlay h6 {
             color: #569cd6;
-            margin-top: 16px;
-            margin-bottom: 8px;
+            margin: 12px 0 6px 0;
             font-weight: 600;
           }
-          .markdown-content h1 { font-size: 1.5em; border-bottom: 1px solid #3e3e3e; padding-bottom: 4px; }
-          .markdown-content h2 { font-size: 1.3em; }
-          .markdown-content h3 { font-size: 1.1em; }
-          .markdown-content p { margin: 8px 0; }
-          .markdown-content ul, .markdown-content ol { margin: 8px 0; padding-left: 20px; }
-          .markdown-content li { margin: 2px 0; }
-          .markdown-content code {
+          .markdown-overlay h1 { font-size: 1.5em; border-bottom: 1px solid #3e3e3e; padding-bottom: 4px; }
+          .markdown-overlay h2 { font-size: 1.3em; border-bottom: 1px solid #3e3e3e; padding-bottom: 2px; }
+          .markdown-overlay h3 { font-size: 1.1em; }
+          .markdown-overlay h4 { font-size: 1em; }
+          .markdown-overlay p { margin: 8px 0; }
+          .markdown-overlay pre {
             background: #2d2d2d;
-            color: #ce9178;
+            border: 1px solid #404040;
+            border-radius: 4px;
+            padding: 8px;
+            margin: 8px 0;
+            overflow-x: auto;
+          }
+          .markdown-overlay code {
+            background: #2d2d2d;
             padding: 2px 4px;
             border-radius: 3px;
-            font-family: 'Courier New', monospace;
-            font-size: 0.9em;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
           }
-          .markdown-content pre {
-            background: #2d2d2d;
-            color: #d4d4d4;
-            padding: 12px;
-            border-radius: 6px;
-            overflow-x: auto;
-            margin: 12px 0;
-          }
-          .markdown-content pre code {
-            background: none;
+          .markdown-overlay pre code {
+            background: transparent;
             padding: 0;
-            color: inherit;
           }
-          .markdown-content blockquote {
-            border-left: 4px solid #569cd6;
-            margin: 12px 0;
-            padding-left: 12px;
-            color: #b4b4b4;
-            font-style: italic;
-          }
-          .markdown-content a {
-            color: #569cd6;
+          .markdown-overlay a {
+            color: #4fc3f7;
             text-decoration: none;
           }
-          .markdown-content a:hover {
+          .markdown-overlay a:hover {
             text-decoration: underline;
           }
-          .markdown-content table {
-            border-collapse: collapse;
-            margin: 12px 0;
-            width: 100%;
+          .markdown-overlay ul, .markdown-overlay ol {
+            margin: 8px 0;
+            padding-left: 20px;
           }
-          .markdown-content th, .markdown-content td {
-            border: 1px solid #3e3e3e;
-            padding: 6px 12px;
-            text-align: left;
+          .markdown-overlay li {
+            margin: 4px 0;
           }
-          .markdown-content th {
-            background: #2d2d2d;
+          .markdown-overlay blockquote {
+            border-left: 4px solid #569cd6;
+            margin: 8px 0;
+            padding-left: 12px;
+            font-style: italic;
+            color: #b0b0b0;
+          }
+          .markdown-overlay strong {
             font-weight: 600;
+            color: #f0f0f0;
+          }
+          .markdown-overlay em {
+            font-style: italic;
+            color: #e0e0e0;
           }
         `;
         document.head.appendChild(style);
       }
     }
-    
-    // Update the overlay content
-    widget.markdownOverlay.innerHTML = renderMarkdown(content);
-    // Keep the original value for the hidden textarea
-    widget.value = content;
   }
 
   /**
-   * Simple markdown renderer (basic implementation).
-   * For production, consider using a library like 'marked' or 'markdown-it'.
+   * Sets up image display for a text widget.
+   * @param {Object} widget - The text widget.
+   * @param {string} filename - The image filename to display.
+   */
+  function setupImageDisplay(widget, filename) {
+    // Set the textarea value to show filename
+    widget.value = `Displaying image: ${filename}`;
+    
+    if (widget.inputEl && widget.inputEl.parentElement) {
+      // Remove any existing overlays
+      const existingOverlay = widget.inputEl.parentElement.querySelector('.markdown-overlay, .image-overlay, .video-overlay');
+      if (existingOverlay) {
+        existingOverlay.remove();
+      }
+      
+      // Create image display overlay
+      const imageDiv = document.createElement('div');
+      imageDiv.className = 'image-overlay';
+      
+      // Create image element
+      const img = document.createElement('img');
+      // Construct the URL for the image in the notes directory
+      img.src = `/sage_utils/read_notes_file?filename=${encodeURIComponent(filename)}&type=image`;
+      img.alt = filename;
+      
+      // Style the image to fit nicely
+      img.style.cssText = `
+        max-width: 100%;
+        max-height: 100%;
+        width: auto;
+        height: auto;
+        object-fit: contain;
+        display: block;
+        margin: auto;
+      `;
+      
+      imageDiv.appendChild(img);
+      
+      // Style the overlay container
+      imageDiv.style.cssText = `
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: #1e1e1e;
+        border: 1px solid #3e3e3e;
+        border-radius: 6px;
+        padding: 8px;
+        box-sizing: border-box;
+        z-index: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: auto;
+      `;
+      
+      // Hide the textarea
+      widget.inputEl.style.opacity = '0';
+      
+      // Make sure the parent has position relative for absolute positioning
+      const parent = widget.inputEl.parentElement;
+      if (getComputedStyle(parent).position === 'static') {
+        parent.style.position = 'relative';
+      }
+      
+      // Insert the overlay
+      parent.appendChild(imageDiv);
+      
+      // Store reference for cleanup
+      widget.imageOverlay = imageDiv;
+      
+      // Handle image load errors
+      img.onerror = function() {
+        imageDiv.innerHTML = `
+          <div style="color: #ff6b6b; text-align: center; padding: 20px;">
+            <p>Failed to load image: ${filename}</p>
+            <p style="font-size: 12px; opacity: 0.7;">Image may not exist or format may not be supported</p>
+          </div>
+        `;
+      };
+      
+      // Handle successful image load
+      img.onload = function() {
+        console.log(`Successfully loaded image: ${filename}`);
+      };
+    }
+  }
+
+  /**
+   * Sets up video display for a text widget.
+   * @param {Object} widget - The text widget.
+   * @param {string} filename - The video filename to display.
+   * @param {boolean} isSupported - Whether the video format is browser-supported.
+   */
+  function setupVideoDisplay(widget, filename, isSupported = true) {
+    // Set the textarea value to show filename
+    widget.value = `Displaying video: ${filename}`;
+    
+    if (widget.inputEl && widget.inputEl.parentElement) {
+      // Remove any existing overlays
+      const existingOverlay = widget.inputEl.parentElement.querySelector('.markdown-overlay, .image-overlay, .video-overlay');
+      if (existingOverlay) {
+        existingOverlay.remove();
+      }
+      
+      // Create video display overlay
+      const videoDiv = document.createElement('div');
+      videoDiv.className = 'video-overlay';
+      
+      if (!isSupported) {
+        // Show format not supported message
+        const extension = filename.split('.').pop().toUpperCase();
+        videoDiv.innerHTML = `
+          <div style="color: #ff6b6b; text-align: center; padding: 20px;">
+            <h3 style="color: #ff6b6b; margin-bottom: 16px;">Video Format Not Supported</h3>
+            <p><strong>${filename}</strong></p>
+            <p style="font-size: 14px; margin: 16px 0;">
+              ${extension} format is not supported by browsers.
+            </p>
+            <div style="background: #2d2d2d; border-radius: 8px; padding: 16px; margin: 16px 0; text-align: left;">
+              <p style="color: #4fc3f7; margin-bottom: 8px; font-weight: bold;">✅ Supported formats:</p>
+              <p style="margin: 4px 0; color: #90ee90;">• MP4 (H.264/H.265) - Best compatibility</p>
+              <p style="margin: 4px 0; color: #90ee90;">• WebM (VP8/VP9) - Good for web</p>
+              <p style="margin: 4px 0; color: #90ee90;">• OGG (Theora) - Open source</p>
+              <p style="margin: 4px 0; color: #90ee90;">• M4V - Apple format</p>
+              <br>
+              <p style="color: #ff6b6b; margin-bottom: 8px; font-weight: bold;">❌ Unsupported formats:</p>
+              <p style="margin: 4px 0; color: #ffb6b6;">• MKV, AVI, MOV, WMV, FLV</p>
+            </div>
+            <p style="font-size: 12px; opacity: 0.7; margin-top: 16px;">
+              Convert your video to MP4 or WebM for browser playback.
+            </p>
+          </div>
+        `;
+      } else {
+        // Create video element for supported formats
+        const video = document.createElement('video');
+        video.controls = true;
+        video.preload = 'metadata';
+        video.src = `/sage_utils/read_notes_file?filename=${encodeURIComponent(filename)}&type=video`;
+        
+        // Style the video to fit nicely
+        video.style.cssText = `
+          max-width: 100%;
+          max-height: 100%;
+          width: auto;
+          height: auto;
+          object-fit: contain;
+          display: block;
+          margin: auto;
+        `;
+        
+        videoDiv.appendChild(video);
+        
+        // Handle video load errors
+        video.onerror = function() {
+          videoDiv.innerHTML = `
+            <div style="color: #ff6b6b; text-align: center; padding: 20px;">
+              <p>Failed to load video: ${filename}</p>
+              <p style="font-size: 12px; opacity: 0.7;">The file may be corrupted or the codec may not be supported</p>
+              <p style="font-size: 11px; opacity: 0.5;">Try converting to H.264 MP4 for best compatibility</p>
+            </div>
+          `;
+        };
+        
+        // Handle successful video load
+        video.onloadedmetadata = function() {
+          console.log(`Successfully loaded video: ${filename} (${video.videoWidth}x${video.videoHeight})`);
+        };
+        
+        // Handle when video data is loaded
+        video.onloadeddata = function() {
+          console.log(`Video data loaded for: ${filename}`);
+        };
+      }
+      
+      // Style the overlay container (applies to both supported and unsupported)
+      videoDiv.style.cssText = `
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: #1e1e1e;
+        border: 1px solid #3e3e3e;
+        border-radius: 6px;
+        padding: 8px;
+        box-sizing: border-box;
+        z-index: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: auto;
+      `;
+      
+      // Hide the textarea
+      widget.inputEl.style.opacity = '0';
+      
+      // Make sure the parent has position relative for absolute positioning
+      const parent = widget.inputEl.parentElement;
+      if (getComputedStyle(parent).position === 'static') {
+        parent.style.position = 'relative';
+      }
+      
+      // Insert the overlay
+      parent.appendChild(videoDiv);
+      
+      // Store reference for cleanup
+      widget.videoOverlay = videoDiv;
+    }
+  }
+
+  /**
+   * Enhanced markdown renderer with better formatting support.
    * @param {string} text - The markdown text to render.
    * @returns {string} - The rendered HTML.
    */
@@ -496,22 +882,44 @@ function setupViewNotesNode(nodeType, nodeData, app) {
     if (!text) return '';
     
     return text
-      // Headers
-      .replace(/^### (.*$)/gim, '<h3>$1</h3>')
-      .replace(/^## (.*$)/gim, '<h2>$1</h2>')
-      .replace(/^# (.*$)/gim, '<h1>$1</h1>')
-      // Bold
+      // Escape HTML first to prevent injection
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      // Then apply markdown transformations
+      // Code blocks (must be before inline code)
+      .replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>')
+      // Headers (with improved regex)
+      .replace(/^#{6}\s+(.+)$/gm, '<h6>$1</h6>')
+      .replace(/^#{5}\s+(.+)$/gm, '<h5>$1</h5>')
+      .replace(/^#{4}\s+(.+)$/gm, '<h4>$1</h4>')
+      .replace(/^#{3}\s+(.+)$/gm, '<h3>$1</h3>')
+      .replace(/^#{2}\s+(.+)$/gm, '<h2>$1</h2>')
+      .replace(/^#{1}\s+(.+)$/gm, '<h1>$1</h1>')
+      // Bold (must be before italic)
       .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
       .replace(/__(.*?)__/g, '<strong>$1</strong>')
       // Italic
-      .replace(/\*(.*?)\*/g, '<em>$1</em>')
-      .replace(/_(.*?)_/g, '<em>$1</em>')
-      // Code blocks
-      .replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>')
+      .replace(/\*([^*]+)\*/g, '<em>$1</em>')
+      .replace(/_([^_]+)_/g, '<em>$1</em>')
       // Inline code
       .replace(/`([^`]+)`/g, '<code>$1</code>')
-      // Links
-      .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>')
+      // Links (open in new tab)
+      .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>')
+      // Blockquotes
+      .replace(/^>\s+(.+)$/gm, '<blockquote>$1</blockquote>')
+      // Unordered lists (improved)
+      .replace(/^[\*\-\+]\s+(.+)$/gm, '<li>$1</li>')
+      // Ordered lists
+      .replace(/^\d+\.\s+(.+)$/gm, '<li>$1</li>')
+      // Wrap consecutive list items in ul/ol tags
+      .replace(/(<li>.*<\/li>)/gs, function(match) {
+        return '<ul>' + match + '</ul>';
+      })
+      // Horizontal rules
+      .replace(/^---+$/gm, '<hr>')
+      // Paragraphs (wrap non-tag lines)
+      .replace(/^(?!<[hul\/]|<pre|<blockquote)(.+)$/gm, '<p>$1</p>')
       // Line breaks
       .replace(/\n/g, '<br>');
   }
