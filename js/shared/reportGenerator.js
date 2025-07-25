@@ -224,7 +224,8 @@ export function generateHtmlContent(options) {
     <h2>Generated: ${currentDateTime}</h2>
     <div class="info">
         Filters Applied: ${filterDescription}${searchDescription}${lastUsedDescription}${sortDescription}<br>
-        Total Models: ${sortedFiles.length} (${checkpoints.length} Checkpoints, ${loras.length} LoRAs)
+        Total Models: ${sortedFiles.length} (${checkpoints.length} Checkpoints, ${loras.length} LoRAs)<br>
+        <small style="color: #999; font-style: italic;">Report format based on original design by tecknight</small>
     </div>
 `;
 
