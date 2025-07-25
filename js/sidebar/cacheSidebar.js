@@ -3,8 +3,8 @@
  * Displays cached files and their detailed information
  */
 
-import { app } from "../../scripts/app.js";
-import { api } from "../../scripts/api.js";
+import { app } from "../../../scripts/app.js";
+import { api } from "../../../scripts/api.js";
 
 // Import shared modules
 import { 
@@ -14,7 +14,7 @@ import {
     generateTableRows, 
     generateHtmlContent, 
     openHtmlReport 
-} from "./shared/reportGenerator.js";
+} from "../shared/reportGenerator.js";
 
 import { 
     fetchCacheHash, 
@@ -24,7 +24,7 @@ import {
     refreshCacheData, 
     getFilePathForHash,
     cacheData 
-} from "./shared/cacheApi.js";
+} from "../shared/cacheApi.js";
 
 import { 
     sortFiles, 
@@ -32,21 +32,27 @@ import {
     organizeFolderStructure, 
     extractRelativePath, 
     groupFilesByType 
-} from "./shared/fileManager.js";
+} from "../shared/fileManager.js";
 
-import { 
-    createButton, 
-    createSelect, 
-    createInput, 
-    createLabel, 
-    createContainer, 
-    createProgressBar, 
-    addDropdownStyles, 
-    createCustomDropdown, 
-    createNsfwToggle,
-    BUTTON_STYLES,
-    INPUT_STYLES 
-} from "./shared/uiComponents.js";
+import {
+    createLabeledContainer,
+    createStyledSelect,
+    createStyledInput,
+    createStyledButton,
+    createFilterSection,
+    createSearchSection,
+    createToggleSection,
+    createCustomDropdown as createCacheDropdown,
+    createProgressBar as createCacheProgressBar,
+    createButtonContainer,
+    createMainContainer,
+    createHeader,
+    createLoadingIndicator,
+    createInfoDisplay as createInfoContainer,
+    addDropdownStyles as addCacheDropdownStyles,
+    BUTTON_CONFIGS,
+    FILTER_OPTIONS
+} from "../shared/cacheUIComponents.js";
 
 import { 
     createDialog, 
@@ -55,7 +61,7 @@ import {
     promptDialog, 
     createImageDialog, 
     createMetadataDialog 
-} from "./shared/dialogManager.js";
+} from "../shared/dialogManager.js";
 
 /**
  * Find other versions of the same model by modelId
@@ -598,489 +604,69 @@ async function createInfoDisplay(hash, info, showNsfw = false) {
 /**
  * Create the main cache sidebar content
  */
-function createCacheSidebar(el) {
-    const container = document.createElement('div');
-    container.style.cssText = `
-        padding: 10px;
-        height: 100%;
-        overflow-y: auto;
-        background: #1e1e1e;
-        color: #ffffff;
-    `;
+export function createCacheSidebar(el) {
+    const container = createMainContainer();
 
     // Header
-    const header = document.createElement('div');
-    header.style.cssText = `
-        margin-bottom: 15px;
-        padding-bottom: 10px;
-        border-bottom: 1px solid #444;
-    `;
-    header.innerHTML = `
-        <h3 style="margin: 0; color: #ffffff; font-size: 16px;">SageUtils Cache Browser</h3>
-        <p style="margin: 5px 0 0 0; color: #aaa; font-size: 12px;">Browse cached files and their metadata</p>
-    `;
+    const header = createHeader('SageUtils Cache Browser', 'Browse cached files and their metadata');
 
     // Filter dropdown
-    const filterContainer = document.createElement('div');
-    filterContainer.style.marginBottom = '10px';
-
-    const filterLabel = document.createElement('label');
-    filterLabel.textContent = 'Filter by Type:';
-    filterLabel.style.cssText = `
-        display: block;
-        margin-bottom: 5px;
-        color: #ffffff;
-        font-size: 13px;
-        font-weight: bold;
-    `;
-
-    const filterSelector = document.createElement('select');
-    filterSelector.style.cssText = `
-        width: 100%;
-        padding: 8px;
-        background: #333;
-        color: #fff;
-        border: 1px solid #555;
-        border-radius: 4px;
-        font-size: 12px;
-        margin-bottom: 10px;
-    `;
-
-    // Populate filter options
-    filterSelector.innerHTML = `
-        <option value="all">All Models</option>
-        <option value="Checkpoint">Checkpoints Only</option>
-        <option value="LORA">LoRAs Only</option>
-    `;
+    const { container: filterContainer, select: filterSelector } = createFilterSection('Filter by Type:', FILTER_OPTIONS.modelType);
 
     // Search filter
-    const searchContainer = document.createElement('div');
-    searchContainer.style.marginBottom = '10px';
-
-    const searchLabel = document.createElement('label');
-    searchLabel.textContent = 'Search Models:';
-    searchLabel.style.cssText = `
-        display: block;
-        margin-bottom: 5px;
-        color: #ffffff;
-        font-size: 13px;
-        font-weight: bold;
-    `;
-
-    const searchInput = document.createElement('input');
-    searchInput.type = 'text';
-    searchInput.placeholder = 'Type to search...';
-    searchInput.style.cssText = `
-        width: 100%;
-        padding: 8px;
-        background: #333;
-        color: #fff;
-        border: 1px solid #555;
-        border-radius: 4px;
-        font-size: 12px;
-        margin-bottom: 10px;
-        box-sizing: border-box;
-    `;
-
-    searchContainer.appendChild(searchLabel);
-    searchContainer.appendChild(searchInput);
+    const { container: searchContainer, input: searchInput } = createSearchSection();
 
     // Last Used filter
-    const lastUsedContainer = document.createElement('div');
-    lastUsedContainer.style.marginBottom = '10px';
-
-    const lastUsedLabel = document.createElement('label');
-    lastUsedLabel.textContent = 'Filter by Last Used:';
-    lastUsedLabel.style.cssText = `
-        display: block;
-        margin-bottom: 5px;
-        color: #ffffff;
-        font-size: 13px;
-        font-weight: bold;
-    `;
-
-    const lastUsedSelector = document.createElement('select');
-    lastUsedSelector.style.cssText = `
-        width: 100%;
-        padding: 8px;
-        background: #333;
-        color: #fff;
-        border: 1px solid #555;
-        border-radius: 4px;
-        font-size: 12px;
-        margin-bottom: 10px;
-    `;
-
-    // Populate last used options
-    lastUsedSelector.innerHTML = `
-        <option value="all">All Models</option>
-        <option value="today">Used Today</option>
-        <option value="week">Used This Week</option>
-        <option value="month">Used This Month</option>
-        <option value="never">Never Used</option>
-    `;
-
-    lastUsedContainer.appendChild(lastUsedLabel);
-    lastUsedContainer.appendChild(lastUsedSelector);
+    const { container: lastUsedContainer, select: lastUsedSelector } = createFilterSection('Filter by Last Used:', FILTER_OPTIONS.lastUsed);
 
     // Update Available filter
-    const updateContainer = document.createElement('div');
-    updateContainer.style.marginBottom = '10px';
-
-    const updateLabel = document.createElement('label');
-    updateLabel.textContent = 'Filter by Updates:';
-    updateLabel.style.cssText = `
-        display: block;
-        margin-bottom: 5px;
-        color: #ffffff;
-        font-size: 13px;
-        font-weight: bold;
-    `;
-
-    const updateSelector = document.createElement('select');
-    updateSelector.style.cssText = `
-        width: 100%;
-        padding: 8px;
-        background: #333;
-        color: #fff;
-        border: 1px solid #555;
-        border-radius: 4px;
-        font-size: 12px;
-        margin-bottom: 10px;
-    `;
-
-    // Populate update options
-    updateSelector.innerHTML = `
-        <option value="all">All Models</option>
-        <option value="available">Updates Available</option>
-        <option value="none">No Updates Available</option>
-    `;
-
-    updateContainer.appendChild(updateLabel);
-    updateContainer.appendChild(updateSelector);
+    const { container: updateContainer, select: updateSelector } = createFilterSection('Filter by Updates:', FILTER_OPTIONS.updates);
 
     // Sort options
-    const sortContainer = document.createElement('div');
-    sortContainer.style.marginBottom = '10px';
-
-    const sortLabel = document.createElement('label');
-    sortLabel.textContent = 'Sort by:';
-    sortLabel.style.cssText = `
-        display: block;
-        margin-bottom: 5px;
-        color: #ffffff;
-        font-size: 13px;
-        font-weight: bold;
-    `;
-
-    const sortSelector = document.createElement('select');
-    sortSelector.style.cssText = `
-        width: 100%;
-        padding: 8px;
-        background: #333;
-        color: #fff;
-        border: 1px solid #555;
-        border-radius: 4px;
-        font-size: 12px;
-        margin-bottom: 10px;
-    `;
-
-    // Populate sort options
-    sortSelector.innerHTML = `
-        <option value="name">Name (A-Z)</option>
-        <option value="name-desc">Name (Z-A)</option>
-        <option value="lastused">Last Used (Recent First)</option>
-        <option value="lastused-desc">Last Used (Oldest First)</option>
-        <option value="size">File Size (Small to Large)</option>
-        <option value="size-desc">File Size (Large to Small)</option>
-        <option value="type">Type</option>
-    `;
-
-    sortContainer.appendChild(sortLabel);
-    sortContainer.appendChild(sortSelector);
+    const { container: sortContainer, select: sortSelector } = createFilterSection('Sort by:', FILTER_OPTIONS.sort);
 
     // NSFW toggle
-    const nsfwContainer = document.createElement('div');
-    nsfwContainer.style.cssText = `
-        margin-bottom: 10px;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-    `;
-
-    const nsfwCheckbox = document.createElement('input');
-    nsfwCheckbox.type = 'checkbox';
-    nsfwCheckbox.id = 'nsfw-toggle';
-    nsfwCheckbox.style.cssText = `
-        margin: 0;
-        transform: scale(1.2);
-    `;
-
-    const nsfwLabel = document.createElement('label');
-    nsfwLabel.htmlFor = 'nsfw-toggle';
-    nsfwLabel.textContent = 'Show NSFW Images';
-    nsfwLabel.style.cssText = `
-        color: #ffffff;
-        font-size: 13px;
-        font-weight: bold;
-        cursor: pointer;
-        user-select: none;
-    `;
-
-    nsfwContainer.appendChild(nsfwCheckbox);
-    nsfwContainer.appendChild(nsfwLabel);
+    const { container: nsfwContainer, checkbox: nsfwCheckbox } = createToggleSection('Show NSFW Images', 'nsfw-toggle');
 
     // File selector dropdown
     const selectorContainer = document.createElement('div');
     selectorContainer.style.marginBottom = '15px';
 
-    const selectorLabel = document.createElement('label');
-    selectorLabel.textContent = 'Select File:';
-    selectorLabel.style.cssText = `
-        display: block;
-        margin-bottom: 5px;
-        color: #ffffff;
-        font-size: 13px;
-        font-weight: bold;
-    `;
+    const { container: selectorLabelContainer, label: selectorLabel } = createLabeledContainer('Select File:');
 
     // Create custom dropdown container
-    const selector = document.createElement('div');
-    selector.style.cssText = `
-        position: relative;
-        width: 100%;
-    `;
+    const { container: selector, button: dropdownButton, menu: dropdownMenu } = createCacheDropdown();
     selector.id = 'cache-file-selector';
     
-    // Create dropdown button
-    const dropdownButton = document.createElement('div');
-    dropdownButton.style.cssText = `
-        width: 100%;
-        padding: 8px;
-        background: #333;
-        color: #fff;
-        border: 1px solid #555;
-        border-radius: 4px;
-        font-size: 12px;
-        cursor: pointer;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        user-select: none;
-    `;
-    dropdownButton.innerHTML = '<span>Select a file...</span><span>▼</span>';
-    
-    // Create dropdown menu
-    const dropdownMenu = document.createElement('div');
-    dropdownMenu.style.cssText = `
-        position: fixed;
-        background: #333;
-        border: 1px solid #555;
-        border-top: none;
-        border-radius: 0 0 4px 4px;
-        max-height: 600px;
-        overflow-y: auto;
-        z-index: 1000;
-        display: none;
-        box-shadow: 2px 2px 8px rgba(0,0,0,0.3);
-    `;
-    
     // Add CSS for custom dropdown
-    const style = document.createElement('style');
-    style.textContent = `
-        .cache-dropdown-item {
-            padding: 6px 10px;
-            cursor: pointer;
-            position: relative;
-            border-bottom: 1px solid #444;
-            font-size: 11px;
-        }
-        .cache-dropdown-item:hover {
-            background: #444;
-        }
-        .cache-dropdown-item.folder {
-            background: #383838;
-            font-weight: bold;
-        }
-        .cache-dropdown-item.folder:hover {
-            background: #484848;
-        }
-        .cache-dropdown-item.folder::after {
-            content: "▶";
-            float: right;
-        }
-        .cache-dropdown-submenu {
-            position: fixed;
-            background: #333;
-            border: 1px solid #555;
-            border-radius: 4px;
-            min-width: 250px;
-            max-height: 300px;
-            overflow-y: auto;
-            z-index: 1001;
-            display: none;
-            box-shadow: 2px 2px 8px rgba(0,0,0,0.3);
-        }
-        .cache-dropdown-item.file {
-            color: #e0e0e0;
-        }
-        .cache-dropdown-item.selected {
-            background: #4CAF50;
-        }
-    `;
-    document.head.appendChild(style);
-    
-    selector.appendChild(dropdownButton);
-    // Append dropdown menu to body to avoid container constraints
-    document.body.appendChild(dropdownMenu);
+    addCacheDropdownStyles();
     
     let selectedHash = null;
     let isDropdownOpen = false;
 
-    // Refresh button
-    const refreshButton = document.createElement('button');
-    refreshButton.textContent = '↻ Refresh';
-    refreshButton.style.cssText = `
-        margin-top: 8px;
-        margin-right: 8px;
-        padding: 6px 12px;
-        background: #4CAF50;
-        color: white;
-        border: none;
-        border-radius: 4px;
-        cursor: pointer;
-        font-size: 12px;
-    `;
-
-    // Pull metadata button
-    const pullButton = document.createElement('button');
-    pullButton.textContent = '⬇ Pull';
-    pullButton.style.cssText = `
-        margin-top: 8px;
-        padding: 6px 12px;
-        background: #2196F3;
-        color: white;
-        border: none;
-        border-radius: 4px;
-        cursor: pointer;
-        font-size: 12px;
-    `;
+    // Create buttons using reusable components
+    const refreshButton = createStyledButton(BUTTON_CONFIGS.refresh.text, BUTTON_CONFIGS.refresh.color, BUTTON_CONFIGS.refresh.icon);
+    
+    const pullButton = createStyledButton(BUTTON_CONFIGS.pull.text, BUTTON_CONFIGS.pull.color, BUTTON_CONFIGS.pull.icon);
     pullButton.disabled = true; // Initially disabled until a file is selected
     pullButton.style.opacity = '0.5';
 
-    // Edit button
-    const editButton = document.createElement('button');
-    editButton.textContent = '✏ Edit';
-    editButton.style.cssText = `
-        margin-top: 8px;
-        padding: 6px 12px;
-        background: #FF9800;
-        color: white;
-        border: none;
-        border-radius: 4px;
-        cursor: pointer;
-        font-size: 12px;
-    `;
+    const editButton = createStyledButton(BUTTON_CONFIGS.edit.text, BUTTON_CONFIGS.edit.color, BUTTON_CONFIGS.edit.icon);
     editButton.disabled = true; // Initially disabled until a file is selected
     editButton.style.opacity = '0.5';
 
-    // Scan button
-    const scanButton = document.createElement('button');
-    scanButton.textContent = '🔍 Scan All';
-    scanButton.style.cssText = `
-        margin-top: 8px;
-        padding: 6px 12px;
-        background: #9C27B0;
-        color: white;
-        border: none;
-        border-radius: 4px;
-        cursor: pointer;
-        font-size: 12px;
-    `;
+    const scanButton = createStyledButton(BUTTON_CONFIGS.scan.text, BUTTON_CONFIGS.scan.color, BUTTON_CONFIGS.scan.icon);
 
-    // Report button
-    const reportButton = document.createElement('button');
-    reportButton.textContent = '📊 Generate Report';
-    reportButton.style.cssText = `
-        margin-top: 8px;
-        padding: 6px 12px;
-        background: #673AB7;
-        color: white;
-        border: none;
-        border-radius: 4px;
-        cursor: pointer;
-        font-size: 12px;
-    `;
+    const reportButton = createStyledButton(BUTTON_CONFIGS.report.text, BUTTON_CONFIGS.report.color, BUTTON_CONFIGS.report.icon);
 
     // Progress bar container (initially hidden)
-    const progressContainer = document.createElement('div');
-    progressContainer.style.cssText = `
-        margin-top: 10px;
-        display: none;
-    `;
-
-    const progressLabel = document.createElement('div');
-    progressLabel.style.cssText = `
-        color: #fff;
-        font-size: 12px;
-        margin-bottom: 5px;
-    `;
-    progressLabel.textContent = 'Scanning models...';
-
-    const progressBarOuter = document.createElement('div');
-    progressBarOuter.style.cssText = `
-        width: 100%;
-        height: 20px;
-        background: #333;
-        border: 1px solid #555;
-        border-radius: 4px;
-        overflow: hidden;
-    `;
-
-    const progressBarInner = document.createElement('div');
-    progressBarInner.style.cssText = `
-        height: 100%;
-        background: linear-gradient(90deg, #9C27B0, #E91E63);
-        width: 0%;
-        transition: width 0.3s ease;
-        position: relative;
-    `;
-
-    const progressText = document.createElement('div');
-    progressText.style.cssText = `
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: #fff;
-        font-size: 11px;
-        font-weight: bold;
-        text-shadow: 1px 1px 2px rgba(0,0,0,0.7);
-    `;
-    progressText.textContent = '0%';
-
-    progressBarInner.appendChild(progressText);
-    progressBarOuter.appendChild(progressBarInner);
-    progressContainer.appendChild(progressLabel);
-    progressContainer.appendChild(progressBarOuter);
+    const { container: progressContainer, label: progressLabel, barInner: progressBarInner, text: progressText } = createCacheProgressBar('Scanning models...');
 
     // Info display area
-    const infoDisplay = document.createElement('div');
-    infoDisplay.id = 'cache-info-display';
+    const infoDisplay = createInfoContainer();
 
     // Loading indicator
-    const loadingIndicator = document.createElement('div');
-    loadingIndicator.style.cssText = `
-        text-align: center;
-        padding: 20px;
-        color: #888;
-        font-style: italic;
-    `;
-    loadingIndicator.textContent = 'Loading cache data...';
+    const loadingIndicator = createLoadingIndicator('Loading cache data...');
 
     // Populate dropdown with files
     async function updateFileList() {
@@ -1807,7 +1393,7 @@ function createCacheSidebar(el) {
             const lastUsedDescription = lastUsedFilter !== 'all' ? ` (Last Used: ${lastUsedFilter})` : '';
             const sortDescription = ` (Sorted by: ${sortSelector.options[sortSelector.selectedIndex].text})`;
 
-            const htmlContent = generateHtmlContent({
+            const htmlContent = await generateHtmlContent({
                 sortedFiles,
                 checkpoints,
                 loras,
@@ -2101,20 +1687,11 @@ function createCacheSidebar(el) {
     scanButton.addEventListener('click', scanAllModels);
 
     // Assemble the UI
-    filterContainer.appendChild(filterLabel);
-    filterContainer.appendChild(filterSelector);
-    
     selectorContainer.appendChild(selectorLabel);
     selectorContainer.appendChild(selector);
     
     // Create button container for side-by-side layout
-    const buttonContainer = document.createElement('div');
-    buttonContainer.style.cssText = `
-        display: flex;
-        gap: 4px;
-        margin-top: 8px;
-        flex-wrap: wrap;
-    `;
+    const buttonContainer = createButtonContainer();
     buttonContainer.appendChild(refreshButton);
     buttonContainer.appendChild(pullButton);
     buttonContainer.appendChild(editButton);
@@ -2138,21 +1715,3 @@ function createCacheSidebar(el) {
     // Initial load
     updateFileList();
 }
-
-// Register the sidebar tab
-app.registerExtension({
-    name: "arcum42.sage.utils.cache.sidebar",
-    
-    async setup() {
-        console.log("Setting up SageUtils Cache Sidebar...");
-        
-        app.extensionManager.registerSidebarTab({
-            id: "sageUtilsCache",
-            icon: "pi pi-hammer",
-            title: "Cache Browser",
-            tooltip: "Browse SageUtils cached files and metadata",
-            type: "custom",
-            render: createCacheSidebar
-        });
-    }
-});

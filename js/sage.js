@@ -18,12 +18,22 @@ import { setupModelInfoDisplayNode } from "./nodes/modelInfoDisplay.js";
 import "./settingsUI.js";
 
 // Import cache sidebar
-import "./cacheSidebar.js";
+import { createCacheSidebar } from "./sidebar/cacheSidebar.js";
 
 app.registerExtension({
   name: "arcum42.sage.utils",
   async setup() {
     console.log("Sage Utils loaded.");
+    
+    // Register the cache sidebar tab
+    app.extensionManager.registerSidebarTab({
+      id: "sageUtilsCache",
+      icon: "pi pi-hammer",
+      title: "Cache Browser",
+      tooltip: "Browse SageUtils cached files and metadata",
+      type: "custom",
+      render: createCacheSidebar
+    });
   },
   async beforeRegisterNodeDef(nodeType, nodeData, app) {
     if (!nodeData.name.startsWith(_ID)) return;
