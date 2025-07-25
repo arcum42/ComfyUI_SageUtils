@@ -6,10 +6,56 @@
 import { app } from "../../scripts/app.js";
 import { api } from "../../scripts/api.js";
 
-let cacheData = {
-    hash: {},
-    info: {}
-};
+// Import shared modules
+import { 
+    escapeHtml, 
+    formatFileSize, 
+    getBaseModelStyle, 
+    generateTableRows, 
+    generateHtmlContent, 
+    openHtmlReport 
+} from "./shared/reportGenerator.js";
+
+import { 
+    fetchCacheHash, 
+    fetchCacheInfo, 
+    pullMetadata, 
+    updateCacheInfo, 
+    refreshCacheData, 
+    getFilePathForHash,
+    cacheData 
+} from "./shared/cacheApi.js";
+
+import { 
+    sortFiles, 
+    filterFiles, 
+    organizeFolderStructure, 
+    extractRelativePath, 
+    groupFilesByType 
+} from "./shared/fileManager.js";
+
+import { 
+    createButton, 
+    createSelect, 
+    createInput, 
+    createLabel, 
+    createContainer, 
+    createProgressBar, 
+    addDropdownStyles, 
+    createCustomDropdown, 
+    createNsfwToggle,
+    BUTTON_STYLES,
+    INPUT_STYLES 
+} from "./shared/uiComponents.js";
+
+import { 
+    createDialog, 
+    confirmDialog, 
+    alertDialog, 
+    promptDialog, 
+    createImageDialog, 
+    createMetadataDialog 
+} from "./shared/dialogManager.js";
 
 /**
  * Find other versions of the same model by modelId
@@ -263,15 +309,7 @@ async function showEditDialog(hash, info) {
     });
 }
 
-/**
- * Escape HTML special characters
- */
-function escapeHtml(text) {
-    if (typeof text !== 'string') return '';
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
+
 
 /**
  * Fetch images for a model version from Civitai API
@@ -395,43 +433,7 @@ async function createImageGallery(hash, showNsfw = false) {
     return galleryContainer;
 }
 
-/**
- * Fetch cache hash data from server
- */
-async function fetchCacheHash() {
-    try {
-        const response = await api.fetchApi('/sage_cache/hash');
-        if (response.ok) {
-            cacheData.hash = await response.json();
-            return cacheData.hash;
-        } else {
-            console.error('Failed to fetch cache hash:', response.status);
-            return {};
-        }
-    } catch (error) {
-        console.error('Error fetching cache hash:', error);
-        return {};
-    }
-}
 
-/**
- * Fetch cache info data from server
- */
-async function fetchCacheInfo() {
-    try {
-        const response = await api.fetchApi('/sage_cache/info');
-        if (response.ok) {
-            cacheData.info = await response.json();
-            return cacheData.info;
-        } else {
-            console.error('Failed to fetch cache info:', response.status);
-            return {};
-        }
-    } catch (error) {
-        console.error('Error fetching cache info:', error);
-        return {};
-    }
-}
 
 /**
  * Create a styled information display for a cache entry
@@ -721,6 +723,42 @@ function createCacheSidebar(el) {
     lastUsedContainer.appendChild(lastUsedLabel);
     lastUsedContainer.appendChild(lastUsedSelector);
 
+    // Update Available filter
+    const updateContainer = document.createElement('div');
+    updateContainer.style.marginBottom = '10px';
+
+    const updateLabel = document.createElement('label');
+    updateLabel.textContent = 'Filter by Updates:';
+    updateLabel.style.cssText = `
+        display: block;
+        margin-bottom: 5px;
+        color: #ffffff;
+        font-size: 13px;
+        font-weight: bold;
+    `;
+
+    const updateSelector = document.createElement('select');
+    updateSelector.style.cssText = `
+        width: 100%;
+        padding: 8px;
+        background: #333;
+        color: #fff;
+        border: 1px solid #555;
+        border-radius: 4px;
+        font-size: 12px;
+        margin-bottom: 10px;
+    `;
+
+    // Populate update options
+    updateSelector.innerHTML = `
+        <option value="all">All Models</option>
+        <option value="available">Updates Available</option>
+        <option value="none">No Updates Available</option>
+    `;
+
+    updateContainer.appendChild(updateLabel);
+    updateContainer.appendChild(updateSelector);
+
     // Sort options
     const sortContainer = document.createElement('div');
     sortContainer.style.marginBottom = '10px';
@@ -973,8 +1011,6 @@ function createCacheSidebar(el) {
         cursor: pointer;
         font-size: 12px;
     `;
-    reportButton.disabled = true; // Temporarily disabled
-    reportButton.style.opacity = '0.5';
 
     // Progress bar container (initially hidden)
     const progressContainer = document.createElement('div');
@@ -1073,6 +1109,7 @@ function createCacheSidebar(el) {
             const filterType = filterSelector.value;
             const searchTerm = searchInput.value.toLowerCase().trim();
             const lastUsedFilter = lastUsedSelector.value;
+            const updateFilter = updateSelector.value;
 
             // Calculate date thresholds for last used filter
             const now = new Date();
@@ -1080,7 +1117,7 @@ function createCacheSidebar(el) {
             const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
             const monthAgo = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
 
-            // Filter files based on model type, search term, and last used
+            // Filter files based on model type, search term, last used, and updates
             const filteredFiles = Object.keys(hashData).filter(filePath => {
                 const hash = hashData[filePath];
                 const info = infoData[hash];
@@ -1137,6 +1174,23 @@ function createCacheSidebar(el) {
                                     return false;
                                 }
                                 break;
+                        }
+                    }
+                }
+                
+                // Check update filter
+                if (updateFilter !== 'all') {
+                    const hasUpdate = info && info.update_available;
+                    
+                    if (updateFilter === 'available') {
+                        // Show only models with updates available
+                        if (!hasUpdate) {
+                            return false;
+                        }
+                    } else if (updateFilter === 'none') {
+                        // Show only models without updates available
+                        if (hasUpdate) {
+                            return false;
                         }
                     }
                 }
@@ -1590,6 +1644,7 @@ function createCacheSidebar(el) {
             const filterType = filterSelector.value;
             const searchTerm = searchInput.value.toLowerCase().trim();
             const lastUsedFilter = lastUsedSelector.value;
+            const updateFilter = updateSelector.value;
 
             // Calculate date thresholds for last used filter
             const now = new Date();
@@ -1651,6 +1706,23 @@ function createCacheSidebar(el) {
                                     return false;
                                 }
                                 break;
+                        }
+                    }
+                }
+                
+                // Check update filter
+                if (updateFilter !== 'all') {
+                    const hasUpdate = info && info.update_available;
+                    
+                    if (updateFilter === 'available') {
+                        // Show only models with updates available
+                        if (!hasUpdate) {
+                            return false;
+                        }
+                    } else if (updateFilter === 'none') {
+                        // Show only models without updates available
+                        if (hasUpdate) {
+                            return false;
                         }
                     }
                 }
@@ -1729,255 +1801,25 @@ function createCacheSidebar(el) {
                 }
             });
 
-            // Helper function to escape HTML
-            function escapeHtml(text) {
-                if (typeof text !== 'string') return '';
-                const div = document.createElement('div');
-                div.textContent = text;
-                return div.innerHTML;
-            }
-
-            // Helper function to format file size
-            function formatFileSize(bytes) {
-                if (!bytes || bytes === 0) return 'Unknown';
-                const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-                const i = Math.floor(Math.log(bytes) / Math.log(1024));
-                return Math.round(bytes / Math.pow(1024, i) * 100) / 100 + ' ' + sizes[i];
-            }
-
-            // Helper function to get base model color/background
-            function getBaseModelStyle(baseModel) {
-                if (!baseModel) return 'color:green;background-color:orange;';
-                
-                if (baseModel.startsWith("Flux")) {
-                    return 'color:yellow;background-color:maroon;';
-                } else if (baseModel.startsWith("Pony")) {
-                    return 'color:white;background-color:green;';
-                } else if (baseModel.startsWith("SDXL")) {
-                    return 'color:yellow;background-color:green;';
-                } else if (baseModel.startsWith("SD ")) {
-                    return 'color:black;background-color:gray;';
-                } else if (baseModel.startsWith("Illustrious")) {
-                    return 'color:white;background-color:maroon;';
-                } else {
-                    return 'color:green;background-color:orange;';
-                }
-            }
-
-            // Helper function to generate table rows
-            function generateTableRows(models) {
-                return models.map(({ filePath, hash, info }) => {
-                    const modelName = (info && info.model && info.model.name) || (info && info.name) || filePath.split('/').pop() || 'Unknown';
-                    const baseModel = (info && info.baseModel) || (info && info.base_model) || 'Unknown';
-                    const modelType = (info && info.model && info.model.type) || 'Unknown';
-                    const triggerWords = (info && info.trainedWords && Array.isArray(info.trainedWords)) ? info.trainedWords.join(', ') : 'No triggers';
-                    const modelId = (info && info.modelId) || 'Unknown';
-                    const civitaiUrl = modelId !== 'Unknown' ? `https://civitai.com/models/${modelId}` : '#';
-                    const updateAvailable = info && info.update_available;
-                    const lastUsed = (info && (info.lastUsed || info.last_accessed)) || 'Never';
-                    const fileSize = formatFileSize(info && info.file_size);
-                    const modelHash = hash || 'Unknown';
-                    
-                    // Format last used date
-                    let formattedLastUsed = lastUsed;
-                    if (lastUsed !== 'Never') {
-                        try {
-                            const date = new Date(lastUsed);
-                            formattedLastUsed = date.toLocaleString();
-                        } catch (e) {
-                            formattedLastUsed = lastUsed;
-                        }
-                    }
-
-                    const nameStyle = getBaseModelStyle(baseModel);
-                    const civitaiStyle = updateAvailable ? 'background-color:orange;' : '';
-                    const triggerCellContent = triggerWords === 'No triggers' ? 
-                        '<i>No triggers</i>' : 
-                        `${escapeHtml(triggerWords)}<br><br><button style="background-color: #01006D; color: yellow; font-size: 12px;" onclick="copyToClipboard('${escapeHtml(triggerWords)}')">Copy Triggers</button>`;
-
-                    return `
-                        <tr>
-                            <td style="text-align:center;${nameStyle}">${escapeHtml(modelName)}</td>
-                            <td style="text-align:center;">${escapeHtml(baseModel)}</td>
-                            <td style="text-align:center;">${escapeHtml(modelType)}</td>
-                            <td style="text-align:center;">${triggerCellContent}</td>
-                            <td style="text-align:center;${civitaiStyle}">
-                                <a href="${civitaiUrl}" target="_blank">${modelId}</a>
-                                ${updateAvailable ? '<br><br><i>Update available</i>' : ''}
-                            </td>
-                            <td style="text-align:center;">${escapeHtml(modelHash.substring(0, 12))}...</td>
-                            <td style="text-align:center;">${escapeHtml(fileSize)}</td>
-                            <td style="text-align:center;">${formattedLastUsed}</td>
-                            <td style="text-align:left;${filePath && require('fs').existsSync && require('fs').existsSync(filePath) ? 'background-color:green' : 'background-color:red'}">${escapeHtml(filePath)}</td>
-                        </tr>
-                    `;
-                }).join('');
-            }
-
-            // Generate complete HTML
-            const currentDateTime = new Date().toLocaleString();
+            // Generate complete HTML using shared module
             const filterDescription = filterType === 'all' ? 'All Models' : `${filterType}s Only`;
             const searchDescription = searchTerm ? ` (Search: "${searchTerm}")` : '';
             const lastUsedDescription = lastUsedFilter !== 'all' ? ` (Last Used: ${lastUsedFilter})` : '';
             const sortDescription = ` (Sorted by: ${sortSelector.options[sortSelector.selectedIndex].text})`;
 
-            let htmlContent = `
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset='utf-8'>
-    <title>SageUtils Model Report - ${currentDateTime}</title>
-    <style>
-        body { 
-            font-family: Arial, sans-serif; 
-            margin: 20px; 
-            background-color: #f5f5f5; 
-        }
-        h1 { 
-            text-align: center; 
-            color: white; 
-            background-color: green; 
-            padding: 15px; 
-            border-radius: 8px; 
-            margin-bottom: 10px;
-        }
-        h2 { 
-            text-align: center; 
-            color: darkblue; 
-            background-color: yellow; 
-            padding: 10px; 
-            border-radius: 8px; 
-            margin-bottom: 20px;
-        }
-        .info {
-            text-align: center;
-            color: #666;
-            margin-bottom: 20px;
-            font-style: italic;
-        }
-        table { 
-            width: 100%; 
-            border-collapse: collapse; 
-            margin-bottom: 30px;
-            background-color: white;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        th { 
-            border: 2px solid blue; 
-            color: yellow; 
-            background-color: blue; 
-            font-size: 14px; 
-            padding: 10px;
-            position: sticky;
-            top: 0;
-            z-index: 10;
-        }
-        td { 
-            border: 2px solid maroon; 
-            font-size: 12px; 
-            padding: 8px;
-            vertical-align: top;
-        }
-        .section-header {
-            background-color: #333;
-            color: white;
-            padding: 15px;
-            text-align: center;
-            font-size: 18px;
-            font-weight: bold;
-            margin-top: 30px;
-            border-radius: 8px;
-        }
-        button {
-            cursor: pointer;
-            border: none;
-            border-radius: 4px;
-            padding: 4px 8px;
-        }
-        a {
-            color: blue;
-            text-decoration: none;
-        }
-        a:hover {
-            text-decoration: underline;
-        }
-    </style>
-    <script>
-        async function copyToClipboard(text) {
-            try {
-                await navigator.clipboard.writeText(text);
-                console.log('Text copied to clipboard');
-            } catch (err) {
-                console.error('Failed to copy: ', err);
-            }
-        }
-    </script>
-</head>
-<body>
-    <h1>SageUtils Model Report</h1>
-    <h2>Generated: ${currentDateTime}</h2>
-    <div class="info">
-        Filters Applied: ${filterDescription}${searchDescription}${lastUsedDescription}${sortDescription}<br>
-        Total Models: ${sortedFiles.length} (${checkpoints.length} Checkpoints, ${loras.length} LoRAs)
-    </div>
-`;
+            const htmlContent = generateHtmlContent({
+                sortedFiles,
+                checkpoints,
+                loras,
+                filterDescription,
+                searchDescription,
+                lastUsedDescription,
+                sortDescription
+            });
 
-            // Add LoRAs section if any exist
-            if (loras.length > 0) {
-                htmlContent += `
-    <div class="section-header">LoRA Models (${loras.length})</div>
-    <table>
-        <tr>
-            <th style="width:200px;"><b>Model Name</b></th>
-            <th style="width:100px;"><b>Base Model</b></th>
-            <th style="width:80px;"><b>Type</b></th>
-            <th style="width:175px;"><b>Trigger Words</b></th>
-            <th style="width:100px;"><b>Civitai ID</b></th>
-            <th style="width:100px;"><b>Hash</b></th>
-            <th style="width:80px;"><b>File Size</b></th>
-            <th style="width:120px;"><b>Last Used</b></th>
-            <th style="width:250px;"><b>Full Path</b></th>
-        </tr>
-        ${generateTableRows(loras)}
-    </table>
-`;
-            }
-
-            // Add Checkpoints section if any exist
-            if (checkpoints.length > 0) {
-                htmlContent += `
-    <div class="section-header">Checkpoint Models (${checkpoints.length})</div>
-    <table>
-        <tr>
-            <th style="width:200px;"><b>Model Name</b></th>
-            <th style="width:100px;"><b>Base Model</b></th>
-            <th style="width:80px;"><b>Type</b></th>
-            <th style="width:175px;"><b>Trigger Words</b></th>
-            <th style="width:100px;"><b>Civitai ID</b></th>
-            <th style="width:100px;"><b>Hash</b></th>
-            <th style="width:80px;"><b>File Size</b></th>
-            <th style="width:120px;"><b>Last Used</b></th>
-            <th style="width:250px;"><b>Full Path</b></th>
-        </tr>
-        ${generateTableRows(checkpoints)}
-    </table>
-`;
-            }
-
-            htmlContent += `
-</body>
-</html>
-`;
-
-            // Open in new tab
-            const newWindow = window.open('', '_blank');
-            if (newWindow) {
-                newWindow.document.write(htmlContent);
-                newWindow.document.close();
-                newWindow.document.title = `SageUtils Model Report - ${currentDateTime}`;
-            } else {
-                alert('Unable to open new window. Please check your popup blocker settings.');
-            }
+            // Open report using shared module
+            const currentDateTime = new Date().toLocaleString();
+            openHtmlReport(htmlContent, `SageUtils Model Report - ${currentDateTime}`);
 
         } catch (error) {
             console.error('Error generating HTML report:', error);
@@ -2028,6 +1870,7 @@ function createCacheSidebar(el) {
             const filterType = filterSelector.value;
             const searchTerm = searchInput.value.toLowerCase().trim();
             const lastUsedFilter = lastUsedSelector.value;
+            const updateFilter = updateSelector.value;
 
             // Calculate date thresholds for last used filter
             const now = new Date();
@@ -2089,6 +1932,23 @@ function createCacheSidebar(el) {
                                     return false;
                                 }
                                 break;
+                        }
+                    }
+                }
+                
+                // Check update filter
+                if (updateFilter !== 'all') {
+                    const hasUpdate = info && info.update_available;
+                    
+                    if (updateFilter === 'available') {
+                        // Show only models with updates available
+                        if (!hasUpdate) {
+                            return false;
+                        }
+                    } else if (updateFilter === 'none') {
+                        // Show only models without updates available
+                        if (hasUpdate) {
+                            return false;
                         }
                     }
                 }
@@ -2219,6 +2079,9 @@ function createCacheSidebar(el) {
     // Handle last used filter change
     lastUsedSelector.addEventListener('change', updateFileList);
 
+    // Handle update filter change
+    updateSelector.addEventListener('change', updateFileList);
+
     // Handle sort change
     sortSelector.addEventListener('change', updateFileList);
 
@@ -2264,6 +2127,7 @@ function createCacheSidebar(el) {
     container.appendChild(filterContainer);
     container.appendChild(searchContainer);
     container.appendChild(lastUsedContainer);
+    container.appendChild(updateContainer);
     container.appendChild(sortContainer);
     container.appendChild(nsfwContainer);
     container.appendChild(selectorContainer);
