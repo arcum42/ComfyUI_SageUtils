@@ -471,6 +471,88 @@ try:
                     status=500
                 )
 
+        @routes.post('/sage_utils/pull_metadata')
+        async def pull_metadata_route(request):
+            """
+            Pulls metadata for a specific file using the pull_metadata function from helpers.py.
+            Expects JSON body with 'file_path' field and optional 'force' field.
+            """
+            try:
+                from .utils.helpers import pull_metadata
+                
+                # Parse request body
+                data = await request.json()
+                file_path = data.get('file_path')
+                force = data.get('force', False)
+                
+                if not file_path:
+                    return web.json_response(
+                        {"error": "file_path is required"}, 
+                        status=400
+                    )
+                
+                # Call the pull_metadata function
+                try:
+                    pull_metadata(file_path, timestamp=True, force_all=force)
+                    
+                    return web.json_response({
+                        "success": True,
+                        "message": f"Metadata pulled successfully for {file_path}"
+                    })
+                    
+                except Exception as pull_error:
+                    return web.json_response(
+                        {"success": False, "error": f"Failed to pull metadata: {str(pull_error)}"}, 
+                        status=500
+                    )
+                
+            except Exception as e:
+                return web.json_response(
+                    {"success": False, "error": f"Request processing error: {str(e)}"}, 
+                    status=500
+                )
+
+        @routes.post('/sage_utils/update_cache_info')
+        async def update_cache_info_route(request):
+            """
+            Updates cache info for a specific file hash.
+            Expects JSON body with 'hash' and 'info' fields.
+            """
+            try:
+                # Parse request body
+                data = await request.json()
+                hash_value = data.get('hash')
+                info = data.get('info')
+                
+                if not hash_value or not info:
+                    return web.json_response(
+                        {"error": "Both 'hash' and 'info' are required"}, 
+                        status=400
+                    )
+                
+                # Update the cache info
+                try:
+                    cache.load()
+                    cache.info[hash_value] = info
+                    cache.save()
+                    
+                    return web.json_response({
+                        "success": True,
+                        "message": f"Cache info updated successfully for hash {hash_value}"
+                    })
+                    
+                except Exception as update_error:
+                    return web.json_response(
+                        {"success": False, "error": f"Failed to update cache info: {str(update_error)}"}, 
+                        status=500
+                    )
+                
+            except Exception as e:
+                return web.json_response(
+                    {"success": False, "error": f"Request processing error: {str(e)}"}, 
+                    status=500
+                )
+
         print("SageUtils custom routes loaded successfully!")
     else:
         print("Warning: PromptServer instance not available, skipping route registration")

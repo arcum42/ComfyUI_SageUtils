@@ -17,6 +17,9 @@ import { setupModelInfoDisplayNode } from "./nodes/modelInfoDisplay.js";
 // Import settings UI
 import "./settingsUI.js";
 
+// Import cache sidebar
+import "./cacheSidebar.js";
+
 app.registerExtension({
   name: "arcum42.sage.utils",
   async setup() {
