@@ -1,6 +1,6 @@
 /**
- * SageUtils Cache Sidebar Tab
- * Displays cached files and their detailed information
+ * SageUtils Sidebar Tab with Multiple Sub-tabs
+ * Multi-tabbed interface for model browser and notes manager
  */
 
 import { app } from "../../../scripts/app.js";
@@ -15,6 +15,11 @@ import {
     generateHtmlContent, 
     openHtmlReport 
 } from "../shared/reportGenerator.js";
+
+import { 
+    renderMarkdown, 
+    ensureMarkdownStyles 
+} from "../shared/markdown.js";
 
 import { 
     fetchCacheHash, 
@@ -604,11 +609,9 @@ async function createInfoDisplay(hash, info, showNsfw = false) {
 /**
  * Create the main cache sidebar content
  */
-export function createCacheSidebar(el) {
-    const container = createMainContainer();
-
+function createModelsTab(container) {
     // Header
-    const header = createHeader('SageUtils Cache Browser', 'Browse cached files and their metadata');
+    const header = createHeader('Model Browser', 'Browse cached models and their metadata');
 
     // Filter dropdown
     const { container: filterContainer, select: filterSelector } = createFilterSection('Filter by Type:', FILTER_OPTIONS.modelType);
@@ -1710,8 +1713,766 @@ export function createCacheSidebar(el) {
     container.appendChild(selectorContainer);
     container.appendChild(infoDisplay);
 
-    el.appendChild(container);
-
     // Initial load
     updateFileList();
+}
+
+/**
+ * Create the Notes tab for managing files in the notes directory
+ */
+function createNotesTab(container) {
+    const header = createHeader('Notes Manager', 'View, edit, and create notes files');
+    
+    // Create notes container
+    const notesContainer = document.createElement('div');
+    notesContainer.style.cssText = `
+        padding: 15px;
+    `;
+    
+    // File list section
+    const fileListSection = document.createElement('div');
+    fileListSection.style.cssText = `
+        margin-bottom: 15px;
+        padding: 15px;
+        background: #2a2a2a;
+        border-radius: 6px;
+        border: 1px solid #444;
+    `;
+    
+    const fileListHeader = document.createElement('h4');
+    fileListHeader.style.cssText = `
+        margin: 0 0 10px 0;
+        color: #4CAF50;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    `;
+    fileListHeader.innerHTML = 'Notes Files';
+    
+    // Add new file button
+    const newFileButton = createStyledButton('New File', '#2196F3', '📄');
+    newFileButton.style.cssText += 'font-size: 11px; padding: 4px 8px;';
+    fileListHeader.appendChild(newFileButton);
+    
+    // File list
+    const fileList = document.createElement('div');
+    fileList.style.cssText = `
+        max-height: 200px;
+        overflow-y: auto;
+        border: 1px solid #555;
+        border-radius: 4px;
+        background: #1a1a1a;
+    `;
+    
+    fileListSection.appendChild(fileListHeader);
+    fileListSection.appendChild(fileList);
+    
+    // Editor section
+    const editorSection = document.createElement('div');
+    editorSection.style.cssText = `
+        margin-bottom: 15px;
+        padding: 15px;
+        background: #2a2a2a;
+        border-radius: 6px;
+        border: 1px solid #444;
+    `;
+    
+    const editorHeader = document.createElement('h4');
+    editorHeader.style.cssText = `
+        margin: 0 0 10px 0;
+        color: #FF9800;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    `;
+    editorHeader.innerHTML = 'File Editor';
+    
+    // Editor controls
+    const editorControls = document.createElement('div');
+    editorControls.style.cssText = `
+        display: flex;
+        gap: 8px;
+        margin-bottom: 10px;
+    `;
+    
+    const filenameInput = createStyledInput('text', 'Enter filename...');
+    filenameInput.style.cssText += 'flex: 1; margin-bottom: 0;';
+    filenameInput.disabled = true;
+    
+    const saveButton = createStyledButton('Save', '#4CAF50', '💾');
+    saveButton.style.cssText += 'font-size: 11px; padding: 6px 12px;';
+    saveButton.disabled = true;
+    
+    const deleteButton = createStyledButton('Delete', '#F44336', '🗑️');
+    deleteButton.style.cssText += 'font-size: 11px; padding: 6px 12px;';
+    deleteButton.disabled = true;
+    
+    editorControls.appendChild(filenameInput);
+    editorControls.appendChild(saveButton);
+    editorControls.appendChild(deleteButton);
+    
+    // Text editor
+    const textEditor = document.createElement('textarea');
+    textEditor.style.cssText = `
+        width: 100%;
+        height: 300px;
+        padding: 10px;
+        background: #1a1a1a;
+        color: #fff;
+        border: 1px solid #555;
+        border-radius: 4px;
+        font-family: 'Courier New', monospace;
+        font-size: 12px;
+        resize: vertical;
+        box-sizing: border-box;
+    `;
+    textEditor.placeholder = 'Select a file to edit or create a new one...';
+    textEditor.disabled = true;
+    
+    editorSection.appendChild(editorHeader);
+    editorSection.appendChild(editorControls);
+    editorSection.appendChild(textEditor);
+    
+    // Markdown preview section (initially hidden)
+    const previewSection = document.createElement('div');
+    previewSection.style.cssText = `
+        margin-bottom: 15px;
+        padding: 15px;
+        background: #2a2a2a;
+        border-radius: 6px;
+        border: 1px solid #444;
+        display: none;
+    `;
+    
+    const previewHeader = document.createElement('h4');
+    previewHeader.style.cssText = `
+        margin: 0 0 10px 0;
+        color: #9C27B0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    `;
+    previewHeader.innerHTML = 'Markdown Preview';
+    
+    // Preview toggle button
+    const previewToggle = createStyledButton('Hide Preview', '#9C27B0', '👁️');
+    previewToggle.style.cssText += 'font-size: 11px; padding: 4px 8px;';
+    previewHeader.appendChild(previewToggle);
+    
+    // Preview content area
+    const previewContent = document.createElement('div');
+    previewContent.className = 'markdown-overlay';
+    previewContent.style.cssText = `
+        max-height: 400px;
+        overflow-y: auto;
+        padding: 15px;
+        background: #1a1a1a;
+        border: 1px solid #555;
+        border-radius: 4px;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        font-size: 13px;
+        line-height: 1.6;
+        color: #e0e0e0;
+    `;
+    
+    previewSection.appendChild(previewHeader);
+    previewSection.appendChild(previewContent);
+    
+    // Status section
+    const statusSection = document.createElement('div');
+    statusSection.style.cssText = `
+        padding: 10px 15px;
+        background: #1e1e1e;
+        border-radius: 6px;
+        border: 1px solid #444;
+        color: #888;
+        font-size: 12px;
+        text-align: center;
+    `;
+    statusSection.textContent = 'Ready';
+    
+    // State variables
+    let currentFile = null;
+    let isModified = false;
+    let filesData = [];
+    
+    // Helper functions
+    function setStatus(message, isError = false) {
+        statusSection.textContent = message;
+        statusSection.style.color = isError ? '#F44336' : '#888';
+    }
+    
+    function setModified(modified) {
+        isModified = modified;
+        if (currentFile) {
+            filenameInput.style.borderColor = modified ? '#FF9800' : '#555';
+            saveButton.style.opacity = modified ? '1' : '0.7';
+        }
+    }
+    
+    function enableEditor(filename = '') {
+        filenameInput.disabled = false;
+        textEditor.disabled = false;
+        saveButton.disabled = false;
+        deleteButton.disabled = !currentFile; // Only enable delete for existing files
+        if (filename) {
+            filenameInput.value = filename;
+        }
+    }
+    
+    function disableEditor() {
+        filenameInput.disabled = true;
+        textEditor.disabled = true;
+        saveButton.disabled = true;
+        deleteButton.disabled = true;
+        textEditor.value = '';
+        filenameInput.value = '';
+        currentFile = null;
+        setModified(false);
+    }
+    
+    // Load files list
+    async function loadFilesList() {
+        try {
+            setStatus('Loading files...');
+            const response = await api.fetchApi('/sage_utils/list_notes');
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            const result = await response.json();
+            filesData = result.files || [];
+            
+            // Clear and populate file list
+            fileList.innerHTML = '';
+            
+            if (filesData.length === 0) {
+                const emptyMessage = document.createElement('div');
+                emptyMessage.style.cssText = `
+                    padding: 20px;
+                    text-align: center;
+                    color: #888;
+                    font-style: italic;
+                `;
+                emptyMessage.textContent = 'No notes files found';
+                fileList.appendChild(emptyMessage);
+            } else {
+                filesData.forEach(filename => {
+                    const fileItem = document.createElement('div');
+                    fileItem.style.cssText = `
+                        padding: 8px 12px;
+                        cursor: pointer;
+                        border-bottom: 1px solid #333;
+                        transition: background-color 0.2s;
+                        display: flex;
+                        align-items: center;
+                        gap: 8px;
+                    `;
+                    
+                    fileItem.innerHTML = `
+                        <span style="color: #4CAF50;">📄</span>
+                        <span style="flex: 1; color: #fff;">${escapeHtml(filename)}</span>
+                    `;
+                    
+                    fileItem.addEventListener('mouseenter', () => {
+                        fileItem.style.backgroundColor = '#333';
+                    });
+                    
+                    fileItem.addEventListener('mouseleave', () => {
+                        fileItem.style.backgroundColor = currentFile === filename ? '#444' : 'transparent';
+                    });
+                    
+                    fileItem.addEventListener('click', () => loadFile(filename));
+                    
+                    fileList.appendChild(fileItem);
+                });
+            }
+            
+            setStatus(`Loaded ${filesData.length} files`);
+        } catch (error) {
+            console.error('Error loading files:', error);
+            setStatus(`Error loading files: ${error.message}`, true);
+        }
+    }
+    
+    // Load file content
+    async function loadFile(filename) {
+        try {
+            setStatus(`Loading ${filename}...`);
+            
+            const isImage = /\.(jpg|jpeg|png|gif|bmp|webp|svg)$/i.test(filename.toLowerCase());
+            const isVideo = /\.(mp4|webm|ogg|avi|mov|wmv|flv|mkv|m4v)$/i.test(filename.toLowerCase());
+            
+            if (isImage || isVideo) {
+                // For images and videos, just update UI without loading content into text editor
+                currentFile = filename;
+                enableEditor(filename);
+                textEditor.value = '';
+                textEditor.placeholder = `${isImage ? 'Image' : 'Video'} files cannot be edited as text`;
+                textEditor.disabled = true;
+                setModified(false);
+                toggleSectionVisibility();
+                setStatus(`Loaded ${isImage ? 'image' : 'video'}: ${filename}`);
+            } else {
+                // For text files, load content normally
+                const response = await api.fetchApi('/sage_utils/read_note', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ filename })
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const result = await response.json();
+                
+                // Update UI
+                currentFile = filename;
+                enableEditor(filename);
+                textEditor.value = result.content || '';
+                textEditor.placeholder = 'Select a file to edit or create a new one...';
+                textEditor.disabled = false;
+                setModified(false);
+                toggleSectionVisibility();
+                setStatus(`Loaded: ${filename}`);
+            }
+            
+            // Update file list selection
+            fileList.querySelectorAll('div').forEach(item => {
+                item.style.backgroundColor = 'transparent';
+            });
+            const selectedItem = Array.from(fileList.children).find(item => 
+                item.textContent.trim() === filename
+            );
+            if (selectedItem) {
+                selectedItem.style.backgroundColor = '#444';
+            }
+            
+        } catch (error) {
+            console.error('Error loading file:', error);
+            setStatus(`Error loading file: ${error.message}`, true);
+        }
+    }
+    
+    // Save file
+    async function saveFile() {
+        try {
+            const filename = filenameInput.value.trim();
+            if (!filename) {
+                setStatus('Please enter a filename', true);
+                return;
+            }
+            
+            // Check if it's an image or video file
+            const isImage = /\.(jpg|jpeg|png|gif|bmp|webp|svg)$/i.test(filename.toLowerCase());
+            const isVideo = /\.(mp4|webm|ogg|avi|mov|wmv|flv|mkv|m4v)$/i.test(filename.toLowerCase());
+            if (isImage || isVideo) {
+                setStatus(`Cannot save ${isImage ? 'image' : 'video'} files as text`, true);
+                return;
+            }
+            
+            setStatus(`Saving ${filename}...`);
+            
+            const response = await api.fetchApi('/sage_utils/save_note', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    filename, 
+                    content: textEditor.value 
+                })
+            });
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            currentFile = filename;
+            setModified(false);
+            setStatus(`Saved ${filename}`);
+            
+            // Refresh file list if it's a new file
+            if (!filesData.includes(filename)) {
+                await loadFilesList();
+            }
+        } catch (error) {
+            console.error('Error saving file:', error);
+            setStatus(`Error saving file: ${error.message}`, true);
+        }
+    }
+    
+    // Delete file
+    async function deleteFile() {
+        if (!currentFile) return;
+        
+        if (!confirm(`Are you sure you want to delete "${currentFile}"?`)) {
+            return;
+        }
+        
+        try {
+            setStatus(`Deleting ${currentFile}...`);
+            
+            const response = await api.fetchApi('/sage_utils/delete_note', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ filename: currentFile })
+            });
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            setStatus(`Deleted ${currentFile}`);
+            disableEditor();
+            await loadFilesList();
+        } catch (error) {
+            console.error('Error deleting file:', error);
+            setStatus(`Error deleting file: ${error.message}`, true);
+        }
+    }
+    
+    // Create new file
+    function createNewFile() {
+        disableEditor();
+        currentFile = null;
+        enableEditor();
+        filenameInput.value = 'new_note.txt';
+        textEditor.value = '';
+        textEditor.focus();
+        setStatus('Creating new file');
+        toggleSectionVisibility();
+        
+        // Clear file list selection
+        fileList.querySelectorAll('div').forEach(item => {
+            item.style.backgroundColor = 'transparent';
+        });
+    }
+    
+    // Event listeners
+    newFileButton.addEventListener('click', createNewFile);
+    saveButton.addEventListener('click', saveFile);
+    deleteButton.addEventListener('click', deleteFile);
+    
+    // Track modifications
+    textEditor.addEventListener('input', () => {
+        setModified(true);
+        updatePreview();
+    });
+    filenameInput.addEventListener('input', () => {
+        setModified(true);
+        toggleSectionVisibility();
+    });
+    
+    // Preview toggle functionality
+    previewToggle.addEventListener('click', () => {
+        const isVisible = previewSection.style.display !== 'none';
+        if (isVisible) {
+            previewSection.style.display = 'none';
+            previewToggle.textContent = 'Show Preview';
+        } else {
+            previewSection.style.display = 'block';
+            previewToggle.textContent = 'Hide Preview';
+            updatePreview();
+        }
+    });
+    
+    // Update preview based on file type
+    function updatePreview() {
+        if (previewSection.style.display === 'none' || !currentFile) return;
+        
+        const filename = filenameInput.value;
+        const isMarkdown = filename.toLowerCase().endsWith('.md') || filename.toLowerCase().endsWith('.markdown');
+        const isImage = /\.(jpg|jpeg|png|gif|bmp|webp|svg)$/i.test(filename.toLowerCase());
+        const isVideo = /\.(mp4|webm|ogg|avi|mov|wmv|flv|mkv|m4v)$/i.test(filename.toLowerCase());
+        
+        if (isMarkdown) {
+            previewSection.style.display = 'block';
+            previewHeader.innerHTML = 'Markdown Preview';
+            previewHeader.appendChild(previewToggle);
+            ensureMarkdownStyles();
+            previewContent.innerHTML = renderMarkdown(textEditor.value || '');
+        } else if (isImage) {
+            previewSection.style.display = 'block';
+            previewHeader.innerHTML = 'Image Preview';
+            previewHeader.appendChild(previewToggle);
+            showImagePreview(filename);
+        } else if (isVideo) {
+            previewSection.style.display = 'block';
+            previewHeader.innerHTML = 'Video Preview';
+            previewHeader.appendChild(previewToggle);
+            showVideoPreview(filename);
+        } else {
+            previewSection.style.display = 'none';
+        }
+    }
+    
+    // Function to show image preview
+    function showImagePreview(filename) {
+        // Create image element
+        const img = document.createElement('img');
+        img.style.cssText = `
+            max-width: 100%;
+            max-height: 100%;
+            width: auto;
+            height: auto;
+            display: block;
+            margin: 0 auto;
+            border-radius: 4px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        `;
+        
+        // Set image source to the notes API endpoint
+        img.src = `/sage_utils/read_note?filename=${encodeURIComponent(filename)}`;
+        
+        // Handle loading states
+        img.onload = () => {
+            previewContent.innerHTML = '';
+            previewContent.appendChild(img);
+        };
+        
+        img.onerror = () => {
+            previewContent.innerHTML = `
+                <div style="text-align: center; color: #f44336; padding: 20px;">
+                    <p>❌ Failed to load image</p>
+                    <p style="font-size: 11px; color: #888;">${filename}</p>
+                </div>
+            `;
+        };
+        
+        // Show loading state
+        previewContent.innerHTML = `
+            <div style="text-align: center; color: #888; padding: 20px;">
+                <p>🖼️ Loading image...</p>
+            </div>
+        `;
+    }
+    
+    // Function to show video preview
+    function showVideoPreview(filename) {
+        // Create video element
+        const video = document.createElement('video');
+        video.style.cssText = `
+            max-width: 100%;
+            max-height: 400px;
+            width: auto;
+            height: auto;
+            display: block;
+            margin: 0 auto;
+            border-radius: 4px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        `;
+        video.controls = true;
+        video.preload = 'metadata';
+        
+        // Set video source to the notes API endpoint
+        video.src = `/sage_utils/read_note?filename=${encodeURIComponent(filename)}`;
+        
+        // Handle loading states
+        video.addEventListener('loadedmetadata', () => {
+            previewContent.innerHTML = '';
+            previewContent.appendChild(video);
+            
+            // Add video info
+            const infoDiv = document.createElement('div');
+            infoDiv.style.cssText = `
+                text-align: center;
+                color: #888;
+                font-size: 11px;
+                margin-top: 8px;
+                padding: 5px;
+            `;
+            
+            const duration = video.duration;
+            const minutes = Math.floor(duration / 60);
+            const seconds = Math.floor(duration % 60);
+            const durationText = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+            
+            infoDiv.innerHTML = `
+                Duration: ${durationText} | 
+                ${video.videoWidth}x${video.videoHeight}
+            `;
+            previewContent.appendChild(infoDiv);
+        });
+        
+        video.addEventListener('error', (e) => {
+            console.error('Video load error:', e);
+            previewContent.innerHTML = `
+                <div style="text-align: center; color: #f44336; padding: 20px;">
+                    <p>❌ Failed to load video</p>
+                    <p style="font-size: 11px; color: #888;">${filename}</p>
+                    <p style="font-size: 10px; color: #666;">Make sure the video format is supported by your browser</p>
+                </div>
+            `;
+        });
+        
+        // Show loading state
+        previewContent.innerHTML = `
+            <div style="text-align: center; color: #888; padding: 20px;">
+                <p>🎬 Loading video...</p>
+            </div>
+        `;
+    }
+    
+    // Function to show/hide sections based on file type
+    function toggleSectionVisibility() {
+        const filename = filenameInput.value;
+        const isMarkdown = filename.toLowerCase().endsWith('.md') || filename.toLowerCase().endsWith('.markdown');
+        const isImage = /\.(jpg|jpeg|png|gif|bmp|webp|svg)$/i.test(filename.toLowerCase());
+        const isVideo = /\.(mp4|webm|ogg|avi|mov|wmv|flv|mkv|m4v)$/i.test(filename.toLowerCase());
+        const isTextFile = !isImage && !isVideo; // Everything that's not an image or video is considered text
+        
+        // Show/hide editor section based on file type
+        if (isTextFile) {
+            editorSection.style.display = 'block';
+        } else {
+            editorSection.style.display = 'none';
+        }
+        
+        // Show/hide preview section based on file type
+        if (isMarkdown || isImage || isVideo) {
+            previewSection.style.display = 'block';
+            updatePreview();
+        } else {
+            previewSection.style.display = 'none';
+        }
+    }
+    
+    // Keyboard shortcuts
+    textEditor.addEventListener('keydown', (e) => {
+        if (e.ctrlKey && e.key === 's') {
+            e.preventDefault();
+            saveFile();
+        }
+    });
+    
+    // Assemble the tab
+    notesContainer.appendChild(fileListSection);
+    notesContainer.appendChild(editorSection);
+    notesContainer.appendChild(previewSection);
+    notesContainer.appendChild(statusSection);
+    
+    container.appendChild(header);
+    container.appendChild(notesContainer);
+    
+    // Initial load
+    loadFilesList();
+}
+
+/**
+ * Create tab button
+ */
+function createTabButton(text, isActive = false) {
+    const button = document.createElement('button');
+    button.textContent = text;
+    button.style.cssText = `
+        padding: 10px 20px;
+        border: none;
+        background: ${isActive ? '#4CAF50' : '#2a2a2a'};
+        color: ${isActive ? 'white' : '#ccc'};
+        cursor: pointer;
+        border-radius: 6px 6px 0 0;
+        margin-right: 2px;
+        font-size: 13px;
+        font-weight: ${isActive ? 'bold' : 'normal'};
+        transition: all 0.2s ease;
+        border-bottom: 2px solid ${isActive ? '#4CAF50' : 'transparent'};
+        position: relative;
+        top: 2px;
+    `;
+    
+    // Hover effects
+    button.addEventListener('mouseenter', () => {
+        if (!button.classList.contains('active')) {
+            button.style.background = '#3a3a3a';
+            button.style.color = 'white';
+            button.style.transform = 'translateY(-1px)';
+        }
+    });
+    
+    button.addEventListener('mouseleave', () => {
+        if (!button.classList.contains('active')) {
+            button.style.background = '#2a2a2a';
+            button.style.color = '#ccc';
+            button.style.transform = 'translateY(0)';
+        }
+    });
+    
+    return button;
+}
+
+/**
+ * Create the main tabbed sidebar content
+ */
+export function createCacheSidebar(el) {
+    const mainContainer = createMainContainer();
+    
+    // Create tab header
+    const tabHeader = document.createElement('div');
+    tabHeader.style.cssText = `
+        display: flex;
+        margin-bottom: 0;
+        border-bottom: 3px solid #444;
+        padding-bottom: 0;
+        background: #1e1e1e;
+        border-radius: 6px 6px 0 0;
+    `;
+    
+    // Create tab buttons
+    const modelsTab = createTabButton('Models', true);
+    const notesTab = createTabButton('Notes');
+    
+    modelsTab.classList.add('active');
+    
+    // Create tab content container
+    const tabContent = document.createElement('div');
+    tabContent.style.cssText = `
+        flex: 1;
+        overflow-y: auto;
+        background: #1e1e1e;
+        border: 1px solid #444;
+        border-top: none;
+        border-radius: 0 0 6px 6px;
+        min-height: 500px;
+    `;
+    
+    // Tab switching logic
+    function switchTab(activeButton, tabFunction) {
+        // Update button states
+        [modelsTab, notesTab].forEach(btn => {
+            btn.classList.remove('active');
+            btn.style.background = '#2a2a2a';
+            btn.style.color = '#ccc';
+            btn.style.fontWeight = 'normal';
+            btn.style.borderBottom = '2px solid transparent';
+            btn.style.transform = 'translateY(0)';
+        });
+        
+        activeButton.classList.add('active');
+        activeButton.style.background = '#4CAF50';
+        activeButton.style.color = 'white';
+        activeButton.style.fontWeight = 'bold';
+        activeButton.style.borderBottom = '2px solid #4CAF50';
+        activeButton.style.transform = 'translateY(-1px)';
+        
+        // Clear and populate content
+        tabContent.innerHTML = '';
+        tabFunction(tabContent);
+    }
+    
+    // Tab event listeners
+    modelsTab.addEventListener('click', () => switchTab(modelsTab, createModelsTab));
+    notesTab.addEventListener('click', () => switchTab(notesTab, createNotesTab));
+    
+    // Assemble tab header
+    tabHeader.appendChild(modelsTab);
+    tabHeader.appendChild(notesTab);
+    
+    // Assemble main container
+    mainContainer.appendChild(tabHeader);
+    mainContainer.appendChild(tabContent);
+    
+    el.appendChild(mainContainer);
+    
+    // Initialize with Models tab
+    createModelsTab(tabContent);
 }

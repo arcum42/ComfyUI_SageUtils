@@ -29,8 +29,8 @@ app.registerExtension({
     app.extensionManager.registerSidebarTab({
       id: "sageUtilsCache",
       icon: "pi pi-hammer",
-      title: "Cache Browser",
-      tooltip: "Browse SageUtils cached files and metadata",
+      title: "SageUtils",
+      tooltip: "SageUtils tools: Model browser and notes manager",
       type: "custom",
       render: createCacheSidebar
     });

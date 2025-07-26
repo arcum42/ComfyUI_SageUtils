@@ -553,6 +553,220 @@ try:
                     status=500
                 )
 
+        # Notes management routes
+        @routes.get('/sage_utils/list_notes')
+        async def list_notes(request):
+            """
+            Returns a list of all notes files in the notes directory.
+            """
+            try:
+                from .utils.path_manager import path_manager
+                
+                notes_path = path_manager.notes_path
+                files = []
+                
+                if notes_path.exists():
+                    files = [f.name for f in notes_path.iterdir() if f.is_file()]
+                    files.sort()  # Sort alphabetically
+                
+                return web.json_response({
+                    "success": True,
+                    "files": files
+                })
+            except Exception as e:
+                return web.json_response(
+                    {"success": False, "error": f"Failed to list notes: {str(e)}"}, 
+                    status=500
+                )
+
+        @routes.post('/sage_utils/read_note')
+        async def read_note(request):
+            """
+            Reads the content of a specific notes file.
+            """
+            try:
+                from .utils.path_manager import path_manager
+                data = await request.json()
+                filename = data.get('filename', '')
+                
+                if not filename:
+                    return web.json_response(
+                        {"success": False, "error": "Filename is required"}, 
+                        status=400
+                    )
+                
+                notes_file_path = path_manager.notes_path / filename
+                
+                # Security check: ensure the file is within the notes directory
+                if not str(notes_file_path.resolve()).startswith(str(path_manager.notes_path.resolve())):
+                    return web.json_response(
+                        {"success": False, "error": "Invalid file path"}, 
+                        status=400
+                    )
+                
+                if not notes_file_path.exists() or not notes_file_path.is_file():
+                    return web.json_response(
+                        {"success": False, "error": f"File '{filename}' not found"}, 
+                        status=404
+                    )
+                
+                with open(notes_file_path, 'r', encoding='utf-8') as file:
+                    content = file.read()
+                
+                return web.json_response({
+                    "success": True,
+                    "content": content,
+                    "filename": filename
+                })
+            except Exception as e:
+                return web.json_response(
+                    {"success": False, "error": f"Failed to read note: {str(e)}"}, 
+                    status=500
+                )
+
+        @routes.get('/sage_utils/read_note')
+        async def read_note_get(request):
+            """
+            Serves a notes file directly - supports text, images, and video files.
+            """
+            try:
+                from .utils.path_manager import path_manager
+                import mimetypes
+                
+                filename = request.query.get('filename', '')
+                
+                if not filename:
+                    return web.Response(text="Filename is required", status=400)
+                
+                notes_file_path = path_manager.notes_path / filename
+                
+                # Security check: ensure the file is within the notes directory
+                if not str(notes_file_path.resolve()).startswith(str(path_manager.notes_path.resolve())):
+                    return web.Response(text="Invalid file path", status=400)
+                
+                if not notes_file_path.exists() or not notes_file_path.is_file():
+                    return web.Response(text=f"File '{filename}' not found", status=404)
+                
+                # Determine content type
+                content_type, _ = mimetypes.guess_type(str(notes_file_path))
+                if content_type is None:
+                    content_type = 'application/octet-stream'
+                
+                # Read file in appropriate mode
+                if content_type.startswith(('image/', 'video/')):
+                    # Binary mode for images and videos
+                    with open(notes_file_path, 'rb') as file:
+                        content = file.read()
+                    
+                    # For videos, add headers to support range requests and streaming
+                    headers = {}
+                    if content_type.startswith('video/'):
+                        headers['Accept-Ranges'] = 'bytes'
+                        headers['Cache-Control'] = 'no-cache'
+                    
+                    return web.Response(body=content, content_type=content_type, headers=headers)
+                else:
+                    # Text mode for other files
+                    with open(notes_file_path, 'r', encoding='utf-8') as file:
+                        content = file.read()
+                    return web.Response(text=content, content_type=content_type)
+                    
+            except Exception as e:
+                return web.Response(text=f"Failed to read file: {str(e)}", status=500)
+
+        @routes.post('/sage_utils/save_note')
+        async def save_note(request):
+            """
+            Saves content to a notes file.
+            """
+            try:
+                from .utils.path_manager import path_manager
+                import os
+                data = await request.json()
+                filename = data.get('filename', '').strip()
+                content = data.get('content', '')
+                
+                if not filename:
+                    return web.json_response(
+                        {"success": False, "error": "Filename is required"}, 
+                        status=400
+                    )
+                
+                # Basic filename validation
+                if any(char in filename for char in ['/', '\\', '..', '<', '>', ':', '"', '|', '?', '*']):
+                    return web.json_response(
+                        {"success": False, "error": "Invalid filename characters"}, 
+                        status=400
+                    )
+                
+                notes_file_path = path_manager.notes_path / filename
+                
+                # Security check: ensure the file is within the notes directory
+                if not str(notes_file_path.resolve()).startswith(str(path_manager.notes_path.resolve())):
+                    return web.json_response(
+                        {"success": False, "error": "Invalid file path"}, 
+                        status=400
+                    )
+                
+                # Ensure notes directory exists
+                path_manager.notes_path.mkdir(parents=True, exist_ok=True)
+                
+                with open(notes_file_path, 'w', encoding='utf-8') as file:
+                    file.write(content)
+                
+                return web.json_response({
+                    "success": True,
+                    "message": f"File '{filename}' saved successfully"
+                })
+            except Exception as e:
+                return web.json_response(
+                    {"success": False, "error": f"Failed to save note: {str(e)}"}, 
+                    status=500
+                )
+
+        @routes.post('/sage_utils/delete_note')
+        async def delete_note(request):
+            """
+            Deletes a notes file.
+            """
+            try:
+                from .utils.path_manager import path_manager
+                data = await request.json()
+                filename = data.get('filename', '')
+                
+                if not filename:
+                    return web.json_response(
+                        {"success": False, "error": "Filename is required"}, 
+                        status=400
+                    )
+                
+                notes_file_path = path_manager.notes_path / filename
+                
+                # Security check: ensure the file is within the notes directory
+                if not str(notes_file_path.resolve()).startswith(str(path_manager.notes_path.resolve())):
+                    return web.json_response(
+                        {"success": False, "error": "Invalid file path"}, 
+                        status=400
+                    )
+                
+                if not notes_file_path.exists() or not notes_file_path.is_file():
+                    return web.json_response(
+                        {"success": False, "error": f"File '{filename}' not found"}, 
+                        status=404
+                    )
+                
+                notes_file_path.unlink()
+                
+                return web.json_response({
+                    "success": True,
+                    "message": f"File '{filename}' deleted successfully"
+                })
+            except Exception as e:
+                return web.json_response(
+                    {"success": False, "error": f"Failed to delete note: {str(e)}"}, 
+                    status=500
+                )
+
         print("SageUtils custom routes loaded successfully!")
     else:
         print("Warning: PromptServer instance not available, skipping route registration")
