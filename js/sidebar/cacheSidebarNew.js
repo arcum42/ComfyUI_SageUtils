@@ -36,6 +36,7 @@ import {
 // Import decomposed tab modules
 import { createModelsTab } from "./modelsTab.js";
 import { createNotesTab } from "./notesTab.js";
+import { createCivitaiSearchTab } from "./civitaiSearchTab.js";
 
 // Import cache API functions
 import { 
@@ -60,18 +61,28 @@ function createTabHeader() {
         border-bottom: 2px solid #4CAF50;
         margin-bottom: 15px;
         background: #1a1a1a;
+        overflow-x: auto;
+        min-height: 50px;
     `;
 
     const modelsTab = createTabButton('Models', true);
     const notesTab = createTabButton('Notes', false);
+    const civitaiTab = createTabButton('Search', false);
+
+    // Ensure tabs are properly sized
+    modelsTab.style.flexShrink = '0';
+    notesTab.style.flexShrink = '0';
+    civitaiTab.style.flexShrink = '0';
 
     tabHeader.appendChild(modelsTab);
     tabHeader.appendChild(notesTab);
+    tabHeader.appendChild(civitaiTab);
 
     return {
         tabHeader,
         modelsTab,
-        notesTab
+        notesTab,
+        civitaiTab
     };
 }
 
@@ -97,7 +108,7 @@ function createTabContent() {
  * @param {HTMLElement} tabContent - Tab content container
  */
 function setupTabSwitching(tabComponents, tabContent) {
-    const { modelsTab, notesTab } = tabComponents;
+    const { modelsTab, notesTab, civitaiTab } = tabComponents;
 
     /**
      * Switches between tabs
@@ -106,7 +117,7 @@ function setupTabSwitching(tabComponents, tabContent) {
      */
     function switchTab(activeButton, tabFunction) {
         // Update button styles
-        [modelsTab, notesTab].forEach(btn => {
+        [modelsTab, notesTab, civitaiTab].forEach(btn => {
             btn.classList.remove('active');
             btn.style.background = '#2a2a2a';
             btn.style.color = '#ccc';
@@ -130,6 +141,7 @@ function setupTabSwitching(tabComponents, tabContent) {
     // Tab event listeners
     modelsTab.addEventListener('click', () => switchTab(modelsTab, createModelsTab));
     notesTab.addEventListener('click', () => switchTab(notesTab, createNotesTab));
+    civitaiTab.addEventListener('click', () => switchTab(civitaiTab, createCivitaiSearchTab));
 
     return { switchTab };
 }

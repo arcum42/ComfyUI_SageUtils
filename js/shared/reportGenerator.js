@@ -1,6 +1,5 @@
 /**
- * HTML Report Gene        <span style="color: #28a745; font-weight: bold;">📷 Auto Images</span> - Cached images shown immediately, others load automatically<br>
-        <small style="color: #999; font-style: italic;">Click column headers to sort • Click images to expand/collapse • ESC to close • Images load automatically from Civitai • Report format based on original design by tecknight</small>tor for SageUtils Cache Browser
+ * HTML Report Generator for SageUtils Cache Browser
  * Handles generation of styled HTML reports with model information
  */
 
@@ -336,9 +335,13 @@ export async function generateHtmlContent(options) {
             text-decoration: underline;
         }
         /* Sortable table styles */
-        table.sortable th:not(.sorttable_nosort):not(.sorttable_sorted):not(.sorttable_sorted_reverse):not(.sorttable_alpha):not(.sorttable_numeric):not(.sorttable_alphaNum):hover {
-            background-color: #5555ff;
+        table.sortable th:not(.sorttable_nosort) {
             cursor: pointer;
+            user-select: none;
+            position: relative;
+        }
+        table.sortable th:not(.sorttable_nosort):hover {
+            background-color: #5555ff;
         }
         table.sortable th.sorttable_sorted {
             background-color: #00aa00;
@@ -350,9 +353,112 @@ export async function generateHtmlContent(options) {
             background-color: #666;
             cursor: default;
         }
+        .sort-indicator {
+            font-size: 14px;
+            margin-left: 5px;
+        }
     </style>
-    <script src="https://tecknight.aiartalley.com/sorttable.js"></script>
     <script>
+        // Custom sortable table implementation
+        let sortDirection = {};
+        
+        function makeSortable() {
+            const tables = document.querySelectorAll('table.sortable');
+            tables.forEach(table => {
+                const headers = table.querySelectorAll('th');
+                headers.forEach((header, index) => {
+                    if (!header.classList.contains('sorttable_nosort')) {
+                        header.style.cursor = 'pointer';
+                        header.addEventListener('click', () => sortTable(table, index));
+                        
+                        // Add sort indicator
+                        const indicator = document.createElement('span');
+                        indicator.className = 'sort-indicator';
+                        indicator.innerHTML = ' ⇅';
+                        indicator.style.opacity = '0.5';
+                        header.appendChild(indicator);
+                    }
+                });
+            });
+        }
+        
+        function sortTable(table, columnIndex) {
+            const tableId = table.id || 'table_' + Math.random().toString(36).substr(2, 9);
+            if (!table.id) table.id = tableId;
+            
+            const sortKey = tableId + '_' + columnIndex;
+            const currentDirection = sortDirection[sortKey] || 'asc';
+            const newDirection = currentDirection === 'asc' ? 'desc' : 'asc';
+            sortDirection[sortKey] = newDirection;
+            
+            const tbody = table.querySelector('tbody') || table;
+            const rows = Array.from(tbody.querySelectorAll('tr')).slice(1); // Skip header row
+            
+            // Clear all header styles and indicators
+            const headers = table.querySelectorAll('th');
+            headers.forEach(header => {
+                header.classList.remove('sorttable_sorted', 'sorttable_sorted_reverse');
+                const indicator = header.querySelector('.sort-indicator');
+                if (indicator) {
+                    indicator.innerHTML = ' ⇅';
+                    indicator.style.opacity = '0.5';
+                }
+            });
+            
+            // Update current header style and indicator
+            const currentHeader = headers[columnIndex];
+            if (currentHeader) {
+                currentHeader.classList.add(newDirection === 'asc' ? 'sorttable_sorted' : 'sorttable_sorted_reverse');
+                const indicator = currentHeader.querySelector('.sort-indicator');
+                if (indicator) {
+                    indicator.innerHTML = newDirection === 'asc' ? ' ↑' : ' ↓';
+                    indicator.style.opacity = '1';
+                }
+            }
+            
+            rows.sort((a, b) => {
+                const cellA = a.cells[columnIndex];
+                const cellB = b.cells[columnIndex];
+                
+                if (!cellA || !cellB) return 0;
+                
+                // Check for custom sort key
+                let valueA = cellA.getAttribute('sorttable_customkey');
+                let valueB = cellB.getAttribute('sorttable_customkey');
+                
+                if (valueA && valueB) {
+                    // Numeric comparison for custom keys
+                    valueA = parseFloat(valueA);
+                    valueB = parseFloat(valueB);
+                } else {
+                    // Text comparison
+                    valueA = cellA.textContent.trim();
+                    valueB = cellB.textContent.trim();
+                    
+                    // Try to parse as numbers for better sorting
+                    const numA = parseFloat(valueA.replace(/[^\\d.-]/g, ''));
+                    const numB = parseFloat(valueB.replace(/[^\\d.-]/g, ''));
+                    
+                    if (!isNaN(numA) && !isNaN(numB)) {
+                        valueA = numA;
+                        valueB = numB;
+                    }
+                }
+                
+                let comparison = 0;
+                if (valueA < valueB) {
+                    comparison = -1;
+                } else if (valueA > valueB) {
+                    comparison = 1;
+                }
+                
+                return newDirection === 'desc' ? -comparison : comparison;
+            });
+            
+            // Re-append sorted rows
+            rows.forEach(row => tbody.appendChild(row));
+        }
+        
         async function copyToClipboard(text) {
             try {
                 await navigator.clipboard.writeText(text);
@@ -458,13 +564,19 @@ export async function generateHtmlContent(options) {
             });
         }
 
-        // Load images after page content is ready
-        document.addEventListener('DOMContentLoaded', autoLoadImages);
+        // Initialize everything when page loads
+        function initializePage() {
+            makeSortable();
+            autoLoadImages();
+        }
+
+        // Load functionality after page content is ready
+        document.addEventListener('DOMContentLoaded', initializePage);
         // Also run immediately in case DOMContentLoaded already fired
         if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', autoLoadImages);
+            document.addEventListener('DOMContentLoaded', initializePage);
         } else {
-            autoLoadImages();
+            initializePage();
         }
 
         // Add ESC key support to close expanded images
@@ -486,7 +598,7 @@ export async function generateHtmlContent(options) {
     <div class="info">
         Filters Applied: ${filterDescription}${searchDescription}${lastUsedDescription}${sortDescription}<br>
         Total Models: ${allModels.length} (${checkpointModels.length} Checkpoints, ${loraModels.length} LoRAs)<br>
-        <small style="color: #999; font-style: italic;">Click column headers to sort • Report format based on original design by tecknight</small>
+        <small style="color: #999; font-style: italic;">Click column headers to sort • Images load automatically from Civitai</small>
     </div>
 `;
 
