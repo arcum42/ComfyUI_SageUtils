@@ -2,6 +2,7 @@
 Custom routes for SageUtils to expose cache data and settings via HTTP endpoints.
 """
 
+import logging
 try:
     from server import PromptServer
     from aiohttp import web
@@ -553,6 +554,138 @@ try:
                     status=500
                 )
 
+        @routes.get('/sage_utils/cache_info_images')
+        async def get_cache_info_images(request):
+            """
+            Returns image data associated with a cached model's Civitai information.
+            Expects 'hash' query parameter.
+            """
+            try:
+                hash_value = request.query.get('hash')
+                if not hash_value:
+                    return web.json_response(
+                        {"success": False, "error": "Hash parameter required"}, 
+                        status=400
+                    )
+
+                # Get info from cache
+                info = cache.info.get(hash_value)
+                
+                if not info:
+                    return web.json_response(
+                        {"success": False, "error": "No cache info found for hash"}, 
+                        status=404
+                    )
+
+                # Extract images from Civitai data
+                images = []
+                
+                # Check for images in various possible locations in the info structure
+                if isinstance(info, dict):
+                    # Direct images array
+                    if 'images' in info and isinstance(info['images'], list):
+                        images.extend(info['images'])
+                    
+                    # Images in nested structures (common in Civitai data)
+                    for key in ['version', 'model', 'data']:
+                        if key in info and isinstance(info[key], dict):
+                            nested_data = info[key]
+                            if 'images' in nested_data and isinstance(nested_data['images'], list):
+                                images.extend(nested_data['images'])
+                    
+                    # Legacy: check for direct image properties
+                    for img_key in ['image', 'preview', 'thumbnail']:
+                        if img_key in info and info[img_key]:
+                            img_data = info[img_key]
+                            if isinstance(img_data, str):
+                                # Direct URL
+                                images.append({
+                                    'url': img_data,
+                                    'nsfw': 'Unknown',
+                                    'type': img_key
+                                })
+                            elif isinstance(img_data, dict) and 'url' in img_data:
+                                # Image object with URL
+                                images.append({
+                                    'url': img_data['url'],
+                                    'nsfw': img_data.get('nsfw', 'Unknown'),
+                                    'type': img_key
+                                })
+
+                # Format images for frontend consumption
+                formatted_images = []
+                for img in images:
+                    if isinstance(img, dict) and 'url' in img:
+                        formatted_images.append({
+                            'url': img['url'],
+                            'nsfw': img.get('nsfw', 'Unknown'),
+                            'type': img.get('type', 'preview'),
+                            'width': img.get('width'),
+                            'height': img.get('height'),
+                            'meta': img.get('meta', {})
+                        })
+                    elif isinstance(img, str):
+                        # Direct URL string
+                        formatted_images.append({
+                            'url': img,
+                            'nsfw': 'Unknown',
+                            'type': 'preview'
+                        })
+
+                return web.json_response({
+                    "success": True,
+                    "images": formatted_images,
+                    "count": len(formatted_images)
+                })
+
+            except Exception as e:
+                logging.error(f"Error getting cache info images: {e}")
+                return web.json_response(
+                    {"success": False, "error": f"Request processing error: {str(e)}"}, 
+                    status=500
+                )
+
+        @routes.get('/sage_utils/file_size')
+        async def get_file_size(request):
+            """
+            Returns the file size for a given file path.
+            Expects 'path' query parameter.
+            """
+            try:
+                file_path = request.query.get('path')
+                if not file_path:
+                    return web.json_response(
+                        {"success": False, "error": "Path parameter required"}, 
+                        status=400
+                    )
+
+                import os
+                if not os.path.exists(file_path):
+                    return web.json_response(
+                        {"success": False, "error": "File not found"}, 
+                        status=404
+                    )
+
+                try:
+                    file_size = os.path.getsize(file_path)
+                    return web.json_response({
+                        "success": True,
+                        "file_size": file_size,
+                        "file_path": file_path
+                    })
+                except OSError as e:
+                    return web.json_response(
+                        {"success": False, "error": f"Cannot access file: {str(e)}"}, 
+                        status=403
+                    )
+
+            except Exception as e:
+                logging.error(f"Error getting file size: {e}")
+                return web.json_response(
+                    {"success": False, "error": f"Request processing error: {str(e)}"}, 
+                    status=500
+                )
+
         # Notes management routes
         @routes.get('/sage_utils/list_notes')
         async def list_notes(request):
@@ -764,6 +897,81 @@ try:
             except Exception as e:
                 return web.json_response(
                     {"success": False, "error": f"Failed to delete note: {str(e)}"}, 
+                    status=500
+                )
+
+        @routes.get('/sage_utils/civitai_images')
+        async def get_civitai_images(request):
+            """
+            Proxy endpoint to fetch Civitai images for a model hash, avoiding CORS issues.
+            Includes basic rate limiting to avoid overwhelming Civitai API.
+            """
+            try:
+                import aiohttp
+                import asyncio
+                import time
+                
+                hash_param = request.query.get('hash')
+                if not hash_param:
+                    return web.json_response(
+                        {"success": False, "error": "Hash parameter required"}, 
+                        status=400
+                    )
+                
+                # Basic rate limiting - don't make requests more than once every 2 seconds
+                if not hasattr(get_civitai_images, 'last_request_time'):
+                    get_civitai_images.last_request_time = 0
+                
+                current_time = time.time()
+                if current_time - get_civitai_images.last_request_time < 2.0:
+                    await asyncio.sleep(2.0 - (current_time - get_civitai_images.last_request_time))
+                
+                get_civitai_images.last_request_time = time.time()
+                
+                # Use aiohttp to make the request to Civitai
+                headers = {
+                    'User-Agent': 'SageUtils/1.0 ComfyUI Extension'
+                }
+                
+                async with aiohttp.ClientSession(headers=headers) as session:
+                    civitai_url = f"https://civitai.com/api/v1/model-versions/by-hash/{hash_param}"
+                    try:
+                        async with session.get(civitai_url, timeout=aiohttp.ClientTimeout(total=15)) as response:
+                            if response.status == 200:
+                                data = await response.json()
+                                images = data.get('images', [])
+                                
+                                # Filter for appropriate images (nsfwLevel <= 1)
+                                safe_images = [img for img in images if img.get('nsfwLevel', 0) <= 1]
+                                
+                                return web.json_response({
+                                    "success": True,
+                                    "images": safe_images
+                                })
+                            elif response.status == 429:
+                                return web.json_response({
+                                    "success": False,
+                                    "error": "Rate limited by Civitai API"
+                                })
+                            else:
+                                return web.json_response({
+                                    "success": False,
+                                    "error": f"Civitai API returned status {response.status}"
+                                })
+                    except asyncio.TimeoutError:
+                        return web.json_response({
+                            "success": False,
+                            "error": "Request to Civitai API timed out"
+                        })
+                    except Exception as e:
+                        return web.json_response({
+                            "success": False,
+                            "error": f"Failed to fetch from Civitai: {str(e)}"
+                        })
+                        
+            except Exception as e:
+                return web.json_response(
+                    {"success": False, "error": f"Failed to process request: {str(e)}"}, 
                     status=500
                 )
 

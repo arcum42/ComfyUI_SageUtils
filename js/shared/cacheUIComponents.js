@@ -389,6 +389,51 @@ export function addDropdownStyles() {
 }
 
 /**
+ * Create tab button with hover effects
+ * @param {string} text - Button text
+ * @param {boolean} isActive - Whether the button is initially active
+ * @returns {HTMLElement} Tab button element
+ */
+export function createTabButton(text, isActive = false) {
+    const button = document.createElement('button');
+    button.textContent = text;
+    button.style.cssText = `
+        padding: 10px 20px;
+        border: none;
+        background: ${isActive ? '#4CAF50' : '#2a2a2a'};
+        color: ${isActive ? 'white' : '#ccc'};
+        cursor: pointer;
+        border-radius: 6px 6px 0 0;
+        margin-right: 2px;
+        font-size: 13px;
+        font-weight: ${isActive ? 'bold' : 'normal'};
+        transition: all 0.2s ease;
+        border-bottom: 2px solid ${isActive ? '#4CAF50' : 'transparent'};
+        position: relative;
+        top: 2px;
+    `;
+    
+    // Hover effects
+    button.addEventListener('mouseenter', () => {
+        if (!button.classList.contains('active')) {
+            button.style.background = '#3a3a3a';
+            button.style.color = 'white';
+            button.style.transform = 'translateY(-1px)';
+        }
+    });
+    
+    button.addEventListener('mouseleave', () => {
+        if (!button.classList.contains('active')) {
+            button.style.background = '#2a2a2a';
+            button.style.color = '#ccc';
+            button.style.transform = 'translateY(0)';
+        }
+    });
+    
+    return button;
+}
+
+/**
  * Pre-defined button configurations
  */
 export const BUTTON_CONFIGS = {
