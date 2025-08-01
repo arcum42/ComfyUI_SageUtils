@@ -18,7 +18,7 @@ import { setupModelInfoDisplayNode } from "./nodes/modelInfoDisplay.js";
 import "./settingsUI.js";
 
 // Import cache sidebar
-import { createCacheSidebar } from "./sidebar/cacheSidebar.js";
+import { createCacheSidebar } from "./sidebar/cacheSidebarNew.js";
 
 app.registerExtension({
   name: "arcum42.sage.utils",

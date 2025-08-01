@@ -3,6 +3,47 @@
  * Handles generation of styled HTML reports with model information
  */
 
+import {
+    getCivitaiImageApiUrl,
+    extractImageUrls,
+    getModelUrl,
+    hasUpdateAvailable,
+    getUpdateStyle,
+    formatTriggerWords,
+    NSFW_LEVELS
+} from './civitai.js';
+
+/**
+ * Get file size from backend
+ * @param {string} filePath - Path to the file
+ * @returns {Promise<number|null>} File size in bytes or null if failed
+    <h2>Generated: ${currentDateTime}</h2>
+    <div class="info">
+        Filters Applied: ${filterDescription}${searchDescription}${lastUsedDescription}${sortDescription}<br>
+        Total Models: ${allModels.length} (${checkpointModels.length} Checkpoints, ${loraModels.length} LoRAs)<br>
+        <span style="color: #28a745; font-weight: bold;">📷 Auto Images</span> - Cached images shown immediately, others load automatically<br>
+        <small style="color: #999; font-style: italic;">Click column headers to sort • Images load automatically from Civitai • Report format based on original design by tecknight</small>
+    </div>`;
+
+/**
+ * Get file size from backend
+ * @param {string} filePath - Path to the file
+ * @returns {Promise<number|null>} File size in bytes or null if failed
+ */
+async function getFileSize(filePath) {
+    try {
+        const response = await fetch(`/sage_utils/file_size?path=${encodeURIComponent(filePath)}`);
+        if (response.ok) {
+            const data = await response.json();
+            return data.success ? data.file_size : null;
+        }
+        return null;
+    } catch (error) {
+        console.warn('Failed to get file size:', error);
+        return null;
+    }
+}
+
 /**
  * Escape HTML special characters
  * @param {string} text - Text to escape
@@ -56,72 +97,27 @@ export function getBaseModelStyle(baseModel) {
 }
 
 /**
- * Get file size from filesystem if not available in cache
- * @param {string} filePath - Full path to the file
- * @returns {Promise<number>} - File size in bytes
- */
-async function getFileSize(filePath) {
-    try {
-        const response = await fetch('/sage_utils/get_file_size', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ file_path: filePath })
-        });
-        
-        if (response.ok) {
-            const data = await response.json();
-            return data.size || 0;
-        }
-    } catch (error) {
-        console.warn('Could not get file size for:', filePath, error);
-    }
-    return 0;
-}
-
-/**
- * Fetch images for a model version from Civitai API
- * @param {string} hash - Model hash
- * @returns {Promise<Array>} - Array of image objects
- */
-async function fetchCivitaiImages(hash) {
-    try {
-        const response = await fetch(`https://civitai.com/api/v1/model-versions/by-hash/${hash}`);
-        if (!response.ok) {
-            console.warn('Failed to fetch Civitai images:', response.status);
-            return [];
-        }
-        const data = await response.json();
-        return data.images || [];
-    } catch (error) {
-        console.warn('Error fetching Civitai images:', error);
-        return [];
-    }
-}
-
-/**
  * Generate HTML table rows for models
  * @param {Array} models - Array of model objects with filePath, hash, and info
+ * @param {Object} options - Generation options
  * @returns {Promise<string>} - HTML table rows
  */
-export async function generateTableRows(models) {
+export async function generateTableRows(models, options = {}) {
     const rows = await Promise.all(models.map(async ({ filePath, hash, info }) => {
         const modelName = (info && info.model && info.model.name) || (info && info.name) || filePath.split('/').pop() || 'Unknown';
         const baseModel = (info && info.baseModel) || (info && info.base_model) || 'Unknown';
         const modelType = (info && info.model && info.model.type) || 'Unknown';
-        const triggerWords = (info && info.trainedWords && Array.isArray(info.trainedWords)) ? info.trainedWords.join(', ') : 'No triggers';
+        const triggerWords = (info && info.trainedWords && Array.isArray(info.trainedWords)) ? info.trainedWords : [];
         const modelId = (info && info.modelId) || 'Unknown';
-        const civitaiUrl = modelId !== 'Unknown' ? `https://civitai.com/models/${modelId}` : '#';
-        const updateAvailable = info && info.update_available;
+        const civitaiUrl = getModelUrl(modelId);
+        const updateAvailable = hasUpdateAvailable(info);
         const lastUsed = (info && (info.lastUsed || info.last_accessed)) || 'Never';
         
-        // Try multiple possible file size fields, fallback to filesystem (disabled for now)
+        // Try multiple possible file size fields, fallback to filesystem
         let fileSizeRaw = info && (info.file_size || info.fileSize || info.size);
-        // TODO: Re-enable when backend endpoint is implemented
-        // if (!fileSizeRaw && filePath) {
-        //     fileSizeRaw = await getFileSize(filePath);
-        // }
+        if (!fileSizeRaw && filePath) {
+            fileSizeRaw = await getFileSize(filePath);
+        }
         
         const fileSize = formatFileSize(fileSizeRaw);
         const modelHash = hash || 'Unknown';
@@ -138,43 +134,40 @@ export async function generateTableRows(models) {
         }
 
         const nameStyle = getBaseModelStyle(baseModel);
-        const civitaiStyle = updateAvailable ? 'background-color:orange;' : '';
+        const civitaiStyle = getUpdateStyle(info);
         
-        // Only show copy button if there are actual trigger words
-        const hasTriggers = triggerWords && triggerWords !== 'No triggers' && triggerWords.trim() !== '';
-        const triggerCellContent = hasTriggers ? 
-            `${escapeHtml(triggerWords)}<br><br><button style="background-color: #01006D; color: yellow; font-size: 12px;" onclick="copyToClipboard('${escapeHtml(triggerWords)}')">Copy Triggers</button>` :
-            '<i>No triggers</i>';
+        // Format trigger words with copy functionality
+        const triggerCellContent = formatTriggerWords(triggerWords);
 
         // Generate sortable attributes for special columns
         const fileSizeBytes = fileSizeRaw || 0;
         const lastUsedTimestamp = (lastUsed !== 'Never' && lastUsed !== 'Unknown') ? 
             new Date(lastUsed).getTime() : 0;
 
-        // Get first example image if available
+        // Get example image - use cached data or generate direct Civitai URL
         let exampleImageContent = '<i>No image</i>';
         
-        // First try to get images from cached info
+        // First check if we have cached images in the model info
         if (info && info.images && Array.isArray(info.images) && info.images.length > 0) {
             const firstImage = info.images[0];
             if (firstImage && firstImage.url) {
-                exampleImageContent = `<img src="${escapeHtml(firstImage.url)}" style="width:200px;height:auto;border-radius:4px;" alt="Example image" loading="lazy">`;
+                exampleImageContent = `<img src="${escapeHtml(firstImage.url)}" 
+                                           style="width:150px;height:100px;object-fit:cover;border-radius:4px;cursor:pointer;transition:all 0.3s ease;" 
+                                           alt="Example image" 
+                                           loading="lazy" 
+                                           title="Click to expand/collapse"
+                                           onclick="toggleImageExpand(this)"
+                                           onerror="this.style.display='none'">`;
             }
         } else if (hash) {
-            // If no cached images, try to fetch from Civitai using hash
-            try {
-                const civitaiImages = await fetchCivitaiImages(hash);
-                if (civitaiImages && civitaiImages.length > 0) {
-                    // Filter for SFW images (nsfwLevel <= 1) and get the first one
-                    const siteAppropriateImages = civitaiImages.filter(img => (img.nsfwLevel || 0) <= 1);
-                    if (siteAppropriateImages.length > 0) {
-                        const firstImage = siteAppropriateImages[0];
-                        exampleImageContent = `<img src="${escapeHtml(firstImage.url)}" style="width:200px;height:auto;border-radius:4px;" alt="Example image" loading="lazy">`;
-                    }
-                }
-            } catch (error) {
-                console.warn('Error fetching example image for hash:', hash, error);
-            }
+            // Auto-load Civitai images with proper sizing
+            const civitaiImageUrl = `https://civitai.com/api/v1/model-versions/by-hash/${encodeURIComponent(hash)}`;
+            exampleImageContent = `<div style="width:150px;height:100px;background:#f5f5f5;display:flex;align-items:center;justify-content:center;border-radius:4px;font-size:11px;color:#999;" 
+                                        data-civitai-hash="${escapeHtml(hash)}" 
+                                        data-civitai-url="${escapeHtml(civitaiImageUrl)}"
+                                        class="auto-load-image">
+                                        <span style="text-align:center;">Loading...</span>
+                                    </div>`;
         }
 
         return `
@@ -183,7 +176,7 @@ export async function generateTableRows(models) {
                 <td style="text-align:center;">${escapeHtml(baseModel)}</td>
                 <td style="text-align:center;">${escapeHtml(modelType)}</td>
                 <td style="text-align:center;">${triggerCellContent}</td>
-                <td style="text-align:center;">${exampleImageContent}</td>
+                <td class="image-cell">${exampleImageContent}</td>
                 <td style="text-align:center;${civitaiStyle}">
                     <a href="${civitaiUrl}" target="_blank">${modelId}</a>
                     ${updateAvailable ? '<br><br><i>Update available</i>' : ''}
@@ -202,25 +195,55 @@ export async function generateTableRows(models) {
 /**
  * Generate complete HTML report
  * @param {Object} options - Report generation options
- * @param {Array} options.sortedFiles - Sorted array of file paths
- * @param {Array} options.checkpoints - Array of checkpoint models
- * @param {Array} options.loras - Array of LoRA models
- * @param {string} options.filterDescription - Description of applied filters
- * @param {string} options.searchDescription - Description of search filter
- * @param {string} options.lastUsedDescription - Description of last used filter
- * @param {string} options.sortDescription - Description of sort criteria
+ * @param {Array} options.models - Array of model objects with filePath, hash, and info
+ * @param {Array} [options.sortedFiles] - Sorted array of file paths (legacy)
+ * @param {Array} [options.checkpoints] - Array of checkpoint models (legacy)
+ * @param {Array} [options.loras] - Array of LoRA models (legacy)
+ * @param {string} [options.filterDescription] - Description of applied filters
+ * @param {string} [options.searchDescription] - Description of search filter
+ * @param {string} [options.lastUsedDescription] - Description of last used filter
+ * @param {string} [options.sortDescription] - Description of sort criteria
  * @returns {Promise<string>} - Complete HTML document
  */
 export async function generateHtmlContent(options) {
     const {
+        models,
         sortedFiles,
         checkpoints,
         loras,
-        filterDescription,
-        searchDescription,
-        lastUsedDescription,
-        sortDescription
+        filterDescription = '',
+        searchDescription = '',
+        lastUsedDescription = '',
+        sortDescription = ''
     } = options;
+
+    // Process models array if provided (new format)
+    let allModels, checkpointModels, loraModels;
+    
+    if (models && Array.isArray(models)) {
+        // New format: process models array
+        allModels = models;
+        checkpointModels = models.filter(model => {
+            const info = model.info || {};
+            const filePath = model.filePath || '';
+            const isCheckpoint = info.model_type === 'Checkpoint' || 
+                               filePath.toLowerCase().includes('.safetensors') ||
+                               filePath.toLowerCase().includes('.ckpt');
+            return isCheckpoint;
+        });
+        loraModels = models.filter(model => {
+            const info = model.info || {};
+            const filePath = model.filePath || '';
+            const isLora = info.model_type === 'LORA' || 
+                          filePath.toLowerCase().includes('lora');
+            return isLora;
+        });
+    } else {
+        // Legacy format: use provided arrays
+        allModels = sortedFiles || [];
+        checkpointModels = checkpoints || [];
+        loraModels = loras || [];
+    }
 
     const currentDateTime = new Date().toLocaleString();
 
@@ -281,6 +304,13 @@ export async function generateHtmlContent(options) {
             padding: 8px;
             vertical-align: top;
         }
+        td.image-cell {
+            width: 160px;
+            height: 110px;
+            padding: 5px;
+            text-align: center;
+            vertical-align: middle;
+        }
         .section-header {
             background-color: #333;
             color: white;
@@ -305,9 +335,13 @@ export async function generateHtmlContent(options) {
             text-decoration: underline;
         }
         /* Sortable table styles */
-        table.sortable th:not(.sorttable_nosort):not(.sorttable_sorted):not(.sorttable_sorted_reverse):not(.sorttable_alpha):not(.sorttable_numeric):not(.sorttable_alphaNum):hover {
-            background-color: #5555ff;
+        table.sortable th:not(.sorttable_nosort) {
             cursor: pointer;
+            user-select: none;
+            position: relative;
+        }
+        table.sortable th:not(.sorttable_nosort):hover {
+            background-color: #5555ff;
         }
         table.sortable th.sorttable_sorted {
             background-color: #00aa00;
@@ -319,9 +353,112 @@ export async function generateHtmlContent(options) {
             background-color: #666;
             cursor: default;
         }
+        .sort-indicator {
+            font-size: 14px;
+            margin-left: 5px;
+        }
     </style>
-    <script src="https://tecknight.aiartalley.com/sorttable.js"></script>
     <script>
+        // Custom sortable table implementation
+        let sortDirection = {};
+        
+        function makeSortable() {
+            const tables = document.querySelectorAll('table.sortable');
+            tables.forEach(table => {
+                const headers = table.querySelectorAll('th');
+                headers.forEach((header, index) => {
+                    if (!header.classList.contains('sorttable_nosort')) {
+                        header.style.cursor = 'pointer';
+                        header.addEventListener('click', () => sortTable(table, index));
+                        
+                        // Add sort indicator
+                        const indicator = document.createElement('span');
+                        indicator.className = 'sort-indicator';
+                        indicator.innerHTML = ' ⇅';
+                        indicator.style.opacity = '0.5';
+                        header.appendChild(indicator);
+                    }
+                });
+            });
+        }
+        
+        function sortTable(table, columnIndex) {
+            const tableId = table.id || 'table_' + Math.random().toString(36).substr(2, 9);
+            if (!table.id) table.id = tableId;
+            
+            const sortKey = tableId + '_' + columnIndex;
+            const currentDirection = sortDirection[sortKey] || 'asc';
+            const newDirection = currentDirection === 'asc' ? 'desc' : 'asc';
+            sortDirection[sortKey] = newDirection;
+            
+            const tbody = table.querySelector('tbody') || table;
+            const rows = Array.from(tbody.querySelectorAll('tr')).slice(1); // Skip header row
+            
+            // Clear all header styles and indicators
+            const headers = table.querySelectorAll('th');
+            headers.forEach(header => {
+                header.classList.remove('sorttable_sorted', 'sorttable_sorted_reverse');
+                const indicator = header.querySelector('.sort-indicator');
+                if (indicator) {
+                    indicator.innerHTML = ' ⇅';
+                    indicator.style.opacity = '0.5';
+                }
+            });
+            
+            // Update current header style and indicator
+            const currentHeader = headers[columnIndex];
+            if (currentHeader) {
+                currentHeader.classList.add(newDirection === 'asc' ? 'sorttable_sorted' : 'sorttable_sorted_reverse');
+                const indicator = currentHeader.querySelector('.sort-indicator');
+                if (indicator) {
+                    indicator.innerHTML = newDirection === 'asc' ? ' ↑' : ' ↓';
+                    indicator.style.opacity = '1';
+                }
+            }
+            
+            rows.sort((a, b) => {
+                const cellA = a.cells[columnIndex];
+                const cellB = b.cells[columnIndex];
+                
+                if (!cellA || !cellB) return 0;
+                
+                // Check for custom sort key
+                let valueA = cellA.getAttribute('sorttable_customkey');
+                let valueB = cellB.getAttribute('sorttable_customkey');
+                
+                if (valueA && valueB) {
+                    // Numeric comparison for custom keys
+                    valueA = parseFloat(valueA);
+                    valueB = parseFloat(valueB);
+                } else {
+                    // Text comparison
+                    valueA = cellA.textContent.trim();
+                    valueB = cellB.textContent.trim();
+                    
+                    // Try to parse as numbers for better sorting
+                    const numA = parseFloat(valueA.replace(/[^\\d.-]/g, ''));
+                    const numB = parseFloat(valueB.replace(/[^\\d.-]/g, ''));
+                    
+                    if (!isNaN(numA) && !isNaN(numB)) {
+                        valueA = numA;
+                        valueB = numB;
+                    }
+                }
+                
+                let comparison = 0;
+                if (valueA < valueB) {
+                    comparison = -1;
+                } else if (valueA > valueB) {
+                    comparison = 1;
+                }
+                
+                return newDirection === 'desc' ? -comparison : comparison;
+            });
+            
+            // Re-append sorted rows
+            rows.forEach(row => tbody.appendChild(row));
+        }
+        
         async function copyToClipboard(text) {
             try {
                 await navigator.clipboard.writeText(text);
@@ -330,6 +467,129 @@ export async function generateHtmlContent(options) {
                 console.error('Failed to copy: ', err);
             }
         }
+        
+        function toggleImageExpand(img) {
+            if (!img.isExpanded) {
+                // Expand
+                img.originalStyle = img.style.cssText;
+                img.style.cssText = 'width:auto;height:auto;max-width:90vw;max-height:80vh;object-fit:contain;border-radius:4px;cursor:pointer;transition:all 0.3s ease;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:9999;box-shadow:0 4px 20px rgba(0,0,0,0.5);background:white;';
+                img.isExpanded = true;
+                img.setAttribute('data-expanded', 'true');
+                
+                // Add backdrop
+                const backdrop = document.createElement('div');
+                backdrop.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);z-index:9998;';
+                backdrop.addEventListener('click', () => {
+                    toggleImageExpand(img);
+                });
+                document.body.appendChild(backdrop);
+                img.backdrop = backdrop;
+            } else {
+                // Collapse
+                img.style.cssText = img.originalStyle || 'width:150px;height:100px;object-fit:cover;border-radius:4px;cursor:pointer;transition:all 0.3s ease;';
+                img.isExpanded = false;
+                img.removeAttribute('data-expanded');
+                
+                // Remove backdrop
+                if (img.backdrop) {
+                    document.body.removeChild(img.backdrop);
+                    delete img.backdrop;
+                }
+            }
+        }
+        
+        async function loadCivitaiImage(element) {
+            // Check if the current element has the attributes, if not check parent
+            let hash = element.getAttribute('data-civitai-hash');
+            let apiUrl = element.getAttribute('data-civitai-url');
+            let targetElement = element;
+            
+            if (!hash || !apiUrl) {
+                // Try parent element
+                targetElement = element.parentElement;
+                hash = targetElement.getAttribute('data-civitai-hash');
+                apiUrl = targetElement.getAttribute('data-civitai-url');
+            }
+            
+            if (!hash || !apiUrl) return;
+
+            try {
+                const response = await fetch(apiUrl);
+                if (response.ok) {
+                    const data = await response.json();
+                    const images = data.images || [];
+                    
+                    // Find first appropriate image (NSFW level <= 1)
+                    const appropriateImage = images.find(img => (img.nsfwLevel || 0) <= 1);
+                    
+                    if (appropriateImage && appropriateImage.url) {
+                        const imgElement = document.createElement('img');
+                        imgElement.src = appropriateImage.url;
+                        imgElement.style.cssText = 'width:150px;height:100px;object-fit:cover;border-radius:4px;cursor:pointer;transition:all 0.3s ease;';
+                        imgElement.alt = 'Model example image';
+                        imgElement.loading = 'lazy';
+                        imgElement.title = 'Click to expand/collapse';
+                        imgElement.onerror = function() { 
+                            this.parentElement.innerHTML = '<span style="color:#999;font-size:11px;">No image</span>';
+                        };
+                        
+                        // Add click handler for expand/collapse
+                        imgElement.addEventListener('click', function(e) {
+                            e.stopPropagation();
+                            toggleImageExpand(this);
+                        });
+                        
+                        targetElement.innerHTML = '';
+                        targetElement.appendChild(imgElement);
+                    } else {
+                        targetElement.innerHTML = '<span style="color:#999;font-size:11px;">No image</span>';
+                    }
+                } else {
+                    targetElement.innerHTML = '<span style="color:#999;font-size:11px;">Not available</span>';
+                }
+            } catch (error) {
+                console.debug('Failed to load Civitai image:', error);
+                targetElement.innerHTML = '<span style="color:#999;font-size:11px;">Load failed</span>';
+            }
+        }
+
+        // Auto-load all images when page loads
+        function autoLoadImages() {
+            const imageContainers = document.querySelectorAll('.auto-load-image');
+            imageContainers.forEach((container, index) => {
+                // Stagger the loading to avoid overwhelming the API
+                setTimeout(() => {
+                    loadCivitaiImage(container);
+                }, index * 200); // 200ms delay between each image
+            });
+        }
+
+        // Initialize everything when page loads
+        function initializePage() {
+            makeSortable();
+            autoLoadImages();
+        }
+
+        // Load functionality after page content is ready
+        document.addEventListener('DOMContentLoaded', initializePage);
+        // Also run immediately in case DOMContentLoaded already fired
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initializePage);
+        } else {
+            initializePage();
+        }
+
+        // Add ESC key support to close expanded images
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                const expandedImages = document.querySelectorAll('img[data-expanded="true"]');
+                expandedImages.forEach(img => {
+                    if (img.isExpanded) {
+                        toggleImageExpand(img);
+                    }
+                });
+            }
+        });
     </script>
 </head>
 <body>
@@ -337,16 +597,16 @@ export async function generateHtmlContent(options) {
     <h2>Generated: ${currentDateTime}</h2>
     <div class="info">
         Filters Applied: ${filterDescription}${searchDescription}${lastUsedDescription}${sortDescription}<br>
-        Total Models: ${sortedFiles.length} (${checkpoints.length} Checkpoints, ${loras.length} LoRAs)<br>
-        <small style="color: #999; font-style: italic;">Click column headers to sort • Report format based on original design by tecknight</small>
+        Total Models: ${allModels.length} (${checkpointModels.length} Checkpoints, ${loraModels.length} LoRAs)<br>
+        <small style="color: #999; font-style: italic;">Click column headers to sort • Images load automatically from Civitai</small>
     </div>
 `;
 
     // Add LoRAs section if any exist
-    if (loras.length > 0) {
-        const loraRows = await generateTableRows(loras);
+    if (loraModels.length > 0) {
+        const loraRows = await generateTableRows(loraModels);
         htmlContent += `
-    <div class="section-header">LoRA Models (${loras.length})</div>
+    <div class="section-header">LoRA Models (${loraModels.length})</div>
     <table class="sortable">
         <tr>
             <th style="width:200px;"><b>Model Name</b></th>
@@ -366,10 +626,10 @@ export async function generateHtmlContent(options) {
     }
 
     // Add Checkpoints section if any exist
-    if (checkpoints.length > 0) {
-        const checkpointRows = await generateTableRows(checkpoints);
+    if (checkpointModels.length > 0) {
+        const checkpointRows = await generateTableRows(checkpointModels);
         htmlContent += `
-    <div class="section-header">Checkpoint Models (${checkpoints.length})</div>
+    <div class="section-header">Checkpoint Models (${checkpointModels.length})</div>
     <table class="sortable">
         <tr>
             <th style="width:200px;"><b>Model Name</b></th>

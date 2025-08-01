@@ -69,15 +69,15 @@ def clean_response(response: str) -> str:
 def get_ollama_vision_models() -> list[str]:
     """Retrieve a list of available vision models from Ollama."""
     if not OLLAMA_AVAILABLE or ollama_client is None:
-        return []
+        return ["(Ollama not available)"]
     
     if not _is_ollama_enabled():
-        return []
+        return ["(Ollama not available)"]
     
     def _fetch_ollama_vision_models(cache_instance):
         """Internal function to fetch vision models from Ollama."""
         if ollama_client is None:
-            return []
+            return ["(Ollama not available)"]
             
         try:
             logging.debug("Fetching vision models from Ollama...")
@@ -131,16 +131,16 @@ def get_ollama_vision_models() -> list[str]:
 def get_ollama_models() -> list[str]:
     """Retrieve a list of available models from Ollama."""
     if not OLLAMA_AVAILABLE or ollama_client is None:
-        return []
+        return ["(Ollama not available)"]
     
     if not _is_ollama_enabled():
-        return []
-    
+        return ["(Ollama not available)"]
+
     def _fetch_ollama_models():
         """Internal function to fetch models from Ollama."""
         if ollama_client is None:
-            return []
-            
+            return ["(Ollama not available)"]
+
         try:
             print("Fetching models from Ollama...")
             response = ollama_client.list()
@@ -297,10 +297,10 @@ def is_lmstudio_running() -> bool:
 def get_lmstudio_models() -> list[str]:
     """Retrieve a list of available models from LM Studio."""
     if not LMSTUDIO_AVAILABLE or lms is None:
-        return []
+        return ["(LM Studio not available)"]
     
     if not _is_lmstudio_enabled():
-        return []
+        return ["(LM Studio not available)"]
     
     def _fetch_lmstudio_models():
         """Internal function to fetch models from LM Studio."""
@@ -313,8 +313,8 @@ def get_lmstudio_models() -> list[str]:
             return [model.model_key for model in response if hasattr(model, 'model_key') and model.model_key is not None]
         except Exception as e:
             logging.error(f"Error retrieving models from LM Studio: {e}")
-            return []
-    
+            return ["(LM Studio not available)"]
+
     cache = get_llm_cache()
     return cache.get_lmstudio_models(_fetch_lmstudio_models)
 
@@ -322,16 +322,16 @@ def get_lmstudio_models() -> list[str]:
 def get_lmstudio_vision_models() -> list[str]:
     """Retrieve a list of available vision models from LM Studio."""
     if not LMSTUDIO_AVAILABLE or lms is None:
-        return []
-    
+        return ["(LM Studio not available)"]
+
     if not _is_lmstudio_enabled():
-        return []
-    
+        return ["(LM Studio not available)"]
+
     def _fetch_lmstudio_vision_models(cache_instance):
         """Internal function to fetch vision models from LM Studio."""
         if lms is None or not is_lmstudio_running():
-            return []
-            
+            return ["(LM Studio not available)"]
+
         try:
             logging.debug("Retrieving vision models from LM Studio...")
             response = lms.list_downloaded_models("llm")
