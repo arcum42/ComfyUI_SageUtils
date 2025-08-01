@@ -149,7 +149,8 @@ TRAINING_CLASS_MAPPINGS = {
 
 METADATA_CLASS_MAPPINGS = {
     "Sage_ConstructMetadata": Sage_ConstructMetadata,
-    "Sage_ConstructMetadataLite": Sage_ConstructMetadataLite
+    "Sage_ConstructMetadataLite": Sage_ConstructMetadataLite,
+    "Sage_ConstructMetadataFlexible": Sage_ConstructMetadataFlexible
 }
 
 OLLAMA_CLASS_MAPPINGS = {
@@ -295,7 +296,8 @@ TRAINING_NAME_MAPPINGS = {
 
 METADATA_NAME_MAPPINGS = {
     "Sage_ConstructMetadata": "Construct Metadata",
-    "Sage_ConstructMetadataLite": "Construct Metadata Lite"
+    "Sage_ConstructMetadataLite": "Construct Metadata Lite",
+    "Sage_ConstructMetadataFlexible": "Construct Metadata (Flexible)"
 }
 
 OLLAMA_NAME_MAPPINGS = {

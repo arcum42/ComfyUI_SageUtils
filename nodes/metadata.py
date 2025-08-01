@@ -140,6 +140,125 @@ class Sage_ConstructMetadata(_BaseMetadataConstructor):
         )
         return (metadata,)
 
+
+class Sage_ConstructMetadataFlexible(_BaseMetadataConstructor):
+    """Flexible metadata constructor with multiple style options."""
+
+    @classmethod
+    def INPUT_TYPES(cls):  # type: ignore
+        inputs = cls._get_common_input_types()
+        inputs["required"]["metadata_style"] = (
+            ["A1111 Full", "A1111 Lite", "Simple"],
+            {"default": "A1111 Full"}
+        )
+        return inputs
+
+    DESCRIPTION = ("Flexible metadata constructor supporting multiple styles: "
+                  "A1111 Full (with LoRA hashes), A1111 Lite (simplified), "
+                  "and Simple (basic parameters only).")
+
+    def _build_simple_metadata_string(self, positive_string: str, negative_string: str,
+                                     sampler_info: dict, width: int, height: int) -> str:
+        """Build simple metadata string with just basic parameters."""
+        lines = [positive_string]
+        
+        if negative_string.strip():
+            lines.append(f"Negative prompt: {negative_string}")
+        
+        # Just the base parameters
+        base_params = self._build_base_params(sampler_info, width, height)
+        lines.append(base_params)
+        
+        return '\n'.join(lines[:-1]) + ', ' + lines[-1] if len(lines) > 1 else lines[0]
+
+    def _process_lora_stack(self, lora_stack: Optional[list]) -> tuple[list[str], list[dict]]:
+        """Process LoRA stack to extract hashes and resource information."""
+        if not lora_stack:
+            return [], []
+        
+        lora_hashes = []
+        resource_hashes = []
+        
+        for lora in lora_stack:
+            lora_path = folder_paths.get_full_path_or_raise("loras", lora[0])
+            lora_name = Path(lora_path).name
+            
+            pull_metadata(lora_path)
+            lora_data = get_model_dict(lora_path, lora[1])
+            if lora_data:
+                resource_hashes.append(lora_data)
+
+            lora_hash = cache.hash[lora_path]
+            lora_hashes.append(f"{lora_name}: {lora_hash}")
+        
+        return lora_hashes, resource_hashes
+
+    def construct_metadata(self, model_info: dict, positive_string: str, negative_string: str,
+                          width: int, height: int, sampler_info: dict, metadata_style: str,
+                          lora_stack: Optional[list] = None) -> tuple[str]:
+        """Construct metadata using the selected style."""
+        if metadata_style == "A1111 Full":
+            # Use the same logic as Sage_ConstructMetadata
+            lora_hashes, resource_hashes = self._process_lora_stack(lora_stack)
+            
+            # Build prompt section
+            prompt_with_loras = f"{positive_string} {lora_to_prompt(lora_stack)}"
+            lines = [prompt_with_loras]
+            
+            if negative_string.strip():
+                lines.append(f"Negative prompt: {negative_string}")
+            
+            # Build parameter section
+            base_params = self._build_base_params(sampler_info, width, height)
+            params = (
+                f"{base_params}, "
+                f"{mi.model_name_and_hash_as_str(model_info)}, "
+                f"Version: {COMFYUI_VERSION}"
+            )
+            
+            # Add additional metadata if available
+            if resource_hashes:
+                params += f", Civitai resources: {json.dumps(resource_hashes)}"
+            if lora_hashes:
+                params += f", Lora hashes: {', '.join(lora_hashes)}"
+            
+            lines.append(params)
+            metadata = '\n'.join(lines[:-1]) + ', ' + lines[-1] if len(lines) > 1 else lines[0]
+            
+        elif metadata_style == "A1111 Lite":
+            # Use the same logic as Sage_ConstructMetadataLite
+            resource_hashes = collect_resource_hashes(model_info, lora_stack)
+            lines = [positive_string]
+            
+            if negative_string.strip():
+                lines.append(f"Negative prompt: {negative_string}")
+            
+            # Build parameter section
+            base_params = self._build_base_params(sampler_info, width, height)
+            params = (
+                f"{base_params}, "
+                f"Version: {COMFYUI_VERSION}, "
+                f"Civitai resources: {json.dumps(resource_hashes)}"
+            )
+            lines.append(params)
+            
+            metadata = '\n'.join(lines[:-1]) + ', ' + lines[-1] if len(lines) > 1 else lines[0]
+            
+        elif metadata_style == "Simple":
+            # Simple style with just basic parameters
+            metadata = self._build_simple_metadata_string(
+                positive_string, negative_string, sampler_info, width, height
+            )
+        else:
+            # Fallback to A1111 Full if unknown style
+            return self.construct_metadata(
+                model_info, positive_string, negative_string, width, height, 
+                sampler_info, "A1111 Full", lora_stack
+            )
+        
+        return (metadata,)
+
+
 class Sage_ConstructMetadataLite(_BaseMetadataConstructor):
     """Constructs simplified A1111-style metadata without LoRA hash details."""
 
