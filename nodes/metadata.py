@@ -154,8 +154,8 @@ class Sage_ConstructMetadataFlexible(_BaseMetadataConstructor):
         return inputs
 
     DESCRIPTION = ("Flexible metadata constructor supporting multiple styles: "
-                  "A1111 Full (with LoRA hashes), A1111 Lite (simplified), "
-                  "and Simple (basic parameters only).")
+                  "A1111 Full (with LoRA hashes), A1111 Lite (simplified, only includes models on Civitai), "
+                  "and Simple (No models or LoRAs).")
 
     def _build_simple_metadata_string(self, positive_string: str, negative_string: str,
                                      sampler_info: dict, width: int, height: int) -> str:
