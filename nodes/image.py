@@ -68,7 +68,6 @@ class Sage_LoadImage(ComfyNodeABC):
 
     @classmethod
     def INPUT_TYPES(cls) -> InputTypeDict:
-        print("Grabbing input files for Sage_LoadImage node...")
         input_files = []
         if hasattr(cls, 'input_cache') and cls.input_cache is not None:
             if hasattr(cls, 'input_cache_creation_time') and (datetime.datetime.now() - cls.input_cache_creation_time).total_seconds() < 20:
@@ -76,6 +75,10 @@ class Sage_LoadImage(ComfyNodeABC):
                 # INPUT_TYPES is called multiple times during workflow loading, so cache the results for 20 seconds to avoid rescanning the input directory repeatedly.
                 input_files = cls.input_cache
                 print("Last called within 20 seconds. Using cached input files.")
+            else:
+                print("Grabbing input files for Sage_LoadImage node...")
+        else:
+            print("Grabbing input files for Sage_LoadImage node...")
 
         if not input_files:
             input_files = get_files_in_dir(

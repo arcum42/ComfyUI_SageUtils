@@ -39,14 +39,8 @@ export const API_ENDPOINTS = {
 export const FILTER_OPTIONS = {
     modelType: [
         { value: 'all', text: 'All Types' },
-        { value: 'LORA', text: 'LoRA Models' },
         { value: 'Checkpoint', text: 'Checkpoints' },
-        { value: 'TextualInversion', text: 'Textual Inversions' },
-        { value: 'Hypernetwork', text: 'Hypernetworks' },
-        { value: 'AestheticGradient', text: 'Aesthetic Gradients' },
-        { value: 'Controlnet', text: 'ControlNets' },
-        { value: 'Poses', text: 'Poses' },
-        { value: 'Other', text: 'Other' }
+        { value: 'LORA', text: 'LoRA Models' }
     ],
     
     lastUsed: [
