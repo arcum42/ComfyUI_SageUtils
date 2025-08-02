@@ -67,7 +67,7 @@ class Sage_SetText(ComfyNodeABC):
                 "suffix": (IO.STRING, {"defaultInput": True, "multiline": True})
             },
             "required": {
-                "str": (IO.STRING, {"forceInput": False, "dynamicPrompts": True, "multiline": True})
+                "str": (IO.STRING, {"forceInput": False, "dynamicPrompts": False, "multiline": True})
             }
         }
 
