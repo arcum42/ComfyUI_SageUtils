@@ -417,6 +417,9 @@ def get_path_without_base(folder_type:str, path:str) -> str:
             break
     return path
 
+def get_file_extension(path: str) -> str:
+    """Get the file extension from a path."""
+    return path.split(".")[-1] if "." in path else ""
 class Sage_LoadModelwithGraphBuilderTest(ComfyNodeABC):
     @classmethod
     def INPUT_TYPES(cls) -> InputTypeDict:
@@ -436,18 +439,13 @@ class Sage_LoadModelwithGraphBuilderTest(ComfyNodeABC):
     CATEGORY = "Sage Utils/model"
     DESCRIPTION = "Load model components from model info using GraphBuilder."
 
-    def load_model(self, model_info):
+    def prepare_model_graph(self, model_info):
         graph = GraphBuilder()
         nodes = []
-        ckpt_node = None
-        unet_node = None
-        clip_node = None
-        vae_node = None
+        ckpt_node = unet_node = clip_node = vae_node = None
+        clip_out = unet_out = vae_out = None
+        ckpt_info = unet_info = clip_info = vae_info = None
 
-        clip_out = None
-        unet_out = None
-        vae_out = None
-        
         # We have a few scenerios to handle.
         # We need to loop over the model_info and see what types of models we have.
         # We'll worry about GGUF later.
@@ -461,21 +459,6 @@ class Sage_LoadModelwithGraphBuilderTest(ComfyNodeABC):
         # A checkpoint provides UNET, CLIP, and VAE. If we have the others, they will override the checkpoint components.
         # Most likely scenerio is either a checkpoint, or UNET, CLIP, and VAE.
         # If we have a checkpoint, we will load it first, then load the others.
-        
-        ckpt_info = None
-        unet_info = None
-        clip_info = None
-        vae_info = None
-
-        # Loop through the model_info to determine what types of models we have, and record their indices.
-        # Don't use get_model_types here. Seriously, don't.
-        #print(f"Model info type is {type(model_info)}; items: {model_info}")
-        # Model info type is <class 'list'>; items: [{'type': 'CKPT', 'path': '/home/ai/models/checkpoints/ponyXL/ponyDiffusionV6XL_v6.safetensors', 'hash': 'f7564bb179'}]
-        # Checking model info item 0: {'type': 'CKPT', 'path': '/home/ai/models/checkpoints/ponyXL/ponyDiffusionV6XL_v6.safetensors', 'hash': 'f7564bb179'}
-
-        # Model info type is <class 'list'>; items: [({'type': 'UNET', 'path': '/home/ai/models/diffusion_models/chroma/chroma-unlocked-v48_float8_e4m3fn_scaled_learned_nodistill.safetensors', 'hash': '727416bfb5', 'weight_dtype': 'default'}, {'type': 'CLIP', 'path': ['/home/ai/models/clip/t5/t5xxl_fp8_e4m3fn_scaled.safetensors'], 'hash': ['a498f0485d'], 'clip_type': 'chroma'}, {'type': 'VAE', 'path': '/home/ai/models/vae/ae.safetensors', 'hash': 'afc8e28272'})]
-        # Checking model info item 0: ({'type': 'UNET', 'path': '/home/ai/models/diffusion_models/chroma/chroma-unlocked-v48_float8_e4m3fn_scaled_learned_nodistill.safetensors', 'hash': '727416bfb5', 'weight_dtype': 'default'}, {'type': 'CLIP', 'path': ['/home/ai/models/clip/t5/t5xxl_fp8_e4m3fn_scaled.safetensors'], 'hash': ['a498f0485d'], 'clip_type': 'chroma'}, {'type': 'VAE', 'path': '/home/ai/models/vae/ae.safetensors', 'hash': 'afc8e28272'})
-        # No checkpoint found in model info, skipping checkpoint loading.
 
         # model_info is either a list of dicts, or a list of tuples with dicts inside. Either way, we need to go over each dict, and check the "type" key.
         
@@ -515,6 +498,7 @@ class Sage_LoadModelwithGraphBuilderTest(ComfyNodeABC):
         if ckpt_info is not None:
             ckpt_name = ckpt_info["path"]
             ckpt_fixed_name = get_path_without_base("checkpoints", ckpt_name)
+            # No GGUF support for checkpoints yet that I see.
             ckpt_node = graph.node("CheckpointLoaderSimple",ckpt_name=ckpt_fixed_name)
             print(f"Checkpoint node created with name: {ckpt_fixed_name}")
         else:
@@ -525,8 +509,17 @@ class Sage_LoadModelwithGraphBuilderTest(ComfyNodeABC):
             unet_name = unet_info["path"]
             unet_weight_dtype = unet_info["weight_dtype"]
             unet_fixed_name = get_path_without_base("diffusion_models", unet_name)
-            unet_node = graph.node("UNETLoader", unet_name=unet_fixed_name, weight_dtype=unet_weight_dtype)
-            print(f"UNET node created with name: {unet_fixed_name}, weight_dtype: {unet_weight_dtype}")
+            if get_file_extension(unet_fixed_name) == "gguf":
+                # If the UNET is a GGUF, we need to use the GGUFLoader node. It doesn't ask for weight_dtype.
+                try:
+                    unet_node = graph.node("UnetLoaderGGUF", unet_name=unet_fixed_name)
+                    print(f"GGUF UNET node created with name: {unet_fixed_name}")
+                except:
+                    print("Unable to load UNET as GGUF. Do you have ComfyUI-GGUF installed?")
+                    raise ValueError("Unable to load UNET as GGUF. Do you have ComfyUI-GGUF installed?")
+            else:
+                unet_node = graph.node("UNETLoader", unet_name=unet_fixed_name, weight_dtype=unet_weight_dtype)
+                print(f"UNET node created with name: {unet_fixed_name}, weight_dtype: {unet_weight_dtype}")
 
         # If we have a CLIP, load it with the appropriate CLIPLoader node.
         if clip_info is not None:
@@ -538,23 +531,44 @@ class Sage_LoadModelwithGraphBuilderTest(ComfyNodeABC):
             clip_path = clip_fixed_path if isinstance(clip_fixed_path, list) else [clip_fixed_path]
             clip_type = clip_info["clip_type"]
             print(f"Loading CLIP with type: {type_of_clip}, path: {clip_path}, clip_type: {clip_type}")
-            if type_of_clip == "Dual":
-                # Set clip_name1, clip_name2, and type
-                clip_node = graph.node("DualCLIPLoader", clip_name1=clip_path[0], clip_name2=clip_path[1], type=clip_type)
-            elif type_of_clip == "Triple":
-                # Set clip_name1, clip_name2, and clip_name3
-                clip_node = graph.node("TripleCLIPLoader", clip_name1=clip_path[0], clip_name2=clip_path[1], clip_name3=clip_path[2])
-            elif type_of_clip == "Quadruple":
-                # Set clip_name1, clip_name2, clip_name3, and clip_name4
-                clip_node = graph.node("QuadrupleCLIPLoader", clip_name1=clip_path[0], clip_name2=clip_path[1], clip_name3=clip_path[2], clip_name4=clip_path[3])
+            # If any of the clip paths are GGUF, we need to use the GGUF loader. It can also handle non-GGUF paths.
+            if any(get_file_extension(path) == "gguf" for path in clip_path):
+                try:
+                    # If the CLIP is a GGUF, we need to use CLIPLoaderGGUF, DualCLIPLoaderGGUF, TripleCLIPLoaderGGUF, or QuadrupleCLIPLoaderGGUF nodes.
+                    if type_of_clip == "Dual":
+                        # Set clip_name1, clip_name2, and type
+                        clip_node = graph.node("DualCLIPLoaderGGUF", clip_name1=clip_path[0], clip_name2=clip_path[1], type=clip_type)
+                    elif type_of_clip == "Triple":
+                        # Set clip_name1, clip_name2, and clip_name3
+                        clip_node = graph.node("TripleCLIPLoaderGGUF", clip_name1=clip_path[0], clip_name2=clip_path[1], clip_name3=clip_path[2])
+                    elif type_of_clip == "Quadruple":
+                        # Set clip_name1, clip_name2, clip_name3, and clip_name4
+                        clip_node = graph.node("QuadrupleCLIPLoaderGGUF", clip_name1=clip_path[0], clip_name2=clip_path[1], clip_name3=clip_path[2], clip_name4=clip_path[3])
+                    else:
+                        # Set clip_name and type
+                        clip_node = graph.node("CLIPLoaderGGUF", clip_name=clip_path[0], type=clip_type)
+                except:
+                    print("Unable to load CLIP as GGUF. Do you have ComfyUI-GGUF installed?")
+                    raise ValueError("Unable to load CLIP as GGUF. Do you have ComfyUI-GGUF installed?")
             else:
-                # Set clip_name and type
-                clip_node = graph.node("CLIPLoader", clip_name=clip_path[0], type=clip_type)
+                if type_of_clip == "Dual":
+                    # Set clip_name1, clip_name2, and type
+                    clip_node = graph.node("DualCLIPLoader", clip_name1=clip_path[0], clip_name2=clip_path[1], type=clip_type)
+                elif type_of_clip == "Triple":
+                    # Set clip_name1, clip_name2, and clip_name3
+                    clip_node = graph.node("TripleCLIPLoader", clip_name1=clip_path[0], clip_name2=clip_path[1], clip_name3=clip_path[2])
+                elif type_of_clip == "Quadruple":
+                    # Set clip_name1, clip_name2, clip_name3, and clip_name4
+                    clip_node = graph.node("QuadrupleCLIPLoader", clip_name1=clip_path[0], clip_name2=clip_path[1], clip_name3=clip_path[2], clip_name4=clip_path[3])
+                else:
+                    # Set clip_name and type
+                    clip_node = graph.node("CLIPLoader", clip_name=clip_path[0], type=clip_type)
 
         # If we have a VAE, load it with the VAELoader node.
         if vae_info is not None:
             vae_name = vae_info["path"]
             vae_fixed_name = get_path_without_base("vae", vae_name)
+            # There is no GGUF for VAE currently, so we can just use VAELoader.
             vae_node = graph.node("VAELoader", vae_name=vae_fixed_name)
             print(f"VAE node created with name: {vae_fixed_name}")
 
@@ -564,18 +578,23 @@ class Sage_LoadModelwithGraphBuilderTest(ComfyNodeABC):
             unet_out = ckpt_node.out(0)
             clip_out = ckpt_node.out(1)
             vae_out = ckpt_node.out(2)
+
         if unet_node is not None:
             nodes.append(unet_node)
             unet_out = unet_node.out(0)
+
         if clip_node is not None:
             nodes.append(clip_node)
             clip_out = clip_node.out(0)
+
         if vae_node is not None:
             nodes.append(vae_node)
             vae_out = vae_node.out(0)
         
-        print(f"Loaded model: {unet_out}, clip: {clip_out}, vae: {vae_out}")
+        return graph, unet_out, clip_out, vae_out
 
+    def load_model(self, model_info):
+        graph, unet_out, clip_out, vae_out = self.prepare_model_graph(model_info)
         return {
             "result": (unet_out, clip_out, vae_out),
             "expand": graph.finalize()

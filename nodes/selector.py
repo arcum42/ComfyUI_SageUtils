@@ -34,10 +34,13 @@ class Sage_CheckpointSelector(ComfyNodeABC):
 class Sage_UNETSelector(ComfyNodeABC):
     @classmethod
     def INPUT_TYPES(cls) -> InputTypeDict:
-        unet_list = folder_paths.get_filename_list("diffusion_models")
+        unet_names = [x for x in folder_paths.get_filename_list("unet_gguf")]
+        unet_names += folder_paths.get_filename_list("diffusion_models")
+        unet_names = list(set(unet_names))
+        unet_names.sort()  # Remove duplicates
         return {
                 "required": {
-                    "unet_name": (unet_list, {"tooltip": "The name of the UNET model to load."}),
+                    "unet_name": (unet_names, {"tooltip": "The name of the UNET model to load."}),
                     "weight_dtype": (mi.weight_dtype_options, {"defaultInput": True, "default": "default", "tooltip": "The weight dtype to use for the UNET model."})
                 }
             }
@@ -79,7 +82,10 @@ class Sage_VAESelector(ComfyNodeABC):
 class Sage_CLIPSelector(ComfyNodeABC):
     @classmethod
     def INPUT_TYPES(cls) -> InputTypeDict:
-        model_list = folder_paths.get_filename_list("text_encoders")
+        model_list = [x for x in folder_paths.get_filename_list("text_encoders")]
+        model_list += folder_paths.get_filename_list("clip_gguf")
+        model_list = list(set(model_list))
+        model_list.sort()  # Remove duplicates
         return {
                 "required": {
                     "clip_name": (model_list, {"tooltip": "The name of the CLIP model to load."}),
@@ -102,7 +108,10 @@ class Sage_CLIPSelector(ComfyNodeABC):
 class Sage_DualCLIPSelector(ComfyNodeABC):
     @classmethod
     def INPUT_TYPES(cls) -> InputTypeDict:
-        model_list = folder_paths.get_filename_list("text_encoders")
+        model_list = [x for x in folder_paths.get_filename_list("text_encoders")]
+        model_list += folder_paths.get_filename_list("clip_gguf")
+        model_list = list(set(model_list))
+        model_list.sort()  # Remove duplicates
         return {
                 "required": {
                     "clip_name_1": (model_list, {"tooltip": "The name of the first CLIP model to load."}),
@@ -126,7 +135,10 @@ class Sage_DualCLIPSelector(ComfyNodeABC):
 class Sage_TripleCLIPSelector(ComfyNodeABC):
     @classmethod
     def INPUT_TYPES(cls) -> InputTypeDict:
-        model_list = folder_paths.get_filename_list("text_encoders")
+        model_list = [x for x in folder_paths.get_filename_list("text_encoders")]
+        model_list += folder_paths.get_filename_list("clip_gguf")
+        model_list = list(set(model_list))
+        model_list.sort()  # Remove duplicates
         return {
                 "required": {
                     "clip_name_1": (model_list, {"tooltip": "The name of the first CLIP model to load."}),
@@ -149,7 +161,10 @@ class Sage_TripleCLIPSelector(ComfyNodeABC):
 class Sage_QuadCLIPSelector(ComfyNodeABC):
     @classmethod
     def INPUT_TYPES(cls) -> InputTypeDict:
-        model_list = folder_paths.get_filename_list("text_encoders")
+        model_list = [x for x in folder_paths.get_filename_list("text_encoders")]
+        model_list += folder_paths.get_filename_list("clip_gguf")
+        model_list = list(set(model_list))
+        model_list.sort()  # Remove duplicates
         return {
                 "required": {
                     "clip_name_1": (model_list, {"tooltip": "The name of the first CLIP model to load."}),

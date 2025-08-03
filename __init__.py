@@ -92,8 +92,7 @@ LOADER_CLASS_MAPPINGS = {
     "Sage_CLIPLoaderFromInfo": Sage_CLIPLoaderFromInfo,
     "Sage_VAELoaderFromInfo": Sage_VAELoaderFromInfo,
     "Sage_LoraStackLoader": Sage_LoraStackLoader,
-    "Sage_ModelLoraStackLoader": Sage_ModelLoraStackLoader,
-    "Sage_GGUFTestUNETLoaderSimple": Sage_GGUFTestUNETLoaderSimple
+    "Sage_ModelLoraStackLoader": Sage_ModelLoraStackLoader
 }
 
 MODEL_CLASS_MAPPINGS = {
@@ -214,7 +213,7 @@ SELECTOR_NAME_MAPPINGS = {
     "Sage_TripleCLIPSelector": "Triple CLIP Selector",
     "Sage_QuadCLIPSelector": "Quad CLIP Selector",
     "Sage_VAESelector": "VAE Selector",
-    "Sage_UnetClipVaeToModelInfo": "UNET + CLIP + VAE to Model Info"
+    "Sage_UnetClipVaeToModelInfo": "UNET + CLIP + VAE"
 }
 
 TEXT_NAME_MAPPINGS = {
@@ -254,8 +253,7 @@ MODEL_NAME_MAPPINGS = {
     "Sage_CacheMaintenance": "Cache Maintenance",
     "Sage_ModelReport": "Model Scan & Report",
     "Sage_MultiModelPicker": "Multi Model Picker",
-    "Sage_GGUFTestUNETLoaderSimple": "GGUF Test UNET Loader",
-    "Sage_LoadModelwithGraphBuilderTest": "Load Model with Graph Builder Test"
+    "Sage_LoadModelwithGraphBuilderTest": "Load Models"
 }
 
 LORA_NAME_MAPPINGS = {
