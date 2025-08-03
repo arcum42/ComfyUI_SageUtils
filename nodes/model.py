@@ -17,6 +17,8 @@ import pathlib
 import json
 from ..utils import model_info as mi
 
+from comfy_execution.graph_utils import GraphBuilder
+
 class Sage_UnetClipVaeToModelInfo(ComfyNodeABC):
     @classmethod
     def INPUT_TYPES(cls) -> InputTypeDict:
@@ -39,6 +41,40 @@ class Sage_UnetClipVaeToModelInfo(ComfyNodeABC):
         print(f"Constructing model info from UNET: {unet_info}, CLIP: {clip_info}, VAE: {vae_info}")
 
         return ((unet_info, clip_info, vae_info),)
+
+class Sage_GGUFTestUNETLoaderSimple(ComfyNodeABC):
+    @classmethod
+    def INPUT_TYPES(s):
+        try:
+            unet_names = [x for x in folder_paths.get_filename_list("unet_gguf")]
+        except:
+            unet_names = ["No GGUF UNETs found. Please install ComfyUI-GGUF."]
+        return {
+            "required": {
+                "unet_name": (unet_names,),
+            }
+        }
+
+    RETURN_TYPES = (IO.MODEL,)
+    RETURN_NAMES = ("model",)
+
+    FUNCTION = "load_checkpoint"
+    CATEGORY  =  "Sage Utils/model"
+
+    def load_checkpoint(self, unet_name):
+        # Use GraphBuilder to load the model
+        graph = GraphBuilder()
+
+        loader = None
+        try:
+            loader = graph.node("UnetLoaderjGGUF", unet_name=unet_name)
+        except Exception as e:
+            
+            raise ValueError("Unable to find GGUF Unet loader. Do you have ComfyUI-GGUF installed? Error: " + str(e))
+        return {
+            "result": (loader.out(0),),
+            "expand": graph.finalize()
+        }
 
 class Sage_CheckpointLoaderSimple(CheckpointLoaderSimple):
     def __init__(self):

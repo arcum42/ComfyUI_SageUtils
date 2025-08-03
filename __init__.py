@@ -92,7 +92,8 @@ LOADER_CLASS_MAPPINGS = {
     "Sage_CLIPLoaderFromInfo": Sage_CLIPLoaderFromInfo,
     "Sage_VAELoaderFromInfo": Sage_VAELoaderFromInfo,
     "Sage_LoraStackLoader": Sage_LoraStackLoader,
-    "Sage_ModelLoraStackLoader": Sage_ModelLoraStackLoader
+    "Sage_ModelLoraStackLoader": Sage_ModelLoraStackLoader,
+    "Sage_GGUFTestUNETLoaderSimple": Sage_GGUFTestUNETLoaderSimple
 }
 
 MODEL_CLASS_MAPPINGS = {
@@ -102,7 +103,8 @@ MODEL_CLASS_MAPPINGS = {
     "Sage_CheckLorasForUpdates": Sage_CheckLorasForUpdates,
     "Sage_CacheMaintenance": Sage_CacheMaintenance,
     "Sage_ModelReport": Sage_ModelReport,
-    "Sage_MultiModelPicker": Sage_MultiModelPicker
+    "Sage_MultiModelPicker": Sage_MultiModelPicker,
+    "Sage_LoadModelwithGraphBuilderTest": Sage_LoadModelwithGraphBuilderTest
 }
 
 LORA_CLASS_MAPPINGS = {
@@ -251,7 +253,9 @@ MODEL_NAME_MAPPINGS = {
     "Sage_CheckLorasForUpdates": "Check Loras for Updates",
     "Sage_CacheMaintenance": "Cache Maintenance",
     "Sage_ModelReport": "Model Scan & Report",
-    "Sage_MultiModelPicker": "Multi Model Picker"
+    "Sage_MultiModelPicker": "Multi Model Picker",
+    "Sage_GGUFTestUNETLoaderSimple": "GGUF Test UNET Loader",
+    "Sage_LoadModelwithGraphBuilderTest": "Load Model with Graph Builder Test"
 }
 
 LORA_NAME_MAPPINGS = {
