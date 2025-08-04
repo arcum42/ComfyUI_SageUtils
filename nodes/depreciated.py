@@ -5,8 +5,8 @@ import folder_paths
 # This file has deprecated nodes so we'll minimize imports
 from .. import nodes
 from ..utils import get_recently_used_models
-from .model import Sage_CheckpointLoaderSimple
-from .lora import Sage_LoraStack
+from .loader import Sage_CheckpointLoaderSimple
+from .selector import Sage_LoraStack
 
 class Sage_KSamplerDecoder(ComfyNodeABC):
     @classmethod

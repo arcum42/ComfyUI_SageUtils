@@ -102,9 +102,7 @@ MODEL_CLASS_MAPPINGS = {
     "Sage_CheckLorasForUpdates": Sage_CheckLorasForUpdates,
     "Sage_CacheMaintenance": Sage_CacheMaintenance,
     "Sage_ModelReport": Sage_ModelReport,
-    "Sage_MultiModelPicker": Sage_MultiModelPicker,
-    "Sage_LoadModels": Sage_LoadModels,
-    "Sage_LoadModelsAndLoras": Sage_LoadModelsAndLoras
+    "Sage_MultiModelPicker": Sage_MultiModelPicker
 }
 
 LORA_CLASS_MAPPINGS = {
@@ -237,12 +235,12 @@ TEXT_NAME_MAPPINGS = {
 }
 
 LOADER_NAME_MAPPINGS = {
-    "Sage_LoadModelFromInfo": "Load Model from Info",
+    "Sage_LoadModelFromInfo": "Load Models",
+    "Sage_ModelLoraStackLoader": "Load Models and Loras",
     "Sage_UNETLoaderFromInfo": "Load UNET Model from Info",
     "Sage_CLIPLoaderFromInfo": "Load CLIP Model from Info",
     "Sage_VAELoaderFromInfo": "Load VAE Model from Info",
-    "Sage_LoraStackLoader": "Lora Stack Loader",
-    "Sage_ModelLoraStackLoader": "Model + Lora Stack Loader"
+    "Sage_LoraStackLoader": "Lora Stack Loader"
 }
 
 MODEL_NAME_MAPPINGS = {
@@ -253,9 +251,7 @@ MODEL_NAME_MAPPINGS = {
     "Sage_CheckLorasForUpdates": "Check Loras for Updates",
     "Sage_CacheMaintenance": "Cache Maintenance",
     "Sage_ModelReport": "Model Scan & Report",
-    "Sage_MultiModelPicker": "Multi Model Picker",
-    "Sage_LoadModels": "Load Models",
-    "Sage_LoadModelsAndLoras": "Load Models and Loras"
+    "Sage_MultiModelPicker": "Multi Model Picker"
 }
 
 LORA_NAME_MAPPINGS = {

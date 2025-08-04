@@ -11,7 +11,7 @@ from comfy_execution.graph import ExecutionBlocker
 from ..utils import (
     cache, blank_image, url_to_torch_image,
     get_latest_model_version, get_lora_hash, pull_metadata,
-    get_civitai_model_version_json_by_hash, pull_lora_image_urls, model_scan, str_to_bool
+    get_civitai_model_version_json_by_hash, pull_lora_image_urls, model_scan, str_to_bool, get_lora_stack_keywords
 )
 
 import comfy.model_management as mm
@@ -701,3 +701,70 @@ class Sage_MultiModelPicker(ComfyNodeABC):
         selected_model_info = model_infos[index]
         
         return (selected_model_info,)
+
+class Sage_CollectKeywordsFromLoraStack(ComfyNodeABC):
+    @classmethod
+    def INPUT_TYPES(cls) -> InputTypeDict:
+        return {
+            "required": {
+                "lora_stack": ("LORA_STACK", {"defaultInput": True})
+            }
+        }
+
+    RETURN_TYPES = (IO.STRING,)
+    RETURN_NAMES = ("keywords",)
+
+    FUNCTION = "get_keywords"
+
+    CATEGORY = "Sage Utils/lora"
+    DESCRIPTION = "Go through each model in the lora stack, grab any keywords from civitai, and combine them into one string. Place at the end of a lora_stack, or you won't get keywords for the entire stack."
+
+    def get_keywords(self, lora_stack) -> tuple:
+        if lora_stack is None:
+            return ("",)
+
+        return (get_lora_stack_keywords(lora_stack),)
+
+class Sage_CheckLorasForUpdates(ComfyNodeABC):
+    @classmethod
+    def INPUT_TYPES(cls) -> InputTypeDict:
+        return {
+            "required": {
+                "lora_stack": ("LORA_STACK", {"defaultInput": True}),
+                "force": (IO.BOOLEAN, {"defaultInput": False, "default": False, "tooltip": "Force a check for updates, even if the lora is up to date."}),
+            }
+        }
+
+    RETURN_TYPES = ("LORA_STACK", IO.STRING, IO.STRING)
+    RETURN_NAMES = ("lora_stack", "path", "latest_url")
+
+    FUNCTION = "check_for_updates"
+
+    CATEGORY = "Sage Utils/lora"
+    DESCRIPTION = "Check the loras in the stack for updates. If an update is found, it will be downloaded and the lora will be replaced in the stack."
+
+    def check_for_updates(self, lora_stack, force) -> tuple:
+        if lora_stack is None:
+            return (None, "", "")
+        
+        lora_list = []
+        lora_url_list = []
+
+        for i, lora in enumerate(lora_stack):
+            if lora is not None:
+                print(f"Checking {lora[0]} for updates...")
+                lora_path = folder_paths.get_full_path_or_raise("loras", lora[0])
+                pull_metadata(lora_path, timestamp=False, force_all=force)
+                print(f"Update check complete for {lora[0]}")
+                
+                if "update_available" in cache.by_path(lora_path):
+                    if cache.by_path(lora_path)["update_available"] == True:
+                        model_id = cache.by_path(lora_path)["modelId"]
+                        latest_version = get_latest_model_version(model_id)
+                        latest_url = f"https://civitai.com/models/{model_id}?modelVersionId={latest_version}"
+                        if latest_url is not None:
+                            print(f"Update found for {lora[0]}")
+                            lora_url_list.append(latest_url)
+                            lora_list.append(lora_path)
+                
+        return (lora_stack, str(lora_list), str(lora_url_list))
