@@ -420,7 +420,8 @@ def get_path_without_base(folder_type:str, path:str) -> str:
 def get_file_extension(path: str) -> str:
     """Get the file extension from a path."""
     return path.split(".")[-1] if "." in path else ""
-class Sage_LoadModelwithGraphBuilderTest(ComfyNodeABC):
+
+class Sage_LoadModels(ComfyNodeABC):
     @classmethod
     def INPUT_TYPES(cls) -> InputTypeDict:
         return {
@@ -428,6 +429,9 @@ class Sage_LoadModelwithGraphBuilderTest(ComfyNodeABC):
                 "model_info": ("MODEL_INFO", {
                     "tooltip": "The model to load. Note: Should be from a info node, not a loader node, or the model will be loaded twice."
                 }),
+            },
+            "optional": {
+                "model_shifts": ("MODEL_SHIFTS", { "tooltip": "The model shifts to apply." })
             }
         }
 
@@ -457,7 +461,7 @@ class Sage_LoadModelwithGraphBuilderTest(ComfyNodeABC):
         # We aren't handing LoRAs in this node.
     
         # A checkpoint provides UNET, CLIP, and VAE. If we have the others, they will override the checkpoint components.
-        # Most likely scenerio is either a checkpoint, or UNET, CLIP, and VAE.
+        # Most likely scenario is either a checkpoint, or UNET, CLIP, and VAE.
         # If we have a checkpoint, we will load it first, then load the others.
 
         # model_info is either a list of dicts, or a list of tuples with dicts inside. Either way, we need to go over each dict, and check the "type" key.
@@ -593,11 +597,116 @@ class Sage_LoadModelwithGraphBuilderTest(ComfyNodeABC):
         
         return graph, unet_out, clip_out, vae_out
 
-    def load_model(self, model_info):
+    def create_model_shift_nodes(self, graph, unet_in, model_shifts):
+        unet_out = unet_in
+        print(f"Creating model shift nodes with input: {unet_in}, model_shifts: {model_shifts}")
+        if model_shifts is None:
+            return unet_out
+        if model_shifts["shift_type"] != "None":
+            if model_shifts["shift_type"] == "x1":
+                print("Applying x1 shift - AuraFlow/Lumina2")
+                exit_node = graph.node("ModelSamplingAuraFlow", model=unet_out, shift=model_shifts["shift"])
+                unet_out = exit_node.out(0)
+            elif model_shifts["shift_type"] == "x1000":
+                print("Applying x1000 shift - SD3")
+                exit_node = graph.node("ModelSamplingSD3", model=unet_out, shift=model_shifts["shift"])
+                unet_out = exit_node.out(0)
+
+        if model_shifts["freeu_v2"] == True:
+            print("FreeU v2 is enabled, applying to model.")
+            exit_node = graph.node("FreeU_V2",
+                model=unet_out,
+                b1=model_shifts["b1"],
+                b2=model_shifts["b2"],
+                s1=model_shifts["s1"],
+                s2=model_shifts["s2"]
+            )
+            unet_out = exit_node.out(0)
+        return unet_out
+
+    def load_model(self, model_info, model_shifts=None) -> dict:
         graph, unet_out, clip_out, vae_out = self.prepare_model_graph(model_info)
+
+        if model_shifts is not None:
+            print(f"Applying model shifts: {model_shifts}")
+            unet_out = self.create_model_shift_nodes(graph, unet_out, model_shifts[0])
+
+        output = {}
+        pbar = ProgressBar(len(graph.nodes.items()))
+        for node_id, node in graph.nodes.items():
+            output[node_id] = node.serialize()
+            pbar.update(1)
+
         return {
             "result": (unet_out, clip_out, vae_out),
-            "expand": graph.finalize()
+            "expand": output
+        }
+
+class Sage_LoadModelsAndLoras(Sage_LoadModels):
+    @classmethod
+    def INPUT_TYPES(cls) -> InputTypeDict:
+        return {
+            "required": {
+                "model_info": ("MODEL_INFO", {
+                    "tooltip": "The model to load. Note: Should be from a info node, not a loader node, or the model will be loaded twice."
+                }),
+            },
+            "optional": {
+                "lora_stack": ("LORA_STACK", {"defaultInput": True, "tooltip": "The stack of loras to apply to the model."}),
+                "model_shifts": ("MODEL_SHIFTS", { "tooltip": "The model shifts to apply." })
+            }
+        }
+
+    RETURN_TYPES = (IO.MODEL, IO.CLIP, IO.VAE, "LORA_STACK", IO.STRING)
+    RETURN_NAMES = ("model", "clip", "vae", "lora_stack", "keywords")
+    INPUT_IS_LIST = True
+
+    FUNCTION = "load_model_and_loras"
+    CATEGORY = "Sage Utils/model"
+    DESCRIPTION = "Load model components from model info using GraphBuilder."
+
+    def create_lora_nodes(self, graph: GraphBuilder, unet_in, clip_in, lora_stack=None):
+        unet_out = unet_in
+        clip_out = clip_in
+
+        if lora_stack is None:
+            return unet_out, clip_out
+        for lora in lora_stack:
+            lora_node = graph.node("LoraLoader",
+                model=unet_in,
+                clip=clip_in,
+                lora_name=lora[0],
+                strength_model=lora[1],
+                strength_clip=lora[2],
+            )
+            unet_out = lora_node.out(0)
+            clip_out = lora_node.out(1)
+        return unet_out, clip_out
+
+    def load_model_and_loras(self, model_info, model_shifts=None, lora_stack=None) -> dict:
+        keywords = ""
+        graph, unet_out, clip_out, vae_out = self.prepare_model_graph(model_info)
+
+        if model_shifts is not None:
+            print(f"Applying model shifts: {model_shifts}")
+            unet_out = self.create_model_shift_nodes(graph, unet_out, model_shifts[0])
+
+        if lora_stack is not None:
+            if isinstance(lora_stack, list):
+                lora_stack = lora_stack[0]
+            print(f"Applying LoRA stack: {lora_stack}")
+            unet_out, clip_out = self.create_lora_nodes(graph, unet_out, clip_out, lora_stack)
+            keywords = get_lora_stack_keywords(lora_stack)
+
+        output = {}
+        pbar = ProgressBar(len(graph.nodes.items()))
+        for node_id, node in graph.nodes.items():
+            output[node_id] = node.serialize()
+            pbar.update(1)
+
+        return {
+            "result": (unet_out, clip_out, vae_out, lora_stack, keywords),
+            "expand": output
         }
 
 class Sage_LoadModelFromInfo(ComfyNodeABC):

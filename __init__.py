@@ -103,7 +103,8 @@ MODEL_CLASS_MAPPINGS = {
     "Sage_CacheMaintenance": Sage_CacheMaintenance,
     "Sage_ModelReport": Sage_ModelReport,
     "Sage_MultiModelPicker": Sage_MultiModelPicker,
-    "Sage_LoadModelwithGraphBuilderTest": Sage_LoadModelwithGraphBuilderTest
+    "Sage_LoadModels": Sage_LoadModels,
+    "Sage_LoadModelsAndLoras": Sage_LoadModelsAndLoras
 }
 
 LORA_CLASS_MAPPINGS = {
@@ -253,7 +254,8 @@ MODEL_NAME_MAPPINGS = {
     "Sage_CacheMaintenance": "Cache Maintenance",
     "Sage_ModelReport": "Model Scan & Report",
     "Sage_MultiModelPicker": "Multi Model Picker",
-    "Sage_LoadModelwithGraphBuilderTest": "Load Models"
+    "Sage_LoadModels": "Load Models",
+    "Sage_LoadModelsAndLoras": "Load Models and Loras"
 }
 
 LORA_NAME_MAPPINGS = {
