@@ -240,7 +240,7 @@ class SageCache:
                     info_needs_reload = True
             if self.hash_path.is_file() and self.info_path.is_file():
                 if hash_needs_reload:
-                    print("Loading hash cache from disk.")
+                    #print("Loading hash cache from disk.")
                     hash_data = self.load_json_file(self.hash_path, "hash cache", current_date)
                     if hash_data is not None:
                         self.hash = hash_data
@@ -252,7 +252,7 @@ class SageCache:
                         self.last_hash = {}
                         self.hash_mtime = None
                 if info_needs_reload:
-                    print("Loading info cache from disk.")
+                    #print("Loading info cache from disk.")
                     info_data = self.load_json_file(self.info_path, "info cache", current_date)
                     if info_data is not None:
                         self.info = info_data
@@ -271,7 +271,7 @@ class SageCache:
                 else:
                     self.data = {}
             if self.ollama_models_path.is_file() and ollama_needs_reload:
-                print("Loading Ollama models cache from disk.")
+                #print("Loading Ollama models cache from disk.")
                 ollama_data = self.load_json_file(self.ollama_models_path, "Ollama models cache", current_date)
                 if ollama_data is not None:
                     self.ollama_models = ollama_data

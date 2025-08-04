@@ -528,13 +528,13 @@ def init_lmstudio():
     from .settings import get_setting
     
     if not LMSTUDIO_AVAILABLE or lms is None:
-        logging.info("LM Studio is not available; skipping LM Studio initialization.")
+        logging.info("LM Studio is not available.")
         _lmstudio_initialized = False
         return False
     
     # Check if LM Studio is enabled
     if not get_setting("enable_lmstudio", False):
-        logging.info("LM Studio is disabled in settings; skipping initialization.")
+        logging.info("LM Studio is disabled in settings.")
         _lmstudio_initialized = False
         return False
     

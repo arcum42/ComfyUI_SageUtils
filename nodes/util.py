@@ -19,6 +19,7 @@ import gc
 import json
 import pathlib
 from ..utils import model_info as mi
+
 class Sage_FreeMemory(ComfyNodeABC):
     @classmethod
     def INPUT_TYPES(cls) -> InputTypeDict:
@@ -120,7 +121,7 @@ class Sage_ModelInfo(ComfyNodeABC):
 
     FUNCTION = "get_last_info"
 
-    CATEGORY = "Sage Utils/model"
+    CATEGORY = "Sage Utils/model/info"
     DESCRIPTION = "Pull the civitai model info, and return what the base model is, the name with version, the url, the url for the latest version, and a preview image. Note that last model in the stack is not necessarily the one this node is hooked to, since that node may be disabled."
 
     def get_last_info(self, model_info) -> tuple:
@@ -173,7 +174,7 @@ class Sage_ModelInfoDisplay(ComfyNodeABC):
 
     FUNCTION = "display_model_info"
 
-    CATEGORY = "Sage Utils/model"
+    CATEGORY = "Sage Utils/model/info"
     DESCRIPTION = "Display model information in a formatted markdown block with civitai details, base model, name, version, and links."
     OUTPUT_NODE = True
 
@@ -312,7 +313,7 @@ class Sage_LoraStackInfoDisplay(ComfyNodeABC):
 
     FUNCTION = "display_lora_stack_info"
 
-    CATEGORY = "Sage Utils/lora"
+    CATEGORY = "Sage Utils/model/info"
     DESCRIPTION = "Display information for all LoRAs in a lora_stack as formatted markdown with civitai details, weights, and links."
     OUTPUT_NODE = True
 
@@ -472,7 +473,7 @@ class Sage_LastLoraInfo(ComfyNodeABC):
 
     FUNCTION = "get_last_info"
 
-    CATEGORY = "Sage Utils/lora"
+    CATEGORY = "Sage Utils/model/info"
     DESCRIPTION = "Take the last lora in the stack, pull the civitai model info, and return what the base model is, the name with version, the url, the url for the latest version, and a preview image. Note that last model in the stack is not necessarily the one this node is hooked to, since that node may be disabled."
 
     def get_last_info(self, lora_stack) -> tuple:
@@ -544,7 +545,6 @@ class Sage_GetFileHash(ComfyNodeABC):
         print(f"Hash for '{filename}': {the_hash}")
         return (str(the_hash),)
 
-
 class Sage_CacheMaintenance(ComfyNodeABC):
     @classmethod
     def INPUT_TYPES(cls) -> InputTypeDict:
@@ -558,7 +558,7 @@ class Sage_CacheMaintenance(ComfyNodeABC):
     RETURN_NAMES = ("ghost_entries", "dup_hash","dup_model", "not_on_civitai")
 
     FUNCTION = "cache_maintenance"
-    CATEGORY = "Sage Utils/model"
+    CATEGORY = "Sage Utils/util"
     DESCRIPTION = "Lets you remove entries for models that are no longer there. dup_hash returns a list of files with the same hash, and dup_model returns ones with the same civitai model id (but not neccessarily the same version)."
 
     def cache_maintenance(self, remove_ghost_entries) -> tuple[str, str, str, str]:
@@ -611,7 +611,6 @@ class Sage_CacheMaintenance(ComfyNodeABC):
                 out_of_date.append(model_path)
         
         not_on_civitai_str = str(not_on_civitai)
-        out_of_date_str = str(out_of_date)
         return (", ".join(ghost_entries), dup_hash_json, dup_id_json, not_on_civitai_str)
 
 class Sage_ModelReport(ComfyNodeABC):
@@ -628,7 +627,7 @@ class Sage_ModelReport(ComfyNodeABC):
     RETURN_NAMES = ("model_list", "lora_list")
 
     FUNCTION = "pull_list"
-    CATEGORY = "Sage Utils/model"
+    CATEGORY = "Sage Utils/util"
     DESCRIPTION = "Calculates the hash of models & checkpoints & pulls civitai info if chosen. Returns a list of models in the cache of the specified type, by base model type."
 
     def get_files(self, scan_models, force_recheck):
@@ -689,7 +688,7 @@ class Sage_MultiModelPicker(ComfyNodeABC):
     RETURN_NAMES = ("model_info",)
 
     FUNCTION = "pick_model"
-    CATEGORY  =  "Sage Utils/model"
+    CATEGORY  =  "Sage Utils/util"
     DESCRIPTION = "Returns a list of model_info outputs for the selected checkpoints. (And hashes and pulls civitai info for the files.)"
 
     def pick_model(self, **kw) -> Tuple[Any | None]:
@@ -740,7 +739,7 @@ class Sage_CheckLorasForUpdates(ComfyNodeABC):
 
     FUNCTION = "check_for_updates"
 
-    CATEGORY = "Sage Utils/lora"
+    CATEGORY = "Sage Utils/model/info"
     DESCRIPTION = "Check the loras in the stack for updates. If an update is found, it will be downloaded and the lora will be replaced in the stack."
 
     def check_for_updates(self, lora_stack, force) -> tuple:

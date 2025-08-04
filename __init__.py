@@ -17,10 +17,7 @@ try:
     from .utils.settings import get_settings, get_sage_config
     settings = get_settings()  # This will load, validate, and set defaults
     sage_config = get_sage_config()  # Backwards compatibility
-    print(f"SageUtils: Enhanced settings loaded with {len(sage_config)} settings.")
 except ImportError as e:
-    print(f"SageUtils: Warning - Could not load enhanced settings: {e}")
-    print("SageUtils: Using basic settings from config_manager.")
     sage_config = config_manager.settings_manager.data
 
 # Load other configuration data

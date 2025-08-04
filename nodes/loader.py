@@ -5,7 +5,6 @@ from __future__ import annotations
 from comfy.comfy_types.node_typing import ComfyNodeABC, InputTypeDict, IO
 
 import folder_paths
-from nodes import CheckpointLoaderSimple, UNETLoader
 
 # Import specific utilities instead of wildcard import
 from ..utils import (
@@ -20,59 +19,6 @@ from ..utils import model_info as mi
 from comfy_execution.graph_utils import GraphBuilder
 from comfy.utils import ProgressBar
 from ..utils.common import unwrap_tuple, get_model_types, load_model_component
-
-
-class Sage_CheckpointLoaderSimple(CheckpointLoaderSimple):
-    def __init__(self):
-            pass
-
-    @classmethod
-    def INPUT_TYPES(cls) -> InputTypeDict:
-        model_list = folder_paths.get_filename_list("checkpoints")
-        return {
-                "required": {
-                    "ckpt_name": (model_list, )
-                }
-            }
-
-    RETURN_TYPES = (IO.MODEL, IO.CLIP, IO.VAE, "MODEL_INFO")
-    RETURN_NAMES = ("model", "clip", "vae", "model_info")
-    OUTPUT_TOOLTIPS = ("The model used for denoising latents.",
-                    "The CLIP model used for encoding text prompts.",
-                    "The VAE model used for encoding and decoding images to and from latent space.",
-                    "The model path and hash, all in one output.")
-    FUNCTION = "load_checkpoint"
-    CATEGORY  =  "Sage Utils/model"
-    DESCRIPTION = "Loads a diffusion model checkpoint. Also returns a model_info output to pass to the construct metadata node, and the hash. (And hashes and pulls civitai info for the file.)"
-    def load_checkpoint(self, ckpt_name) -> tuple:
-        info = mi.get_model_info_ckpt(ckpt_name)
-        if isinstance(info, tuple):
-            info = info[0]
-        model, clip, vae = loaders.checkpoint(info["path"])
-        return (model, clip, vae, info)
-
-class Sage_UNETLoader(UNETLoader):
-    @classmethod
-    def INPUT_TYPES(cls):
-        unet_list = folder_paths.get_filename_list("diffusion_models")
-        return {
-            "required": {
-                "unet_name": (unet_list,),
-                "weight_dtype": (mi.weight_dtype_options,)
-                }
-            }
-    RETURN_TYPES = (IO.MODEL, "MODEL_INFO")
-    RETURN_NAMES = ("model", "model_info")
-
-    FUNCTION = "load_unet"
-    CATEGORY  =  "Sage Utils/model"
-
-    def load_unet(self, unet_name, weight_dtype) -> tuple:
-        info = mi.get_model_info_unet(unet_name, weight_dtype)
-        print(f"Loading UNET from {info[0]['path']} with dtype {weight_dtype}")
-        pull_metadata(info[0]["path"], timestamp = True)
-        info[0]["hash"] = cache.hash[info[0]["path"]]
-        return (loaders.unet(info[0]["path"], weight_dtype), info)
 
 class Sage_UNETLoaderFromInfo(ComfyNodeABC):
     """Load UNET model component from model info."""
@@ -332,8 +278,7 @@ class Sage_LoadModelFromInfo(ComfyNodeABC):
         # If we have a checkpoint, we will load it first, then load the others.
 
         # model_info is either a list of dicts, or a list of tuples with dicts inside. Either way, we need to go over each dict, and check the "type" key.
-        
-        print(f"Model info type is {type(model_info)}; items: {model_info}")
+
         if isinstance(model_info, list):
             flattened_info = []
             for item in model_info:
@@ -346,32 +291,24 @@ class Sage_LoadModelFromInfo(ComfyNodeABC):
         else:
             # If model_info is not a list, we need to convert it to a list.
             model_info = [model_info]
-        
-        print(f"Model info type is now {type(model_info)}; items: {model_info}")
 
         for idx, item in enumerate(model_info):
-            print(f"Checking model info item {idx}: {item}")
             # Remove the tuple check since we've already flattened the structure
             key = item["type"]
             if key == "CKPT":
                 ckpt_info = item
-                print(f"Found checkpoint info: {ckpt_info}")
             elif key == "UNET":
                 unet_info = item
-                print(f"Found UNET info: {unet_info}")
             elif key == "CLIP":
                 clip_info = item
-                print(f"Found CLIP info: {clip_info}")
             elif key == "VAE":
                 vae_info = item
-                print(f"Found VAE info: {vae_info}")
 
         if ckpt_info is not None:
             ckpt_name = ckpt_info["path"]
             ckpt_fixed_name = get_path_without_base("checkpoints", ckpt_name)
             # No GGUF support for checkpoints yet that I see.
             ckpt_node = graph.node("CheckpointLoaderSimple",ckpt_name=ckpt_fixed_name)
-            print(f"Checkpoint node created with name: {ckpt_fixed_name}")
         else:
             print("No checkpoint found in model info, skipping checkpoint loading.")
         
@@ -384,13 +321,11 @@ class Sage_LoadModelFromInfo(ComfyNodeABC):
                 # If the UNET is a GGUF, we need to use the GGUFLoader node. It doesn't ask for weight_dtype.
                 try:
                     unet_node = graph.node("UnetLoaderGGUF", unet_name=unet_fixed_name)
-                    print(f"GGUF UNET node created with name: {unet_fixed_name}")
                 except:
                     print("Unable to load UNET as GGUF. Do you have ComfyUI-GGUF installed?")
                     raise ValueError("Unable to load UNET as GGUF. Do you have ComfyUI-GGUF installed?")
             else:
                 unet_node = graph.node("UNETLoader", unet_name=unet_fixed_name, weight_dtype=unet_weight_dtype)
-                print(f"UNET node created with name: {unet_fixed_name}, weight_dtype: {unet_weight_dtype}")
 
         # If we have a CLIP, load it with the appropriate CLIPLoader node.
         if clip_info is not None:
@@ -401,7 +336,6 @@ class Sage_LoadModelFromInfo(ComfyNodeABC):
             clip_fixed_path = [get_path_without_base("clip", path) for path in clip_path] if isinstance(clip_path, list) else get_path_without_base("clip", clip_path)
             clip_path = clip_fixed_path if isinstance(clip_fixed_path, list) else [clip_fixed_path]
             clip_type = clip_info["clip_type"]
-            print(f"Loading CLIP with type: {type_of_clip}, path: {clip_path}, clip_type: {clip_type}")
             # If any of the clip paths are GGUF, we need to use the GGUF loader. It can also handle non-GGUF paths.
             if any(get_file_extension(path) == "gguf" for path in clip_path):
                 try:
@@ -441,7 +375,6 @@ class Sage_LoadModelFromInfo(ComfyNodeABC):
             vae_fixed_name = get_path_without_base("vae", vae_name)
             # There is no GGUF for VAE currently, so we can just use VAELoader.
             vae_node = graph.node("VAELoader", vae_name=vae_fixed_name)
-            print(f"VAE node created with name: {vae_fixed_name}")
 
         # Now we need to connect the nodes together.
         if ckpt_node is not None:
@@ -466,7 +399,6 @@ class Sage_LoadModelFromInfo(ComfyNodeABC):
 
     def create_model_shift_nodes(self, graph, unet_in, model_shifts):
         unet_out = unet_in
-        print(f"Creating model shift nodes with input: {unet_in}, model_shifts: {model_shifts}")
         if model_shifts is None:
             return unet_out
         if model_shifts["shift_type"] != "None":
@@ -495,7 +427,6 @@ class Sage_LoadModelFromInfo(ComfyNodeABC):
         graph, unet_out, clip_out, vae_out = self.prepare_model_graph(model_info)
 
         if model_shifts is not None:
-            print(f"Applying model shifts: {model_shifts}")
             unet_out = self.create_model_shift_nodes(graph, unet_out, model_shifts[0])
 
         output = {}
