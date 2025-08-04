@@ -834,38 +834,6 @@ class Sage_ModelLoraStackLoader(Sage_LoraStackLoader):
             "expand": self.finalize(graph)
         }
 
-class Sage_ModelShifts(ComfyNodeABC):
-    def __init__(self):
-        pass
-    @classmethod
-    def INPUT_TYPES(cls) -> InputTypeDict:
-        return {
-            "required": {
-                "shift_type": (["None", "x1", "x1000"], {"defaultInput": True, "tooltip": "The type of shift to apply to the model. x1 for Auraflow and Lumina2, x1000 for other models."}),
-                "shift": (IO.FLOAT, {"defaultInput": False, "default": 3.0, "min": 0.0, "max": 100.0, "step": 0.01}),
-                "freeu_v2": (IO.BOOLEAN, {"defaultInput": False, "default": False}),
-                "b1": (IO.FLOAT, {"defaultInput": False, "default": 1.3, "min": 0.0, "max": 10.0, "step": 0.01}),
-                "b2": (IO.FLOAT, {"defaultInput": False, "default": 1.4, "min": 0.0, "max": 10.0, "step": 0.01}),
-                "s1": (IO.FLOAT, {"defaultInput": False, "default": 0.9, "min": 0.0, "max": 10.0, "step": 0.01}),
-                "s2": (IO.FLOAT, {"defaultInput": False, "default": 0.2, "min": 0.0, "max": 10.0, "step": 0.01}),
-                },
-            }
-    RETURN_TYPES = ("MODEL_SHIFTS",)
-    RETURN_NAMES = ("model_shifts",)
-    FUNCTION = "get_model_shifts"
-    CATEGORY = "Sage Utils/model"
-    DESCRIPTION = "Get the model shifts and free_u2 settings to apply to the model. This is used by the model loader node."
-    def get_model_shifts(self, shift_type, shift, freeu_v2, b1, b2, s1, s2) -> tuple:
-        return ({
-            "shift_type": shift_type,
-            "shift": shift,
-            "freeu_v2": freeu_v2,
-            "b1": b1,
-            "b2": b2,
-            "s1": s1,
-            "s2": s2
-        },)
-
 class Sage_UNETLoaderFromInfo(ComfyNodeABC):
     """Load UNET model component from model info."""
     
