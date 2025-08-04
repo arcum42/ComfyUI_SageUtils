@@ -15,6 +15,7 @@ from ..utils import (
 import pathlib
 import json
 from ..utils import model_info as mi
+from comfy_execution.graph_utils import GraphBuilder
 
 class Sage_KSamplerDecoder(ComfyNodeABC):
     @classmethod

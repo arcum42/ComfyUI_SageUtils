@@ -7,10 +7,8 @@ from comfy.comfy_types.node_typing import ComfyNodeABC, InputTypeDict, IO
 import folder_paths
 
 # Import specific utilities instead of wildcard import
-from ..utils import (
-    cache, pull_metadata, str_to_bool, get_recently_used_models,
-    model_scan, path_manager, loaders, get_lora_stack_keywords
-)
+from ..utils import get_lora_stack_keywords
+
 
 import pathlib
 import json
@@ -18,7 +16,7 @@ from ..utils import model_info as mi
 
 from comfy_execution.graph_utils import GraphBuilder
 from comfy.utils import ProgressBar
-from ..utils.common import unwrap_tuple, get_model_types, load_model_component
+from ..utils.common import load_model_component
 
 class Sage_UNETLoaderFromInfo(ComfyNodeABC):
     """Load UNET model component from model info."""
