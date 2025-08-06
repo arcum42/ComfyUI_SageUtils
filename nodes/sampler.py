@@ -250,39 +250,7 @@ class Sage_KSamplerAudioDecoder(ComfyNodeABC):
                 disable_noise = True
             latent_result = nodes.common_ksampler(model, sampler_info["seed"], sampler_info["steps"], sampler_info["cfg"], sampler_info["sampler"],  sampler_info["scheduler"], positive, negative, latent_audio, denoise=denoise, disable_noise=disable_noise, start_step=advanced_info['start_at_step'], last_step=advanced_info['end_at_step'], force_full_denoise=force_full_denoise)
 
-        # if tiling_info is not None:
-        #     print("Tiling info provided")
-        #     t_info_tile_size = tiling_info["tile_size"]
-        #     t_info_overlap = tiling_info["overlap"]
-        #     t_info_temporal_size = tiling_info["temporal_size"]
-        #     t_info_temporal_overlap = tiling_info["temporal_overlap"]
-            
-        #     if t_info_tile_size < t_info_overlap * 4:
-        #         t_info_overlap = t_info_tile_size // 4
-        #     if t_info_temporal_size < t_info_temporal_overlap * 2:
-        #         t_info_temporal_overlap = t_info_temporal_overlap // 2
-
-        #     temporal_compression = vae.temporal_compression_decode()
-
-        #     if temporal_compression is not None:
-        #         t_info_temporal_size = max(2, t_info_temporal_size // t_info_temporal_overlap)
-        #         t_info_temporal_overlap = max(1, min(t_info_temporal_size // 2, t_info_temporal_overlap // temporal_compression))
-        #     else:
-        #         t_info_temporal_size = None
-        #         t_info_temporal_overlap = None
-
-        #     compression = vae.spacial_compression_decode()
         audio = vae.decode(latent_result[0]["samples"]).movedim(-1, 1)
-
-        # if tiling_info is None:
-        #     audio = vae.decode(latent_result[0]["samples"]).movedim(-1, 1)
-        # else:
-        #     audio = vae.decode_tiled(
-        #         latent_result[0]["samples"], 
-        #         tile_x=t_info_tile_size // compression, tile_y=t_info_tile_size // compression, 
-        #         overlap=t_info_overlap // compression, 
-        #         tile_t=t_info_temporal_size, 
-        #         overlap_t=t_info_temporal_overlap).movedim(-1, 1)
 
         std = torch.std(audio, dim=[1,2], keepdim=True) * 5.0
         std[std < 1.0] = 1.0

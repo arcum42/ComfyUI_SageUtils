@@ -8,6 +8,9 @@ import folder_paths
 from ..utils import model_info as mi
 from comfy_execution.graph_utils import GraphBuilder
 from ..utils import add_lora_to_stack
+from ..utils.helpers_graph import (
+    add_lora_stack_node
+)
 
 # Selectors for Checkpoints, UNETs, VAEs, CLIPs, and Loras.
 class Sage_CheckpointSelector(ComfyNodeABC):
@@ -343,20 +346,6 @@ class Sage_TripleLoraStack(ComfyNodeABC):
     CATEGORY = "Sage Utils/lora"
     DESCRIPTION = "Choose three loras with weights, and add them to a lora_stack. Compatable with other node packs that have lora_stacks."
 
-    def lora_stack_node(self, graph: GraphBuilder, args, idx, lora_stack = None):
-        lora_enabled = args[f"enabled_{idx}"]
-        lora_name = args[f"lora_{idx}_name"]
-        model_weight = args[f"model_{idx}_weight"]
-        clip_weight = args[f"clip_{idx}_weight"]
-
-        return graph.node("Sage_LoraStack",
-                enabled = lora_enabled,
-                lora_name = lora_name,
-                model_weight = model_weight,
-                clip_weight = clip_weight,
-                lora_stack = lora_stack
-            )
-
     def add_to_stack(self, **args):
         graph = GraphBuilder()
         stack = args.get("lora_stack", None)
@@ -367,7 +356,7 @@ class Sage_TripleLoraStack(ComfyNodeABC):
             if args[f"enabled_{i}"] == False:
                 continue
             stack_out = stack if lora_stack_node is None else lora_stack_node.out(0)
-            lora_stack_node = self.lora_stack_node(graph, args, i, stack_out)
+            lora_stack_node = add_lora_stack_node(graph, args, i, stack_out)
             nodes.append(lora_stack_node)
 
         if not nodes:
@@ -407,20 +396,6 @@ class Sage_TripleQuickLoraStack(ComfyNodeABC):
     CATEGORY = "Sage Utils/lora"
     DESCRIPTION = "Choose three loras with weights, and add them to a lora_stack. Compatable with other node packs that have lora_stacks."
 
-    def lora_stack_node(self, graph: GraphBuilder, args, idx, lora_stack = None):
-        lora_enabled = args[f"enabled_{idx}"]
-        lora_name = args[f"lora_{idx}_name"]
-        model_weight = args[f"model_{idx}_weight"]
-        clip_weight = 1.0
-
-        return graph.node("Sage_LoraStack",
-                enabled = lora_enabled,
-                lora_name = lora_name,
-                model_weight = model_weight,
-                clip_weight = clip_weight,
-                lora_stack = lora_stack
-            )
-
     def add_to_stack(self, **args):
         graph = GraphBuilder()
         stack = args.get("lora_stack", None)
@@ -431,7 +406,7 @@ class Sage_TripleQuickLoraStack(ComfyNodeABC):
             if args[f"enabled_{i}"] == False:
                 continue
             stack_out = stack if lora_stack_node is None else lora_stack_node.out(0)
-            lora_stack_node = self.lora_stack_node(graph, args, i, stack_out)
+            lora_stack_node = add_lora_stack_node(graph, args, i, stack_out)
             nodes.append(lora_stack_node)
 
         if not nodes:

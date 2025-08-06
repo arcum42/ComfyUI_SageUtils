@@ -89,7 +89,8 @@ LOADER_CLASS_MAPPINGS = {
     "Sage_CLIPLoaderFromInfo": Sage_CLIPLoaderFromInfo,
     "Sage_VAELoaderFromInfo": Sage_VAELoaderFromInfo,
     "Sage_LoraStackLoader": Sage_LoraStackLoader,
-    "Sage_ModelLoraStackLoader": Sage_ModelLoraStackLoader
+    "Sage_ModelLoraStackLoader": Sage_ModelLoraStackLoader,
+    "Sage_UNETLoRALoader": Sage_UNETLoRALoader,
 }
 
 MODEL_CLASS_MAPPINGS = {
@@ -233,11 +234,12 @@ TEXT_NAME_MAPPINGS = {
 
 LOADER_NAME_MAPPINGS = {
     "Sage_LoadModelFromInfo": "Load Models",
-    "Sage_ModelLoraStackLoader": "Load Models and Loras",
-    "Sage_UNETLoaderFromInfo": "Load UNET Model from Info",
-    "Sage_CLIPLoaderFromInfo": "Load CLIP Model from Info",
-    "Sage_VAELoaderFromInfo": "Load VAE Model from Info",
-    "Sage_LoraStackLoader": "Lora Stack Loader"
+    "Sage_ModelLoraStackLoader": "Load Models + Loras",
+    "Sage_UNETLoaderFromInfo": "Load UNET Model <- Info",
+    "Sage_CLIPLoaderFromInfo": "Load CLIP Model <- Info",
+    "Sage_VAELoaderFromInfo": "Load VAE Model <- Info",
+    "Sage_LoraStackLoader": "Lora Stack Loader",
+    "Sage_UNETLoRALoader": "Load UNET + LoRA (Model Only)"
 }
 
 MODEL_NAME_MAPPINGS = {

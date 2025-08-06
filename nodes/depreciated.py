@@ -1,21 +1,19 @@
 from __future__ import annotations
 from comfy.comfy_types.node_typing import ComfyNodeABC, InputTypeDict, IO
+from comfy_execution.graph_utils import GraphBuilder
 import folder_paths
 
 # This file has deprecated nodes so we'll minimize imports
-from .. import nodes
-from ..utils import get_recently_used_models
 from .selector import Sage_LoraStack
-from nodes import CheckpointLoaderSimple, UNETLoader
+from nodes import CheckpointLoaderSimple, UNETLoader, common_ksampler
 
+from ..utils import model_info as mi
 from ..utils import (
     cache, pull_metadata, get_recently_used_models, loaders
 )
 
 import pathlib
 import json
-from ..utils import model_info as mi
-from comfy_execution.graph_utils import GraphBuilder
 
 class Sage_KSamplerDecoder(ComfyNodeABC):
     @classmethod
@@ -47,7 +45,7 @@ class Sage_KSamplerDecoder(ComfyNodeABC):
         latent_result = None
         
         if advanced_info is None:
-            latent_result = nodes.common_ksampler(model, sampler_info["seed"], sampler_info["steps"], sampler_info["cfg"], sampler_info["sampler"], sampler_info["scheduler"], positive, negative, latent_image, denoise=denoise)
+            latent_result = common_ksampler(model, sampler_info["seed"], sampler_info["steps"], sampler_info["cfg"], sampler_info["sampler"], sampler_info["scheduler"], positive, negative, latent_image, denoise=denoise)
         else:
             force_full_denoise = True
             if advanced_info["return_with_leftover_noise"] == True:
@@ -56,7 +54,7 @@ class Sage_KSamplerDecoder(ComfyNodeABC):
             disable_noise = False
             if advanced_info["add_noise"] == False:
                 disable_noise = True
-            latent_result = nodes.common_ksampler(model, sampler_info["seed"], sampler_info["steps"], sampler_info["cfg"], sampler_info["sampler"],  sampler_info["scheduler"], positive, negative, latent_image, denoise=denoise, disable_noise=disable_noise, start_step=advanced_info['start_at_step'], last_step=advanced_info['end_at_step'], force_full_denoise=force_full_denoise)
+            latent_result = common_ksampler(model, sampler_info["seed"], sampler_info["steps"], sampler_info["cfg"], sampler_info["sampler"],  sampler_info["scheduler"], positive, negative, latent_image, denoise=denoise, disable_noise=disable_noise, start_step=advanced_info['start_at_step'], last_step=advanced_info['end_at_step'], force_full_denoise=force_full_denoise)
 
         images = vae.decode(latent_result[0]["samples"])
         

@@ -13,14 +13,9 @@ import folder_paths
 from comfy.comfy_types.node_typing import ComfyNodeABC, InputTypeDict, IO
 
 from ..utils import (
-    lora_to_prompt, 
-    civitai_sampler_name,
-    pull_metadata, 
-    get_model_dict, 
-    cache,
+    lora_to_prompt, civitai_sampler_name,pull_metadata, get_model_dict, cache,
 )
-from ..utils import model_info as mi
-from ..utils.model_info import collect_resource_hashes
+from ..utils.model_info import collect_resource_hashes, model_name_and_hash_as_str
 from comfy_execution.graph_utils import GraphBuilder
 
 # Constants
@@ -71,7 +66,7 @@ class Sage_ConstructMetadataFlexible(ComfyNodeABC):
             f"Size: {width}x{height}"
         )
 
-    def _build_simple_metadata_string(self, positive_string: str, negative_string: str,
+    def build_simple_metadata_string(self, positive_string: str, negative_string: str,
                                      sampler_info: dict, width: int, height: int) -> str:
         """Build simple metadata string with just basic parameters."""
         lines = [positive_string]
@@ -85,7 +80,7 @@ class Sage_ConstructMetadataFlexible(ComfyNodeABC):
         
         return '\n'.join(lines[:-1]) + ', ' + lines[-1] if len(lines) > 1 else lines[0]
 
-    def _process_lora_stack(self, lora_stack: Optional[list]) -> tuple[list[str], list[dict]]:
+    def process_lora_stack(self, lora_stack: Optional[list]) -> tuple[list[str], list[dict]]:
         """Process LoRA stack to extract hashes and resource information."""
         if not lora_stack:
             return [], []
@@ -112,7 +107,7 @@ class Sage_ConstructMetadataFlexible(ComfyNodeABC):
                                         lora_stack: Optional[list] = None):
         """Construct metadata using the selected style."""
         # Use the same logic as Sage_ConstructMetadata
-        lora_hashes, resource_hashes = self._process_lora_stack(lora_stack)
+        lora_hashes, resource_hashes = self.process_lora_stack(lora_stack)
 
         # Build prompt section
         prompt_with_loras = f"{positive_string} {lora_to_prompt(lora_stack)}"
@@ -125,7 +120,7 @@ class Sage_ConstructMetadataFlexible(ComfyNodeABC):
         base_params = self._build_base_params(sampler_info, width, height)
         params = (
             f"{base_params}, "
-            f"{mi.model_name_and_hash_as_str(model_info)}, "
+            f"{model_name_and_hash_as_str(model_info)}, "
             f"Version: {COMFYUI_VERSION}"
         )
 
@@ -164,7 +159,7 @@ class Sage_ConstructMetadataFlexible(ComfyNodeABC):
                                 width: int, height: int, sampler_info: dict,
                                 lora_stack: Optional[list] = None) -> str:
         # Simple style with just basic parameters
-        metadata = self._build_simple_metadata_string(
+        metadata = self.build_simple_metadata_string(
             positive_string, negative_string, sampler_info, width, height
         )
         return metadata
@@ -207,6 +202,7 @@ class Sage_ConstructMetadata(Sage_ConstructMetadataFlexible):
     DESCRIPTION = ("Constructs comprehensive A1111-style metadata with full LoRA hash information. "
                   "Uses the custom sampler info node. Returns a string that can be manipulated by other nodes.")
     FUNCTION = "construct_a1111"
+    CATEGORY = "Sage Utils/depreciated"
 
     def construct_a1111(self, model_info: dict, positive_string: str, negative_string: str, 
                           width: int, height: int, sampler_info: dict, 
@@ -237,6 +233,7 @@ class Sage_ConstructMetadataLite(Sage_ConstructMetadataFlexible):
     DESCRIPTION = ("Constructs simplified A1111-style metadata with resource information "
                   "but without detailed LoRA hashes. Uses the custom sampler info node.")
     FUNCTION = "construct_lite"
+    CATEGORY = "Sage Utils/depreciated"
 
     def construct_lite(self, model_info: dict, positive_string: str, negative_string: str,
                           width: int, height: int, sampler_info: dict, 
