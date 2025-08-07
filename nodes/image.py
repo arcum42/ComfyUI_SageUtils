@@ -135,7 +135,7 @@ class Sage_SaveImageWithMetadata(ComfyNodeABC):
         return {
             "required": {
                 "images": (IO.IMAGE, {"tooltip": "The images to save."}),
-                "filename_prefix": (IO.STRING, {"default": "ComfyUI_Meta", "tooltip": "The prefix for the file to save. This may include formatting information such as %date:yyyy-MM-dd% or %Empty Latent Image.width% to include values from nodes."}),
+                "filename_prefix": (IO.STRING, {"default": "ComfyUI_Meta", "tooltip": "The prefix for the file to save. %batch_num% will be replaced with the batch number."}),
                 "include_node_metadata": (IO.BOOLEAN, {"default": True, "defaultInput": False}),
                 "include_extra_pnginfo_metadata": (IO.BOOLEAN,{"default": True, "defaultInput": False})
             },
