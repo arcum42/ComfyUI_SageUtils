@@ -17,10 +17,7 @@ try:
     from .utils.settings import get_settings, get_sage_config
     settings = get_settings()  # This will load, validate, and set defaults
     sage_config = get_sage_config()  # Backwards compatibility
-    print(f"SageUtils: Enhanced settings loaded with {len(sage_config)} settings.")
 except ImportError as e:
-    print(f"SageUtils: Warning - Could not load enhanced settings: {e}")
-    print("SageUtils: Using basic settings from config_manager.")
     sage_config = config_manager.settings_manager.data
 
 # Load other configuration data
@@ -57,6 +54,8 @@ SELECTOR_CLASS_MAPPINGS = {
     "Sage_AdvSamplerInfo": Sage_AdvSamplerInfo,
     "Sage_TilingInfo": Sage_TilingInfo,
     "Sage_ModelShifts": Sage_ModelShifts,
+    "Sage_FreeU2": Sage_FreeU2,
+    "Sage_ModelShiftOnly": Sage_ModelShiftOnly,
     "Sage_CheckpointSelector": Sage_CheckpointSelector,
     "Sage_UNETSelector": Sage_UNETSelector,
     "Sage_CLIPSelector": Sage_CLIPSelector,
@@ -90,9 +89,11 @@ LOADER_CLASS_MAPPINGS = {
     "Sage_LoadModelFromInfo": Sage_LoadModelFromInfo,
     "Sage_UNETLoaderFromInfo": Sage_UNETLoaderFromInfo,
     "Sage_CLIPLoaderFromInfo": Sage_CLIPLoaderFromInfo,
+    "Sage_ChromaCLIPLoaderFromInfo": Sage_ChromaCLIPLoaderFromInfo,
     "Sage_VAELoaderFromInfo": Sage_VAELoaderFromInfo,
     "Sage_LoraStackLoader": Sage_LoraStackLoader,
-    "Sage_ModelLoraStackLoader": Sage_ModelLoraStackLoader
+    "Sage_ModelLoraStackLoader": Sage_ModelLoraStackLoader,
+    "Sage_UNETLoRALoader": Sage_UNETLoRALoader,
 }
 
 MODEL_CLASS_MAPPINGS = {
@@ -205,6 +206,8 @@ SELECTOR_NAME_MAPPINGS = {
     "Sage_AdvSamplerInfo": "Adv Sampler Info",
     "Sage_TilingInfo": "Tiling Info",
     "Sage_ModelShifts": "Model Shifts",
+    "Sage_FreeU2": "Free U2 Selector",
+    "Sage_ModelShiftOnly": "Model Shift Only",
     "Sage_CheckpointSelector": "Checkpoint Selector",
     "Sage_UNETSelector": "UNET Selector",
     "Sage_CLIPSelector": "CLIP Selector",
@@ -212,7 +215,7 @@ SELECTOR_NAME_MAPPINGS = {
     "Sage_TripleCLIPSelector": "Triple CLIP Selector",
     "Sage_QuadCLIPSelector": "Quad CLIP Selector",
     "Sage_VAESelector": "VAE Selector",
-    "Sage_UnetClipVaeToModelInfo": "UNET + CLIP + VAE to Model Info"
+    "Sage_UnetClipVaeToModelInfo": "UNET + CLIP + VAE"
 }
 
 TEXT_NAME_MAPPINGS = {
@@ -235,12 +238,14 @@ TEXT_NAME_MAPPINGS = {
 }
 
 LOADER_NAME_MAPPINGS = {
-    "Sage_LoadModelFromInfo": "Load Model from Info",
-    "Sage_UNETLoaderFromInfo": "Load UNET Model from Info",
-    "Sage_CLIPLoaderFromInfo": "Load CLIP Model from Info",
-    "Sage_VAELoaderFromInfo": "Load VAE Model from Info",
+    "Sage_LoadModelFromInfo": "Load Models",
+    "Sage_ModelLoraStackLoader": "Load Models + Loras",
+    "Sage_UNETLoaderFromInfo": "Load UNET Model <- Info",
+    "Sage_CLIPLoaderFromInfo": "Load CLIP Model <- Info",
+    "Sage_ChromaCLIPLoaderFromInfo": "Load CLIP (w/ Chroma T5 Options)",
+    "Sage_VAELoaderFromInfo": "Load VAE Model <- Info",
     "Sage_LoraStackLoader": "Lora Stack Loader",
-    "Sage_ModelLoraStackLoader": "Model + Lora Stack Loader"
+    "Sage_UNETLoRALoader": "Load UNET + LoRA (Model Only)"
 }
 
 MODEL_NAME_MAPPINGS = {

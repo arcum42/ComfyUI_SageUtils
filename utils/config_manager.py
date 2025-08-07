@@ -53,10 +53,9 @@ try:
     # Update the settings_manager.data to point to the enhanced settings
     settings_manager.data = sage_config
     
-    print("SageUtils: Enhanced settings system loaded successfully.")
+    print("SageUtils: Settings system loaded successfully.")
 except ImportError as e:
-    print(f"SageUtils: Warning - Could not load enhanced settings system: {e}")
-    print("SageUtils: Falling back to basic settings management.")
+    print(f"SageUtils: Warning - Could not load settings system: {e}. Falling back to basic settings management.")
     # Fallback to basic config manager
     settings_manager = ConfigManager("config")
     sage_config = settings_manager.load()

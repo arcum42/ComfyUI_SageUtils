@@ -37,6 +37,18 @@ def bool_to_str(value):
 def name_from_path(path):
     return pathlib.Path(path).name
 
+def get_path_without_base(folder_type:str, path:str) -> str:
+    """Get the base path for a given folder type and path."""
+    for base in folder_paths.get_folder_paths(folder_type):
+        if path.startswith(base):
+            path = path[len(base):].lstrip("/\\")
+            break
+    return path
+
+def get_file_extension(path: str) -> str:
+    """Get the file extension from a path."""
+    return path.split(".")[-1] if "." in path else ""
+
 def get_file_sha256(path):
     print(f"Calculating hash for {path}")
     m = hashlib.sha256()

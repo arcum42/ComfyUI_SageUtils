@@ -4,7 +4,7 @@
 # The original source of some of these prompts is the ComfyUI-joycaption-beta-one-GGUF repository, 
 # which adapted it from ComfyUI_LayerStyle_Advance.
 
-# I've heavily modified the original prompts,, adding some, getting rid of some, and rephrasing others.
+# I've heavily modified the original prompts, adding some, getting rid of some, and rephrasing others.
 
 # https://github.com/chflame163/ComfyUI_LayerStyle_Advance
 # https://github.com/judian17/ComfyUI-joycaption-beta-one-GGUF

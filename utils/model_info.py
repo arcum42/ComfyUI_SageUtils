@@ -5,7 +5,7 @@ import folder_paths
 from .helpers import name_from_path, pull_metadata
 from .model_cache import cache
 weight_dtype_options = ["default", "fp8_e4m3fn", "fp8_e4m3fn_fast", "fp8_e5m2"]
-single_clip_loader_options = ["stable_diffusion", "stable_cascade", "sd3", "stable_audio", "mochi", "ltxv", "pixart", "cosmos", "lumina2", "wan", "hidream", "chroma", "ace", "omnigen2"]
+single_clip_loader_options = ["stable_diffusion", "stable_cascade", "sd3", "stable_audio", "mochi", "ltxv", "pixart", "cosmos", "lumina2", "wan", "hidream", "chroma", "ace", "omnigen2", "qwen_image"]
 dual_clip_loader_options = ["sdxl", "sd3", "flux", "hunyuan_video", "hidream"]
 
 # Abstracting things first, then we can change the implementation to be more flexible.

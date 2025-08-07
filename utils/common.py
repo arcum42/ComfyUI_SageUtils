@@ -8,6 +8,8 @@ from .helpers import (
     str_to_bool,
     bool_to_str,
     name_from_path,
+    get_path_without_base,
+    get_file_extension,
     get_files_in_dir,
     get_file_sha256,
     last_used,
@@ -49,6 +51,19 @@ from .helpers_civitai import (
     get_latest_model_version,
     pull_lora_image_urls,
     civitai_sampler_name
+)
+
+from .helpers_graph import (
+    add_ckpt_node_from_info,
+    add_unet_node_from_info,
+    add_clip_node_from_info,
+    add_vae_node_from_info,
+    create_lora_nodes,
+    create_lora_nodes_v2,
+    create_model_shift_nodes,
+    create_model_shift_nodes_v2,
+    create_lora_nodes_model_only,
+    add_lora_stack_node
 )
 
 # LoRA utilities
@@ -107,8 +122,8 @@ from . import llm_wrapper as llm
 
 __all__ = [
     # Helper functions
-    'str_to_bool', 'bool_to_str', 'name_from_path', 'get_file_sha256', 'get_files_in_dir',
-    'last_used', 'days_since_last_used', 'get_file_modification_date',
+    'str_to_bool', 'bool_to_str', 'name_from_path', 'get_path_without_base', 'get_file_extension', 'get_file_sha256', 
+    'get_files_in_dir', 'last_used', 'days_since_last_used', 'get_file_modification_date',
     'update_cache_from_civitai_json', 'update_cache_without_civitai_json',
     'add_file_to_cache', 'recheck_hash', 'pull_metadata',
     'lora_to_string', 'lora_to_prompt', 'get_lora_hash', 'model_scan',
@@ -124,6 +139,11 @@ __all__ = [
     'get_civitai_model_json', 'get_model_dict', 'get_latest_model_version',
     'pull_lora_image_urls', 'civitai_sampler_name',
     
+    # Graph utilities
+    'add_ckpt_node_from_info', 'add_unet_node_from_info', 'add_clip_node_from_info', 'add_vae_node_from_info',
+    'create_lora_nodes', 'create_lora_nodes_v2', 'create_lora_nodes_model_only', 'create_model_shift_nodes', 'create_model_shift_nodes_v2',
+    'add_lora_stack_node',
+
     # LoRA utilities
     'get_lora_keywords', 'get_lora_stack_keywords', 'add_lora_to_stack',
     

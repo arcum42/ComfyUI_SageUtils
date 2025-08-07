@@ -1,12 +1,19 @@
 from __future__ import annotations
 from comfy.comfy_types.node_typing import ComfyNodeABC, InputTypeDict, IO
+from comfy_execution.graph_utils import GraphBuilder
 import folder_paths
 
 # This file has deprecated nodes so we'll minimize imports
-from .. import nodes
-from ..utils import get_recently_used_models
-from .model import Sage_CheckpointLoaderSimple
-from .lora import Sage_LoraStack
+from .selector import Sage_LoraStack
+from nodes import CheckpointLoaderSimple, UNETLoader, common_ksampler
+
+from ..utils import model_info as mi
+from ..utils import (
+    cache, pull_metadata, get_recently_used_models, loaders
+)
+
+import pathlib
+import json
 
 class Sage_KSamplerDecoder(ComfyNodeABC):
     @classmethod
@@ -38,7 +45,7 @@ class Sage_KSamplerDecoder(ComfyNodeABC):
         latent_result = None
         
         if advanced_info is None:
-            latent_result = nodes.common_ksampler(model, sampler_info["seed"], sampler_info["steps"], sampler_info["cfg"], sampler_info["sampler"], sampler_info["scheduler"], positive, negative, latent_image, denoise=denoise)
+            latent_result = common_ksampler(model, sampler_info["seed"], sampler_info["steps"], sampler_info["cfg"], sampler_info["sampler"], sampler_info["scheduler"], positive, negative, latent_image, denoise=denoise)
         else:
             force_full_denoise = True
             if advanced_info["return_with_leftover_noise"] == True:
@@ -47,7 +54,7 @@ class Sage_KSamplerDecoder(ComfyNodeABC):
             disable_noise = False
             if advanced_info["add_noise"] == False:
                 disable_noise = True
-            latent_result = nodes.common_ksampler(model, sampler_info["seed"], sampler_info["steps"], sampler_info["cfg"], sampler_info["sampler"],  sampler_info["scheduler"], positive, negative, latent_image, denoise=denoise, disable_noise=disable_noise, start_step=advanced_info['start_at_step'], last_step=advanced_info['end_at_step'], force_full_denoise=force_full_denoise)
+            latent_result = common_ksampler(model, sampler_info["seed"], sampler_info["steps"], sampler_info["cfg"], sampler_info["sampler"],  sampler_info["scheduler"], positive, negative, latent_image, denoise=denoise, disable_noise=disable_noise, start_step=advanced_info['start_at_step'], last_step=advanced_info['end_at_step'], force_full_denoise=force_full_denoise)
 
         images = vae.decode(latent_result[0]["samples"])
         
@@ -55,6 +62,59 @@ class Sage_KSamplerDecoder(ComfyNodeABC):
             images = images.reshape(-1, images.shape[-3], images.shape[-2], images.shape[-1])
         
         return (latent_result[0], images)
+
+
+class Sage_CheckpointLoaderSimple(CheckpointLoaderSimple):
+    def __init__(self):
+            pass
+
+    @classmethod
+    def INPUT_TYPES(cls) -> InputTypeDict:
+        model_list = folder_paths.get_filename_list("checkpoints")
+        return {
+                "required": {
+                    "ckpt_name": (model_list, )
+                }
+            }
+
+    RETURN_TYPES = (IO.MODEL, IO.CLIP, IO.VAE, "MODEL_INFO")
+    RETURN_NAMES = ("model", "clip", "vae", "model_info")
+    OUTPUT_TOOLTIPS = ("The model used for denoising latents.",
+                    "The CLIP model used for encoding text prompts.",
+                    "The VAE model used for encoding and decoding images to and from latent space.",
+                    "The model path and hash, all in one output.")
+    FUNCTION = "load_checkpoint"
+    CATEGORY  =  "Sage Utils/depreciated"
+    DESCRIPTION = "Loads a diffusion model checkpoint. Also returns a model_info output to pass to the construct metadata node, and the hash. (And hashes and pulls civitai info for the file.)"
+    def load_checkpoint(self, ckpt_name) -> tuple:
+        info = mi.get_model_info_ckpt(ckpt_name)
+        if isinstance(info, tuple):
+            info = info[0]
+        model, clip, vae = loaders.checkpoint(info["path"])
+        return (model, clip, vae, info)
+
+class Sage_UNETLoader(UNETLoader):
+    @classmethod
+    def INPUT_TYPES(cls):
+        unet_list = folder_paths.get_filename_list("diffusion_models")
+        return {
+            "required": {
+                "unet_name": (unet_list,),
+                "weight_dtype": (mi.weight_dtype_options,)
+                }
+            }
+    RETURN_TYPES = (IO.MODEL, "MODEL_INFO")
+    RETURN_NAMES = ("model", "model_info")
+
+    FUNCTION = "load_unet"
+    CATEGORY  =  "Sage Utils/depreciated"
+
+    def load_unet(self, unet_name, weight_dtype) -> tuple:
+        info = mi.get_model_info_unet(unet_name, weight_dtype)
+        print(f"Loading UNET from {info[0]['path']} with dtype {weight_dtype}")
+        pull_metadata(info[0]["path"], timestamp = True)
+        info[0]["hash"] = cache.hash[info[0]["path"]]
+        return (loaders.unet(info[0]["path"], weight_dtype), info)
 
 class Sage_CheckpointLoaderRecent(Sage_CheckpointLoaderSimple):
     @classmethod

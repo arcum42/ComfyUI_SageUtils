@@ -6,8 +6,13 @@ from comfy.comfy_types.node_typing import ComfyNodeABC, InputTypeDict, IO
 
 import folder_paths
 from ..utils import model_info as mi
+from comfy_execution.graph_utils import GraphBuilder
+from ..utils import add_lora_to_stack
+from ..utils.helpers_graph import (
+    add_lora_stack_node
+)
 
-
+# Selectors for Checkpoints, UNETs, VAEs, CLIPs, and Loras.
 class Sage_CheckpointSelector(ComfyNodeABC):
     @classmethod
     def INPUT_TYPES(cls) -> InputTypeDict:
@@ -34,10 +39,13 @@ class Sage_CheckpointSelector(ComfyNodeABC):
 class Sage_UNETSelector(ComfyNodeABC):
     @classmethod
     def INPUT_TYPES(cls) -> InputTypeDict:
-        unet_list = folder_paths.get_filename_list("diffusion_models")
+        unet_names = [x for x in folder_paths.get_filename_list("unet_gguf")]
+        unet_names += folder_paths.get_filename_list("diffusion_models")
+        unet_names = list(set(unet_names))
+        unet_names.sort()  # Remove duplicates
         return {
                 "required": {
-                    "unet_name": (unet_list, {"tooltip": "The name of the UNET model to load."}),
+                    "unet_name": (unet_names, {"tooltip": "The name of the UNET model to load."}),
                     "weight_dtype": (mi.weight_dtype_options, {"defaultInput": True, "default": "default", "tooltip": "The weight dtype to use for the UNET model."})
                 }
             }
@@ -79,7 +87,10 @@ class Sage_VAESelector(ComfyNodeABC):
 class Sage_CLIPSelector(ComfyNodeABC):
     @classmethod
     def INPUT_TYPES(cls) -> InputTypeDict:
-        model_list = folder_paths.get_filename_list("text_encoders")
+        model_list = [x for x in folder_paths.get_filename_list("text_encoders")]
+        model_list += folder_paths.get_filename_list("clip_gguf")
+        model_list = list(set(model_list))
+        model_list.sort()  # Remove duplicates
         return {
                 "required": {
                     "clip_name": (model_list, {"tooltip": "The name of the CLIP model to load."}),
@@ -102,7 +113,10 @@ class Sage_CLIPSelector(ComfyNodeABC):
 class Sage_DualCLIPSelector(ComfyNodeABC):
     @classmethod
     def INPUT_TYPES(cls) -> InputTypeDict:
-        model_list = folder_paths.get_filename_list("text_encoders")
+        model_list = [x for x in folder_paths.get_filename_list("text_encoders")]
+        model_list += folder_paths.get_filename_list("clip_gguf")
+        model_list = list(set(model_list))
+        model_list.sort()  # Remove duplicates
         return {
                 "required": {
                     "clip_name_1": (model_list, {"tooltip": "The name of the first CLIP model to load."}),
@@ -126,7 +140,10 @@ class Sage_DualCLIPSelector(ComfyNodeABC):
 class Sage_TripleCLIPSelector(ComfyNodeABC):
     @classmethod
     def INPUT_TYPES(cls) -> InputTypeDict:
-        model_list = folder_paths.get_filename_list("text_encoders")
+        model_list = [x for x in folder_paths.get_filename_list("text_encoders")]
+        model_list += folder_paths.get_filename_list("clip_gguf")
+        model_list = list(set(model_list))
+        model_list.sort()  # Remove duplicates
         return {
                 "required": {
                     "clip_name_1": (model_list, {"tooltip": "The name of the first CLIP model to load."}),
@@ -149,7 +166,10 @@ class Sage_TripleCLIPSelector(ComfyNodeABC):
 class Sage_QuadCLIPSelector(ComfyNodeABC):
     @classmethod
     def INPUT_TYPES(cls) -> InputTypeDict:
-        model_list = folder_paths.get_filename_list("text_encoders")
+        model_list = [x for x in folder_paths.get_filename_list("text_encoders")]
+        model_list += folder_paths.get_filename_list("clip_gguf")
+        model_list = list(set(model_list))
+        model_list.sort()  # Remove duplicates
         return {
                 "required": {
                     "clip_name_1": (model_list, {"tooltip": "The name of the first CLIP model to load."}),
@@ -170,3 +190,292 @@ class Sage_QuadCLIPSelector(ComfyNodeABC):
     def get_clip_info(self, clip_name_1, clip_name_2, clip_name_3, clip_name_4) -> tuple:
         info = mi.get_model_info_clips([clip_name_1, clip_name_2, clip_name_3, clip_name_4])
         return info
+
+# Model Shifts and FreeU2 Settings
+class Sage_ModelShifts(ComfyNodeABC):
+    def __init__(self):
+        pass
+    @classmethod
+    def INPUT_TYPES(cls) -> InputTypeDict:
+        return {
+            "required": {
+                "shift_type": (["None", "x1", "x1000"], {"defaultInput": True, "tooltip": "The type of shift to apply to the model. x1 for Auraflow and Lumina2, x1000 for other models."}),
+                "shift": (IO.FLOAT, {"defaultInput": False, "default": 3.0, "min": 0.0, "max": 100.0, "step": 0.01}),
+                "freeu_v2": (IO.BOOLEAN, {"defaultInput": False, "default": False}),
+                "b1": (IO.FLOAT, {"defaultInput": False, "default": 1.3, "min": 0.0, "max": 10.0, "step": 0.01}),
+                "b2": (IO.FLOAT, {"defaultInput": False, "default": 1.4, "min": 0.0, "max": 10.0, "step": 0.01}),
+                "s1": (IO.FLOAT, {"defaultInput": False, "default": 0.9, "min": 0.0, "max": 10.0, "step": 0.01}),
+                "s2": (IO.FLOAT, {"defaultInput": False, "default": 0.2, "min": 0.0, "max": 10.0, "step": 0.01}),
+                },
+            }
+    RETURN_TYPES = ("MODEL_SHIFTS",)
+    RETURN_NAMES = ("model_shifts",)
+    FUNCTION = "get_model_shifts"
+    CATEGORY = "Sage Utils/model"
+    DESCRIPTION = "Get the model shifts and free_u2 settings to apply to the model. This is used by the model loader node."
+    def get_model_shifts(self, shift_type, shift, freeu_v2, b1, b2, s1, s2) -> tuple:
+        return ({
+            "shift_type": shift_type,
+            "shift": shift,
+            "freeu_v2": freeu_v2,
+            "b1": b1,
+            "b2": b2,
+            "s1": s1,
+            "s2": s2
+        },)
+
+class Sage_ModelShiftOnly(ComfyNodeABC):
+    @classmethod
+    def INPUT_TYPES(cls) -> InputTypeDict:
+        return {
+            "required": {
+                "shift_type": (["None", "x1", "x1000"], {"defaultInput": True, "tooltip": "The type of shift to apply to the model. x1 for Auraflow and Lumina2, x1000 for other models."}),
+                "shift": (IO.FLOAT, {"defaultInput": False, "default": 3.0, "min": 0.0, "max": 100.0, "step": 0.01}),
+            }
+        }
+    RETURN_TYPES = ("MODEL_SHIFTS",)
+    RETURN_NAMES = ("model_shifts",)
+    FUNCTION = "apply_model_shifts"
+    CATEGORY = "Sage Utils/model"
+    DESCRIPTION = "Get the model shifts to apply to the model. This is used by the model loader node."
+    def apply_model_shifts(self, shift_type, shift) -> tuple:
+        return ({
+            "shift_type": shift_type,
+            "shift": shift,
+            "freeu_v2": False,
+            "b1": 1.3,
+            "b2": 1.4,
+            "s1": 0.9,
+            "s2": 0.2
+        },)
+
+class Sage_FreeU2(ComfyNodeABC):
+    @classmethod
+    def INPUT_TYPES(cls) -> InputTypeDict:
+        return {
+            "required": {
+                "freeu_v2": (IO.BOOLEAN, {"defaultInput": True, "default": False}),
+                "b1": (IO.FLOAT, {"defaultInput": False, "default": 1.3, "min": 0.0, "max": 10.0, "step": 0.01}),
+                "b2": (IO.FLOAT, {"defaultInput": False, "default": 1.4, "min": 0.0, "max": 10.0, "step": 0.01}),
+                "s1": (IO.FLOAT, {"defaultInput": False, "default": 0.9, "min": 0.0, "max": 10.0, "step": 0.01}),
+                "s2": (IO.FLOAT, {"defaultInput": False, "default": 0.2, "min": 0.0, "max": 10.0, "step": 0.01}),
+            }
+        }
+    RETURN_TYPES = ("MODEL_SHIFTS",)
+    RETURN_NAMES = ("model_shifts",)
+    FUNCTION = "get_freeu2_settings"
+    CATEGORY = "Sage Utils/model"
+    DESCRIPTION = "Get the free_u2 settings to apply to the model."
+    def get_freeu2_settings(self, freeu_v2, b1, b2, s1, s2) -> tuple:
+        return ({
+            "shift_type": "None",
+            "shift": 0,
+            "freeu_v2": freeu_v2,
+            "b1": b1,
+            "b2": b2,
+            "s1": s1,
+            "s2": s2
+        },)
+
+# Convert UNET, CLIP, and VAE model info to a single model info output.
+class Sage_UnetClipVaeToModelInfo(ComfyNodeABC):
+    @classmethod
+    def INPUT_TYPES(cls) -> InputTypeDict:
+        return {
+            "required": {
+                "unet_info": ("UNET_INFO", {"tooltip": "The UNET model info to load."}),
+                "clip_info": ("CLIP_INFO", {"tooltip": "The CLIP model info to load."}),
+                "vae_info": ("VAE_INFO", {"tooltip": "The VAE model info to load."}),
+            }
+        }
+    
+    RETURN_TYPES = ("MODEL_INFO",)
+    RETURN_NAMES = ("model_info",)
+    
+    FUNCTION = "get_model_info"
+    CATEGORY  =  "Sage Utils/model"
+    DESCRIPTION = "Returns a list with the unets, clips, and vae in it to be loaded."
+
+    def get_model_info(self, unet_info, clip_info, vae_info) -> tuple:
+        print(f"Constructing model info from UNET: {unet_info}, CLIP: {clip_info}, VAE: {vae_info}")
+
+        return ((unet_info, clip_info, vae_info),)
+
+# Lora Stack Nodes
+# These nodes are used to create and manage lora stacks, allowing for the combination of multiple loras with specified weights.
+
+class Sage_LoraStack(ComfyNodeABC):
+    def __init__(self):
+        pass
+
+    @classmethod
+    def INPUT_TYPES(cls) -> InputTypeDict:
+        lora_list = folder_paths.get_filename_list("loras")
+        return {
+            "required": {
+                "enabled": (IO.BOOLEAN, {"defaultInput": False, "default": True}),
+                "lora_name": (lora_list, {"defaultInput": False, "tooltip": "The name of the LoRA."}),
+                "model_weight": (IO.FLOAT, {"defaultInput": False, "default": 1.0, "min": -100.0, "max": 100.0, "step": 0.01, "tooltip": "How strongly to modify the diffusion model. This value can be negative."}),
+                "clip_weight": (IO.FLOAT, {"defaultInput": False, "default": 1.0, "min": -100.0, "max": 100.0, "step": 0.01, "tooltip": "How strongly to modify the CLIP model. This value can be negative."}),
+                },
+            "optional": {
+                "lora_stack": ("LORA_STACK", {"defaultInput": True}),
+            }
+        }
+
+    RETURN_TYPES = ("LORA_STACK",)
+    RETURN_NAMES = ("lora_stack",)
+
+    FUNCTION = "add_to_stack"
+    CATEGORY = "Sage Utils/lora"
+    DESCRIPTION = "Choose a lora with weights, and add it to a lora_stack. Compatable with other node packs that have lora_stacks."
+
+    def add_to_stack(self, enabled, lora_name, model_weight, clip_weight, lora_stack = None) -> tuple:
+        if enabled == True:
+            stack = add_lora_to_stack(lora_name, model_weight, clip_weight, lora_stack)
+        else:
+            stack = lora_stack
+
+        return (stack,)
+
+class Sage_QuickLoraStack(Sage_LoraStack):
+    
+    """A simplified version of the lora stack node, without the clip_weight."""
+    def __init__(self):
+        super().__init__()
+    
+    @classmethod
+    def INPUT_TYPES(cls) -> InputTypeDict:
+        lora_list = folder_paths.get_filename_list("loras")
+        return {
+            "required": {
+                "enabled": (IO.BOOLEAN, {"defaultInput": False, "default": True}),
+                "lora_name": (lora_list, {"defaultInput": False, "tooltip": "The name of the LoRA."}),
+                "model_weight": (IO.FLOAT, {"defaultInput": False, "default": 1.0, "min": -100.0, "max": 100.0, "step": 0.01, "tooltip": "How strongly to modify the diffusion model. This value can be negative."}),
+                },
+            "optional": {
+                "lora_stack": ("LORA_STACK", {"defaultInput": True}),
+            }
+        }
+    
+    FUNCTION = "add_lora"
+    DESCRIPTION = "Choose a lora with model weight only, and add it to a lora_stack. Clip weight set to 1. Compatable with other node packs that have lora_stacks."
+
+    def add_lora(self, enabled, lora_name, model_weight, lora_stack = None) -> tuple:
+        if enabled == True:
+            stack = add_lora_to_stack(lora_name, model_weight, 1.0, lora_stack)
+        else:
+            stack = lora_stack
+
+        return (stack,)
+
+class Sage_TripleLoraStack(ComfyNodeABC):
+    NUM_OF_ENTRIES = 3
+    def __init__(self):
+        self.NUM_OF_ENTRIES = Sage_TripleQuickLoraStack.NUM_OF_ENTRIES
+        super().__init__()
+
+    @classmethod
+    def INPUT_TYPES(cls) -> InputTypeDict:
+        lora_list = folder_paths.get_filename_list("loras")
+        required_list = {}
+        for i in range(1, cls.NUM_OF_ENTRIES + 1):
+            required_list[f"enabled_{i}"] = (IO.BOOLEAN, {"defaultInput": False, "default": True})
+            required_list[f"lora_{i}_name"] = (lora_list, {"options": lora_list, "defaultInput": False, "tooltip": "The name of the LoRA."})
+            required_list[f"model_{i}_weight"] = (IO.FLOAT, {"defaultInput": False, "default": 1.0, "min": -100.0, "max": 100.0, "step": 0.01, "tooltip": "How strongly to modify the diffusion model. This value can be negative."})
+            required_list[f"clip_{i}_weight"] = (IO.FLOAT, {"defaultInput": False, "default": 1.0, "min": -100.0, "max": 100.0, "step": 0.01, "tooltip": "How strongly to modify the CLIP model. This value can be negative."})
+
+        return {
+            "required": required_list,
+            "optional": {
+                "lora_stack": ("LORA_STACK", {"defaultInput": True})
+            }
+        }
+
+    RETURN_TYPES = ("LORA_STACK",)
+    RETURN_NAMES = ("lora_stack",)
+
+    FUNCTION = "add_to_stack"
+    CATEGORY = "Sage Utils/lora"
+    DESCRIPTION = "Choose three loras with weights, and add them to a lora_stack. Compatable with other node packs that have lora_stacks."
+
+    def add_to_stack(self, **args):
+        graph = GraphBuilder()
+        stack = args.get("lora_stack", None)
+        nodes = []
+        lora_stack_node = None
+
+        for i in range(1, len(args) // 4 + 1):
+            if args[f"enabled_{i}"] == False:
+                continue
+            stack_out = stack if lora_stack_node is None else lora_stack_node.out(0)
+            lora_stack_node = add_lora_stack_node(graph, args, i, stack_out)
+            nodes.append(lora_stack_node)
+
+        if not nodes:
+            return (stack,)
+
+        return {
+            "result": (nodes[-1].out(0),),
+            "expand": graph.finalize()
+        }
+
+class Sage_TripleQuickLoraStack(ComfyNodeABC):
+    NUM_OF_ENTRIES = 3
+    def __init__(self):
+        self.NUM_OF_ENTRIES = Sage_TripleQuickLoraStack.NUM_OF_ENTRIES
+        super().__init__()
+
+    @classmethod
+    def INPUT_TYPES(cls) -> InputTypeDict:
+        lora_list = folder_paths.get_filename_list("loras")
+        required_list = {}
+        for i in range(1, cls.NUM_OF_ENTRIES + 1):
+            required_list[f"enabled_{i}"] = (IO.BOOLEAN, {"defaultInput": False, "default": True})
+            required_list[f"lora_{i}_name"] = (lora_list, {"options": lora_list, "defaultInput": False, "tooltip": "The name of the LoRA."})
+            required_list[f"model_{i}_weight"] = (IO.FLOAT, {"defaultInput": False, "default": 1.0, "min": -100.0, "max": 100.0, "step": 0.01, "tooltip": "How strongly to modify the diffusion model. This value can be negative."})
+
+        return {
+            "required": required_list,
+            "optional": {
+                "lora_stack": ("LORA_STACK", {"defaultInput": True})
+            }
+        }
+
+    RETURN_TYPES = ("LORA_STACK",)
+    RETURN_NAMES = ("lora_stack",)
+
+    FUNCTION = "add_to_stack"
+    CATEGORY = "Sage Utils/lora"
+    DESCRIPTION = "Choose three loras with weights, and add them to a lora_stack. Compatable with other node packs that have lora_stacks."
+
+    def add_to_stack(self, **args):
+        graph = GraphBuilder()
+        stack = args.get("lora_stack", None)
+        nodes = []
+        lora_stack_node = None
+
+        for i in range(1, len(args) // 3 + 1):
+            if args[f"enabled_{i}"] == False:
+                continue
+            stack_out = stack if lora_stack_node is None else lora_stack_node.out(0)
+            lora_stack_node = add_lora_stack_node(graph, args, i, stack_out)
+            nodes.append(lora_stack_node)
+
+        if not nodes:
+            return (stack,)
+
+        return {
+            "result": (nodes[-1].out(0),),
+            "expand": graph.finalize()
+        }
+
+
+class Sage_QuickSixLoraStack(Sage_TripleQuickLoraStack):
+    NUM_OF_ENTRIES = 6
+
+class Sage_QuickNineLoraStack(Sage_TripleQuickLoraStack):
+    NUM_OF_ENTRIES = 9
+
+class Sage_SixLoraStack(Sage_TripleLoraStack):
+    NUM_OF_ENTRIES = 6
