@@ -101,6 +101,43 @@ class Sage_CLIPLoaderFromInfo(ComfyNodeABC):
             "result": (clip_node.out(0),),
             "expand": graph.finalize()
         }
+
+class Sage_ChromaCLIPLoaderFromInfo(ComfyNodeABC):
+    """Load Chroma CLIP model component from model info."""
+    
+    @classmethod
+    def INPUT_TYPES(cls) -> InputTypeDict:
+        return {
+            "required": {
+                "clip_info": ("CLIP_INFO", {
+                    "tooltip": "The CLIP model you want to load. "
+                              "Note: Should be from the clip selector node, not a loader node, "
+                              "or the model will be loaded twice."
+                }),
+            }
+        }
+
+    RETURN_TYPES = (IO.CLIP,)
+    RETURN_NAMES = ("clip",)
+    FUNCTION = "load_clip"
+    CATEGORY = "Sage Utils/model"
+    DESCRIPTION = "Load the CLIP model component from clip_info, and apply T5 tokenizer options with min padding of 1, and min length of 0."
+
+    def load_clip(self, clip_info):
+        """Load Chroma CLIP from model info."""
+        print("Loading CLIP...")
+        graph = GraphBuilder()
+        clip_node = add_clip_node_from_info(graph, clip_info)
+        if clip_node is None:
+            raise ValueError("CLIP info is missing or invalid.")
+        clip_node = graph.node("T5TokenizerOptions", clip=clip_node.out(0), min_padding=1, min_length=0)
+        # Return the CLIP node as a model component.
+        print(f"CLIP loaded: {clip_info['path']}")
+        return {
+            "result": (clip_node.out(0),),
+            "expand": graph.finalize()
+        }
+
 class Sage_VAELoaderFromInfo(ComfyNodeABC):
     """Load VAE model component from model info."""
     

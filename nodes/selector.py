@@ -224,6 +224,59 @@ class Sage_ModelShifts(ComfyNodeABC):
             "s2": s2
         },)
 
+class Sage_ModelShiftOnly(ComfyNodeABC):
+    @classmethod
+    def INPUT_TYPES(cls) -> InputTypeDict:
+        return {
+            "required": {
+                "shift_type": (["None", "x1", "x1000"], {"defaultInput": True, "tooltip": "The type of shift to apply to the model. x1 for Auraflow and Lumina2, x1000 for other models."}),
+                "shift": (IO.FLOAT, {"defaultInput": False, "default": 3.0, "min": 0.0, "max": 100.0, "step": 0.01}),
+            }
+        }
+    RETURN_TYPES = ("MODEL_SHIFTS",)
+    RETURN_NAMES = ("model_shifts",)
+    FUNCTION = "apply_model_shifts"
+    CATEGORY = "Sage Utils/model"
+    DESCRIPTION = "Get the model shifts to apply to the model. This is used by the model loader node."
+    def apply_model_shifts(self, shift_type, shift) -> tuple:
+        return ({
+            "shift_type": shift_type,
+            "shift": shift,
+            "freeu_v2": False,
+            "b1": 1.3,
+            "b2": 1.4,
+            "s1": 0.9,
+            "s2": 0.2
+        },)
+
+class Sage_FreeU2(ComfyNodeABC):
+    @classmethod
+    def INPUT_TYPES(cls) -> InputTypeDict:
+        return {
+            "required": {
+                "freeu_v2": (IO.BOOLEAN, {"defaultInput": True, "default": False}),
+                "b1": (IO.FLOAT, {"defaultInput": False, "default": 1.3, "min": 0.0, "max": 10.0, "step": 0.01}),
+                "b2": (IO.FLOAT, {"defaultInput": False, "default": 1.4, "min": 0.0, "max": 10.0, "step": 0.01}),
+                "s1": (IO.FLOAT, {"defaultInput": False, "default": 0.9, "min": 0.0, "max": 10.0, "step": 0.01}),
+                "s2": (IO.FLOAT, {"defaultInput": False, "default": 0.2, "min": 0.0, "max": 10.0, "step": 0.01}),
+            }
+        }
+    RETURN_TYPES = ("MODEL_SHIFTS",)
+    RETURN_NAMES = ("model_shifts",)
+    FUNCTION = "get_freeu2_settings"
+    CATEGORY = "Sage Utils/model"
+    DESCRIPTION = "Get the free_u2 settings to apply to the model."
+    def get_freeu2_settings(self, freeu_v2, b1, b2, s1, s2) -> tuple:
+        return ({
+            "shift_type": "None",
+            "shift": 0,
+            "freeu_v2": freeu_v2,
+            "b1": b1,
+            "b2": b2,
+            "s1": s1,
+            "s2": s2
+        },)
+
 # Convert UNET, CLIP, and VAE model info to a single model info output.
 class Sage_UnetClipVaeToModelInfo(ComfyNodeABC):
     @classmethod

@@ -29,7 +29,7 @@ class Sage_ConstructMetadataFlexible(ComfyNodeABC):
     def INPUT_TYPES(cls):  # type: ignore
         return {
             "required": {
-                "model_info": ('MODEL_INFO', {"defaultInput": True}),
+                "model_info": ('MODEL_INFO,UNET_INFO', {"defaultInput": True}),
                 "positive_string": (IO.STRING, {"defaultInput": True}),
                 "negative_string": (IO.STRING, {"defaultInput": True}),
                 "sampler_info": ('SAMPLER_INFO', {"defaultInput": True}),
