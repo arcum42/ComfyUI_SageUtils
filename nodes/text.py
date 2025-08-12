@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 from comfy.comfy_types.node_typing import ComfyNodeABC, InputTypeDict, IO
+from typing_extensions import override
 import random
 import string
 

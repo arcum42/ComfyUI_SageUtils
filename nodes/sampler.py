@@ -9,6 +9,53 @@ import torch
 import comfy
 import nodes
 
+class Sage_SamplerSelector(ComfyNodeABC):
+    def __init__(self):
+        pass
+
+    @classmethod
+    def INPUT_TYPES(cls) -> InputTypeDict:
+        return {
+            "required": {
+                "sampler_name": (comfy.samplers.KSampler.SAMPLERS, {"default": "dpmpp_2m", "tooltip": "The algorithm used when sampling, this can affect the quality, speed, and style of the generated output."}),
+            }
+        }
+
+    RETURN_TYPES = (comfy.samplers.KSampler.SAMPLERS,)
+    RETURN_NAMES = ("SAMPLER",)
+    OUTPUT_TOOLTIPS = ("Sampler name to be passed to a KSampler.",)
+    FUNCTION = "pass_info"
+
+    CATEGORY = "Sage Utils/sampler"
+    DESCRIPTION = "Selects a sampler for use in the pipeline."
+
+    def pass_info(self, sampler_name) -> tuple:
+        return (sampler_name,)
+
+class Sage_SchedulerSelector(ComfyNodeABC):
+    def __init__(self):
+        pass
+
+    @classmethod
+    def INPUT_TYPES(cls) -> InputTypeDict:
+        return {
+            "required": {
+                "steps": (IO.INT, {"default": 20, "min": 1, "max": 10000, "tooltip": "The number of steps used in the denoising process."}),
+                "scheduler_name": (comfy.samplers.KSampler.SCHEDULERS, {"default": "beta", "tooltip": "The scheduler controls how noise is gradually removed to form the image."}),
+            }
+        }
+
+    RETURN_TYPES = (IO.INT, comfy.samplers.KSampler.SCHEDULERS)
+    RETURN_NAMES = ("steps", "scheduler")
+    FUNCTION = "pass_info"
+    OUTPUT_TOOLTIPS = ("Scheduler name to be passed to a KSampler.", "Steps to be passed to a KSampler.")
+
+    CATEGORY = "Sage Utils/sampler"
+    DESCRIPTION = "Selects a scheduler for use in the pipeline, and passes the steps to be used in the KSampler."
+
+    def pass_info(self, steps, scheduler_name) -> tuple:
+        return (steps, scheduler_name)
+
 class Sage_SamplerInfo(ComfyNodeABC):
     def __init__(self):
         pass

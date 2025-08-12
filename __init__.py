@@ -50,8 +50,6 @@ WEB_DIRECTORY = "./js"
 # v3 will require reimplementation of all nodes.
 
 SELECTOR_CLASS_MAPPINGS = {
-    "Sage_SamplerInfo": Sage_SamplerInfo,
-    "Sage_AdvSamplerInfo": Sage_AdvSamplerInfo,
     "Sage_TilingInfo": Sage_TilingInfo,
     "Sage_ModelShifts": Sage_ModelShifts,
     "Sage_FreeU2": Sage_FreeU2,
@@ -126,6 +124,10 @@ CLIP_CLASS_MAPPINGS = {
 }
 
 SAMPLER_CLASS_MAPPINGS = {
+    "Sage_SamplerInfo": Sage_SamplerInfo,
+    "Sage_AdvSamplerInfo": Sage_AdvSamplerInfo,
+    "Sage_SamplerSelector": Sage_SamplerSelector,
+    "Sage_SchedulerSelector": Sage_SchedulerSelector,
     "Sage_KSampler": Sage_KSampler,
     "Sage_KSamplerTiledDecoder": Sage_KSamplerTiledDecoder,
     "Sage_KSamplerAudioDecoder": Sage_KSamplerAudioDecoder
@@ -202,8 +204,6 @@ if ENABLE_TRAINING_NODES:
     NODE_CLASS_MAPPINGS = NODE_CLASS_MAPPINGS | TRAINING_CLASS_MAPPINGS
 
 SELECTOR_NAME_MAPPINGS = {
-    "Sage_SamplerInfo": "Sampler Info",
-    "Sage_AdvSamplerInfo": "Adv Sampler Info",
     "Sage_TilingInfo": "Tiling Info",
     "Sage_ModelShifts": "Model Shifts",
     "Sage_FreeU2": "Free U2 Selector",
@@ -277,6 +277,10 @@ CLIP_NAME_MAPPINGS = {
 }
 
 SAMPLER_NAME_MAPPINGS = {
+    "Sage_SamplerInfo": "KSampler Info",
+    "Sage_AdvSamplerInfo": "Adv KSampler Info",
+    "Sage_SamplerSelector": "Sampler Selector",
+    "Sage_SchedulerSelector": "Scheduler Selector",
     "Sage_KSampler": "KSampler w/ Sampler Info",
     "Sage_KSamplerTiledDecoder": "KSampler + Tiled Decoder",
     "Sage_KSamplerAudioDecoder": "KSampler + Audio Decoder"
