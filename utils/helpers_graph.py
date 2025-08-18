@@ -97,6 +97,7 @@ def add_vae_node_from_info(graph: GraphBuilder, vae_info):
 
 def create_lora_nodes(graph: GraphBuilder, model_in, clip_in, lora_stack):
     lora_node = None
+    print(f"Creating Lora nodes with lora_stack: {lora_stack}")
     for lora in lora_stack:
         lora_node = graph.node("LoraLoader", model=model_in, clip=clip_in, lora_name=lora[0], strength_model=lora[1], strength_clip=lora[2])
         model_in = lora_node.out(0)
@@ -106,9 +107,11 @@ def create_lora_nodes(graph: GraphBuilder, model_in, clip_in, lora_stack):
 def create_lora_nodes_v2(graph: GraphBuilder, unet_in, clip_in, lora_stack=None):
     unet_out = unet_in
     clip_out = clip_in
+    print(f"Creating Lora nodes with lora_stack: {lora_stack}")
 
     if lora_stack is None:
         return unet_out, clip_out
+
     for lora in lora_stack:
         lora_node = graph.node("LoraLoader", model=unet_in, clip=clip_in, lora_name=lora[0], strength_model=lora[1], strength_clip=lora[2])
         unet_out = lora_node.out(0)
@@ -117,6 +120,7 @@ def create_lora_nodes_v2(graph: GraphBuilder, unet_in, clip_in, lora_stack=None)
 
 def create_lora_nodes_model_only(graph: GraphBuilder, model_in, lora_stack):
     lora_node = None
+    print(f"Creating Lora nodes with lora_stack: {lora_stack}")
     for lora in lora_stack:
         lora_node = graph.node("LoraLoaderModelOnly", model=model_in, lora_name=lora[0], strength_model=lora[1])
         model_in = lora_node.out(0)
@@ -192,6 +196,7 @@ def add_lora_stack_node(graph: GraphBuilder, args, idx, lora_stack = None):
     model_weight = args[f"model_{idx}_weight"]
     # If clip weight is not provided, it defaults to 1.0
     clip_weight = args.get(f"clip_{idx}_weight", 1.0)
+    print(f"Creating Lora stack node: {lora_name}, enabled: {lora_enabled}, model_weight: {model_weight}, clip_weight: {clip_weight}")
 
     return graph.node("Sage_LoraStack",
             enabled = lora_enabled,

@@ -15,7 +15,7 @@ from comfy.comfy_types.node_typing import ComfyNodeABC, InputTypeDict, IO
 from ..utils import (
     lora_to_prompt, civitai_sampler_name,pull_metadata, get_model_dict, cache,
 )
-from ..utils.model_info import collect_resource_hashes, model_name_and_hash_as_str
+from ..utils.model_info import collect_resource_hashes, model_name_and_hash_as_str, _get_model_name_from_info, _get_model_hash_from_info
 from comfy_execution.graph_utils import GraphBuilder
 
 # Constants
@@ -35,7 +35,7 @@ class Sage_ConstructMetadataFlexible(ComfyNodeABC):
                 "sampler_info": ('SAMPLER_INFO', {"defaultInput": True}),
                 "width": (IO.INT, {"defaultInput": True}),
                 "height": (IO.INT, {"defaultInput": True}),
-                "metadata_style": (["A1111 Full", "A1111 Lite", "Simple"], {"default": "A1111 Full", "tooltip": "Select the metadata style to use."}),
+                "metadata_style": (["A1111 Full", "A1111 Lite", "Simple", "Info"], {"default": "A1111 Full", "tooltip": "Select the metadata style to use."}),
             },
             "optional": {
                 "lora_stack": ('LORA_STACK', {"defaultInput": True})
@@ -49,136 +49,184 @@ class Sage_ConstructMetadataFlexible(ComfyNodeABC):
     DESCRIPTION = ("Flexible metadata constructor supporting multiple styles: "
                   "A1111 Full (with LoRA hashes), A1111 Lite (simplified, only includes models on Civitai), "
                   "and Simple (No models or LoRAs).")
-
-    def _get_sampler_name(self, sampler_info: dict) -> str:
-        """Get the standardized sampler name."""
-        return civitai_sampler_name(sampler_info['sampler'], sampler_info['scheduler'])
     
-    def _build_base_params(self, sampler_info: dict, width: int, height: int) -> str:
-        """Build the base parameter string."""
-        sampler_name = self._get_sampler_name(sampler_info)
-        return (
-            f"Steps: {sampler_info['steps']}, "
-            f"Sampler: {sampler_name}, "
-            f"Scheduler type: {sampler_info['scheduler']}, "
-            f"CFG scale: {sampler_info['cfg']}, "
-            f"Seed: {sampler_info['seed']}, "
-            f"Size: {width}x{height}"
-        )
-
-    def build_simple_metadata_string(self, positive_string: str, negative_string: str,
-                                     sampler_info: dict, width: int, height: int) -> str:
-        """Build simple metadata string with just basic parameters."""
-        lines = [positive_string]
+    def _collect_metadata_components(self, model_info: dict, positive_string: str, negative_string: str,
+                                   width: int, height: int, sampler_info: dict,
+                                   lora_stack: Optional[list] = None) -> dict:
+        """Collect all metadata components needed for any style."""
+        # Individual sampler components
+        sampler_name = civitai_sampler_name(sampler_info['sampler'], sampler_info['scheduler'])
+        steps = sampler_info['steps']
+        scheduler = sampler_info['scheduler']
+        cfg = sampler_info['cfg']
+        seed = sampler_info['seed']
+        size = f"{width}x{height}"
         
-        if negative_string.strip():
-            lines.append(f"Negative prompt: {negative_string}")
+        # Combined base parameters (for backward compatibility)
+        base_params = (f"Steps: {steps}, Sampler: {sampler_name}, "
+                      f"Scheduler type: {scheduler}, CFG scale: {cfg}, "
+                      f"Seed: {seed}, Size: {size}")
         
-        # Just the base parameters
-        base_params = self._build_base_params(sampler_info, width, height)
-        lines.append(base_params)
+        # Prompt components
+        prompt_with_loras = f"{positive_string} {lora_to_prompt(lora_stack)}" if lora_stack else positive_string
+        negative_prompt_line = f"Negative prompt: {negative_string}" if negative_string.strip() else ""
         
-        return '\n'.join(lines[:-1]) + ', ' + lines[-1] if len(lines) > 1 else lines[0]
-
-    def process_lora_stack(self, lora_stack: Optional[list]) -> tuple[list[str], list[dict]]:
-        """Process LoRA stack to extract hashes and resource information."""
-        if not lora_stack:
-            return [], []
+        # Model and version info
+        model_hash_str = model_name_and_hash_as_str(model_info)
+        version_str = f"Version: {COMFYUI_VERSION}"
         
-        lora_hashes = []
-        resource_hashes = []
+        # Individual model components for flexible templating
+        if isinstance(model_info, tuple):
+            # Handle multiple models - combine names and hashes
+            model_names = []
+            model_hashes = []
+            for info in model_info:
+                if info and isinstance(info, dict):
+                    model_names.append(_get_model_name_from_info(info))
+                    model_hashes.append(_get_model_hash_from_info(info))
+            model_name = " + ".join(model_names) if model_names else ""
+            model_hash = " + ".join(model_hashes) if model_hashes else ""
+        else:
+            # Handle single model
+            if isinstance(model_info, dict) and "path" in model_info and "hash" in model_info:
+                model_name = _get_model_name_from_info(model_info)
+                model_hash = _get_model_hash_from_info(model_info)
+            else:
+                model_name = ""
+                model_hash = ""
         
-        for lora in lora_stack:
-            lora_path = folder_paths.get_full_path_or_raise("loras", lora[0])
-            lora_name = Path(lora_path).name
+        # Raw values without prefixes for flexible templating
+        negative_string_raw = negative_string if negative_string.strip() else ""
+        comfyui_version = COMFYUI_VERSION
+        
+        # Resource hashes for lite version
+        resource_hashes_json = json.dumps(collect_resource_hashes(model_info, lora_stack))
+        
+        # LoRA information for full version
+        lora_hashes_list = []
+        lora_resource_hashes = []
+        
+        if lora_stack:
+            for lora in lora_stack:
+                lora_path = folder_paths.get_full_path_or_raise("loras", lora[0])
+                lora_name = Path(lora_path).name
+                
+                pull_metadata(lora_path)
+                lora_data = get_model_dict(lora_path, lora[1])
+                if lora_data:
+                    lora_resource_hashes.append(lora_data)
+                
+                lora_hash = cache.hash[lora_path]
+                lora_hashes_list.append(f"{lora_name}: {lora_hash}")
+        
+        lora_hashes_str = ', '.join(lora_hashes_list) if lora_hashes_list else ""
+        lora_resource_hashes_json = json.dumps(lora_resource_hashes) if lora_resource_hashes else ""
+        
+        return {
+            # Prompt components
+            'positive_string': positive_string,
+            'prompt_with_loras': prompt_with_loras,
+            'negative_prompt_line': negative_prompt_line,
+            'negative_string': negative_string_raw,
             
-            pull_metadata(lora_path)
-            lora_data = get_model_dict(lora_path, lora[1])
-            if lora_data:
-                resource_hashes.append(lora_data)
-
-            lora_hash = cache.hash[lora_path]
-            lora_hashes.append(f"{lora_name}: {lora_hash}")
-        
-        return lora_hashes, resource_hashes
-
-    def construct_a1111_full_metadata(self, model_info: dict, positive_string: str, negative_string: str,
-                                        width: int, height: int, sampler_info: dict,
-                                        lora_stack: Optional[list] = None):
-        """Construct metadata using the selected style."""
-        # Use the same logic as Sage_ConstructMetadata
-        lora_hashes, resource_hashes = self.process_lora_stack(lora_stack)
-
-        # Build prompt section
-        prompt_with_loras = f"{positive_string} {lora_to_prompt(lora_stack)}"
-        lines = [prompt_with_loras]
-
-        if negative_string.strip():
-            lines.append(f"Negative prompt: {negative_string}")
-
-        # Build parameter section
-        base_params = self._build_base_params(sampler_info, width, height)
-        params = (
-            f"{base_params}, "
-            f"{model_name_and_hash_as_str(model_info)}, "
-            f"Version: {COMFYUI_VERSION}"
-        )
-
-        # Add additional metadata if available
-        if resource_hashes:
-            params += f", Civitai resources: {json.dumps(resource_hashes)}"
-        if lora_hashes:
-            params += f", Lora hashes: {', '.join(lora_hashes)}"
+            # Individual sampler components
+            'steps': steps,
+            'sampler_name': sampler_name,
+            'scheduler': scheduler,
+            'cfg': cfg,
+            'seed': seed,
+            'width': width,
+            'height': height,
+            'size': size,
             
-        lines.append(params)
-        metadata = '\n'.join(lines[:-1]) + ', ' + lines[-1] if len(lines) > 1 else lines[0]
-        return metadata
+            # Combined parameters (for backward compatibility)
+            'base_params': base_params,
+            
+            # Model and version info
+            'model_hash_str': model_hash_str,
+            'version_str': version_str,
+            'model_name': model_name,
+            'model_hash': model_hash,
+            'comfyui_version': comfyui_version,
+            
+            # Resource information
+            'resource_hashes_json': resource_hashes_json,
+            'lora_hashes_str': lora_hashes_str,
+            'lora_resource_hashes_json': lora_resource_hashes_json,
+        }
 
-    def construct_lite_metadata(self, model_info: dict, positive_string: str, negative_string: str,
-                                width: int, height: int, sampler_info: dict,
-                                lora_stack: Optional[list] = None) -> str:
-        resource_hashes = collect_resource_hashes(model_info, lora_stack)
-        lines = [positive_string]
+    def _get_style_templates(self) -> dict:
+        """Get template strings for each metadata style."""
 
-        if negative_string.strip():
-            lines.append(f"Negative prompt: {negative_string}")
+        return {
+            "Simple": (
+                "{positive_string}\n"
+                "Negative prompt: {negative_string}\n"
+                "{base_params}"
+            ),
+            
+            "A1111 Lite": (
+                "{positive_string}\n"
+                "Negative prompt: {negative_string}\n"
+                "{base_params}, Version: {comfyui_version}, Civitai resources: {resource_hashes_json}"
+            ),
+            
+            "A1111 Full": (
+                "{prompt_with_loras}\n"
+                "Negative prompt: {negative_string}\n"
+                "{base_params}, {model_hash_str}, Version: {comfyui_version}{lora_civitai_resources}{lora_hashes}"
+            ),
+            
+            "Info": (
+                "Model: {model_name}{lora_civitai_resources}\n"
+                "{sampler_name} {scheduler} cfg: {cfg} steps: {steps} seed: {seed}\n"
+                "Positive: {positive_string}\n"
+                "Negative: {negative_string}"
+            )
+        }
 
-        # Build parameter section
-        base_params = self._build_base_params(sampler_info, width, height)
-        params = (
-            f"{base_params}, "
-            f"Version: {COMFYUI_VERSION}, "
-            f"Civitai resources: {json.dumps(resource_hashes)}"
-        )
-        lines.append(params)
-
-        metadata = '\n'.join(lines[:-1]) + ', ' + lines[-1] if len(lines) > 1 else lines[0]
-        return metadata
-    
-    def construct_simple_metadata(self, model_info: dict, positive_string: str, negative_string: str,
-                                width: int, height: int, sampler_info: dict,
-                                lora_stack: Optional[list] = None) -> str:
-        # Simple style with just basic parameters
-        metadata = self.build_simple_metadata_string(
-            positive_string, negative_string, sampler_info, width, height
-        )
-        return metadata
+    def _format_metadata_string(self, template: str, components: dict) -> str:
+        """Format a single template string with components, filtering empty conditional parts."""
+        # Handle conditional components that might be empty
+        filtered_components = {}
+        for key, value in components.items():
+            # Convert empty strings to empty for conditional parts
+            if isinstance(value, str) and not value.strip():
+                filtered_components[key] = ""
+            else:
+                filtered_components[key] = value
         
+        return template.format(**filtered_components)
+
     def construct_metadata(self, model_info: dict, positive_string: str, negative_string: str,
                           width: int, height: int, sampler_info: dict, metadata_style: str,
                           lora_stack: Optional[list] = None) -> tuple[str]:
         """Construct metadata using the selected style."""
-        if metadata_style == "A1111 Full":
-            metadata = self.construct_a1111_full_metadata(model_info, positive_string, negative_string, width, height, sampler_info, lora_stack)
-        elif metadata_style == "A1111 Lite":
-            metadata = self.construct_lite_metadata(model_info, positive_string, negative_string, width, height, sampler_info, lora_stack)
-        elif metadata_style == "Simple":
-            metadata = self.construct_simple_metadata(model_info, positive_string, negative_string, width, height, sampler_info, lora_stack)
-        else:
-            # Fallback to A1111 Full if unknown style
-            metadata = self.construct_a1111_full_metadata(model_info, positive_string, negative_string, width, height, sampler_info, lora_stack)
+        # Collect all components
+        components = self._collect_metadata_components(
+            model_info, positive_string, negative_string, width, height, sampler_info, lora_stack
+        )
         
-        return (metadata,)
+        # Add conditional LoRA components for A1111 Full
+        components['lora_civitai_resources'] = (
+            f", Civitai resources: {components['lora_resource_hashes_json']}" 
+            if components['lora_resource_hashes_json'] else ""
+        )
+        components['lora_hashes'] = (
+            f", Lora hashes: {components['lora_hashes_str']}" 
+            if components['lora_hashes_str'] else ""
+        )
+        
+        # Get style templates
+        templates = self._get_style_templates()
+        
+        # Use the requested style or fallback to A1111 Full
+        template = templates.get(metadata_style, templates["A1111 Full"])
+        
+        # Format the template with components
+        formatted_metadata = self._format_metadata_string(template, components)
+        
+        return (formatted_metadata,)
 
 class Sage_ConstructMetadata(Sage_ConstructMetadataFlexible):
     """Constructs comprehensive A1111-style metadata with full LoRA hash information."""

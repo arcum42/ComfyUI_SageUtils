@@ -73,9 +73,6 @@ from .lora_stack import (
     add_lora_to_stack
 )
 
-# Model loading utilities
-from .loaders import load_model_component, load_lora_stack_with_keywords
-
 # Model info utilities - import function directly to avoid circular dependency
 def get_model_types(model_info):
     """Determine which model types are present in model_info."""
@@ -146,9 +143,6 @@ __all__ = [
 
     # LoRA utilities
     'get_lora_keywords', 'get_lora_stack_keywords', 'add_lora_to_stack',
-    
-    # Model loading utilities
-    'load_model_component', 'get_model_types', 'load_lora_stack_with_keywords',
     
     # Core objects
     'path_manager', 'file_manager', 'cache', 'config_manager', 'llm',

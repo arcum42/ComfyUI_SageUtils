@@ -413,7 +413,7 @@ class Sage_TextWeight(ComfyNodeABC):
     DESCRIPTION = "Applies a weight to a text string."
 
     def weight_text(self, text: str, weight: float, separator: str) -> tuple[str]:
-        return (f"({text}:{weight:.2f}){separator}",)
+        return (f"({text}:{weight:.2g}){separator}",)
 
 class Sage_HiDreamE1_Instruction(ComfyNodeABC):
     @classmethod
