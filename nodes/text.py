@@ -17,6 +17,48 @@ from ..utils import (
 from dynamicprompts.generators import RandomPromptGenerator
 from dynamicprompts.wildcards.wildcard_manager import WildcardManager
 
+class Sage_IntToStr(ComfyNodeABC):
+    @classmethod
+    def INPUT_TYPES(s) -> InputTypeDict:
+        return {
+            "required": {
+                "num": (IO.INT, {"default": 0})
+            }
+        }
+
+    RETURN_TYPES = (IO.STRING,)
+    FUNCTION = "num_to_str"
+    CATEGORY = "Sage Utils/text"
+    DESCRIPTION = "Converts a number to a string."
+
+    def num_to_str(self, num: int) -> tuple[str]:
+        """
+        Converts a number to a string.
+        """
+
+        return (str(num),)
+
+class Sage_FloatToStr(ComfyNodeABC):
+    @classmethod
+    def INPUT_TYPES(s) -> InputTypeDict:
+        return {
+            "required": {
+                "num": (IO.FLOAT, {"default": 0.0})
+            }
+        }
+
+    RETURN_TYPES = (IO.STRING,)
+    FUNCTION = "num_to_str"
+    CATEGORY = "Sage Utils/text"
+    DESCRIPTION = "Converts a float to a string."
+
+    def num_to_str(self, num: float) -> tuple[str]:
+        """
+        Converts a float to a string.
+        """
+
+        return (f"{num:.2g}",)
+
 class SageSetWildcardText(ComfyNodeABC):
     @classmethod
     def INPUT_TYPES(cls) -> InputTypeDict:
