@@ -125,6 +125,31 @@ class Sage_SetText(ComfyNodeABC):
     def pass_str(self, str, prefix=None, suffix=None) -> tuple[str]:
         return (f"{prefix or ''}{str}{suffix or ''}",)
 
+class Sage_SetTextWithInt(ComfyNodeABC):
+    @classmethod
+    def INPUT_TYPES(cls) -> InputTypeDict:
+        return {
+            "optional": {
+                "prefix": (IO.STRING, {"defaultInput": True, "multiline": True}),
+                "suffix": (IO.STRING, {"defaultInput": True, "multiline": True})
+            },
+            "required": {
+                "str": (IO.STRING, {"forceInput": False, "dynamicPrompts": False, "multiline": False}),
+                "number": (IO.INT, {"forceInput": False})
+            }
+        }
+
+    RETURN_TYPES = (IO.STRING,)
+    RETURN_NAMES = ("str",)
+
+    FUNCTION = "pass_str"
+
+    CATEGORY = "Sage Utils/text"
+    DESCRIPTION = "Sets some text and adds a number at the end."
+
+    def pass_str(self, str, prefix=None, suffix=None, number=0) -> tuple[str]:
+        return (f"{prefix or ''}{str}{suffix or ''}{number or ''}",)
+
 class Sage_TextSwitch(ComfyNodeABC):
     @classmethod
     def INPUT_TYPES(cls) -> InputTypeDict:

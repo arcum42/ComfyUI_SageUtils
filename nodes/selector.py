@@ -39,7 +39,11 @@ class Sage_CheckpointSelector(ComfyNodeABC):
 class Sage_UNETSelector(ComfyNodeABC):
     @classmethod
     def INPUT_TYPES(cls) -> InputTypeDict:
-        unet_names = [x for x in folder_paths.get_filename_list("unet_gguf")]
+        unet_names = []
+        try:
+            unet_names = [x for x in folder_paths.get_filename_list("unet_gguf")]
+        except Exception as e:
+            unet_names = []
         unet_names += folder_paths.get_filename_list("diffusion_models")
         unet_names = list(set(unet_names))
         unet_names.sort()  # Remove duplicates
@@ -87,8 +91,12 @@ class Sage_VAESelector(ComfyNodeABC):
 class Sage_CLIPSelector(ComfyNodeABC):
     @classmethod
     def INPUT_TYPES(cls) -> InputTypeDict:
-        model_list = [x for x in folder_paths.get_filename_list("text_encoders")]
-        model_list += folder_paths.get_filename_list("clip_gguf")
+        model_list = []
+        try:
+            model_list = [x for x in folder_paths.get_filename_list("clip_gguf")]
+        except Exception as e:
+            model_list = []
+        model_list += folder_paths.get_filename_list("text_encoders")
         model_list = list(set(model_list))
         model_list.sort()  # Remove duplicates
         return {
@@ -113,8 +121,12 @@ class Sage_CLIPSelector(ComfyNodeABC):
 class Sage_DualCLIPSelector(ComfyNodeABC):
     @classmethod
     def INPUT_TYPES(cls) -> InputTypeDict:
-        model_list = [x for x in folder_paths.get_filename_list("text_encoders")]
-        model_list += folder_paths.get_filename_list("clip_gguf")
+        model_list = []
+        try:
+            model_list = [x for x in folder_paths.get_filename_list("clip_gguf")]
+        except Exception as e:
+            model_list = []
+        model_list += folder_paths.get_filename_list("text_encoders")
         model_list = list(set(model_list))
         model_list.sort()  # Remove duplicates
         return {
@@ -140,8 +152,12 @@ class Sage_DualCLIPSelector(ComfyNodeABC):
 class Sage_TripleCLIPSelector(ComfyNodeABC):
     @classmethod
     def INPUT_TYPES(cls) -> InputTypeDict:
-        model_list = [x for x in folder_paths.get_filename_list("text_encoders")]
-        model_list += folder_paths.get_filename_list("clip_gguf")
+        model_list = []
+        try:
+            model_list = [x for x in folder_paths.get_filename_list("clip_gguf")]
+        except Exception as e:
+            model_list = []
+        model_list += folder_paths.get_filename_list("text_encoders")
         model_list = list(set(model_list))
         model_list.sort()  # Remove duplicates
         return {
@@ -166,8 +182,12 @@ class Sage_TripleCLIPSelector(ComfyNodeABC):
 class Sage_QuadCLIPSelector(ComfyNodeABC):
     @classmethod
     def INPUT_TYPES(cls) -> InputTypeDict:
-        model_list = [x for x in folder_paths.get_filename_list("text_encoders")]
-        model_list += folder_paths.get_filename_list("clip_gguf")
+        model_list = []
+        try:
+            model_list = [x for x in folder_paths.get_filename_list("clip_gguf")]
+        except Exception as e:
+            model_list = []
+        model_list += folder_paths.get_filename_list("text_encoders")
         model_list = list(set(model_list))
         model_list.sort()  # Remove duplicates
         return {

@@ -66,6 +66,7 @@ SELECTOR_CLASS_MAPPINGS = {
 
 TEXT_CLASS_MAPPINGS = {
     "Sage_SetText": Sage_SetText,
+    "Sage_SetTextWithInt": Sage_SetTextWithInt,
     "Sage_TextSwitch": Sage_TextSwitch,
     "SageSetWildcardText": SageSetWildcardText,
     "Sage_TextSubstitution": Sage_TextSubstitution,
@@ -222,6 +223,7 @@ SELECTOR_NAME_MAPPINGS = {
 
 TEXT_NAME_MAPPINGS = {
     "Sage_SetText": "Set Text",
+    "Sage_SetTextWithInt": "Text w/ Int",
     "Sage_TextSwitch": "Text Switch",
     "SageSetWildcardText": "Set Text (Wildcards)",
     "Sage_TextSubstitution": "Text Substitution",
