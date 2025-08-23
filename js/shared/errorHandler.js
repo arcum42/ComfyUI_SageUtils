@@ -83,80 +83,6 @@ export function handleError(error, context = {}) {
 }
 
 /**
- * Handle API-specific errors with network context
- * @param {Error} error - The error object
- * @param {string} endpoint - API endpoint that failed
- * @param {ErrorContext} context - Additional context
- * @returns {void}
- */
-export function handleApiError(error, endpoint, context = {}) {
-    const apiContext = {
-        ...context,
-        operation: `API call to ${endpoint}`,
-        metadata: {
-            ...context.metadata,
-            endpoint,
-            timestamp: Date.now()
-        }
-    };
-
-    // Check for specific HTTP error codes
-    if (error.status) {
-        apiContext.metadata.statusCode = error.status;
-        apiContext.metadata.statusText = error.statusText;
-    }
-
-    return handleError(error, apiContext);
-}
-
-/**
- * Handle validation errors with field context
- * @param {Error|string} error - Error or error message
- * @param {string} field - Field that failed validation
- * @param {any} value - Value that failed validation
- * @param {ErrorContext} context - Additional context
- * @returns {void}
- */
-export function handleValidationError(error, field, value, context = {}) {
-    const validationError = typeof error === 'string' ? new Error(error) : error;
-    
-    const validationContext = {
-        ...context,
-        operation: `Validation of ${field}`,
-        metadata: {
-            ...context.metadata,
-            field,
-            value,
-            validationType: 'input'
-        }
-    };
-
-    return handleError(validationError, validationContext);
-}
-
-/**
- * Handle file operation errors
- * @param {Error} error - The error object
- * @param {string} operation - File operation (read, write, delete, etc.)
- * @param {string} filename - Name of the file
- * @param {ErrorContext} context - Additional context
- * @returns {void}
- */
-export function handleFileError(error, operation, filename, context = {}) {
-    const fileContext = {
-        ...context,
-        operation: `File ${operation}`,
-        metadata: {
-            ...context.metadata,
-            filename,
-            fileOperation: operation
-        }
-    };
-
-    return handleError(error, fileContext);
-}
-
-/**
  * Categorize error based on error object properties
  * @param {Error} error - The error object
  * @returns {string} Error category
@@ -308,6 +234,10 @@ function trackError(errorInfo) {
         console.log('[ErrorTracking] Would track error:', errorInfo);
     }
 }
+
+// =============================================================================
+// DEBUGGING AND UTILITY FUNCTIONS (kept for future development/testing)
+// =============================================================================
 
 /**
  * Create a safe wrapper function that catches and handles errors
