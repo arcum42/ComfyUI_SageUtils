@@ -9,7 +9,6 @@ import { api } from "../../../scripts/api.js";
 // Import centralized state management
 import { 
     getState, 
-    updateState, 
     subscribe, 
     actions, 
     selectors 

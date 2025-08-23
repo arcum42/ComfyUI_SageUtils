@@ -73,9 +73,6 @@ let currentState = JSON.parse(JSON.stringify(initialState));
 // State change listeners
 const listeners = new Set();
 
-// Debug mode for development
-const DEBUG_MODE = false;
-
 /**
  * Get a deep copy of the current state
  * @returns {SidebarState} Current state
@@ -115,9 +112,6 @@ export function updateState(path, value, action = 'update') {
     
     // Don't update if value hasn't changed (shallow comparison)
     if (oldValue === value) {
-        if (DEBUG_MODE) {
-            console.log(`[StateManager] No change for ${path}:`, value);
-        }
         return;
     }
     
@@ -149,16 +143,6 @@ export function updateState(path, value, action = 'update') {
     const previousState = currentState;
     currentState = newState;
     
-    // Debug logging
-    if (DEBUG_MODE) {
-        console.log(`[StateManager] ${action}:`, {
-            path,
-            oldValue,
-            newValue: value,
-            fullState: getState()
-        });
-    }
-    
     // Notify listeners
     notifyListeners({
         type: 'stateChange',
@@ -169,49 +153,6 @@ export function updateState(path, value, action = 'update') {
         previousState: JSON.parse(JSON.stringify(previousState)),
         currentState: getState()
     });
-}
-
-/**
- * Update multiple state values in a single transaction
- * @param {Object} updates - Object with path-value pairs
- * @param {string} [action] - Optional action description
- */
-export function updateMultiple(updates, action = 'batchUpdate') {
-    const oldState = getState();
-    
-    // Apply all updates
-    Object.entries(updates).forEach(([path, value]) => {
-        updateState(path, value, `${action}:${path}`);
-    });
-    
-    // Notify listeners of batch update
-    notifyListeners({
-        type: 'batchUpdate',
-        updates,
-        action,
-        previousState: oldState,
-        currentState: getState()
-    });
-}
-
-/**
- * Reset state to initial values
- * @param {string} [section] - Optional section to reset ('models' or 'notes')
- */
-export function resetState(section = null) {
-    if (section) {
-        if (section in initialState) {
-            updateState(section, JSON.parse(JSON.stringify(initialState[section])), `reset:${section}`);
-        } else {
-            console.warn(`[StateManager] Unknown section: ${section}`);
-        }
-    } else {
-        currentState = JSON.parse(JSON.stringify(initialState));
-        notifyListeners({
-            type: 'fullReset',
-            currentState: getState()
-        });
-    }
 }
 
 /**
@@ -284,15 +225,6 @@ function validateState(state) {
 }
 
 /**
- * Create a selector function for reactive state access
- * @param {Function} selectorFn - Function that takes state and returns a value
- * @returns {Function} Function that returns the selected value
- */
-export function createSelector(selectorFn) {
-    return () => selectorFn(getState());
-}
-
-/**
  * Convenient selectors for common state access patterns
  */
 export const selectors = {
@@ -335,33 +267,3 @@ export const actions = {
     // General actions
     switchTab: (tab) => updateState('activeTab', tab, 'switchTab')
 };
-
-/**
- * Development helpers
- */
-export const dev = {
-    // Get current state (for debugging)
-    getCurrentState: () => currentState,
-    
-    // Force state update (for testing)
-    forceState: (newState) => {
-        currentState = newState;
-        notifyListeners({
-            type: 'forceUpdate',
-            currentState: getState()
-        });
-    },
-    
-    // Enable/disable debug mode
-    setDebugMode: (enabled) => {
-        DEBUG_MODE = enabled;
-    },
-    
-    // Get all listeners (for debugging)
-    getListeners: () => Array.from(listeners)
-};
-
-// Initialize with debug info
-if (DEBUG_MODE) {
-    console.log('[StateManager] Initialized with state:', getState());
-}
