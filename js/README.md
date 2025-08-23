@@ -34,11 +34,10 @@ js/
 │   └── display.js            # Rich content display widgets
 ├── sidebar/ 📁                # Sidebar functionality and tabs
 │   ├── README.md             # 📖 COMPREHENSIVE DOCUMENTATION
-│   ├── cacheSidebarNew.js    # Multi-tab sidebar implementation
+│   ├── cacheSidebar.js    # Multi-tab sidebar implementation
 │   ├── modelsTab.js          # Models browser with filtering and search
 │   ├── notesTab.js           # Notes manager with editing and preview
 │   ├── civitaiSearchTab.js   # Civitai search and discovery
-│   └── testSidebar.js        # Development and testing sidebar
 └── docs/                      # Node documentation (existing)
 ```
 

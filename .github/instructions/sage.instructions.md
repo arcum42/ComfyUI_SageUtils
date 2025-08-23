@@ -46,6 +46,19 @@ ComfyUI custom node providing utilities for model management, prompting, metadat
 - Update `pyproject.toml` version for releases
 - Create workflow examples with JSON + JPG pairs
 
+**Directory Documentation Maintenance:**
+- Each directory containing README.md files must be kept up to date when making changes
+- When adding, removing, or modifying files in a directory, update the corresponding README.md
+- Key directories with documentation that require maintenance:
+  - `js/` - Main JavaScript overview and directory structure
+  - `js/shared/` - Shared utilities and infrastructure documentation
+  - `js/nodes/` - Node implementation system documentation
+  - `js/widgets/` - Widget display system documentation
+  - `js/sidebar/` - Sidebar functionality documentation
+- Update file listings, function descriptions, and architectural notes to reflect changes
+- Remove references to deleted files and add documentation for new files
+- Maintain consistency in formatting and terminology across all README files
+
 ## Domain Knowledge References
 - [ComfyUI Custom Node Documentation](https://docs.comfy.org/custom-nodes/overview)
 - [ComfyUI GitHub Repository](https://github.com/comfyanonymous/ComfyUI)
