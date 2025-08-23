@@ -1,6 +1,6 @@
 # JavaScript Code Organization
 
-This directory contains the JavaScript frontend code for Sage Utils custom nodes, organized into a modular structure for better maintainability. Each subdirectory contains comprehensive technical documentation explaining architecture, functionality, and integration patterns.
+This directory contains the JavaScript frontend code for SageUtils custom nodes, organized into a modular structure for better maintainability. Each subdirectory contains comprehensive technical documentation explaining architecture, functionality, and integration patterns.
 
 ## Directory Structure
 
@@ -9,8 +9,7 @@ js/
 ├── sage.js                    # Main entry point and extension registration
 ├── sage_debug.js              # Debug version of main entry point
 ├── settingsUI.js              # Settings integration with ComfyUI
-├── UNUSED_CODE.md             # Documentation of unused code (see cleanup notes)
-├── shared/ 📁                 # Shared utilities and infrastructure (11 files)
+├── shared/ 📁                 # Shared utilities and infrastructure
 │   ├── README.md             # 📖 COMPREHENSIVE DOCUMENTATION
 │   ├── config.js             # Centralized configuration and constants
 │   ├── utils.js              # Core constants and dynamic input utilities
@@ -23,17 +22,17 @@ js/
 │   ├── markdown.js           # Markdown rendering and styling
 │   ├── infoDisplay.js        # Model information display with Civitai integration
 │   └── reportGenerator.js    # HTML report generation for model collections
-├── nodes/ 📁                  # Individual node setup functions (5 files)
+├── nodes/ 📁                  # Individual node setup functions
 │   ├── README.md             # 📖 COMPREHENSIVE DOCUMENTATION
-│   ├── multiModelPicker.js   # Simple dynamic model input wrapper (15 lines)
-│   ├── textSubstitution.js   # Advanced dynamic string processing (149 lines)
-│   ├── viewAnything.js       # Generic text display node (32 lines)
-│   ├── viewNotes.js          # File browser with markdown preview (147 lines)
-│   └── modelInfoDisplay.js   # Specialized model information display (84 lines)
-├── widgets/ 📁                # Widget display and interaction system (1 file)
+│   ├── multiModelPicker.js   # Simple dynamic model input wrapper
+│   ├── textSubstitution.js   # Advanced dynamic string processing
+│   ├── viewAnything.js       # Generic text display node
+│   ├── viewNotes.js          # File browser with markdown preview
+│   └── modelInfoDisplay.js   # Specialized model information display
+├── widgets/ 📁                # Widget display and interaction system
 │   ├── README.md             # 📖 COMPREHENSIVE DOCUMENTATION
-│   └── display.js            # Rich content display widgets (372 lines)
-├── sidebar/ 📁                # Sidebar functionality and tabs (5 files)
+│   └── display.js            # Rich content display widgets
+├── sidebar/ 📁                # Sidebar functionality and tabs
 │   ├── README.md             # 📖 COMPREHENSIVE DOCUMENTATION
 │   ├── cacheSidebarNew.js    # Multi-tab sidebar implementation
 │   ├── modelsTab.js          # Models browser with filtering and search

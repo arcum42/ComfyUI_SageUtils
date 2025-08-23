@@ -19,7 +19,6 @@ The widgets are designed to work as overlays on top of standard ComfyUI text wid
 ### display.js
 
 **Purpose**: Core widget creation and content display utilities  
-**Lines**: 372  
 **Complexity**: High  
 
 **Dependencies:**
@@ -27,7 +26,7 @@ The widgets are designed to work as overlays on top of standard ComfyUI text wid
 - `ComfyWidgets` from ComfyUI core for base widget functionality
 - `renderMarkdown, ensureMarkdownStyles` from `shared/markdown.js` for markdown processing
 
-**Functions:**
+**Key Functions:**
 
 #### Core Widget Management
 

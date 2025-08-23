@@ -18,10 +18,9 @@ All nodes are prefixed with the SageUtils identifier (`_ID` from `shared/utils.j
 ### 1. multiModelPicker.js
 
 **Purpose**: Simple wrapper for dynamic model input selection  
-**Lines**: 15  
 **Complexity**: Low  
 
-**Functions:**
+**Key Functions:**
 
 - `setupMultiModelPicker(nodeData)`: Main setup function
   - Creates dynamic input slots for model selection
@@ -32,10 +31,9 @@ All nodes are prefixed with the SageUtils identifier (`_ID` from `shared/utils.j
 ### 2. textSubstitution.js
 
 **Purpose**: Advanced dynamic string input handling with substitution capabilities  
-**Lines**: 149  
 **Complexity**: High  
 
-**Functions:**
+**Key Functions:**
 
 - `setupTextSubstitution(nodeData)`: Main setup function
   - Sets up dynamic text input management
@@ -53,10 +51,9 @@ All nodes are prefixed with the SageUtils identifier (`_ID` from `shared/utils.j
 ### 3. viewAnything.js
 
 **Purpose**: Generic text display node with configurable content  
-**Lines**: 32  
 **Complexity**: Low  
 
-**Functions:**
+**Key Functions:**
 
 - `setupViewAnything(nodeData)`: Main setup function
   - Creates text display widget
@@ -73,10 +70,9 @@ All nodes are prefixed with the SageUtils identifier (`_ID` from `shared/utils.j
 ### 4. viewNotes.js
 
 **Purpose**: File selection and preview system with markdown support  
-**Lines**: 147  
 **Complexity**: Medium-High  
 
-**Functions:**
+**Key Functions:**
 
 - `setupViewNotes(nodeData)`: Main setup function and coordinator
 - `updateFilesInWidget(widget, isNotesTab)`: File list population
@@ -100,10 +96,9 @@ All nodes are prefixed with the SageUtils identifier (`_ID` from `shared/utils.j
 ### 5. modelInfoDisplay.js
 
 **Purpose**: Markdown-formatted model information display system  
-**Lines**: 84  
 **Complexity**: Medium  
 
-**Functions:**
+**Key Functions:**
 
 - `setupModelInfoDisplay(nodeData)`: Main setup function
 - `updateContent(widget, content)`: Content update handler
