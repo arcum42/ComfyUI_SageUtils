@@ -23,6 +23,7 @@ def str_to_bool(value):
             return False
     raise ValueError(f"Cannot convert {value} to boolean.")
 
+# Not currently used.
 def bool_to_str(value):
     if isinstance(value, bool):
         return "true" if value else "false"

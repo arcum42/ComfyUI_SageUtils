@@ -18,7 +18,7 @@ import {
     createDialog
 } from '../shared/dialogManager.js';
 
-import { escapeHtml } from '../shared/reportGenerator.js';
+import { escapeHtml, formatFileSize } from '../shared/reportGenerator.js';
 
 /**
  * Configuration for Civitai search
@@ -985,22 +985,6 @@ window.showImageExpanded = function(imageUrl) {
     
     document.body.appendChild(overlay);
 };
-
-/**
- * Format file size in human readable format
- * @param {number} bytes - File size in bytes
- * @returns {string} - Formatted file size
- */
-function formatFileSize(bytes) {
-    if (!bytes || isNaN(bytes) || bytes <= 0) return 'Unknown';
-    
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(1024));
-    const sizeIndex = Math.min(i, sizes.length - 1);
-    const formattedSize = Math.round(bytes / Math.pow(1024, sizeIndex) * 100) / 100;
-    
-    return formattedSize + ' ' + sizes[sizeIndex];
-}
 
 /**
  * Strip HTML tags from text

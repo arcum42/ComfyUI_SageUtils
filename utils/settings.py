@@ -165,6 +165,7 @@ class SageSettings:
             logging.error(f"Failed to save settings: {e}")
             return False
     
+    # Used in settings and server_routes.
     def reset_to_defaults(self) -> None:
         """Reset all settings to their default values."""
         self._settings = {key: entry["default"] for key, entry in SETTINGS_SCHEMA.items()}
@@ -183,6 +184,7 @@ class SageSettings:
             schema_entry["type"] = schema_entry["type"].__name__
         return schema_entry
     
+    # Used in settings and server_routes.
     def list_all_settings(self) -> Dict[str, Dict[str, Any]]:
         """Get information about all settings."""
         result = {}

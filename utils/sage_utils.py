@@ -41,6 +41,7 @@ def save_json(path, data, label="file"):
     """Save JSON to a file."""
     return file_manager.save_json_file(path, data, label)
 
+# Not used.
 def ensure_config_file(config_name, overwrite=False):
     """Ensure a config file exists in user directory."""
     return file_manager.ensure_user_config_file(config_name, overwrite)
