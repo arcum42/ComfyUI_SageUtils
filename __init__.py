@@ -110,7 +110,6 @@ MODEL_CLASS_MAPPINGS = {
 LORA_CLASS_MAPPINGS = {
     "Sage_LoraStack": Sage_LoraStack,
     "Sage_QuickLoraStack": Sage_QuickLoraStack,
-    "Sage_LoraStackRecent": Sage_LoraStackRecent,
     "Sage_TripleLoraStack": Sage_TripleLoraStack,
     "Sage_SixLoraStack": Sage_SixLoraStack,
     "Sage_TripleQuickLoraStack": Sage_TripleQuickLoraStack,
@@ -183,14 +182,6 @@ UTILITY_CLASS_MAPPINGS = {
     "Sage_FreeMemory": Sage_FreeMemory
 }
 
-# Deprecated class mappings (correct spelling)
-DEPRECATED_CLASS_MAPPINGS = {
-    "Sage_KSamplerDecoder": Sage_KSamplerDecoder,
-    "Sage_UNETLoader": Sage_UNETLoader,
-    "Sage_CheckpointLoaderSimple": Sage_CheckpointLoaderSimple,
-    "Sage_CheckpointLoaderRecent": Sage_CheckpointLoaderRecent
-}
-
 if llm.OLLAMA_AVAILABLE:
     LLM_CLASS_MAPPINGS = LLM_CLASS_MAPPINGS | OLLAMA_CLASS_MAPPINGS
 
@@ -199,7 +190,7 @@ if llm.LMSTUDIO_AVAILABLE:
 
 # A dictionary that contains all nodes you want to export with their names
 # NOTE: names should be globally unique
-NODE_CLASS_MAPPINGS = DEPRECATED_CLASS_MAPPINGS | UTILITY_CLASS_MAPPINGS | SELECTOR_CLASS_MAPPINGS |  TEXT_CLASS_MAPPINGS | \
+NODE_CLASS_MAPPINGS = UTILITY_CLASS_MAPPINGS | SELECTOR_CLASS_MAPPINGS |  TEXT_CLASS_MAPPINGS | \
     LOADER_CLASS_MAPPINGS| MODEL_CLASS_MAPPINGS | LORA_CLASS_MAPPINGS | CLIP_CLASS_MAPPINGS | SAMPLER_CLASS_MAPPINGS | \
     IMAGE_CLASS_MAPPINGS | METADATA_CLASS_MAPPINGS | LLM_CLASS_MAPPINGS
 
@@ -339,15 +330,6 @@ UTILITY_NAME_MAPPINGS = {
     "Sage_FreeMemory": "Free Memory"
 }
 
-# Deprecated name mappings (correct spelling)
-DEPRECATED_NAME_MAPPINGS = {
-    "Sage_KSamplerDecoder": "KSampler + Decoder",
-    "Sage_UNETLoader": "Load UNET Model",
-    "Sage_CheckpointLoaderSimple": "Load Checkpoint w/ Metadata",
-    "Sage_CheckpointLoaderRecent": "Load Recently Used Checkpoint",
-    "Sage_LoraStackRecent": "Recent Lora Stack"
-}
-
 if llm.OLLAMA_AVAILABLE:
     LLM_NAME_MAPPINGS = LLM_NAME_MAPPINGS | OLLAMA_NAME_MAPPINGS
 
@@ -355,7 +337,7 @@ if llm.LMSTUDIO_AVAILABLE:
     LLM_NAME_MAPPINGS = LLM_NAME_MAPPINGS | LMSTUDIO_NAME_MAPPINGS
 
 # A dictionary that contains the friendly/human readable titles for the nodes
-NODE_DISPLAY_NAME_MAPPINGS = DEPRECATED_NAME_MAPPINGS | UTILITY_NAME_MAPPINGS | SELECTOR_NAME_MAPPINGS | TEXT_NAME_MAPPINGS | \
+NODE_DISPLAY_NAME_MAPPINGS = UTILITY_NAME_MAPPINGS | SELECTOR_NAME_MAPPINGS | TEXT_NAME_MAPPINGS | \
     LOADER_NAME_MAPPINGS | MODEL_NAME_MAPPINGS | LORA_NAME_MAPPINGS | CLIP_NAME_MAPPINGS | SAMPLER_NAME_MAPPINGS | \
     IMAGE_NAME_MAPPINGS | METADATA_NAME_MAPPINGS | LLM_NAME_MAPPINGS
 
