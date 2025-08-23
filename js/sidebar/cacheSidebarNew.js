@@ -9,10 +9,8 @@ import { api } from "../../../scripts/api.js";
 // Import centralized state management
 import { 
     getState, 
-    updateState, 
     subscribe, 
-    actions, 
-    selectors 
+    actions
 } from "../shared/stateManager.js";
 
 // Import configuration and error handling
@@ -27,10 +25,7 @@ import {
 } from "../shared/config.js";
 
 import { 
-    handleError, 
-    handleApiError, 
-    handleFileError,
-    createSafeWrapper
+    handleError
 } from "../shared/errorHandler.js";
 
 // Import decomposed tab modules

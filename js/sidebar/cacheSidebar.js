@@ -27,10 +27,7 @@ import {
 } from "../shared/config.js";
 
 import { 
-    handleError, 
-    handleApiError, 
-    handleFileError,
-    createSafeWrapper
+    handleError
 } from "../shared/errorHandler.js";
 
 // Import decomposed tab modules

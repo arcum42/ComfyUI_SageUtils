@@ -13,10 +13,7 @@ import {
 } from "../shared/config.js";
 
 import { 
-    handleError, 
-    handleApiError, 
-    handleFileError,
-    createSafeWrapper
+    handleError
 } from "../shared/errorHandler.js";
 
 import { 
