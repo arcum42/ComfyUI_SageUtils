@@ -102,39 +102,6 @@ def get_model_info_vae(vae_name: str) -> tuple:
     print(f"VAE model info: {model_info}")
     return (model_info,)
 
-def get_model_clip_vae_from_info(model_info) -> tuple:
-    """
-    Extracts the model, clip, and vae from a model_info dictionary or tuple.
-    
-    Args:
-        model_info (dict or tuple): The model_info dictionary containing the model path,
-                                   or a tuple of model_info dictionaries where we'll look
-                                   for a CKPT type.
-    
-    Returns:
-        tuple: A tuple containing the model, clip, and vae.
-        
-    Raises:
-        ValueError: If no CKPT model is found or if path is missing.
-    """
-    from . import loaders  # Import here to avoid circular dependency
-
-    # If model_info is a tuple, find the CKPT component
-    if isinstance(model_info, tuple):
-        ckpt_info = get_model_info_component(model_info, "CKPT")
-        if not ckpt_info:
-            raise ValueError("No CKPT model found in model_info tuple. Please ensure a checkpoint is included.")
-        model_info = ckpt_info
-
-    if model_info.get("type") != "CKPT":
-        raise ValueError("Clip information is missing. Please use a checkpoint for model_info, not a diffusion model.")
-
-    if "path" not in model_info:
-        raise ValueError("model_info must contain a 'path' key.")
-
-    model_path = model_info["path"]
-    return loaders.checkpoint(model_path)
-
 def model_name_and_hash_as_str(model_info) -> str:
     """
     Returns a string representation of the model name and hash.

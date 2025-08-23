@@ -7,20 +7,18 @@ Saving metadata is handled in the image nodes.
 from __future__ import annotations
 from pathlib import Path
 import json
-from typing import Optional, Any
+from typing import Optional
 
 import folder_paths
-from comfy.comfy_types.node_typing import ComfyNodeABC, InputTypeDict, IO
+from comfy.comfy_types.node_typing import ComfyNodeABC, IO
 
 from ..utils import (
     lora_to_prompt, civitai_sampler_name,pull_metadata, get_model_dict, cache,
 )
 from ..utils.model_info import collect_resource_hashes, model_name_and_hash_as_str, _get_model_name_from_info, _get_model_hash_from_info
-from comfy_execution.graph_utils import GraphBuilder
 
 # Constants
 COMFYUI_VERSION = "v1.10-RC-6-comfyui"
-
 
 class Sage_ConstructMetadataFlexible(ComfyNodeABC):
     """Flexible metadata constructor with multiple style options."""

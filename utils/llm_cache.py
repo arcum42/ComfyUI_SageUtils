@@ -7,7 +7,7 @@ repeated API calls during ComfyUI node initialization.
 
 import time
 import logging
-from typing import Dict, List, Optional, Tuple, Any
+from typing import Dict, List, Optional, Any
 from threading import Lock
 
 class LLMModelCache:

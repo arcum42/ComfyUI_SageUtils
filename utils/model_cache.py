@@ -3,7 +3,6 @@ Cache utilities for SageUtils.
 Handles persistent storage and retrieval of model metadata, hashes, and info.
 """
 
-import re
 import json
 import pathlib
 import hashlib

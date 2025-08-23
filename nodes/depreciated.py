@@ -1,21 +1,11 @@
 from __future__ import annotations
 from comfy.comfy_types.node_typing import ComfyNodeABC, InputTypeDict, IO
 from comfy_execution.graph_utils import GraphBuilder
-import folder_paths
 
 # This file has deprecated nodes so we'll minimize imports
-from .selector import Sage_LoraStack
-from nodes import CheckpointLoaderSimple, UNETLoader, common_ksampler
+from nodes import  common_ksampler
 from .metadata import Sage_ConstructMetadataFlexible
-from typing import Optional, Any
-
-from ..utils import model_info as mi
-from ..utils import (
-    cache, pull_metadata, get_recently_used_models, loaders
-)
-
-import pathlib
-import json
+from typing import Optional
 
 
 class Sage_ConstructMetadata(Sage_ConstructMetadataFlexible):

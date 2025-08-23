@@ -8,7 +8,7 @@ This module provides a centralized way to manage settings with:
 - Clear documentation of all available settings
 """
 
-from typing import Any, Dict, List, Union, Optional, Callable
+from typing import Any, Dict, Optional
 from .config_manager import ConfigManager
 import logging
 

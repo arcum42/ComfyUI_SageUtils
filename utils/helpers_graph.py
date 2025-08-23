@@ -1,5 +1,4 @@
 from comfy_execution.graph_utils import GraphBuilder
-from comfy.utils import ProgressBar
 from .helpers import (
     get_path_without_base,
     get_file_extension
