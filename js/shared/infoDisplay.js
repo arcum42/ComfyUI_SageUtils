@@ -472,7 +472,7 @@ export async function createDetailedInfoDisplay(hash, info, showNsfw = false) {
             let alreadyHaveUpdate = false;
             
             if (updateVersionId && enhancedInfo.modelId) {
-                const allVersions = findAllModelVersions(enhancedInfo.modelId, hash);
+                const allVersions = await findAllModelVersions(enhancedInfo.modelId, hash);
                 alreadyHaveUpdate = allVersions.some(version => 
                     version.info.id === updateVersionId || 
                     version.info.versionId === updateVersionId

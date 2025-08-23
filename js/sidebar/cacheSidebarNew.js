@@ -3,9 +3,6 @@
  * Multi-tabbed interface for model browser and notes manager
  */
 
-import { app } from "../../../scripts/app.js";
-import { api } from "../../../scripts/api.js";
-
 // Import centralized state management
 import { 
     getState, 
