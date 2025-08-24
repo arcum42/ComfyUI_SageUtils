@@ -18,7 +18,11 @@ from ..utils import (
 from ..utils.model_info import collect_resource_hashes, model_name_and_hash_as_str, _get_model_name_from_info, _get_model_hash_from_info
 
 # Constants
-COMFYUI_VERSION = "v1.10-RC-6-comfyui"
+try:
+    from comfyui_version import __version__ as comfy_version_number
+    COMFYUI_VERSION = f"v{comfy_version_number}-comfyui"
+except ImportError:
+    COMFYUI_VERSION = "v1.10-RC-6-comfyui"
 
 class Sage_ConstructMetadataFlexible(ComfyNodeABC):
     """Flexible metadata constructor with multiple style options."""
