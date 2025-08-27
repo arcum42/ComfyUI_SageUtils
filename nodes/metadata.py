@@ -37,7 +37,7 @@ class Sage_ConstructMetadataFlexible(ComfyNodeABC):
                 "sampler_info": ('SAMPLER_INFO', {"defaultInput": True}),
                 "width": (IO.INT, {"defaultInput": True}),
                 "height": (IO.INT, {"defaultInput": True}),
-                "metadata_style": (["A1111 Full", "A1111 Lite", "Simple", "Info"], {"default": "A1111 Full", "tooltip": "Select the metadata style to use."}),
+                "metadata_style": (["A1111 Full", "A1111 Lite", "Simple", "Info", "Pos. Prompt Only"], {"default": "A1111 Full", "tooltip": "Select the metadata style to use."}),
             },
             "optional": {
                 "lora_stack": ('LORA_STACK', {"defaultInput": True})
@@ -166,24 +166,24 @@ class Sage_ConstructMetadataFlexible(ComfyNodeABC):
                 "Negative prompt: {negative_string}\n"
                 "{base_params}"
             ),
-            
             "A1111 Lite": (
                 "{positive_string}\n"
                 "Negative prompt: {negative_string}\n"
                 "{base_params}, Version: {comfyui_version}, Civitai resources: {resource_hashes_json}"
             ),
-            
             "A1111 Full": (
                 "{prompt_with_loras}\n"
                 "Negative prompt: {negative_string}\n"
                 "{base_params}, {model_hash_str}, Version: {comfyui_version}{lora_civitai_resources}{lora_hashes}"
             ),
-            
             "Info": (
                 "Model: {model_name}{lora_civitai_resources}\n"
                 "{sampler_name} {scheduler} cfg: {cfg} steps: {steps} seed: {seed}\n"
                 "Positive: {positive_string}\n"
                 "Negative: {negative_string}"
+            ),
+            "Pos. Prompt Only": (
+                "{positive_string}"
             )
         }
 

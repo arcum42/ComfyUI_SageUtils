@@ -190,6 +190,9 @@ class Sage_SaveImageWithMetadata(ComfyNodeABC):
         prompt=None,
         extra_pnginfo=None,
     ):
+        if '\n' in filename_prefix:
+            filename_prefix_lines = filename_prefix.splitlines()
+            filename_prefix = ''.join(filename_prefix_lines)
         filename_prefix += self.prefix_append
         full_output_folder, filename, counter, subfolder, filename_prefix = (
             folder_paths.get_save_image_path(
