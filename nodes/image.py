@@ -137,7 +137,8 @@ class Sage_SaveImageWithMetadata(ComfyNodeABC):
                 "images": (IO.IMAGE, {"tooltip": "The images to save."}),
                 "filename_prefix": (IO.STRING, {"default": "ComfyUI_Meta", "tooltip": "The prefix for the file to save. %batch_num% will be replaced with the batch number."}),
                 "include_node_metadata": (IO.BOOLEAN, {"default": True, "defaultInput": False}),
-                "include_extra_pnginfo_metadata": (IO.BOOLEAN,{"default": True, "defaultInput": False})
+                "include_extra_pnginfo_metadata": (IO.BOOLEAN,{"default": True, "defaultInput": False}),
+                "save_text": (IO.COMBO, {"default": "Image Only", "options": ["Image Only", "Param to Text", "Extra to Text", "All to Text"], "tooltip": "Optionally allow you to save a text file alongside the image with the contents of param, extra, or all the metadata. Useful, if, for example, you are generating images to be used for training."}),
             },
             "optional": {
                 "param_metadata": (IO.STRING, {"defaultInput": True}),
@@ -185,11 +186,15 @@ class Sage_SaveImageWithMetadata(ComfyNodeABC):
         filename_prefix,
         include_node_metadata,
         include_extra_pnginfo_metadata,
+        save_text,
         param_metadata=None,
         extra_metadata=None,
         prompt=None,
         extra_pnginfo=None,
     ):
+        save_to_text = True
+        if save_text == "Image Only":
+            save_to_text = False
         if '\n' in filename_prefix:
             filename_prefix_lines = filename_prefix.splitlines()
             filename_prefix = ''.join(filename_prefix_lines)
@@ -214,12 +219,21 @@ class Sage_SaveImageWithMetadata(ComfyNodeABC):
 
             filename_with_batch_num = filename.replace("%batch_num%", str(batch_number))
             file = f"{filename_with_batch_num}_{counter:05}_.png"
+            text_file = f"{filename_with_batch_num}_{counter:05}_.txt"
 
             img.save(
                 os.path.join(full_output_folder, file),
                 pnginfo=final_metadata,
                 compress_level=self.compress_level,
             )
+            if save_to_text:
+                with open(os.path.join(full_output_folder, text_file), 'w', encoding='utf-8') as f:
+                    if save_text == "Param to Text":
+                        f.write(f"{param_metadata}")
+                    elif save_text == "Extra to Text":
+                        f.write(f"{extra_metadata}")
+                    elif save_text == "All to Text":
+                        f.write(f"{final_metadata}")
             results.append(
                 {"filename": file, "subfolder": subfolder, "type": self.type}
             )
