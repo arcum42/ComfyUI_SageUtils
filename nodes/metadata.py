@@ -16,6 +16,7 @@ from ..utils import (
     lora_to_prompt, civitai_sampler_name,pull_metadata, get_model_dict, cache,
 )
 from ..utils.model_info import collect_resource_hashes, model_name_and_hash_as_str, _get_model_name_from_info, _get_model_hash_from_info
+from ..utils.config_manager import metadata_templates
 
 # Constants
 try:
@@ -37,7 +38,7 @@ class Sage_ConstructMetadataFlexible(ComfyNodeABC):
                 "sampler_info": ('SAMPLER_INFO', {"defaultInput": True}),
                 "width": (IO.INT, {"defaultInput": True}),
                 "height": (IO.INT, {"defaultInput": True}),
-                "metadata_style": (["A1111 Full", "A1111 Lite", "Simple", "Info", "Pos. Prompt Only"], {"default": "A1111 Full", "tooltip": "Select the metadata style to use."}),
+                "metadata_style": (list(metadata_templates.keys()), {"default": "A1111 Full", "tooltip": "Select the metadata style to use."}),
             },
             "optional": {
                 "lora_stack": ('LORA_STACK', {"defaultInput": True})
@@ -157,36 +158,6 @@ class Sage_ConstructMetadataFlexible(ComfyNodeABC):
             'lora_resource_hashes_json': lora_resource_hashes_json,
         }
 
-    def _get_style_templates(self) -> dict:
-        """Get template strings for each metadata style."""
-
-        return {
-            "Simple": (
-                "{positive_string}\n"
-                "Negative prompt: {negative_string}\n"
-                "{base_params}"
-            ),
-            "A1111 Lite": (
-                "{positive_string}\n"
-                "Negative prompt: {negative_string}\n"
-                "{base_params}, Version: {comfyui_version}, Civitai resources: {resource_hashes_json}"
-            ),
-            "A1111 Full": (
-                "{prompt_with_loras}\n"
-                "Negative prompt: {negative_string}\n"
-                "{base_params}, {model_hash_str}, Version: {comfyui_version}{lora_civitai_resources}{lora_hashes}"
-            ),
-            "Info": (
-                "Model: {model_name}{lora_civitai_resources}\n"
-                "{sampler_name} {scheduler} cfg: {cfg} steps: {steps} seed: {seed}\n"
-                "Positive: {positive_string}\n"
-                "Negative: {negative_string}"
-            ),
-            "Pos. Prompt Only": (
-                "{positive_string}"
-            )
-        }
-
     def _format_metadata_string(self, template: str, components: dict) -> str:
         """Format a single template string with components, filtering empty conditional parts."""
         # Handle conditional components that might be empty
@@ -219,12 +190,9 @@ class Sage_ConstructMetadataFlexible(ComfyNodeABC):
             if components['lora_hashes_str'] else ""
         )
         
-        # Get style templates
-        templates = self._get_style_templates()
-        
         # Use the requested style or fallback to A1111 Full
-        template = templates.get(metadata_style, templates["A1111 Full"])
-        
+        template = metadata_templates.get(metadata_style, metadata_templates["A1111 Full"])
+
         # Format the template with components
         formatted_metadata = self._format_metadata_string(template, components)
         

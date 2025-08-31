@@ -1,0 +1,7 @@
+{
+    "Simple": "{positive_string}\nNegative prompt: {negative_string}\n{base_params}",
+    "A1111 Lite": "{positive_string}\nNegative prompt: {negative_string}\n{base_params}, Version: {comfyui_version}, Civitai resources: {resource_hashes_json}",
+    "A1111 Full": "{prompt_with_loras}\nNegative prompt: {negative_string}\n{base_params}, {model_hash_str}, Version: {comfyui_version}{lora_civitai_resources}{lora_hashes}",
+    "Info": "Model: {model_name}{lora_civitai_resources}\n{sampler_name} {scheduler} cfg: {cfg} steps: {steps} seed: {seed}\nPositive: {positive_string}\nNegative: {negative_string}",
+    "Pos. Prompt Only": "{positive_string}"
+}

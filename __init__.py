@@ -23,6 +23,7 @@ except ImportError as e:
 # Load other configuration data
 sage_styles = config_manager.styles_manager.data
 llm_prompts = config_manager.prompts_manager.data
+metadata_templates = config_manager.metadata_template_manager.data
 
 # Initialize LLM functionality
 init_llm()

@@ -19,7 +19,6 @@ import gc
 import json
 import pathlib
 from ..utils import model_info as mi
-
 class Sage_FreeMemory(ComfyNodeABC):
     @classmethod
     def INPUT_TYPES(cls) -> InputTypeDict:
