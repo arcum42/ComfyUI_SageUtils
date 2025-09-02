@@ -29,6 +29,7 @@ import {
 import { createModelsTab } from "./modelsTab.js";
 import { createNotesTab } from "./notesTab.js";
 import { createCivitaiSearchTab } from "./civitaiSearchTab.js";
+import { createImageGalleryTab } from "./imageGalleryTab.js";
 
 // Import cache API functions
 import { 
@@ -43,7 +44,7 @@ import {
 } from "../shared/cacheUIComponents.js";
 
 /**
- * Creates the tab header with Models and Notes tabs
+ * Creates the tab header with Models, Notes, Search, and Gallery tabs
  * @returns {Object} Tab header components
  */
 function createTabHeader() {
@@ -60,21 +61,25 @@ function createTabHeader() {
     const modelsTab = createTabButton('Models', true);
     const notesTab = createTabButton('Notes', false);
     const civitaiTab = createTabButton('Search', false);
+    const galleryTab = createTabButton('Gallery', false);
 
     // Ensure tabs are properly sized
     modelsTab.style.flexShrink = '0';
     notesTab.style.flexShrink = '0';
     civitaiTab.style.flexShrink = '0';
+    galleryTab.style.flexShrink = '0';
 
     tabHeader.appendChild(modelsTab);
     tabHeader.appendChild(notesTab);
     tabHeader.appendChild(civitaiTab);
+    tabHeader.appendChild(galleryTab);
 
     return {
         tabHeader,
         modelsTab,
         notesTab,
-        civitaiTab
+        civitaiTab,
+        galleryTab
     };
 }
 
@@ -100,7 +105,7 @@ function createTabContent() {
  * @param {HTMLElement} tabContent - Tab content container
  */
 function setupTabSwitching(tabComponents, tabContent) {
-    const { modelsTab, notesTab, civitaiTab } = tabComponents;
+    const { modelsTab, notesTab, civitaiTab, galleryTab } = tabComponents;
 
     /**
      * Switches between tabs
@@ -109,7 +114,7 @@ function setupTabSwitching(tabComponents, tabContent) {
      */
     function switchTab(activeButton, tabFunction) {
         // Update button styles
-        [modelsTab, notesTab, civitaiTab].forEach(btn => {
+        [modelsTab, notesTab, civitaiTab, galleryTab].forEach(btn => {
             btn.classList.remove('active');
             btn.style.background = '#2a2a2a';
             btn.style.color = '#ccc';
@@ -127,13 +132,19 @@ function setupTabSwitching(tabComponents, tabContent) {
         
         // Clear and populate content
         tabContent.innerHTML = '';
-        tabFunction(tabContent);
+        try {
+            tabFunction(tabContent);
+        } catch (error) {
+            console.error('Error creating tab content:', error);
+            tabContent.innerHTML = '<div style="color: #f44336; padding: 20px;">Error loading tab content</div>';
+        }
     }
     
     // Tab event listeners
     modelsTab.addEventListener('click', () => switchTab(modelsTab, createModelsTab));
     notesTab.addEventListener('click', () => switchTab(notesTab, createNotesTab));
     civitaiTab.addEventListener('click', () => switchTab(civitaiTab, createCivitaiSearchTab));
+    galleryTab.addEventListener('click', () => switchTab(galleryTab, createImageGalleryTab));
 
     return { switchTab };
 }

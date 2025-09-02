@@ -7,7 +7,8 @@
  * File type detection patterns
  */
 export const FILE_TYPES = {
-    image: /\.(jpg|jpeg|png|gif|bmp|webp|svg)$/i,
+    image: /\.(jpg|jpeg|png|gif|bmp|webp|svg|tiff|tif|ico|heic|heif|avif)$/i,
+    rawImage: /\.(raw|cr2|nef|arw|dng|orf|pef|sr2|srw|x3f)$/i,
     video: /\.(mp4|webm|ogg|avi|mov|wmv|flv|mkv|m4v)$/i,
     text: /\.(txt|md|markdown|json|js|ts|py|yaml|yml|csv|log)$/i,
     markdown: /\.(md|markdown)$/i
@@ -30,7 +31,14 @@ export const API_ENDPOINTS = {
     deleteNote: '/sage_utils/delete_note',
     
     // Utility endpoints
-    getFileSize: '/sage_utils/get_file_size'
+    getFileSize: '/sage_utils/get_file_size',
+    
+    // Gallery management
+    listImages: '/sage_utils/list_images',
+    getThumbnail: '/sage_utils/thumbnail',
+    getImageMetadata: '/sage_utils/image_metadata',
+    browseFolder: '/sage_utils/browse_folder',
+    copyImage: '/sage_utils/copy_image'
 };
 
 /**
@@ -111,6 +119,26 @@ export const BUTTON_CONFIGS = {
         text: 'New File',
         color: '#2196F3',
         icon: '📄'
+    },
+    gallery: {
+        text: 'Gallery',
+        color: '#9C27B0',
+        icon: '🖼️'
+    },
+    viewImage: {
+        text: 'View',
+        color: '#4CAF50',
+        icon: '👁️'
+    },
+    copyImage: {
+        text: 'Copy',
+        color: '#FF9800',
+        icon: '📋'
+    },
+    showMetadata: {
+        text: 'Details',
+        color: '#607D8B',
+        icon: '🔍'
     }
 };
 
@@ -382,9 +410,81 @@ export const FEATURES = {
 };
 
 /**
+ * Gallery-specific configuration
+ */
+export const GALLERY_CONFIG = {
+    thumbnailSizes: {
+        small: { width: 120, height: 120 },
+        medium: { width: 200, height: 200 },
+        large: { width: 300, height: 300 }
+    },
+    
+    virtualScroll: {
+        enabled: true,
+        threshold: 100, // Enable for collections > 100 images
+        buffer: 10 // Number of items to render outside viewport
+    },
+    
+    cache: {
+        maxThumbnails: 500,
+        maxFullImages: 50,
+        ttl: 24 * 60 * 60 * 1000 // 24 hours
+    },
+    
+    supportedImageFormats: [
+        'jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'svg',
+        'tiff', 'tif', 'ico', 'heic', 'heif', 'avif'
+    ],
+    
+    supportedRawFormats: [
+        'raw', 'cr2', 'nef', 'arw', 'dng', 'orf', 
+        'pef', 'sr2', 'srw', 'x3f'
+    ],
+    
+    defaultFolders: [
+        { value: 'notes', text: '📝 Notes Folder', icon: '📝' },
+        { value: 'input', text: '📥 Input Folder', icon: '📥' },
+        { value: 'output', text: '📤 Output Folder', icon: '📤' }
+    ],
+    
+    sortOptions: [
+        { value: 'name', text: 'Name (A-Z)' },
+        { value: 'name-desc', text: 'Name (Z-A)' },
+        { value: 'date', text: 'Date (Newest)' },
+        { value: 'date-desc', text: 'Date (Oldest)' },
+        { value: 'size', text: 'Size (Largest)' },
+        { value: 'size-desc', text: 'Size (Smallest)' }
+    ],
+    
+    viewModes: [
+        { value: 'grid', text: 'Grid View', icon: '⊞' },
+        { value: 'list', text: 'List View', icon: '☰' }
+    ]
+};
+
+/**
+ * Helper function to check if a file is a supported image format
+ * @param {string} filename - The filename to check
+ * @returns {boolean} Whether the file is a supported image
+ */
+export function isSupportedImage(filename) {
+    if (!filename) return false;
+    return FILE_TYPES.image.test(filename.toLowerCase()) || FILE_TYPES.rawImage.test(filename.toLowerCase());
+}
+
+/**
+ * Helper function to get thumbnail size configuration
+ * @param {string} size - Size name ('small', 'medium', 'large')
+ * @returns {Object} Size configuration with width and height
+ */
+export function getThumbnailSize(size) {
+    return GALLERY_CONFIG.thumbnailSizes[size] || GALLERY_CONFIG.thumbnailSizes.medium;
+}
+
+/**
  * Helper function to get file type from filename
  * @param {string} filename - The filename to check
- * @returns {string} The file type ('image', 'video', 'text', 'markdown', 'unknown')
+ * @returns {string} The file type ('image', 'rawImage', 'video', 'text', 'markdown', 'unknown')
  */
 export function getFileType(filename) {
     if (!filename) return 'unknown';
@@ -392,6 +492,7 @@ export function getFileType(filename) {
     const lower = filename.toLowerCase();
     
     if (FILE_TYPES.image.test(lower)) return 'image';
+    if (FILE_TYPES.rawImage.test(lower)) return 'rawImage';
     if (FILE_TYPES.video.test(lower)) return 'video';
     if (FILE_TYPES.markdown.test(lower)) return 'markdown';
     if (FILE_TYPES.text.test(lower)) return 'text';
@@ -405,7 +506,7 @@ export function getFileType(filename) {
  * @returns {boolean} Whether the file type supports preview
  */
 export function supportsPreview(fileType) {
-    return ['image', 'video', 'markdown'].includes(fileType);
+    return ['image', 'rawImage', 'video', 'markdown'].includes(fileType);
 }
 
 /**
@@ -416,6 +517,7 @@ export function supportsPreview(fileType) {
 export function getFileTypeIcon(fileType) {
     const icons = {
         image: '🖼️',
+        rawImage: '📷',
         video: '🎬',
         markdown: '📝',
         text: '📄',

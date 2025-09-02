@@ -32,10 +32,26 @@
  */
 
 /**
+ * @typedef {Object} GalleryTabState
+ * @property {string} selectedFolder - Current folder ('notes', 'input', 'output', 'custom')
+ * @property {Array<string>} customFolders - Array of remembered custom folder paths
+ * @property {string|null} selectedImage - Currently selected image path
+ * @property {Array<Object>} images - Array of image objects in current folder
+ * @property {string} sortBy - Sort criteria ('name', 'name-desc', 'date', 'date-desc')
+ * @property {string} searchQuery - Current search filter
+ * @property {string} viewMode - View mode ('grid', 'list')
+ * @property {string} thumbnailSize - Thumbnail size ('small', 'medium', 'large')
+ * @property {boolean} showMetadata - Whether metadata panel is visible
+ * @property {boolean} isLoading - Whether data is currently loading
+ * @property {Object} fullImageView - Full image viewer state
+ */
+
+/**
  * @typedef {Object} SidebarState
- * @property {string} activeTab - Currently active tab ('models' or 'notes')
+ * @property {string} activeTab - Currently active tab ('models', 'notes', 'civitai', 'gallery')
  * @property {ModelsTabState} models - Models tab state
  * @property {NotesTabState} notes - Notes tab state
+ * @property {GalleryTabState} gallery - Gallery tab state
  */
 
 // Initial state
@@ -64,6 +80,25 @@ const initialState = {
         showPreview: false,
         filesData: [],
         isLoading: false
+    },
+    gallery: {
+        selectedFolder: 'notes',
+        customFolders: [],
+        selectedImage: null,
+        images: [],
+        folders: [],
+        currentPath: '',
+        sortBy: 'name',
+        searchQuery: '',
+        viewMode: 'grid',
+        thumbnailSize: 'medium',
+        showMetadata: false,
+        isLoading: false,
+        fullImageView: {
+            isOpen: false,
+            currentImage: null,
+            showMetadata: false
+        }
     }
 };
 
@@ -191,7 +226,7 @@ function notifyListeners(changeInfo) {
 function validateState(state) {
     try {
         // Check required top-level keys
-        const requiredKeys = ['activeTab', 'models', 'notes'];
+        const requiredKeys = ['activeTab', 'models', 'notes', 'gallery'];
         for (const key of requiredKeys) {
             if (!(key in state)) {
                 console.error(`[StateManager] Missing required key: ${key}`);
@@ -200,7 +235,7 @@ function validateState(state) {
         }
         
         // Validate activeTab
-        if (!['models', 'notes'].includes(state.activeTab)) {
+        if (!['models', 'notes', 'civitai', 'gallery'].includes(state.activeTab)) {
             console.error(`[StateManager] Invalid activeTab: ${state.activeTab}`);
             return false;
         }
@@ -214,6 +249,12 @@ function validateState(state) {
         // Validate notes section
         if (!state.notes || typeof state.notes !== 'object') {
             console.error('[StateManager] Invalid notes section');
+            return false;
+        }
+        
+        // Validate gallery section
+        if (!state.gallery || typeof state.gallery !== 'object') {
+            console.error('[StateManager] Invalid gallery section');
             return false;
         }
         
@@ -242,6 +283,21 @@ export const selectors = {
     filesData: () => getStateValue('notes.filesData'),
     isNotesLoading: () => getStateValue('notes.isLoading'),
     
+    // Gallery tab selectors
+    selectedFolder: () => getStateValue('gallery.selectedFolder'),
+    customFolders: () => getStateValue('gallery.customFolders'),
+    selectedImage: () => getStateValue('gallery.selectedImage'),
+    galleryImages: () => getStateValue('gallery.images'),
+    galleryFolders: () => getStateValue('gallery.folders'),
+    currentPath: () => getStateValue('gallery.currentPath'),
+    gallerySortBy: () => getStateValue('gallery.sortBy'),
+    gallerySearchQuery: () => getStateValue('gallery.searchQuery'),
+    galleryViewMode: () => getStateValue('gallery.viewMode'),
+    thumbnailSize: () => getStateValue('gallery.thumbnailSize'),
+    showGalleryMetadata: () => getStateValue('gallery.showMetadata'),
+    isGalleryLoading: () => getStateValue('gallery.isLoading'),
+    fullImageView: () => getStateValue('gallery.fullImageView'),
+    
     // General selectors
     activeTab: () => getStateValue('activeTab')
 };
@@ -263,6 +319,23 @@ export const actions = {
     togglePreview: (show) => updateState('notes.showPreview', show, 'togglePreview'),
     setFilesData: (files) => updateState('notes.filesData', files, 'setFilesData'),
     setNotesLoading: (loading) => updateState('notes.isLoading', loading, 'setNotesLoading'),
+    
+    // Gallery tab actions
+    selectFolder: (folder) => updateState('gallery.selectedFolder', folder, 'selectFolder'),
+    addCustomFolder: (path) => updateState('gallery.customFolders', [...selectors.customFolders(), path], 'addCustomFolder'),
+    selectImage: (imagePath) => updateState('gallery.selectedImage', imagePath, 'selectImage'),
+    setImages: (images) => updateState('gallery.images', images, 'setImages'),
+    setFolders: (folders) => updateState('gallery.folders', folders, 'setFolders'),
+    setCurrentPath: (path) => updateState('gallery.currentPath', path, 'setCurrentPath'),
+    updateSort: (sortBy) => updateState('gallery.sortBy', sortBy, 'updateSort'),
+    setSearchQuery: (query) => updateState('gallery.searchQuery', query, 'setSearchQuery'),
+    setViewMode: (mode) => updateState('gallery.viewMode', mode, 'setViewMode'),
+    setThumbnailSize: (size) => updateState('gallery.thumbnailSize', size, 'setThumbnailSize'),
+    toggleMetadata: (show) => updateState('gallery.showMetadata', show, 'toggleMetadata'),
+    setGalleryLoading: (loading) => updateState('gallery.isLoading', loading, 'setGalleryLoading'),
+    openFullImage: (image) => updateState('gallery.fullImageView', { isOpen: true, currentImage: image, showMetadata: false }, 'openFullImage'),
+    closeFullImage: () => updateState('gallery.fullImageView', { isOpen: false, currentImage: null, showMetadata: false }, 'closeFullImage'),
+    toggleFullImageMetadata: (show) => updateState('gallery.fullImageView.showMetadata', show, 'toggleFullImageMetadata'),
     
     // General actions
     switchTab: (tab) => updateState('activeTab', tab, 'switchTab')

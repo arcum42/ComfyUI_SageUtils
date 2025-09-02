@@ -137,6 +137,21 @@ cacheSidebar.js (Main Controller)
 - Metadata operations (`/sage_utils/pull_metadata`)
 
 - Model download links and metadata
+## 📋 Planned Extensions
+
+### Image Gallery Tab (In Planning)
+A comprehensive image gallery tab is planned as the fourth tab in the sidebar. See [IMAGE_GALLERY_TAB_IMPLEMENTATION.md](./IMAGE_GALLERY_TAB_IMPLEMENTATION.md) for detailed implementation specifications.
+
+**Planned Features**:
+- Browse images in Notes, Input, Output, and custom folders
+- Thumbnail grid with lazy loading and virtual scrolling
+- Full-resolution image viewer with metadata display
+- Sort by name and creation date
+- Copy images to clipboard
+- Remember custom folder selections
+- Performance optimizations for large image collections
+
 ---
 
-*Documentation generated August 23, 2025 - Covers 5 files with comprehensive functionality for model management and discovery*
+*Documentation generated August 23, 2025 - Covers 5 files with comprehensive functionality for model management and discovery*  
+*Implementation document for Image Gallery tab added September 1, 2025*
