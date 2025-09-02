@@ -29,6 +29,45 @@ import {
     createInfoDisplay
 } from "../shared/cacheUIComponents.js";
 
+// Import image operations
+import {
+    loadImagesFromFolder,
+    generateThumbnail,
+    copyImageToClipboard,
+    loadImageMetadata,
+    loadFullImage,
+    browseFolder,
+    getParentPath,
+    showTemporaryMessage
+} from "../shared/imageUtils.js";
+
+// Import dataset text management
+import {
+    handleDatasetText,
+    showCombinedImageTextEditor,
+    editDatasetText,
+    createDatasetText,
+    batchCreateMissingTextFiles,
+    batchAppendToAllTextFiles,
+    batchFindReplaceAllTextFiles,
+    refreshCurrentTextDisplay
+} from "../shared/datasetTextManager.js";
+
+// Import gallery widgets
+import {
+    createThumbnailGrid,
+    createThumbnailItem,
+    createFolderItem,
+    createSortControl,
+    createThumbnailSizeControl,
+    showImageContextMenu,
+    showFullImageModal,
+    showImageMetadata
+} from "../widgets/galleryComponents.js";
+
+// Import navigation components
+import { createDatasetNavigationControls } from "../shared/navigationComponents.js";
+
 /**
  * Creates the Image Gallery tab header section
  * @returns {HTMLElement} Header element with status display
@@ -317,10 +356,10 @@ function createFolderSelectorAndControls() {
 }
 
 /**
- * Creates the thumbnail grid section for the Gallery tab
+ * Creates a wrapped thumbnail grid with header for the Gallery tab
  * @returns {Object} Thumbnail grid components
  */
-function createThumbnailGrid() {
+function createWrappedThumbnailGrid() {
     const gridSection = document.createElement('div');
     gridSection.style.cssText = `
         margin-bottom: 15px;
@@ -328,6 +367,9 @@ function createThumbnailGrid() {
         background: #2a2a2a;
         border-radius: 6px;
         border: 1px solid #444;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
     `;
     
     const gridHeader = document.createElement('h4');
@@ -342,23 +384,17 @@ function createThumbnailGrid() {
         <span>Images <span id="image-count" style="color: #999; font-weight: normal;"></span></span>
     `;
     
-    const gridContainer = document.createElement('div');
-    gridContainer.id = 'thumbnail-grid';
-    gridContainer.style.cssText = `
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-        gap: 15px;
-        min-height: 200px;
-        max-height: 500px;
-        overflow-y: auto;
+    // Use imported thumbnail grid widget
+    const grid = createThumbnailGrid();
+    grid.gridContainer.style.cssText += `
         border: 1px solid #555;
         border-radius: 4px;
         background: #333;
-        padding: 15px;
+        flex: 1;
     `;
     
-    // Placeholder content
-    gridContainer.innerHTML = `
+    // Add placeholder content initially
+    grid.gridContainer.innerHTML = `
         <div style="
             grid-column: 1 / -1;
             text-align: center;
@@ -371,13 +407,18 @@ function createThumbnailGrid() {
     `;
 
     gridSection.appendChild(gridHeader);
-    gridSection.appendChild(gridContainer);
+    gridSection.appendChild(grid.gridContainer);
+
+    // Replace the imageCountSpan with the one from header
+    const imageCountSpan = gridHeader.querySelector('#image-count');
 
     return {
         gridSection,
         gridHeader,
-        gridContainer,
-        imageCountSpan: gridHeader.querySelector('#image-count')
+        gridContainer: grid.gridContainer,
+        imageCountSpan,
+        updateGridLayout: grid.updateGridLayout,
+        clear: grid.clear
     };
 }
 
@@ -1308,96 +1349,26 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
         `;
         zoomIndicator.textContent = '🔍 Click image to zoom';
         
-        // Create navigation controls
+        // Create navigation controls using shared component (gradient style with labels)
+        const navButtons = createDatasetNavigationControls();
+        const { firstButton, prevButton, nextButton, lastButton, counterElement: imageCounter } = navButtons;
+        
         const navControls = document.createElement('div');
         navControls.style.cssText = `
             position: absolute;
             top: 10px;
             left: 50%;
             transform: translateX(-50%);
-            display: flex;
-            align-items: center;
-            gap: 5px;
             background: rgba(0, 0, 0, 0.7);
             padding: 8px 12px;
             border-radius: 4px;
             z-index: 10001;
         `;
         
-        const firstButton = document.createElement('button');
-        firstButton.innerHTML = '⏮️';
-        firstButton.title = 'First Image';
-        firstButton.style.cssText = `
-            background: #555;
-            color: white;
-            border: none;
-            padding: 4px 8px;
-            border-radius: 3px;
-            cursor: pointer;
-            font-size: 12px;
-            min-width: 30px;
-        `;
-        
-        const prevButton = document.createElement('button');
-        prevButton.innerHTML = '◀️';
-        prevButton.title = 'Previous Image';
-        prevButton.style.cssText = `
-            background: #555;
-            color: white;
-            border: none;
-            padding: 4px 8px;
-            border-radius: 3px;
-            cursor: pointer;
-            font-size: 12px;
-            min-width: 30px;
-        `;
-        
-        const imageCounter = document.createElement('span');
-        const updateCounter = () => {
-            imageCounter.textContent = `${currentImageIndex + 1} / ${allImages.length}`;
-        };
-        updateCounter();
-        imageCounter.style.cssText = `
-            color: #fff;
-            font-size: 11px;
-            padding: 0 8px;
-            min-width: 50px;
-            text-align: center;
-        `;
-        
-        const nextButton = document.createElement('button');
-        nextButton.innerHTML = '▶️';
-        nextButton.title = 'Next Image';
-        nextButton.style.cssText = `
-            background: #555;
-            color: white;
-            border: none;
-            padding: 4px 8px;
-            border-radius: 3px;
-            cursor: pointer;
-            font-size: 12px;
-            min-width: 30px;
-        `;
-        
-        const lastButton = document.createElement('button');
-        lastButton.innerHTML = '⏭️';
-        lastButton.title = 'Last Image';
-        lastButton.style.cssText = `
-            background: #555;
-            color: white;
-            border: none;
-            padding: 4px 8px;
-            border-radius: 3px;
-            cursor: pointer;
-            font-size: 12px;
-            min-width: 30px;
-        `;
-        
-        navControls.appendChild(firstButton);
-        navControls.appendChild(prevButton);
-        navControls.appendChild(imageCounter);
-        navControls.appendChild(nextButton);
-        navControls.appendChild(lastButton);
+        // Add all navigation elements to container
+        navButtons.getAllElements().forEach(element => {
+            navControls.appendChild(element);
+        });
         
         // Navigation functionality
         const updateImageAndMetadata = async (newIndex) => {
@@ -1406,8 +1377,8 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
             currentImageIndex = newIndex;
             currentImage = allImages[currentImageIndex];
             
-            // Update counter
-            updateCounter();
+            // Update navigation button states using shared component
+            navButtons.updateButtonStates(currentImageIndex, allImages.length);
             
             // Update image
             generateFullImage();
@@ -1417,23 +1388,6 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
             
             // Update state
             actions.selectImage(currentImage.path);
-            
-            // Update button states
-            firstButton.disabled = currentImageIndex === 0;
-            prevButton.disabled = currentImageIndex === 0;
-            nextButton.disabled = currentImageIndex === allImages.length - 1;
-            lastButton.disabled = currentImageIndex === allImages.length - 1;
-            
-            // Update button styles for disabled state
-            [firstButton, prevButton, nextButton, lastButton].forEach(btn => {
-                if (btn.disabled) {
-                    btn.style.background = '#333';
-                    btn.style.cursor = 'not-allowed';
-                } else {
-                    btn.style.background = '#555';
-                    btn.style.cursor = 'pointer';
-                }
-            });
         };
         
         // Navigation event listeners
@@ -1699,6 +1653,14 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
                 metadata.metadataContent.innerHTML = html;
                 setStatus(hasErrors ? 'Metadata loaded with some warnings' : 'Metadata loaded');
                 
+                // Scroll to metadata section to show the loaded details
+                setTimeout(() => {
+                    metadata.metadataSection.scrollIntoView({ 
+                        behavior: 'smooth', 
+                        block: 'start' 
+                    });
+                }, 100);
+                
             } else {
                 throw new Error(result.error || 'Failed to load metadata');
             }
@@ -1731,13 +1693,36 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
             
             metadata.metadataContent.innerHTML = fallbackHtml;
             setStatus(`Metadata extraction failed, showing basic info`, true);
+            
+            // Scroll to metadata section to show the fallback info
+            setTimeout(() => {
+                metadata.metadataSection.scrollIntoView({ 
+                    behavior: 'smooth', 
+                    block: 'start' 
+                });
+            }, 100);
         }
     }
 
     // Show image context menu
     function showImageContextMenu(event, image) {
+        // Remove any existing context menu
+        const existingMenu = document.querySelector('.image-context-menu');
+        if (existingMenu) {
+            existingMenu.remove();
+        }
+        
+        // Remove any context menus without class (legacy cleanup)
+        const allMenus = document.querySelectorAll('div[style*="position: fixed"][style*="z-index: 1000"]');
+        allMenus.forEach(menu => {
+            if (menu.style.background === 'rgb(51, 51, 51)' || menu.style.background === '#333') {
+                menu.remove();
+            }
+        });
+        
         // Create context menu
         const menu = document.createElement('div');
+        menu.className = 'image-context-menu'; // Add class for easier identification
         menu.style.cssText = `
             position: fixed;
             top: ${event.clientY}px;
@@ -1793,16 +1778,18 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
         
         document.body.appendChild(menu);
         
-        // Remove menu when clicking elsewhere
+        // Remove menu when clicking elsewhere or right-clicking
         const removeMenu = (e) => {
             if (!menu.contains(e.target)) {
                 menu.remove();
                 document.removeEventListener('click', removeMenu);
+                document.removeEventListener('contextmenu', removeMenu);
             }
         };
         
         setTimeout(() => {
             document.addEventListener('click', removeMenu);
+            document.addEventListener('contextmenu', removeMenu);
         }, 10);
     }
 
@@ -2118,1128 +2105,44 @@ function assembleGalleryTabLayout(container, components) {
     container.appendChild(galleryContainer);
 }
 
-// Dataset text editing functions (globally accessible)
-async function handleDatasetText(image) {
-    showCombinedImageTextEditor(image);
-}
-
-async function showCombinedImageTextEditor(image) {
-    // Get current images list and find the index of the current image
-    const allImages = selectors.galleryImages();
-    let currentImageIndex = allImages.findIndex(img => img.path === image.path);
-    if (currentImageIndex === -1) {
-        currentImageIndex = 0; // Fallback if not found
-    }
-    
-    let currentImage = image;
-    const imageName = currentImage.name || currentImage.path.split('/').pop() || 'Unknown Image';
-    
-    // Function to load dataset text for current image
-    const loadDatasetText = async () => {
-        let textContent = '';
-        let isNew = true;
-        
-        try {
-            const checkResponse = await fetch('/sage_utils/check_dataset_text', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ image_path: currentImage.path })
-            });
-            
-            const checkResult = await checkResponse.json();
-            if (checkResult.success && checkResult.exists) {
-                const readResponse = await fetch('/sage_utils/read_dataset_text', {
-                    method: 'POST', 
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ image_path: currentImage.path })
-                });
-                
-                const readResult = await readResponse.json();
-                if (readResult.success) {
-                    textContent = readResult.content;
-                    isNew = false;
-                }
-            }
-        } catch (error) {
-            console.error('Error loading dataset text:', error);
-        }
-        
-        return { textContent, isNew };
-    };
-    
-    // Initial load
-    let { textContent, isNew } = await loadDatasetText();
-    
-    // Create modal overlay
-    const overlay = document.createElement('div');
-    overlay.style.cssText = `
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(0, 0, 0, 0.9);
-        z-index: 2000;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    `;
-    
-    // Create main container
-    const container = document.createElement('div');
-    container.style.cssText = `
-        background: #2d2d2d;
-        border-radius: 8px;
-        width: 95vw;
-        max-width: 1400px;
-        height: 90vh;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-        border: 1px solid #555;
-        display: flex;
-        flex-direction: column;
-        overflow: hidden;
-    `;
-    
-    // Create header
-    const header = document.createElement('div');
-    header.style.cssText = `
-        padding: 15px 20px;
-        border-bottom: 1px solid #555;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        background: #333;
-        min-height: 60px;
-        flex-wrap: nowrap;
-        gap: 10px;
-    `;
-    
-    const title = document.createElement('h3');
-    const updateTitle = () => {
-        const currentImageName = currentImage.name || currentImage.path.split('/').pop() || 'Unknown Image';
-        title.textContent = `${isNew ? 'Create' : 'Edit'} Dataset Text for ${currentImageName}`;
-        title.title = `${isNew ? 'Create' : 'Edit'} Dataset Text for ${currentImageName}`;
-    };
-    updateTitle();
-    title.style.cssText = `
-        color: #fff;
-        margin: 0;
-        font-size: 16px;
-        flex: 1;
-        min-width: 0;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-        max-width: 300px;
-    `;
-    
-    // Navigation controls
-    const navControls = document.createElement('div');
-    navControls.style.cssText = `
-        display: flex;
-        align-items: center;
-        gap: 5px;
-        margin: 0 10px;
-        flex-shrink: 0;
-    `;
-    
-    const firstButton = document.createElement('button');
-    firstButton.innerHTML = '⏮️';
-    firstButton.title = 'First Image';
-    firstButton.style.cssText = `
-        background: #555;
-        color: white;
-        border: none;
-        padding: 6px 10px;
-        border-radius: 4px;
-        cursor: pointer;
-        font-size: 14px;
-        min-width: 40px;
-    `;
-    
-    const prevButton = document.createElement('button');
-    prevButton.innerHTML = '◀️';
-    prevButton.title = 'Previous Image';
-    prevButton.style.cssText = `
-        background: #555;
-        color: white;
-        border: none;
-        padding: 6px 10px;
-        border-radius: 4px;
-        cursor: pointer;
-        font-size: 14px;
-        min-width: 40px;
-    `;
-    
-    const imageCounter = document.createElement('span');
-    const updateCounter = () => {
-        imageCounter.textContent = `${currentImageIndex + 1} / ${allImages.length}`;
-    };
-    updateCounter();
-    imageCounter.style.cssText = `
-        color: #fff;
-        font-size: 12px;
-        padding: 0 10px;
-        min-width: 60px;
-        text-align: center;
-    `;
-    
-    const nextButton = document.createElement('button');
-    nextButton.innerHTML = '▶️';
-    nextButton.title = 'Next Image';
-    nextButton.style.cssText = `
-        background: #555;
-        color: white;
-        border: none;
-        padding: 6px 10px;
-        border-radius: 4px;
-        cursor: pointer;
-        font-size: 14px;
-        min-width: 40px;
-    `;
-    
-    const lastButton = document.createElement('button');
-    lastButton.innerHTML = '⏭️';
-    lastButton.title = 'Last Image';
-    lastButton.style.cssText = `
-        background: #555;
-        color: white;
-        border: none;
-        padding: 6px 10px;
-        border-radius: 4px;
-        cursor: pointer;
-        font-size: 14px;
-        min-width: 40px;
-    `;
-    
-    navControls.appendChild(firstButton);
-    navControls.appendChild(prevButton);
-    navControls.appendChild(imageCounter);
-    navControls.appendChild(nextButton);
-    navControls.appendChild(lastButton);
-    
-    const toggleButton = document.createElement('button');
-    toggleButton.style.cssText = `
-        background: #4CAF50;
-        color: white;
-        border: none;
-        padding: 8px 16px;
-        border-radius: 4px;
-        cursor: pointer;
-        font-size: 12px;
-    `;
-    toggleButton.textContent = '�️ Hide Text Editor';
-    
-    const closeButton = document.createElement('button');
-    closeButton.style.cssText = `
-        background: #f44336;
-        color: white;
-        border: none;
-        padding: 8px 16px;
-        border-radius: 4px;
-        cursor: pointer;
-        font-size: 12px;
-    `;
-    closeButton.textContent = '✕ Close';
-    
-    const headerButtons = document.createElement('div');
-    headerButtons.style.cssText = 'display: flex; gap: 10px; flex-shrink: 0;';
-    headerButtons.appendChild(toggleButton);
-    headerButtons.appendChild(closeButton);
-    
-    header.appendChild(title);
-    header.appendChild(navControls);
-    header.appendChild(headerButtons);
-    
-    // Create batch operations row
-    const batchOpsRow = document.createElement('div');
-    batchOpsRow.style.cssText = `
-        padding: 10px 20px;
-        border-bottom: 1px solid #555;
-        background: #2a2a2a;
-        display: flex;
-        gap: 10px;
-        flex-wrap: wrap;
-        align-items: center;
-    `;
-    
-    const batchLabel = document.createElement('span');
-    batchLabel.textContent = 'Batch Operations:';
-    batchLabel.style.cssText = `
-        color: #ccc;
-        font-size: 12px;
-        font-weight: bold;
-        margin-right: 10px;
-    `;
-    
-    const createAllButton = document.createElement('button');
-    createAllButton.style.cssText = `
-        background: #4CAF50;
-        color: white;
-        border: none;
-        padding: 6px 12px;
-        border-radius: 4px;
-        cursor: pointer;
-        font-size: 11px;
-    `;
-    createAllButton.textContent = '📝 Create Missing Text Files';
-    createAllButton.title = 'Create text files for all images in folder that don\'t have one';
-    
-    const appendAllButton = document.createElement('button');
-    appendAllButton.style.cssText = `
-        background: #FF9800;
-        color: white;
-        border: none;
-        padding: 6px 12px;
-        border-radius: 4px;
-        cursor: pointer;
-        font-size: 11px;
-    `;
-    appendAllButton.textContent = '➕ Add to All';
-    appendAllButton.title = 'Add text to beginning or end of all existing text files in folder';
-    
-    const findReplaceAllButton = document.createElement('button');
-    findReplaceAllButton.style.cssText = `
-        background: #2196F3;
-        color: white;
-        border: none;
-        padding: 6px 12px;
-        border-radius: 4px;
-        cursor: pointer;
-        font-size: 11px;
-    `;
-    findReplaceAllButton.textContent = '🔄 Find & Replace All';
-    findReplaceAllButton.title = 'Find and replace text in all text files in folder';
-    
-    batchOpsRow.appendChild(batchLabel);
-    batchOpsRow.appendChild(createAllButton);
-    batchOpsRow.appendChild(appendAllButton);
-    batchOpsRow.appendChild(findReplaceAllButton);
-    
-    // Batch operation event handlers
-    createAllButton.addEventListener('click', async () => {
-        const confirmed = confirm('This will create text files for all images in the current folder that don\'t have one. Continue?');
-        if (!confirmed) return;
-        
-        await batchCreateMissingTextFiles();
-    });
-    
-    appendAllButton.addEventListener('click', async () => {
-        const textToAppend = prompt('Enter text to add to all existing text files in this folder:');
-        if (textToAppend === null || textToAppend.trim() === '') return;
-        
-        const position = confirm('Click OK to add at BEGINNING of files, or Cancel to add at END of files.');
-        const positionText = position ? 'beginning' : 'end';
-        
-        const confirmed = confirm(`This will add "${textToAppend}" to the ${positionText} of all existing text files in the current folder. Continue?`);
-        if (!confirmed) return;
-        
-        await batchAppendToAllTextFiles(textToAppend.trim(), position);
-    });
-    
-    findReplaceAllButton.addEventListener('click', async () => {
-        const findText = prompt('Enter text to find:');
-        if (findText === null || findText === '') return;
-        
-        const replaceText = prompt('Enter replacement text:');
-        if (replaceText === null) return;
-        
-        const confirmed = confirm(`This will replace all instances of "${findText}" with "${replaceText}" in all text files in the current folder. Continue?`);
-        if (!confirmed) return;
-        
-        await batchFindReplaceAllTextFiles(findText, replaceText);
-    });
-    
-    // Create content area
-    const contentArea = document.createElement('div');
-    contentArea.style.cssText = `
-        flex: 1;
-        display: flex;
-        overflow: hidden;
-    `;
-    
-    // Create image panel
-    const imagePanel = document.createElement('div');
-    imagePanel.style.cssText = `
-        flex: 1;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        background: #1a1a1a;
-        overflow: hidden;
-        position: relative;
-    `;
-    
-    // Create full image with zoom functionality
-    const fullImage = document.createElement('img');
-    let isZoomed = false;
-    let scale = 1;
-    
-    const updateImageStyle = () => {
-        if (isZoomed) {
-            imagePanel.style.overflow = 'auto';
-            fullImage.style.cssText = `
-                max-width: none;
-                max-height: none;
-                width: auto;
-                height: auto;
-                transform: scale(${scale});
-                cursor: zoom-out;
-                transition: transform 0.3s ease;
-                display: block;
-                margin: auto;
-            `;
-        } else {
-            imagePanel.style.overflow = 'hidden';
-            fullImage.style.cssText = `
-                max-width: 100%;
-                max-height: 100%;
-                width: auto;
-                height: auto;
-                object-fit: contain;
-                cursor: zoom-in;
-                transition: transform 0.3s ease;
-            `;
-        }
-    };
-    
-    updateImageStyle();
-    
-    // Click to zoom functionality
-    fullImage.addEventListener('click', (e) => {
-        e.stopPropagation();
-        isZoomed = !isZoomed;
-        if (isZoomed) {
-            const containerRect = imagePanel.getBoundingClientRect();
-            const imageRect = fullImage.getBoundingClientRect();
-            const naturalWidth = fullImage.naturalWidth;
-            const naturalHeight = fullImage.naturalHeight;
-            const scaleX = naturalWidth / imageRect.width;
-            const scaleY = naturalHeight / imageRect.height;
-            scale = Math.max(scaleX, scaleY, 1);
-        } else {
-            scale = 1;
-        }
-        updateImageStyle();
-    });
-    
-    // Load image
-    const generateFullImage = async () => {
-        try {
-            const response = await fetch('/sage_utils/image', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ image_path: currentImage.path })
-            });
-            
-            if (response.ok) {
-                const blob = await response.blob();
-                const imageUrl = URL.createObjectURL(blob);
-                fullImage.src = imageUrl;
-            } else {
-                fullImage.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300"><rect width="400" height="300" fill="%23333"/><text x="200" y="150" text-anchor="middle" font-size="16" fill="%23999">Failed to load image</text></svg>';
-            }
-        } catch (error) {
-            console.error('Error loading image:', error);
-            fullImage.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300"><rect width="400" height="300" fill="%23333"/><text x="200" y="150" text-anchor="middle" font-size="16" fill="%23999">Error loading image</text></svg>';
-        }
-    };
-    
-    generateFullImage();
-    imagePanel.appendChild(fullImage);
-    
-    // Create text editor panel (initially visible)
-    const textPanel = document.createElement('div');
-    textPanel.style.cssText = `
-        flex: 1;
-        display: flex;
-        flex-direction: column;
-        background: #2d2d2d;
-        border-left: 1px solid #555;
-    `;
-    
-    const textArea = document.createElement('textarea');
-    textArea.value = textContent;
-    textArea.setAttribute('data-image-path', currentImage.path);
-    textArea.style.cssText = `
-        flex: 1;
-        background: #333;
-        color: #fff;
-        border: none;
-        padding: 15px;
-        font-family: monospace;
-        font-size: 13px;
-        resize: none;
-        outline: none;
-    `;
-    
-    const textActions = document.createElement('div');
-    textActions.style.cssText = `
-        padding: 15px;
-        border-top: 1px solid #555;
-        display: flex;
-        gap: 10px;
-        justify-content: flex-end;
-        background: #333;
-    `;
-    
-    const saveButton = document.createElement('button');
-    saveButton.textContent = isNew ? 'Create' : 'Save';
-    saveButton.style.cssText = `
-        background: #4CAF50;
-        color: white;
-        border: none;
-        padding: 8px 16px;
-        border-radius: 4px;
-        cursor: pointer;
-        font-size: 12px;
-    `;
-    
-    textActions.appendChild(saveButton);
-    textPanel.appendChild(textArea);
-    textPanel.appendChild(textActions);
-    
-    contentArea.appendChild(imagePanel);
-    contentArea.appendChild(textPanel);
-    
-    // Toggle functionality (start with text editor visible)
-    let textEditorVisible = true;
-    toggleButton.addEventListener('click', () => {
-        textEditorVisible = !textEditorVisible;
-        if (textEditorVisible) {
-            textPanel.style.display = 'flex';
-            toggleButton.textContent = '🖼️ Hide Text Editor';
-            imagePanel.style.flex = '1';
-        } else {
-            textPanel.style.display = 'none';
-            toggleButton.textContent = '📝 Show Text Editor';
-            imagePanel.style.flex = '1';
-        }
-    });
-    
-    // Navigation functionality
-    const updateImageAndText = async (newIndex) => {
-        if (newIndex < 0 || newIndex >= allImages.length) return;
-        
-        currentImageIndex = newIndex;
-        currentImage = allImages[currentImageIndex];
-        
-        // Update UI elements
-        updateTitle();
-        updateCounter();
-        
-        // Update image
-        generateFullImage();
-        
-        // Load new text content
-        const result = await loadDatasetText();
-        textContent = result.textContent;
-        isNew = result.isNew;
-        textArea.value = textContent;
-        textArea.setAttribute('data-image-path', currentImage.path);
-        saveButton.textContent = isNew ? 'Create' : 'Save';
-        
-        // Update button states
-        firstButton.disabled = currentImageIndex === 0;
-        prevButton.disabled = currentImageIndex === 0;
-        nextButton.disabled = currentImageIndex === allImages.length - 1;
-        lastButton.disabled = currentImageIndex === allImages.length - 1;
-        
-        // Update button styles for disabled state
-        [firstButton, prevButton, nextButton, lastButton].forEach(btn => {
-            if (btn.disabled) {
-                btn.style.background = '#333';
-                btn.style.cursor = 'not-allowed';
-            } else {
-                btn.style.background = '#555';
-                btn.style.cursor = 'pointer';
-            }
-        });
-    };
-    
-    // Navigation event listeners
-    firstButton.addEventListener('click', () => updateImageAndText(0));
-    prevButton.addEventListener('click', () => updateImageAndText(currentImageIndex - 1));
-    nextButton.addEventListener('click', () => updateImageAndText(currentImageIndex + 1));
-    lastButton.addEventListener('click', () => updateImageAndText(allImages.length - 1));
-    
-    // Keyboard navigation
-    const keyboardHandler = (e) => {
-        if (e.target.tagName === 'TEXTAREA') return; // Don't interfere with text editing
-        
-        switch (e.key) {
-            case 'ArrowLeft':
-                e.preventDefault();
-                updateImageAndText(currentImageIndex - 1);
-                break;
-            case 'ArrowRight':
-                e.preventDefault();
-                updateImageAndText(currentImageIndex + 1);
-                break;
-            case 'Home':
-                e.preventDefault();
-                updateImageAndText(0);
-                break;
-            case 'End':
-                e.preventDefault();
-                updateImageAndText(allImages.length - 1);
-                break;
-        }
-    };
-    document.addEventListener('keydown', keyboardHandler);
-    
-    // Initial button state update
-    updateImageAndText(currentImageIndex);
-    
-    // Save functionality
-    saveButton.addEventListener('click', async () => {
-        try {
-            const response = await fetch('/sage_utils/save_dataset_text', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    image_path: image.path,
-                    content: textArea.value
-                })
-            });
-            
-            const result = await response.json();
-            if (result.success) {
-                alert(`Dataset text ${isNew ? 'created' : 'saved'} successfully!`);
-                // Update button text and state
-                if (isNew) {
-                    isNew = false;
-                    saveButton.textContent = 'Save';
-                    title.textContent = `Edit Dataset Text for ${imageName}`;
-                }
-            } else {
-                alert(`Failed to ${isNew ? 'create' : 'save'} dataset text: ${result.error}`);
-            }
-        } catch (error) {
-            console.error('Error saving dataset text:', error);
-            alert(`Error saving dataset text: ${error.message}`);
-        }
-    });
-    
-    // Close functionality
-    const closeModal = () => {
-        document.removeEventListener('keydown', keyboardHandler);
-        document.removeEventListener('keydown', escapeHandler);
-        overlay.remove();
-    };
-    
-    closeButton.addEventListener('click', closeModal);
-    
-    overlay.addEventListener('click', (e) => {
-        if (e.target === overlay) {
-            closeModal();
-        }
-    });
-    
-    // Escape key handler
-    const escapeHandler = (e) => {
-        if (e.key === 'Escape') {
-            closeModal();
-        }
-    };
-    document.addEventListener('keydown', escapeHandler);
-    
-    // Assemble modal
-    container.appendChild(header);
-    container.appendChild(batchOpsRow);
-    container.appendChild(contentArea);
-    overlay.appendChild(container);
-    document.body.appendChild(overlay);
-    
-    // Prevent clicks from closing modal
-    container.addEventListener('click', (e) => e.stopPropagation());
-}
-
-async function editDatasetText(image) {
-    try {
-        // Read the existing text
-        const readResponse = await fetch('/sage_utils/read_dataset_text', {
-            method: 'POST', 
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ image_path: image.path })
-        });
-        
-        const readResult = await readResponse.json();
-        if (!readResult.success) {
-            console.error('Failed to read dataset text:', readResult.error);
-            alert(`Failed to read text file: ${readResult.error}`);
-            return;
-        }
-        
-        // Show edit dialog
-        showDatasetTextEditor(image, readResult.content, false);
-        
-    } catch (error) {
-        console.error('Error editing dataset text:', error);
-        alert(`Error editing dataset text: ${error.message}`);
-    }
-}
-
-async function createDatasetText(image) {
-    try {
-        // Show create dialog with empty content
-        showDatasetTextEditor(image, '', true);
-        
-    } catch (error) {
-        console.error('Error creating dataset text:', error);
-        alert(`Error creating dataset text: ${error.message}`);
-    }
-}
-
-function showDatasetTextEditor(image, content, isNew) {
-    // Get the image name from the path
-    const imageName = image.name || image.path.split('/').pop() || 'Unknown Image';
-    
-    // Create modal overlay
-    const overlay = document.createElement('div');
-    overlay.style.cssText = `
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(0, 0, 0, 0.7);
-        z-index: 2000;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    `;
-    
-    // Create modal content
-    const modal = document.createElement('div');
-    modal.style.cssText = `
-        background: #2d2d2d;
-        border-radius: 8px;
-        padding: 20px;
-        width: 80%;
-        max-width: 600px;
-        max-height: 80%;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-        border: 1px solid #555;
-    `;
-    
-    // Title
-    const title = document.createElement('h3');
-    title.textContent = `${isNew ? 'Create' : 'Edit'} Dataset Text for ${imageName}`;
-    title.style.cssText = `
-        color: #fff;
-        margin: 0 0 15px 0;
-        font-size: 16px;
-        border-bottom: 1px solid #555;
-        padding-bottom: 10px;
-    `;
-    
-    // Text area
-    const textarea = document.createElement('textarea');
-    textarea.value = content;
-    textarea.style.cssText = `
-        width: 100%;
-        height: 300px;
-        background: #333;
-        color: #fff;
-        border: 1px solid #555;
-        border-radius: 4px;
-        padding: 10px;
-        font-family: monospace;
-        font-size: 12px;
-        resize: vertical;
-        box-sizing: border-box;
-    `;
-    
-    // Buttons container
-    const buttonsContainer = document.createElement('div');
-    buttonsContainer.style.cssText = `
-        display: flex;
-        gap: 10px;
-        justify-content: flex-end;
-        margin-top: 15px;
-    `;
-    
-    // Save button
-    const saveButton = document.createElement('button');
-    saveButton.textContent = isNew ? 'Create' : 'Save';
-    saveButton.style.cssText = `
-        background: #4CAF50;
-        color: white;
-        border: none;
-        padding: 8px 16px;
-        border-radius: 4px;
-        cursor: pointer;
-        font-size: 12px;
-    `;
-    
-    // Cancel button
-    const cancelButton = document.createElement('button');
-    cancelButton.textContent = 'Cancel';
-    cancelButton.style.cssText = `
-        background: #f44336;
-        color: white;
-        border: none;
-        padding: 8px 16px;
-        border-radius: 4px;
-        cursor: pointer;
-        font-size: 12px;
-    `;
-    
-    // Event handlers
-    saveButton.addEventListener('click', async () => {
-        try {
-            const response = await fetch('/sage_utils/save_dataset_text', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    image_path: image.path,
-                    content: textarea.value
-                })
-            });
-            
-            const result = await response.json();
-            if (result.success) {
-                alert(`Dataset text ${isNew ? 'created' : 'saved'} successfully!`);
-                overlay.remove();
-            } else {
-                alert(`Failed to ${isNew ? 'create' : 'save'} dataset text: ${result.error}`);
-            }
-        } catch (error) {
-            console.error('Error saving dataset text:', error);
-            alert(`Error saving dataset text: ${error.message}`);
-        }
-    });
-    
-    cancelButton.addEventListener('click', () => {
-        overlay.remove();
-    });
-    
-    // Close on overlay click
-    overlay.addEventListener('click', (e) => {
-        if (e.target === overlay) {
-            overlay.remove();
-        }
-    });
-    
-    // Escape key handler
-    const escapeHandler = (e) => {
-        if (e.key === 'Escape') {
-            overlay.remove();
-            document.removeEventListener('keydown', escapeHandler);
-        }
-    };
-    document.addEventListener('keydown', escapeHandler);
-    
-    // Assemble modal
-    buttonsContainer.appendChild(saveButton);
-    buttonsContainer.appendChild(cancelButton);
-    
-    modal.appendChild(title);
-    modal.appendChild(textarea);
-    modal.appendChild(buttonsContainer);
-    
-    overlay.appendChild(modal);
-    document.body.appendChild(overlay);
-    
-    // Focus textarea
-    textarea.focus();
-}
-
-// Batch operations for dataset management
-async function refreshCurrentTextDisplay() {
-    // Find the textarea in the current combined editor
-    const textArea = document.querySelector('textarea[data-image-path]');
-    if (!textArea) return;
-    
-    // Get the current image path from the data attribute
-    const imagePath = textArea.getAttribute('data-image-path');
-    if (!imagePath) return;
-    
-    try {
-        // Re-read the current image's text file
-        const readResponse = await fetch('/sage_utils/read_dataset_text', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ image_path: imagePath })
-        });
-        
-        const readResult = await readResponse.json();
-        if (readResult.success) {
-            textArea.value = readResult.content;
-        }
-    } catch (error) {
-        console.error('Error refreshing current text display:', error);
-    }
-}
-
-async function batchCreateMissingTextFiles() {
-    try {
-        const allImages = selectors.galleryImages();
-        if (!allImages || allImages.length === 0) {
-            alert('No images found in current folder.');
-            return;
-        }
-        
-        let created = 0;
-        let errors = [];
-        
-        for (const image of allImages) {
-            try {
-                // Check if text file exists
-                const checkResponse = await fetch('/sage_utils/check_dataset_text', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ image_path: image.path })
-                });
-                
-                const checkResult = await checkResponse.json();
-                
-                if (!checkResult.exists) {
-                    // Create empty text file
-                    const saveResponse = await fetch('/sage_utils/save_dataset_text', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ 
-                            image_path: image.path, 
-                            content: '' 
-                        })
-                    });
-                    
-                    const saveResult = await saveResponse.json();
-                    if (saveResult.success) {
-                        created++;
-                    } else {
-                        errors.push(`${image.filename}: ${saveResult.error}`);
-                    }
-                }
-            } catch (error) {
-                errors.push(`${image.filename}: ${error.message}`);
-            }
-        }
-        
-        let message = `Created ${created} text files.`;
-        if (errors.length > 0) {
-            message += `\n\nErrors (${errors.length}):\n${errors.slice(0, 5).join('\n')}`;
-            if (errors.length > 5) {
-                message += `\n... and ${errors.length - 5} more`;
-            }
-        }
-        
-        alert(message);
-        
-        // Refresh current text display if we have a combined editor open
-        if (created > 0) {
-            await refreshCurrentTextDisplay();
-        }
-        
-    } catch (error) {
-        console.error('Error in batch create missing text files:', error);
-        alert(`Error: ${error.message}`);
-    }
-}
-
-async function batchAppendToAllTextFiles(textToAdd, addToBeginning = false) {
-    try {
-        const allImages = selectors.galleryImages();
-        if (!allImages || allImages.length === 0) {
-            alert('No images found in current folder.');
-            return;
-        }
-        
-        let updated = 0;
-        let skipped = 0;
-        let errors = [];
-        
-        for (const image of allImages) {
-            try {
-                // Check if text file exists
-                const checkResponse = await fetch('/sage_utils/check_dataset_text', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ image_path: image.path })
-                });
-                
-                const checkResult = await checkResponse.json();
-                
-                if (checkResult.exists) {
-                    // Read current content
-                    const readResponse = await fetch('/sage_utils/read_dataset_text', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ image_path: image.path })
-                    });
-                    
-                    const readResult = await readResponse.json();
-                    if (readResult.success) {
-                        // Add text to beginning or end
-                        let newContent;
-                        if (addToBeginning) {
-                            newContent = readResult.content ? 
-                                textToAdd + ', ' + readResult.content : 
-                                textToAdd;
-                        } else {
-                            newContent = readResult.content ? 
-                                readResult.content + ', ' + textToAdd : 
-                                textToAdd;
-                        }
-                        
-                        const saveResponse = await fetch('/sage_utils/save_dataset_text', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ 
-                                image_path: image.path, 
-                                content: newContent 
-                            })
-                        });
-                        
-                        const saveResult = await saveResponse.json();
-                        if (saveResult.success) {
-                            updated++;
-                        } else {
-                            errors.push(`${image.filename}: ${saveResult.error}`);
-                        }
-                    } else {
-                        errors.push(`${image.filename}: Failed to read existing content`);
-                    }
-                } else {
-                    skipped++;
-                }
-            } catch (error) {
-                errors.push(`${image.filename}: ${error.message}`);
-            }
-        }
-        
-        const positionText = addToBeginning ? 'beginning' : 'end';
-        let message = `Updated ${updated} text files (added to ${positionText}).`;
-        if (skipped > 0) {
-            message += ` Skipped ${skipped} files (no text file found).`;
-        }
-        if (errors.length > 0) {
-            message += `\n\nErrors (${errors.length}):\n${errors.slice(0, 5).join('\n')}`;
-            if (errors.length > 5) {
-                message += `\n... and ${errors.length - 5} more`;
-            }
-        }
-        
-        alert(message);
-        
-        // Refresh current text display if we have a combined editor open
-        if (updated > 0) {
-            await refreshCurrentTextDisplay();
-        }
-        
-    } catch (error) {
-        console.error('Error in batch append to all text files:', error);
-        alert(`Error: ${error.message}`);
-    }
-}
-
-async function batchFindReplaceAllTextFiles(findText, replaceText) {
-    try {
-        const allImages = selectors.galleryImages();
-        if (!allImages || allImages.length === 0) {
-            alert('No images found in current folder.');
-            return;
-        }
-        
-        let updated = 0;
-        let skipped = 0;
-        let totalReplacements = 0;
-        let errors = [];
-        
-        for (const image of allImages) {
-            try {
-                // Check if text file exists
-                const checkResponse = await fetch('/sage_utils/check_dataset_text', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ image_path: image.path })
-                });
-                
-                const checkResult = await checkResponse.json();
-                
-                if (checkResult.exists) {
-                    // Read current content
-                    const readResponse = await fetch('/sage_utils/read_dataset_text', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ image_path: image.path })
-                    });
-                    
-                    const readResult = await readResponse.json();
-                    if (readResult.success) {
-                        const originalContent = readResult.content;
-                        const newContent = originalContent.replaceAll(findText, replaceText);
-                        
-                        if (newContent !== originalContent) {
-                            const replacements = (originalContent.match(new RegExp(findText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g')) || []).length;
-                            totalReplacements += replacements;
-                            
-                            const saveResponse = await fetch('/sage_utils/save_dataset_text', {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ 
-                                    image_path: image.path, 
-                                    content: newContent 
-                                })
-                            });
-                            
-                            const saveResult = await saveResponse.json();
-                            if (saveResult.success) {
-                                updated++;
-                            } else {
-                                errors.push(`${image.filename}: ${saveResult.error}`);
-                            }
-                        }
-                    } else {
-                        errors.push(`${image.filename}: Failed to read existing content`);
-                    }
-                } else {
-                    skipped++;
-                }
-            } catch (error) {
-                errors.push(`${image.filename}: ${error.message}`);
-            }
-        }
-        
-        let message = `Updated ${updated} text files with ${totalReplacements} total replacements.`;
-        if (skipped > 0) {
-            message += ` Skipped ${skipped} files (no text file found).`;
-        }
-        if (errors.length > 0) {
-            message += `\n\nErrors (${errors.length}):\n${errors.slice(0, 5).join('\n')}`;
-            if (errors.length > 5) {
-                message += `\n... and ${errors.length - 5} more`;
-            }
-        }
-        
-        alert(message);
-        
-        // Refresh current text display if we have a combined editor open
-        if (updated > 0) {
-            await refreshCurrentTextDisplay();
-        }
-        
-    } catch (error) {
-        console.error('Error in batch find replace all text files:', error);
-        alert(`Error: ${error.message}`);
-    }
-}
-
-// Make functions globally accessible
+// Make functions globally accessible for backwards compatibility
 window.handleDatasetText = handleDatasetText;
 window.showCombinedImageTextEditor = showCombinedImageTextEditor;
+window.galleryTextManager = {
+    handleDatasetText,
+    showCombinedImageTextEditor,
+    editDatasetText,
+    createDatasetText,
+    batchCreateMissingTextFiles,
+    batchAppendToAllTextFiles,
+    batchFindReplaceAllTextFiles,
+    refreshCurrentTextDisplay
+};
 
-/**
- * Main function to create the Image Gallery tab
- * @param {HTMLElement} container - Container element to populate
- */
+// Use imported dataset text manager functions instead of duplicating here
+const galleryTextManager = {
+    handleDatasetText,
+    showCombinedImageTextEditor,
+    batchCreateMissingTextFiles,
+    batchAppendToAllTextFiles,
+    batchFindReplaceAllTextFiles
+};
+
+// Make globally accessible
+window.handleDatasetText = handleDatasetText;
+window.showCombinedImageTextEditor = showCombinedImageTextEditor;
+window.galleryTextManager = galleryTextManager;
+
+
+// Note: Dataset text management functions are now implemented in js/shared/datasetTextManager.js
+// Image utility functions are now implemented in js/shared/imageUtils.js
+// UI widget functions are now implemented in js/widgets/galleryComponents.js
+
 export function createImageGalleryTab(container) {
     // Create all components
     const header = createGalleryHeader();
     const folderAndControls = createFolderSelectorAndControls(); // Combined section
-    const grid = createThumbnailGrid();
+    const grid = createWrappedThumbnailGrid();
     const metadata = createMetadataPanel();
 
     // Set up event handlers and store them globally for access  
