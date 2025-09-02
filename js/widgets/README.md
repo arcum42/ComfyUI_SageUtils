@@ -26,6 +26,56 @@ The widgets are designed to work as overlays on top of standard ComfyUI text wid
 - `ComfyWidgets` from ComfyUI core for base widget functionality
 - `renderMarkdown, ensureMarkdownStyles` from `shared/markdown.js` for markdown processing
 
+### galleryComponents.js
+
+**Purpose**: Reusable UI components for image gallery and media display  
+**Complexity**: High  
+
+**Dependencies:**
+
+- `stateManager.js`, `config.js`, `imageUtils.js`, `datasetTextManager.js` from shared modules
+- Complex image gallery functionality with thumbnail grids and metadata
+
+### cacheUIComponents.js
+
+**Purpose**: Cache sidebar UI component factory functions  
+**Complexity**: Medium  
+
+**Dependencies:**
+
+- Standalone component creation utilities
+- Provides labeled containers, buttons, dropdowns, and styled elements
+
+### navigationComponents.js
+
+**Purpose**: Navigation controls for image galleries and editors  
+**Complexity**: Medium  
+
+**Dependencies:**
+
+- Standalone navigation button creation
+- Configurable size, style variants (gradient/flat), and label options
+
+### dialogManager.js
+
+**Purpose**: Modal dialogs and overlay management  
+**Complexity**: Medium  
+
+**Dependencies:**
+
+- Standalone dialog creation utilities
+- Confirmation dialogs, alerts, prompts, and custom dialogs with backdrop blur
+
+### infoDisplay.js
+
+**Purpose**: Detailed model information display with images and metadata  
+**Complexity**: High  
+
+**Dependencies:**
+
+- `stateManager.js`, `civitai.js` from shared modules
+- Complex model version finding and metadata display functionality
+
 **Key Functions:**
 
 #### Core Widget Management

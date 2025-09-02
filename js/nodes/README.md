@@ -133,7 +133,7 @@ if (nodeData.name === _ID + "NodeName") {
 ### Shared Dependencies
 
 - `shared/utils.js`: Provides `_ID` constant for node naming
-- `shared/cacheUIComponents.js`: Widget creation and management utilities
+- `widgets/cacheUIComponents.js`: Widget creation and management utilities
 - Various utility functions for file handling, markdown rendering, and UI interactions
 
 ### Widget System Integration

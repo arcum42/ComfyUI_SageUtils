@@ -31,7 +31,7 @@ import {
     createHeader,
     createStyledButton,
     createInfoDisplay
-} from "../shared/cacheUIComponents.js";
+} from "../widgets/cacheUIComponents.js";
 
 /**
  * Creates the Notes tab header section

@@ -3,8 +3,8 @@
  * Handles detailed model information display with images and metadata
  */
 
-import { selectors } from "./stateManager.js";
-import { extractCivitaiInfo } from "./civitai.js";
+import { selectors } from "../shared/stateManager.js";
+import { extractCivitaiInfo } from "../shared/civitai.js";
 
 /**
  * Find all versions of the same model (including current version and undownloaded versions from Civitai)

@@ -27,7 +27,7 @@ import {
     createHeader,
     createStyledButton,
     createInfoDisplay
-} from "../shared/cacheUIComponents.js";
+} from "../widgets/cacheUIComponents.js";
 
 // Import image operations
 import {
@@ -66,7 +66,7 @@ import {
 } from "../widgets/galleryComponents.js";
 
 // Import navigation components
-import { createDatasetNavigationControls } from "../shared/navigationComponents.js";
+import { createDatasetNavigationControls } from "../widgets/navigationComponents.js";
 
 /**
  * Creates the Image Gallery tab header section

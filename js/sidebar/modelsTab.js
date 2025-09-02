@@ -28,7 +28,7 @@ import {
 
 import { 
     createDetailedInfoDisplay 
-} from "../shared/infoDisplay.js";
+} from "../widgets/infoDisplay.js";
 
 import { 
     escapeHtml, 
@@ -44,7 +44,7 @@ import {
     alertDialog,
     promptDialog,
     createDialog
-} from "../shared/dialogManager.js";
+} from "../widgets/dialogManager.js";
 
 import {
     pullMetadata,
@@ -62,7 +62,7 @@ import {
     createStyledButton,
     addDropdownStyles as addCacheDropdownStyles,
     createInfoDisplay
-} from "../shared/cacheUIComponents.js";
+} from "../widgets/cacheUIComponents.js";
 
 /**
  * Creates the Models tab header section
