@@ -305,10 +305,11 @@ export function createHeader(title, subtitle) {
         padding-bottom: 10px;
         border-bottom: 1px solid #444;
     `;
-    header.innerHTML = `
-        <h3 style="margin: 0; color: #ffffff; font-size: 16px;">${title}</h3>
-        <p style="margin: 5px 0 0 0; color: #aaa; font-size: 12px;">${subtitle}</p>
-    `;
+    
+    const titleHtml = `<h3 style="margin: 0; color: #ffffff; font-size: 16px;">${title}</h3>`;
+    const subtitleHtml = subtitle ? `<p style="margin: 5px 0 0 0; color: #aaa; font-size: 12px;">${subtitle}</p>` : '';
+    
+    header.innerHTML = titleHtml + subtitleHtml;
 
     return header;
 }

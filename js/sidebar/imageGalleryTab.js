@@ -34,7 +34,7 @@ import {
  * @returns {HTMLElement} Header element with status display
  */
 function createGalleryHeader() {
-    const header = createHeader('Image Gallery', 'Browse and view images from your folders');
+    const header = createHeader('Gallery', null); // No description for compactness
     
     // Add status display area
     const statusDiv = document.createElement('div');
@@ -54,10 +54,10 @@ function createGalleryHeader() {
 }
 
 /**
- * Creates the folder selector section for the Gallery tab
- * @returns {Object} Folder selector components
+ * Creates the combined folder selector and controls section for the Gallery tab
+ * @returns {Object} Folder selector and controls components
  */
-function createFolderSelector() {
+function createFolderSelectorAndControls() {
     const folderSection = document.createElement('div');
     folderSection.style.cssText = `
         margin-bottom: 15px;
@@ -75,7 +75,7 @@ function createFolderSelector() {
         justify-content: space-between;
         align-items: center;
     `;
-    folderHeader.textContent = 'Select Folder';
+    folderHeader.textContent = 'Folder & Controls';
     
     const folderDropdown = document.createElement('select');
     folderDropdown.id = 'gallery-folder-selector';
@@ -126,94 +126,81 @@ function createFolderSelector() {
     folderSection.appendChild(folderDropdown);
     folderSection.appendChild(browseButton);
 
-    return {
-        folderSection,
-        folderHeader,
-        folderDropdown,
-        browseButton
-    };
-}
-
-/**
- * Creates the controls panel section for the Gallery tab
- * @returns {Object} Controls panel components
- */
-function createControlsPanel() {
-    const controlsSection = document.createElement('div');
-    controlsSection.style.cssText = `
-        margin-bottom: 15px;
-        padding: 15px;
-        background: #2a2a2a;
-        border-radius: 6px;
-        border: 1px solid #444;
-    `;
-    
-    const controlsHeader = document.createElement('h4');
-    controlsHeader.style.cssText = `
-        margin: 0 0 10px 0;
-        color: #4CAF50;
-    `;
-    controlsHeader.textContent = 'Controls';
-    
+    // Add controls to the same section
     // Search bar
     const searchContainer = document.createElement('div');
     searchContainer.style.cssText = `
+        margin-top: 15px;
         margin-bottom: 10px;
+        display: flex;
+        gap: 8px;
     `;
     
     const searchInput = document.createElement('input');
     searchInput.type = 'text';
-    searchInput.placeholder = 'Search images...';
     searchInput.id = 'gallery-search';
+    searchInput.placeholder = 'Search images...';
     searchInput.style.cssText = `
-        width: 100%;
-        padding: 8px;
+        flex: 1;
+        padding: 6px 10px;
         background: #333;
         color: #fff;
         border: 1px solid #555;
         border-radius: 4px;
         font-size: 12px;
-        box-sizing: border-box;
+    `;
+    
+    const clearButton = document.createElement('button');
+    clearButton.textContent = '✕';
+    clearButton.title = 'Clear search';
+    clearButton.style.cssText = `
+        background: #666;
+        color: white;
+        border: none;
+        padding: 6px 10px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 12px;
     `;
     
     searchContainer.appendChild(searchInput);
-    
+    searchContainer.appendChild(clearButton);
+
     // Sort controls
     const sortContainer = document.createElement('div');
     sortContainer.style.cssText = `
-        display: flex;
-        gap: 10px;
         margin-bottom: 10px;
+        display: flex;
+        gap: 8px;
+        align-items: center;
     `;
     
     const sortLabel = document.createElement('label');
-    sortLabel.textContent = 'Sort by:';
+    sortLabel.textContent = 'Sort:';
     sortLabel.style.cssText = `
         color: #ccc;
         font-size: 12px;
-        display: flex;
-        align-items: center;
-        min-width: 50px;
+        min-width: 35px;
     `;
     
     const sortSelect = document.createElement('select');
     sortSelect.id = 'gallery-sort';
     sortSelect.style.cssText = `
         flex: 1;
-        padding: 6px;
+        padding: 4px 8px;
         background: #333;
         color: #fff;
         border: 1px solid #555;
         border-radius: 4px;
-        font-size: 12px;
+        font-size: 11px;
         cursor: pointer;
     `;
     
     const sortOptions = [
-        { value: 'name', text: 'Name (A-Z)' },
-        { value: 'name-desc', text: 'Name (Z-A)' },
-        { value: 'date', text: 'Date (Newest)' },
-        { value: 'date-desc', text: 'Date (Oldest)' }
+        { value: 'name', text: 'Name' },
+        { value: 'date', text: 'Date Modified' },
+        { value: 'size', text: 'File Size' },
+        { value: 'type', text: 'File Type' }
     ];
     
     sortOptions.forEach(option => {
@@ -223,10 +210,25 @@ function createControlsPanel() {
         sortSelect.appendChild(optionElement);
     });
     
+    const orderButton = document.createElement('button');
+    orderButton.textContent = '↑';
+    orderButton.title = 'Toggle sort order';
+    orderButton.style.cssText = `
+        background: #444;
+        color: white;
+        border: none;
+        padding: 4px 8px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 12px;
+        min-width: 30px;
+    `;
+    
     sortContainer.appendChild(sortLabel);
     sortContainer.appendChild(sortSelect);
-    
-    // Action buttons
+    sortContainer.appendChild(orderButton);
+
+    // Thumbnail size and control buttons
     const buttonsContainer = document.createElement('div');
     buttonsContainer.style.cssText = `
         display: flex;
@@ -234,27 +236,81 @@ function createControlsPanel() {
         flex-wrap: wrap;
     `;
     
-    const refreshButton = createStyledButton('🔄 Refresh', '#4CAF50');
-    refreshButton.style.fontSize = '11px';
-    refreshButton.style.padding = '6px 10px';
+    const thumbnailSizeSelect = document.createElement('select');
+    thumbnailSizeSelect.id = 'gallery-thumbnail-size';
+    thumbnailSizeSelect.style.cssText = `
+        flex: 1;
+        min-width: 80px;
+        padding: 4px 8px;
+        background: #333;
+        color: #fff;
+        border: 1px solid #555;
+        border-radius: 4px;
+        font-size: 11px;
+        cursor: pointer;
+    `;
     
-    const viewModeButton = createStyledButton('⊞ Grid View', '#2196F3');
-    viewModeButton.style.fontSize = '11px';
-    viewModeButton.style.padding = '6px 10px';
+    const sizeOptions = [
+        { value: 'small', text: 'Small' },
+        { value: 'medium', text: 'Medium' },
+        { value: 'large', text: 'Large' }
+    ];
     
+    sizeOptions.forEach(option => {
+        const optionElement = document.createElement('option');
+        optionElement.value = option.value;
+        optionElement.textContent = option.text;
+        thumbnailSizeSelect.appendChild(optionElement);
+    });
+    
+    const refreshButton = document.createElement('button');
+    refreshButton.textContent = '🔄';
+    refreshButton.title = 'Refresh images';
+    refreshButton.style.cssText = `
+        background: #4CAF50;
+        color: white;
+        border: none;
+        padding: 4px 8px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 12px;
+    `;
+    
+    const viewModeButton = document.createElement('button');
+    viewModeButton.textContent = '⊞ Grid View';
+    viewModeButton.title = 'Toggle view mode';
+    viewModeButton.style.cssText = `
+        background: #2196F3;
+        color: white;
+        border: none;
+        padding: 4px 8px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 12px;
+    `;
+    
+    buttonsContainer.appendChild(thumbnailSizeSelect);
     buttonsContainer.appendChild(refreshButton);
     buttonsContainer.appendChild(viewModeButton);
-    
-    controlsSection.appendChild(controlsHeader);
-    controlsSection.appendChild(searchContainer);
-    controlsSection.appendChild(sortContainer);
-    controlsSection.appendChild(buttonsContainer);
+
+    folderSection.appendChild(searchContainer);
+    folderSection.appendChild(sortContainer);
+    folderSection.appendChild(buttonsContainer);
 
     return {
-        controlsSection,
-        controlsHeader,
+        folderSection,
+        folderHeader,
+        folderDropdown,
+        browseButton,
+        // Controls components
+        searchContainer,
         searchInput,
+        clearButton,
+        sortContainer,
         sortSelect,
+        orderButton,
+        buttonsContainer,
+        thumbnailSizeSelect,
         refreshButton,
         viewModeButton
     };
@@ -394,7 +450,10 @@ function createMetadataPanel() {
  * @param {Object} grid - Thumbnail grid components
  * @param {Object} metadata - Metadata panel components
  */
-function setupGalleryEventHandlers(folderSelector, controls, grid, metadata, header) {
+function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, header) {
+    // Extract components from the combined folderAndControls object
+    const folderSelector = folderAndControls;
+    const controls = folderAndControls; // Same object contains both folder and control elements
     // Helper function to update status
     function setStatus(message, isError = false) {
         console.log(isError ? `Gallery Error: ${message}` : `Gallery: ${message}`);
@@ -605,12 +664,20 @@ function setupGalleryEventHandlers(folderSelector, controls, grid, metadata, hea
             switch (sortBy) {
                 case 'name':
                     return a.filename.localeCompare(b.filename);
+                case 'name-desc':
+                    return b.filename.localeCompare(a.filename);
                 case 'size':
                     return b.size - a.size; // Largest first
+                case 'size-desc':
+                    return a.size - b.size; // Smallest first
                 case 'date':
                     return new Date(b.modified) - new Date(a.modified); // Newest first
-                case 'date_asc':
+                case 'date-desc':
                     return new Date(a.modified) - new Date(b.modified); // Oldest first
+                case 'type':
+                    return (a.filename.split('.').pop() || '').localeCompare(b.filename.split('.').pop() || '');
+                case 'type-desc':
+                    return (b.filename.split('.').pop() || '').localeCompare(a.filename.split('.').pop() || '');
                 default:
                     return 0;
             }
@@ -1764,19 +1831,10 @@ function setupGalleryEventHandlers(folderSelector, controls, grid, metadata, hea
         const newMode = currentMode === 'grid' ? 'list' : 'grid';
         actions.setViewMode(newMode);
         
-        controls.viewModeButton.textContent = newMode === 'grid' ? '⊞ Grid View' : '☰ List View';
-        
-        // TODO: Update grid layout based on view mode
+        folderAndControls.viewModeButton.textContent = newMode === 'grid' ? '⊞ Grid View' : '☰ List View';
         
         // Update grid layout based on view mode
-        if (newMode === 'list') {
-            grid.gridContainer.style.gridTemplateColumns = '1fr';
-            grid.gridContainer.style.gap = '5px';
-        } else {
-            const thumbnailSizeConfig = getThumbnailSize(selectors.thumbnailSize());
-            grid.gridContainer.style.gridTemplateColumns = `repeat(auto-fill, minmax(${thumbnailSizeConfig.width}px, 1fr))`;
-            grid.gridContainer.style.gap = '10px';
-        }
+        updateGridLayout();
         
         // Re-render images with new layout
         const images = selectors.galleryImages();
@@ -1836,25 +1894,25 @@ function setupGalleryEventHandlers(folderSelector, controls, grid, metadata, hea
     }
 
     // Set up event listeners
-    folderSelector.folderDropdown.addEventListener('change', (e) => {
+    folderAndControls.folderDropdown.addEventListener('change', (e) => {
         const selectedFolder = e.target.value;
         actions.selectFolder(selectedFolder);
         
         if (selectedFolder === 'custom') {
-            folderSelector.browseButton.style.display = 'block';
+            folderAndControls.browseButton.style.display = 'block';
             setStatus('Please click Browse to select a custom folder');
         } else {
-            folderSelector.browseButton.style.display = 'none';
+            folderAndControls.browseButton.style.display = 'none';
             loadImagesFromFolder(selectedFolder);
         }
     });
 
-    folderSelector.browseButton.addEventListener('click', () => {
+    folderAndControls.browseButton.addEventListener('click', () => {
         // Implement custom folder browser
         browseCustomFolder();
     });
 
-    controls.searchInput.addEventListener('input', (e) => {
+    folderAndControls.searchInput.addEventListener('input', (e) => {
         const query = e.target.value;
         actions.setSearchQuery(query);
         // Implement search filtering
@@ -1862,16 +1920,86 @@ function setupGalleryEventHandlers(folderSelector, controls, grid, metadata, hea
         setStatus(query ? `Searching for: "${query}"` : 'Search cleared');
     });
 
-    controls.sortSelect.addEventListener('change', (e) => {
-        const sortBy = e.target.value;
-        actions.updateSort(sortBy);
-        // Implement sorting
+    folderAndControls.sortSelect.addEventListener('change', (e) => {
+        const baseSortBy = e.target.value; // Base sort criteria (name, date, size, type)
+        const currentSort = selectors.gallerySortBy();
+        const isDescending = currentSort.endsWith('-desc');
+        
+        // Apply current sort direction to new criteria
+        const newSort = isDescending ? baseSortBy + '-desc' : baseSortBy;
+        actions.updateSort(newSort);
+        updateSortUI(); // Update the order button
         filterAndSortImages();
-        setStatus(`Sorted by: ${e.target.options[e.target.selectedIndex].text}`);
+        setStatus(`Sorted by: ${e.target.options[e.target.selectedIndex].text} (${isDescending ? 'Descending' : 'Ascending'})`);
     });
 
-    controls.refreshButton.addEventListener('click', refreshCurrentFolder);
-    controls.viewModeButton.addEventListener('click', toggleViewMode);
+    folderAndControls.refreshButton.addEventListener('click', refreshCurrentFolder);
+    folderAndControls.viewModeButton.addEventListener('click', toggleViewMode);
+
+    // Add event handlers for the new combined controls
+    folderAndControls.clearButton.addEventListener('click', () => {
+        folderAndControls.searchInput.value = '';
+        actions.setSearchQuery('');
+        filterAndSortImages();
+        setStatus('Search cleared');
+    });
+
+    folderAndControls.orderButton.addEventListener('click', () => {
+        const currentSort = selectors.gallerySortBy();
+        let newSort;
+        
+        // Toggle between ascending and descending versions
+        if (currentSort.endsWith('-desc')) {
+            // Remove -desc suffix for ascending
+            newSort = currentSort.replace('-desc', '');
+        } else {
+            // Add -desc suffix for descending  
+            newSort = currentSort + '-desc';
+        }
+        
+        actions.updateSort(newSort);
+        updateSortUI(); // This will set both dropdown and button correctly
+        filterAndSortImages();
+        setStatus(`Sort order: ${newSort.endsWith('-desc') ? 'Descending' : 'Ascending'}`);
+    });
+
+    // Function to update grid layout based on current settings
+    function updateGridLayout() {
+        const currentMode = selectors.galleryViewMode();
+        if (currentMode === 'list') {
+            grid.gridContainer.style.gridTemplateColumns = '1fr';
+            grid.gridContainer.style.gap = '5px';
+        } else {
+            const thumbnailSizeConfig = getThumbnailSize(selectors.thumbnailSize());
+            grid.gridContainer.style.gridTemplateColumns = `repeat(auto-fill, minmax(${thumbnailSizeConfig.width}px, 1fr))`;
+            grid.gridContainer.style.gap = '10px';
+        }
+    }
+
+    // Function to update UI based on current sort state
+    function updateSortUI() {
+        const currentSort = selectors.gallerySortBy();
+        // Extract base sort criteria (remove -desc suffix if present)
+        const baseSortCriteria = currentSort.endsWith('-desc') ? currentSort.replace('-desc', '') : currentSort;
+        folderAndControls.sortSelect.value = baseSortCriteria;
+        folderAndControls.orderButton.textContent = currentSort.endsWith('-desc') ? '↓' : '↑';
+    }
+
+    // Function to update thumbnail size UI based on current state
+    function updateThumbnailSizeUI() {
+        const currentSize = selectors.thumbnailSize();
+        folderAndControls.thumbnailSizeSelect.value = currentSize;
+    }
+
+    folderAndControls.thumbnailSizeSelect.addEventListener('change', (e) => {
+        const size = e.target.value;
+        actions.setThumbnailSize(size);
+        // Update grid layout with new thumbnail size
+        updateGridLayout();
+        // Refresh current folder to re-render with new size
+        refreshCurrentFolder();
+        setStatus(`Thumbnail size: ${size}`);
+    });
 
     metadata.closeButton.addEventListener('click', hideMetadata);
 
@@ -1915,11 +2043,11 @@ function setupGalleryEventHandlers(folderSelector, controls, grid, metadata, hea
                 const customOption = document.createElement('option');
                 customOption.value = path;
                 customOption.textContent = `Custom: ${path}`;
-                folderSelector.folderDropdown.appendChild(customOption);
+                folderAndControls.folderDropdown.appendChild(customOption);
                 
                 // Select the new folder
                 actions.selectFolder(path);
-                folderSelector.folderDropdown.value = path;
+                folderAndControls.folderDropdown.value = path;
                 
                 // Load images
                 actions.setImages(images);
@@ -1957,6 +2085,11 @@ function setupGalleryEventHandlers(folderSelector, controls, grid, metadata, hea
         }
     }
 
+    // Initialize UI state
+    updateSortUI();
+    updateThumbnailSizeUI();
+    updateGridLayout();
+
     // Store functions for external access
     return {
         loadImagesFromFolder,
@@ -1965,7 +2098,9 @@ function setupGalleryEventHandlers(folderSelector, controls, grid, metadata, hea
         showMetadata,
         hideMetadata,
         browseCustomFolder,
-        filterAndSortImages
+        filterAndSortImages,
+        updateGridLayout,
+        updateThumbnailSizeUI
     };
 }
 
@@ -1977,8 +2112,7 @@ function setupGalleryEventHandlers(folderSelector, controls, grid, metadata, hea
 function assembleGalleryTabLayout(container, components) {
     const {
         header,
-        folderSelector,
-        controls,
+        folderAndControls, // Combined section
         grid,
         metadata
     } = components;
@@ -1992,12 +2126,12 @@ function assembleGalleryTabLayout(container, components) {
         padding: 15px;
     `;
 
-    // Add header
+    // Add header with reduced padding
+    header.style.padding = '10px 15px'; // Make header more compact
     container.appendChild(header);
 
     // Add all sections to gallery container
-    galleryContainer.appendChild(folderSelector.folderSection);
-    galleryContainer.appendChild(controls.controlsSection);
+    galleryContainer.appendChild(folderAndControls.folderSection); // Combined folder and controls
     galleryContainer.appendChild(grid.gridSection);
     galleryContainer.appendChild(metadata.metadataSection);
 
@@ -3126,28 +3260,31 @@ window.showCombinedImageTextEditor = showCombinedImageTextEditor;
 export function createImageGalleryTab(container) {
     // Create all components
     const header = createGalleryHeader();
-    const folderSelector = createFolderSelector();
-    const controls = createControlsPanel();
+    const folderAndControls = createFolderSelectorAndControls(); // Combined section
     const grid = createThumbnailGrid();
     const metadata = createMetadataPanel();
 
-    // Set up event handlers and store them globally for access
-    const eventHandlers = setupGalleryEventHandlers(folderSelector, controls, grid, metadata, header);
+    // Set up event handlers and store them globally for access  
+    const eventHandlers = setupGalleryEventHandlers(folderAndControls, null, grid, metadata, header);
     window.galleryEventHandlers = eventHandlers;
 
     // Assemble the layout
     assembleGalleryTabLayout(container, {
         header,
-        folderSelector,
-        controls,
+        folderAndControls, // Combined section
         grid,
         metadata
     });
 
+    // Initialize grid layout with current thumbnail size
+    if (eventHandlers.updateGridLayout) {
+        eventHandlers.updateGridLayout();
+    }
+
     // Restore previously selected folder
     const savedFolder = selectors.selectedFolder();
     if (savedFolder && savedFolder !== 'notes') {
-        folderSelector.folderDropdown.value = savedFolder;
+        folderAndControls.folderDropdown.value = savedFolder;
         console.log('Restored folder selection to:', savedFolder);
     }
 
