@@ -530,7 +530,6 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
             }
             
             const result = await response.json();
-            console.log('API response for loadImagesFromFolder:', result);
             
             if (!result.success) {
                 throw new Error(result.error || 'Unknown error occurred');
@@ -539,7 +538,6 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
             const images = result.images || [];
             const folders = result.folders || [];
             const totalItems = images.length + folders.length;
-            console.log(`Successfully loaded ${images.length} images and ${folders.length} folders from ${folderType} folder`);
             
             // Update state with loaded images and folders
             actions.setImages(images);
@@ -549,11 +547,9 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
             if (folderType === 'custom' && customPath) {
                 // We're in a custom subfolder, set the path
                 actions.setCurrentPath(customPath);
-                console.log('Set current path to custom folder:', customPath);
             } else {
                 // We're in a standard folder (input, output, etc.) or no custom path
                 actions.setCurrentPath('');
-                console.log('Cleared current path for standard folder:', folderType);
             }
             
             // Update UI immediately with actual counts
@@ -561,12 +557,10 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
             setStatus(`Loaded ${images.length} images and ${folders.length} folders from ${folderType} folder`);
             
             // Render image grid with both images and folders
-            console.log('About to render images and folders:', { images: images.length, folders: folders.length });
             await renderImageGrid(images, folders);
             
             // Auto-show metadata for the first image if available
             if (images && images.length > 0) {
-                console.log('Auto-showing metadata for first image:', images[0].filename);
                 showImageMetadata(images[0]);
             } else {
                 // No images available, show placeholder message
@@ -585,7 +579,6 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
             if (folderType === 'custom' && customPath && images.length === 0 && folders.length === 0) {
                 const currentPath = selectors.currentPath();
                 if (currentPath && currentPath !== '') {
-                    console.log('Adding back navigation for empty custom folder:', currentPath);
                     const backItem = createBackNavigationItem();
                     grid.gridContainer.insertBefore(backItem, grid.gridContainer.firstChild);
                 }
@@ -619,7 +612,6 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
 
     // Render image grid with actual images and folders
     async function renderImageGrid(images, folders = []) {
-        console.log('renderImageGrid called with:', images ? images.length : 0, 'images and', folders.length, 'folders');
         
         grid.gridContainer.innerHTML = '';
         
@@ -637,8 +629,6 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
             `;
             return;
         }
-        
-        console.log('Processing images and folders for grid rendering...');
         
         // Apply current filters and sorting to images only
         const searchQuery = selectors.gallerySearchQuery().toLowerCase();
@@ -841,7 +831,6 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
                 if (response.ok) {
                     const blob = await response.blob();
                     const thumbnailUrl = URL.createObjectURL(blob);
-                    console.log('Generated thumbnail for', image.filename);
                     return thumbnailUrl;
                 } else {
                     console.error('Thumbnail generation failed:', response.statusText);
@@ -1021,7 +1010,6 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
         
         // Click handler for folder navigation
         item.addEventListener('click', () => {
-            console.log('Navigating to folder:', folder.path);
             // Load images from the clicked folder
             actions.setCurrentPath(folder.path);
             if (window.galleryEventHandlers && window.galleryEventHandlers.loadImagesFromFolder) {
@@ -1094,12 +1082,9 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
             if (currentPath && window.galleryEventHandlers && window.galleryEventHandlers.loadImagesFromFolder) {
                 // Navigate to parent directory
                 const pathParts = currentPath.split('/').filter(part => part.length > 0);
-                console.log('Navigating back from', currentPath);
-                console.log('Path parts:', pathParts);
                 
                 // Get the selected folder type to determine the base path structure
                 const selectedFolderType = selectors.selectedFolder();
-                console.log('Selected folder type:', selectedFolderType);
                 
                 // Check if we're going back to the root folder
                 // For standard folders like 'input', 'output', the structure is typically:
@@ -1113,15 +1098,11 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
                 const isBackToRoot = parentPathParts.length > 0 && 
                                    parentPathParts[parentPathParts.length - 1] === selectedFolderType;
                 
-                console.log('Parent path:', parentPath, 'Is back to root:', isBackToRoot);
-                
                 if (isBackToRoot) {
                     // Back to root folder - load the selected folder type (input, output, etc.)
-                    console.log('Returning to root folder type:', selectedFolderType);
                     window.galleryEventHandlers.loadImagesFromFolder(selectedFolderType);
                 } else {
                     // Navigate to parent subfolder
-                    console.log('Navigating to parent subfolder:', parentPath);
                     window.galleryEventHandlers.loadImagesFromFolder('custom', parentPath);
                 }
             } else {
@@ -1849,8 +1830,6 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
     function showMetadata(imagePath) {
         actions.toggleMetadata(true);
         metadata.metadataSection.style.display = 'block';
-        
-        // TODO: Load actual metadata
         
         // Load actual metadata using the real function
         const images = selectors.galleryImages();
@@ -2988,7 +2967,6 @@ async function refreshCurrentTextDisplay() {
         const readResult = await readResponse.json();
         if (readResult.success) {
             textArea.value = readResult.content;
-            console.log('Refreshed text display for current image');
         }
     } catch (error) {
         console.error('Error refreshing current text display:', error);
@@ -3285,27 +3263,14 @@ export function createImageGalleryTab(container) {
     const savedFolder = selectors.selectedFolder();
     if (savedFolder && savedFolder !== 'notes') {
         folderAndControls.folderDropdown.value = savedFolder;
-        console.log('Restored folder selection to:', savedFolder);
     }
 
     // Initialize with default state
-    console.log('Image Gallery tab initialized - Complete implementation');
-    console.log('Features available:');
-    console.log('✅ Folder selection (notes, input, output, custom)');
-    console.log('✅ Image loading with thumbnails');
-    console.log('✅ Search and sort functionality');  
-    console.log('✅ Full image viewer with modal');
-    console.log('✅ Image metadata viewing');
-    console.log('✅ Copy to clipboard');
-    console.log('✅ Context menu and keyboard shortcuts');
-    console.log('✅ Responsive grid layout');
-    console.log('✅ Status messages and error handling');
     
     // Auto-load from saved folder selection
     setTimeout(() => {
         try {
             const savedFolder = selectors.selectedFolder() || 'notes';
-            console.log('Auto-loading images from saved folder:', savedFolder);
             if (window.galleryEventHandlers && window.galleryEventHandlers.loadImagesFromFolder) {
                 window.galleryEventHandlers.loadImagesFromFolder(savedFolder);
             } else {
