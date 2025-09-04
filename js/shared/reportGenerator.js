@@ -103,6 +103,9 @@ export function getBaseModelStyle(baseModel) {
  * @returns {Promise<string>} - HTML table rows
  */
 export async function generateTableRows(models, options = {}) {
+    // First, create a cache for file sizes to avoid duplicate API calls
+    const fileSizeCache = new Map();
+    
     const rows = await Promise.all(models.map(async ({ filePath, hash, info }) => {
         const modelName = (info && info.model && info.model.name) || (info && info.name) || filePath.split('/').pop() || 'Unknown';
         const baseModel = (info && info.baseModel) || (info && info.base_model) || 'Unknown';
@@ -113,10 +116,38 @@ export async function generateTableRows(models, options = {}) {
         const updateAvailable = hasUpdateAvailable(info);
         const lastUsed = (info && (info.lastUsed || info.last_accessed)) || 'Never';
         
-        // Try multiple possible file size fields, fallback to filesystem
-        let fileSizeRaw = info && (info.file_size || info.fileSize || info.size);
+        // Improved file size handling with caching and better fallback logic
+        let fileSizeRaw = null;
+        
+        // Try to get file size from model info first (check multiple possible fields)
+        if (info) {
+            fileSizeRaw = info.file_size || info.fileSize || info.size;
+            
+            // Ensure we have a valid number
+            if (fileSizeRaw != null) {
+                fileSizeRaw = parseInt(fileSizeRaw);
+                if (isNaN(fileSizeRaw) || fileSizeRaw <= 0) {
+                    fileSizeRaw = null;
+                }
+            }
+        }
+        
+        // If no valid size from info, try filesystem (with caching)
         if (!fileSizeRaw && filePath) {
-            fileSizeRaw = await getFileSize(filePath);
+            if (fileSizeCache.has(filePath)) {
+                fileSizeRaw = fileSizeCache.get(filePath);
+            } else {
+                try {
+                    fileSizeRaw = await getFileSize(filePath);
+                    fileSizeCache.set(filePath, fileSizeRaw);
+                    
+                    // Small delay to prevent overwhelming the filesystem
+                    await new Promise(resolve => setTimeout(resolve, 10));
+                } catch (error) {
+                    console.debug(`Failed to get file size for ${filePath}:`, error);
+                    fileSizeCache.set(filePath, null);
+                }
+            }
         }
         
         const fileSize = formatFileSize(fileSizeRaw);
@@ -193,6 +224,52 @@ export async function generateTableRows(models, options = {}) {
 }
 
 /**
+ * Deduplicate models array by file path, merging information
+ * @param {Array} models - Array of model objects
+ * @returns {Array} - Deduplicated array of models
+ */
+function deduplicateModels(models) {
+    const modelMap = new Map();
+    
+    models.forEach(model => {
+        const filePath = model.filePath;
+        if (!filePath) return; // Skip models without file path
+        
+        if (modelMap.has(filePath)) {
+            // Merge with existing entry, preferring non-null/non-undefined values
+            const existing = modelMap.get(filePath);
+            
+            // Merge info objects, preferring values that exist
+            const mergedInfo = { ...existing.info };
+            if (model.info) {
+                Object.keys(model.info).forEach(key => {
+                    if (model.info[key] != null && 
+                        (mergedInfo[key] == null || 
+                         (key.includes('size') && mergedInfo[key] === 0) ||
+                         (key.includes('Size') && mergedInfo[key] === 0))) {
+                        mergedInfo[key] = model.info[key];
+                    }
+                });
+            }
+            
+            // Update the entry with merged data
+            modelMap.set(filePath, {
+                filePath,
+                hash: model.hash || existing.hash,
+                info: mergedInfo
+            });
+            
+            console.debug(`Merged duplicate model entry for: ${filePath}`);
+        } else {
+            // First occurrence, add to map
+            modelMap.set(filePath, { ...model });
+        }
+    });
+    
+    return Array.from(modelMap.values());
+}
+
+/**
  * Generate complete HTML report
  * @param {Object} options - Report generation options
  * @param {Array} options.models - Array of model objects with filePath, hash, and info
@@ -221,9 +298,12 @@ export async function generateHtmlContent(options) {
     let allModels, checkpointModels, loraModels;
     
     if (models && Array.isArray(models)) {
-        // New format: process models array
-        allModels = models;
-        checkpointModels = models.filter(model => {
+        // New format: process models array with deduplication
+        const deduplicatedModels = deduplicateModels(models);
+        console.debug(`Deduplicated ${models.length} models to ${deduplicatedModels.length} unique entries`);
+        
+        allModels = deduplicatedModels;
+        checkpointModels = deduplicatedModels.filter(model => {
             const info = model.info || {};
             const filePath = model.filePath || '';
             const isCheckpoint = info.model_type === 'Checkpoint' || 
@@ -231,7 +311,7 @@ export async function generateHtmlContent(options) {
                                filePath.toLowerCase().includes('.ckpt');
             return isCheckpoint;
         });
-        loraModels = models.filter(model => {
+        loraModels = deduplicatedModels.filter(model => {
             const info = model.info || {};
             const filePath = model.filePath || '';
             const isLora = info.model_type === 'LORA' || 
@@ -239,10 +319,24 @@ export async function generateHtmlContent(options) {
             return isLora;
         });
     } else {
-        // Legacy format: use provided arrays
-        allModels = sortedFiles || [];
-        checkpointModels = checkpoints || [];
-        loraModels = loras || [];
+        // Legacy format: use provided arrays (also deduplicate if they're model objects)
+        if (sortedFiles && sortedFiles.length > 0 && sortedFiles[0].filePath) {
+            allModels = deduplicateModels(sortedFiles);
+        } else {
+            allModels = sortedFiles || [];
+        }
+        
+        if (checkpoints && checkpoints.length > 0 && checkpoints[0].filePath) {
+            checkpointModels = deduplicateModels(checkpoints);
+        } else {
+            checkpointModels = checkpoints || [];
+        }
+        
+        if (loras && loras.length > 0 && loras[0].filePath) {
+            loraModels = deduplicateModels(loras);
+        } else {
+            loraModels = loras || [];
+        }
     }
 
     const currentDateTime = new Date().toLocaleString();
