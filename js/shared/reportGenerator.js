@@ -224,55 +224,152 @@ export async function generateTableRows(models, options = {}) {
 }
 
 /**
- * Deduplicate models array by file path, merging information
- * @param {Array} models - Array of model objects
- * @returns {Array} - Deduplicated array of models
+ * Generate HTML table rows for models with progress tracking and optimizations
+ * @param {Array} models - Array of model objects with filePath, hash, and info
+ * @param {Object} options - Generation options
+ * @param {Function} [options.progressCallback] - Progress callback function
+ * @returns {Promise<string>} - HTML table rows
  */
-function deduplicateModels(models) {
-    const modelMap = new Map();
+export async function generateTableRowsWithProgress(models, options = {}) {
+    const { progressCallback } = options;
     
-    models.forEach(model => {
-        const filePath = model.filePath;
-        if (!filePath) return; // Skip models without file path
+    // First, create a cache for file sizes to avoid duplicate API calls
+    const fileSizeCache = new Map();
+    const batchSize = 50; // Process models in batches to prevent blocking
+    const rows = [];
+    
+    for (let i = 0; i < models.length; i += batchSize) {
+        const batch = models.slice(i, i + batchSize);
+        const batchProgress = ((i / models.length) * 100);
         
-        if (modelMap.has(filePath)) {
-            // Merge with existing entry, preferring non-null/non-undefined values
-            const existing = modelMap.get(filePath);
+        if (progressCallback) {
+            progressCallback(batchProgress, `Processing models ${i + 1}-${Math.min(i + batchSize, models.length)} of ${models.length}...`);
+        }
+        
+        // Process batch in parallel for better performance
+        const batchRows = await Promise.all(batch.map(async ({ filePath, hash, info }) => {
+            const modelName = (info && info.model && info.model.name) || (info && info.name) || filePath.split('/').pop() || 'Unknown';
+            const baseModel = (info && info.baseModel) || (info && info.base_model) || 'Unknown';
+            const modelType = (info && info.model && info.model.type) || 'Unknown';
+            const triggerWords = (info && info.trainedWords && Array.isArray(info.trainedWords)) ? info.trainedWords : [];
+            const modelId = (info && info.modelId) || 'Unknown';
+            const civitaiUrl = getModelUrl(modelId);
+            const updateAvailable = hasUpdateAvailable(info);
+            const lastUsed = (info && (info.lastUsed || info.last_accessed)) || 'Never';
             
-            // Merge info objects, preferring values that exist
-            const mergedInfo = { ...existing.info };
-            if (model.info) {
-                Object.keys(model.info).forEach(key => {
-                    if (model.info[key] != null && 
-                        (mergedInfo[key] == null || 
-                         (key.includes('size') && mergedInfo[key] === 0) ||
-                         (key.includes('Size') && mergedInfo[key] === 0))) {
-                        mergedInfo[key] = model.info[key];
+            // Improved file size handling with caching and better fallback logic
+            let fileSizeRaw = null;
+            
+            // Try to get file size from model info first (check multiple possible fields)
+            if (info) {
+                fileSizeRaw = info.file_size || info.fileSize || info.size;
+                
+                // Ensure we have a valid number
+                if (fileSizeRaw != null) {
+                    fileSizeRaw = parseInt(fileSizeRaw);
+                    if (isNaN(fileSizeRaw) || fileSizeRaw <= 0) {
+                        fileSizeRaw = null;
                     }
-                });
+                }
             }
             
-            // Update the entry with merged data
-            modelMap.set(filePath, {
-                filePath,
-                hash: model.hash || existing.hash,
-                info: mergedInfo
-            });
+            // If no valid size from info, try filesystem (with caching) - but batch these requests
+            if (!fileSizeRaw && filePath && !fileSizeCache.has(filePath)) {
+                try {
+                    fileSizeRaw = await getFileSize(filePath);
+                    fileSizeCache.set(filePath, fileSizeRaw);
+                } catch (error) {
+                    console.debug(`Failed to get file size for ${filePath}:`, error);
+                    fileSizeCache.set(filePath, null);
+                }
+            } else if (fileSizeCache.has(filePath)) {
+                fileSizeRaw = fileSizeCache.get(filePath);
+            }
             
-            console.debug(`Merged duplicate model entry for: ${filePath}`);
-        } else {
-            // First occurrence, add to map
-            modelMap.set(filePath, { ...model });
-        }
-    });
+            const fileSize = formatFileSize(fileSizeRaw);
+            const modelHash = hash || 'Unknown';
+            
+            // Format last used date
+            let formattedLastUsed = lastUsed;
+            if (lastUsed !== 'Never') {
+                try {
+                    const date = new Date(lastUsed);
+                    formattedLastUsed = date.toLocaleString();
+                } catch (e) {
+                    formattedLastUsed = lastUsed;
+                }
+            }
+
+            const nameStyle = getBaseModelStyle(baseModel);
+            const civitaiStyle = getUpdateStyle(info);
+            
+            // Format trigger words with copy functionality
+            const triggerCellContent = formatTriggerWords(triggerWords);
+
+            // Generate sortable attributes for special columns
+            const fileSizeBytes = fileSizeRaw || 0;
+            const lastUsedTimestamp = (lastUsed !== 'Never' && lastUsed !== 'Unknown') ? 
+                new Date(lastUsed).getTime() : 0;
+
+            // Get example image - use cached data or generate direct Civitai URL
+            let exampleImageContent = '<i>No image</i>';
+            
+            // First check if we have cached images in the model info
+            if (info && info.images && Array.isArray(info.images) && info.images.length > 0) {
+                const firstImage = info.images[0];
+                if (firstImage && firstImage.url) {
+                    exampleImageContent = `<img src="${escapeHtml(firstImage.url)}" 
+                                               style="width:150px;height:100px;object-fit:cover;border-radius:4px;cursor:pointer;transition:all 0.3s ease;" 
+                                               alt="Example image" 
+                                               loading="lazy" 
+                                               title="Click to expand/collapse"
+                                               onclick="toggleImageExpand(this)"
+                                               onerror="this.style.display='none'">`;
+                }
+            } else if (hash) {
+                // Auto-load Civitai images with proper sizing
+                const civitaiImageUrl = `https://civitai.com/api/v1/model-versions/by-hash/${encodeURIComponent(hash)}`;
+                exampleImageContent = `<div style="width:150px;height:100px;background:#f5f5f5;display:flex;align-items:center;justify-content:center;border-radius:4px;font-size:11px;color:#999;" 
+                                            data-civitai-hash="${escapeHtml(hash)}" 
+                                            data-civitai-url="${escapeHtml(civitaiImageUrl)}"
+                                            class="auto-load-image">
+                                            <span style="text-align:center;">Loading...</span>
+                                        </div>`;
+            }
+
+            return `
+                <tr>
+                    <td style="text-align:center;${nameStyle}">${escapeHtml(modelName)}</td>
+                    <td style="text-align:center;">${escapeHtml(baseModel)}</td>
+                    <td style="text-align:center;">${escapeHtml(modelType)}</td>
+                    <td style="text-align:center;">${triggerCellContent}</td>
+                    <td class="image-cell">${exampleImageContent}</td>
+                    <td style="text-align:center;${civitaiStyle}">
+                        <a href="${civitaiUrl}" target="_blank">${modelId}</a>
+                        ${updateAvailable ? '<br><br><i>Update available</i>' : ''}
+                    </td>
+                    <td style="text-align:center;">${escapeHtml(modelHash.substring(0, 12))}...</td>
+                    <td style="text-align:center;" sorttable_customkey="${fileSizeBytes}">${escapeHtml(fileSize)}</td>
+                    <td style="text-align:center;" sorttable_customkey="${lastUsedTimestamp}">${formattedLastUsed}</td>
+                    <td style="text-align:left;">${escapeHtml(filePath)}</td>
+                </tr>
+            `;
+        }));
+        
+        rows.push(...batchRows);
+        
+        // Small delay to prevent UI blocking
+        await new Promise(resolve => setTimeout(resolve, 1));
+    }
     
-    return Array.from(modelMap.values());
+    return rows.join('');
 }
 
 /**
- * Generate complete HTML report
+ * Generate complete HTML report with progress tracking and optimizations
  * @param {Object} options - Report generation options
  * @param {Array} options.models - Array of model objects with filePath, hash, and info
+ * @param {Function} [options.progressCallback] - Progress callback function
  * @param {Array} [options.sortedFiles] - Sorted array of file paths (legacy)
  * @param {Array} [options.checkpoints] - Array of checkpoint models (legacy)
  * @param {Array} [options.loras] - Array of LoRA models (legacy)
@@ -282,9 +379,10 @@ function deduplicateModels(models) {
  * @param {string} [options.sortDescription] - Description of sort criteria
  * @returns {Promise<string>} - Complete HTML document
  */
-export async function generateHtmlContent(options) {
+export async function generateHtmlContentWithProgress(options) {
     const {
         models,
+        progressCallback,
         sortedFiles,
         checkpoints,
         loras,
@@ -297,10 +395,18 @@ export async function generateHtmlContent(options) {
     // Process models array if provided (new format)
     let allModels, checkpointModels, loraModels;
     
+    if (progressCallback) {
+        progressCallback(5, 'Preparing model data...');
+    }
+    
     if (models && Array.isArray(models)) {
         // New format: process models array with deduplication
         const deduplicatedModels = deduplicateModels(models);
         console.debug(`Deduplicated ${models.length} models to ${deduplicatedModels.length} unique entries`);
+        
+        if (progressCallback) {
+            progressCallback(10, 'Categorizing models...');
+        }
         
         allModels = deduplicatedModels;
         checkpointModels = deduplicatedModels.filter(model => {
@@ -340,6 +446,10 @@ export async function generateHtmlContent(options) {
     }
 
     const currentDateTime = new Date().toLocaleString();
+
+    if (progressCallback) {
+        progressCallback(15, 'Building HTML structure...');
+    }
 
     let htmlContent = `
 <!DOCTYPE html>
@@ -701,7 +811,18 @@ export async function generateHtmlContent(options) {
 
     // Add LoRAs section if any exist
     if (loraModels.length > 0) {
-        const loraRows = await generateTableRows(loraModels);
+        if (progressCallback) {
+            progressCallback(25, `Processing ${loraModels.length} LoRA models...`);
+        }
+        
+        const loraRows = await generateTableRowsWithProgress(loraModels, {
+            progressCallback: progressCallback ? (progress, message) => {
+                // Map LoRA progress to 25-50% range
+                const adjustedProgress = 25 + (progress * 0.25);
+                progressCallback(adjustedProgress, `LoRAs: ${message}`);
+            } : null
+        });
+        
         htmlContent += `
     <div class="section-header">LoRA Models (${loraModels.length})</div>
     <table class="sortable">
@@ -724,7 +845,18 @@ export async function generateHtmlContent(options) {
 
     // Add Checkpoints section if any exist
     if (checkpointModels.length > 0) {
-        const checkpointRows = await generateTableRows(checkpointModels);
+        if (progressCallback) {
+            progressCallback(50, `Processing ${checkpointModels.length} checkpoint models...`);
+        }
+        
+        const checkpointRows = await generateTableRowsWithProgress(checkpointModels, {
+            progressCallback: progressCallback ? (progress, message) => {
+                // Map Checkpoint progress to 50-80% range
+                const adjustedProgress = 50 + (progress * 0.30);
+                progressCallback(adjustedProgress, `Checkpoints: ${message}`);
+            } : null
+        });
+        
         htmlContent += `
     <div class="section-header">Checkpoint Models (${checkpointModels.length})</div>
     <table class="sortable">
@@ -750,7 +882,88 @@ export async function generateHtmlContent(options) {
 </html>
 `;
 
+    if (progressCallback) {
+        progressCallback(85, 'Finalizing HTML report...');
+    }
+
     return htmlContent;
+}
+
+/**
+ * Deduplicate models array by file path, merging information
+ * @param {Array} models - Array of model objects
+ * @returns {Array} - Deduplicated array of models
+ */
+function deduplicateModels(models) {
+    const modelMap = new Map();
+    
+    models.forEach(model => {
+        const filePath = model.filePath;
+        if (!filePath) return; // Skip models without file path
+        
+        if (modelMap.has(filePath)) {
+            // Merge with existing entry, preferring non-null/non-undefined values
+            const existing = modelMap.get(filePath);
+            
+            // Merge info objects, preferring values that exist
+            const mergedInfo = { ...existing.info };
+            if (model.info) {
+                Object.keys(model.info).forEach(key => {
+                    if (model.info[key] != null && 
+                        (mergedInfo[key] == null || 
+                         (key.includes('size') && mergedInfo[key] === 0) ||
+                         (key.includes('Size') && mergedInfo[key] === 0))) {
+                        mergedInfo[key] = model.info[key];
+                    }
+                });
+            }
+            
+            // Update the entry with merged data
+            modelMap.set(filePath, {
+                filePath,
+                hash: model.hash || existing.hash,
+                info: mergedInfo
+            });
+            
+            console.debug(`Merged duplicate model entry for: ${filePath}`);
+        } else {
+            // First occurrence, add to map
+            modelMap.set(filePath, { ...model });
+        }
+    });
+    
+    return Array.from(modelMap.values());
+}
+
+/**
+ * Generate complete HTML report
+ * @param {Object} options - Report generation options
+ * @param {Array} options.models - Array of model objects with filePath, hash, and info
+ * @param {Function} [options.progressCallback] - Progress callback function
+ * @param {Array} [options.sortedFiles] - Sorted array of file paths (legacy)
+ * @param {Array} [options.checkpoints] - Array of checkpoint models (legacy)
+ * @param {Array} [options.loras] - Array of LoRA models (legacy)
+ * @param {string} [options.filterDescription] - Description of applied filters
+ * @param {string} [options.searchDescription] - Description of search filter
+ * @param {string} [options.lastUsedDescription] - Description of last used filter
+ * @param {string} [options.sortDescription] - Description of sort criteria
+ * @returns {Promise<string>} - Complete HTML document
+ */
+export async function generateHtmlContent(options) {
+    const {
+        models,
+        progressCallback,
+        sortedFiles,
+        checkpoints,
+        loras,
+        filterDescription = '',
+        searchDescription = '',
+        lastUsedDescription = '',
+        sortDescription = ''
+    } = options;
+
+    // Use the optimized version with progress tracking
+    return await generateHtmlContentWithProgress(options);
 }
 
 /**

@@ -43,7 +43,9 @@ import {
     confirmDialog,
     alertDialog,
     promptDialog,
-    createDialog
+    createDialog,
+    createProgressDialog,
+    createInlineProgressBar
 } from "../widgets/dialogManager.js";
 
 import {
@@ -173,7 +175,7 @@ function createModelsActionButtons() {
  * @param {Object} actionButtons - Action buttons object from createModelsActionButtons
  * @param {HTMLElement} infoDisplay - Info display element
  */
-function setupModelsEventHandlers(filterControls, fileSelector, actionButtons, infoDisplay) {
+function setupModelsEventHandlers(filterControls, fileSelector, actionButtons, infoDisplay, progressBar) {
     const { dropdownButton, dropdownMenu, selector } = fileSelector;
     
     // Handle dropdown button click
@@ -253,15 +255,28 @@ function setupModelsEventHandlers(filterControls, fileSelector, actionButtons, i
             );
             
             if (confirmed) {
+                // Show progress for metadata pull
+                progressBar.updateTitle('Pulling Metadata');
+                progressBar.reset();
+                progressBar.show();
+                
+                progressBar.updateProgress(25, 'Connecting to Civitai...');
+                await new Promise(resolve => setTimeout(resolve, 200));
+                
+                progressBar.updateProgress(50, 'Fetching model metadata...');
                 await pullMetadata(filePath, false);
                 
+                progressBar.updateProgress(75, 'Refreshing local cache...');
                 // Refresh the data and update display
                 await updateFileList();
+                
+                progressBar.updateProgress(100, 'Metadata updated successfully!');
                 
                 alertDialog('Metadata pulled successfully!', 'Success');
             }
         } catch (error) {
             console.error('Error pulling metadata:', error);
+            progressBar.hide();
             alertDialog(`Failed to pull metadata: ${error.message}`, 'Error');
         } finally {
             pullButton.disabled = false;
@@ -473,21 +488,30 @@ function setupModelsEventHandlers(filterControls, fileSelector, actionButtons, i
         }
     });
     
-    // Report button handler - generates HTML report
+        // Report button handler - generates HTML report
     reportButton.addEventListener('click', async () => {
         try {
             reportButton.disabled = true;
             reportButton.textContent = 'Generating...';
             reportButton.style.opacity = '0.6';
             
+            // Show progress bar and reset it
+            progressBar.updateTitle('Generating Report');
+            progressBar.reset();
+            progressBar.show();
+            
             const cacheData = selectors.cacheData();
             const hashData = cacheData.hash;
             const infoData = cacheData.info;
             
             if (!hashData || Object.keys(hashData).length === 0) {
-                alertDialog('No cached models found to generate report.', 'No Data');
+                alertDialog('No model data available. Please refresh the cache first.', 'No Data');
                 return;
             }
+            
+            // Update progress
+            progressBar.updateProgress(10, 'Processing model data...');
+            await new Promise(resolve => setTimeout(resolve, 100)); // Brief pause for UI update
             
             // Prepare models array for report generation
             const models = Object.keys(hashData).map(filePath => ({
@@ -496,18 +520,33 @@ function setupModelsEventHandlers(filterControls, fileSelector, actionButtons, i
                 info: infoData[hashData[filePath]] || {}
             }));
             
-            // Generate HTML report with optimized image loading
-            // Cached images are shown immediately, others can be loaded on demand
+            // Update progress
+            progressBar.updateProgress(20, `Processing ${models.length} models...`);
+            await new Promise(resolve => setTimeout(resolve, 100)); // Brief pause for UI update
+            
+            // Generate HTML report with detailed progress updates
             const htmlContent = await generateHtmlContent({
                 models: models,
-                title: 'SageUtils Model Cache Report'
+                title: 'SageUtils Model Cache Report',
+                progressCallback: (progress, message) => {
+                    // Map the HTML generation progress to the 40-95% range
+                    const adjustedProgress = 40 + (progress * 0.55);
+                    progressBar.updateProgress(adjustedProgress, message);
+                }
             });
+            
+            // Final steps
+            progressBar.updateProgress(95, 'Opening report...');
+            await new Promise(resolve => setTimeout(resolve, 100)); // Brief pause for UI update
             
             // Open report in new window
             openHtmlReport(htmlContent, 'SageUtils Model Cache Report');
             
+            progressBar.updateProgress(100, 'Report generated successfully!');
+            
         } catch (error) {
             console.error('Error generating report:', error);
+            progressBar.hide();
             alertDialog(`Failed to generate report: ${error.message}`, 'Error');
         } finally {
             reportButton.disabled = false;
@@ -1076,11 +1115,23 @@ function assembleModelsTabLayout(container, components) {
     });
     container.appendChild(buttonContainer);
 
+    // Add progress bar (initially hidden)
+    const progressBar = createInlineProgressBar({
+        title: 'Operation Progress',
+        initialMessage: 'Ready...'
+    });
+    container.appendChild(progressBar.container);
+
     // Add NSFW checkbox right above model information
     container.appendChild(filterControls.nsfwContainer);
 
     // Add info display
     container.appendChild(infoDisplay);
+    
+    // Store progress bar reference for use in event handlers
+    container._progressBar = progressBar;
+    
+    return progressBar; // Return progress bar for event handler setup
 }
 
 /**
@@ -1095,15 +1146,15 @@ export function createModelsTab(container) {
     const actionButtons = createModelsActionButtons();
     const infoDisplay = createInfoDisplay();
 
-    // Set up event handlers
-    setupModelsEventHandlers(filterControls, fileSelector, actionButtons, infoDisplay);
-
-    // Assemble the layout
-    assembleModelsTabLayout(container, {
+    // Assemble the layout first (this creates the progress bar)
+    const progressBar = assembleModelsTabLayout(container, {
         header,
         filterControls,
         fileSelector,
         actionButtons,
         infoDisplay
     });
+
+    // Set up event handlers after layout assembly (so progress bar exists)
+    setupModelsEventHandlers(filterControls, fileSelector, actionButtons, infoDisplay, progressBar);
 }
