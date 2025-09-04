@@ -70,12 +70,28 @@ class Sage_ConstructMetadataFlexible(ComfyNodeABC):
                       f"Scheduler type: {scheduler}, CFG scale: {cfg}, "
                       f"Seed: {seed}, Size: {size}")
         
+        if negative_string is None:
+            negative_string = ""
+        else:
+            negative_string = negative_string.strip()
+        negative_string_raw = negative_string
+
+        if positive_string is None:
+            positive_string = ""
+        else:
+            positive_string = positive_string.strip()
+        positive_string_raw = positive_string
+
         # Prompt components
         prompt_with_loras = f"{positive_string} {lora_to_prompt(lora_stack)}" if lora_stack else positive_string
-        negative_prompt_line = f"Negative prompt: {negative_string}" if negative_string.strip() else ""
-        
+        if negative_string is None:
+            negative_prompt_line = ""
+        else:
+            negative_prompt_line = f"Negative prompt: {negative_string}"
+
         # Model and version info
         model_hash_str = model_name_and_hash_as_str(model_info)
+        comfyui_version = COMFYUI_VERSION
         version_str = f"Version: {COMFYUI_VERSION}"
         
         # Individual model components for flexible templating
@@ -97,10 +113,6 @@ class Sage_ConstructMetadataFlexible(ComfyNodeABC):
             else:
                 model_name = ""
                 model_hash = ""
-        
-        # Raw values without prefixes for flexible templating
-        negative_string_raw = negative_string if negative_string.strip() else ""
-        comfyui_version = COMFYUI_VERSION
         
         # Resource hashes for lite version
         resource_hashes_json = json.dumps(collect_resource_hashes(model_info, lora_stack))

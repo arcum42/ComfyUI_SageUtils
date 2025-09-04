@@ -174,14 +174,16 @@ class Sage_DualCLIPTextEncodeQwen(ComfyNodeABC):
         pos_node = graph.node("TextEncodeQwenImageEdit", clip=clip, prompt=pos, vae=vae, image=pos_image)
         pos_cond = pos_node.out(0)
         if pos is None and pos_image is None:
+            pos = ""
             pos_zero_node = graph.node("ConditioningZeroOut", conditioning=pos_node.out(0))
             pos_cond = pos_zero_node.out(0)
         neg_node = graph.node("TextEncodeQwenImageEdit", clip=clip, prompt=neg, vae=vae, image=neg_image)
         neg_cond = neg_node.out(0)
         if neg is None and neg_image is None:
+            neg = ""
             neg_zero_node = graph.node("ConditioningZeroOut", conditioning=neg_node.out(0))
             neg_cond = neg_zero_node.out(0)
         return {
-            "result": (pos_cond, neg_cond),
+            "result": (pos_cond, neg_cond, pos or "", neg or ""),
             "expand": graph.finalize()
         }
