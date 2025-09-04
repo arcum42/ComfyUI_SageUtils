@@ -338,7 +338,7 @@ export async function generateHtmlContent(options) {
         table.sortable th:not(.sorttable_nosort) {
             cursor: pointer;
             user-select: none;
-            position: relative;
+            position: sticky;
         }
         table.sortable th:not(.sorttable_nosort):hover {
             background-color: #5555ff;
@@ -352,6 +352,9 @@ export async function generateHtmlContent(options) {
         table.sortable th.sorttable_nosort {
             background-color: #666;
             cursor: default;
+            position: sticky;
+            top: 0;
+            z-index: 10;
         }
         .sort-indicator {
             font-size: 14px;
@@ -665,9 +668,16 @@ export async function generateHtmlContent(options) {
 export function openHtmlReport(htmlContent, title) {
     const newWindow = window.open('', '_blank');
     if (newWindow) {
-        newWindow.document.write(htmlContent);
-        newWindow.document.close();
-        newWindow.document.title = title;
+        // Use modern DOM manipulation instead of deprecated document.write()
+        const blob = new Blob([htmlContent], { type: 'text/html' });
+        const url = URL.createObjectURL(blob);
+        newWindow.location.href = url;
+        
+        // Clean up the blob URL after a delay to ensure the page loads
+        setTimeout(() => {
+            URL.revokeObjectURL(url);
+        }, 1000);
+        
         return true;
     } else {
         alert('Unable to open new window. Please check your popup blocker settings.');
