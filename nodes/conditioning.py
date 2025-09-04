@@ -5,6 +5,9 @@ from __future__ import annotations
 from comfy.comfy_types.node_typing import ComfyNodeABC, InputTypeDict, IO
 import comfy
 
+from comfy_execution.graph_utils import GraphBuilder
+
+
 # Import specific utilities instead of wildcard import
 from ..utils import condition_text, clean_text
 
@@ -129,3 +132,56 @@ class Sage_DualCLIPTextEncodeLumina2(ComfyNodeABC):
             pos or "",
             neg or ""
         )
+
+# Use graph-based conditioning with reference image support, based on the TextEncodeQwenImageEdit node in nodes_qwen.py.
+
+
+class Sage_DualCLIPTextEncodeQwen(ComfyNodeABC):
+    @classmethod
+    def INPUT_TYPES(cls) -> InputTypeDict:
+        return {
+            "required": {
+                "clip": (IO.CLIP, {"defaultInput": True, "tooltip": "The CLIP model used for encoding the text."}),
+                "clean": (IO.BOOLEAN, {"defaultInput": False, "tooltip": "Clean up the text, getting rid of extra spaces, commas, etc."})
+            },
+            "optional": {
+                "vae": (IO.VAE, {"defaultInput": True, "tooltip": "The VAE model used for encoding the reference image."}),
+                "pos": (IO.STRING, {"defaultInput": True, "multiline": True, "dynamicPrompts": True, "tooltip": "The positive prompt's text."}),
+                "pos_image": (IO.IMAGE, {"defaultInput": True, "tooltip": "The reference image used for encoding."}),
+                "neg": (IO.STRING, {"defaultInput": True, "multiline": True, "dynamicPrompts": True, "tooltip": "The negative prompt's text."}),
+                "neg_image": (IO.IMAGE, {"defaultInput": True, "tooltip": "The reference image used for encoding."}),
+            }
+        }
+    RETURN_TYPES = (IO.CONDITIONING, IO.CONDITIONING, IO.STRING, IO.STRING)
+    RETURN_NAMES = ("positive", "negative", "pos_text", "neg_text")
+    OUTPUT_TOOLTIPS = ("A conditioning containing the embedded text used to guide the diffusion model. If neg is not hooked up, it'll be automatically zeroed.",)
+    FUNCTION = "encode"
+    CATEGORY = "Sage Utils/clip"
+    DESCRIPTION = (
+        "Turns a positive and negative prompt into conditionings, and passes through the prompts. "
+        "Saves space over two Qwen Image Edit Text Encoders, and zeros any input not hooked up."
+    )
+
+    def encode(self, clip, clean, vae=None,pos=None, pos_image=None, neg=None, neg_image=None):
+        if isinstance(clip, tuple):
+            clip = clip[0]
+
+        pos = _clean_if_needed(pos, clean)
+        neg = _clean_if_needed(neg, clean)
+
+        graph = GraphBuilder()
+
+        pos_node = graph.node("TextEncodeQwenImageEdit", clip=clip, prompt=pos, vae=vae, image=pos_image)
+        pos_cond = pos_node.out(0)
+        if pos is None and pos_image is None:
+            pos_zero_node = graph.node("ConditioningZeroOut", conditioning=pos_node.out(0))
+            pos_cond = pos_zero_node.out(0)
+        neg_node = graph.node("TextEncodeQwenImageEdit", clip=clip, prompt=neg, vae=vae, image=neg_image)
+        neg_cond = neg_node.out(0)
+        if neg is None and neg_image is None:
+            neg_zero_node = graph.node("ConditioningZeroOut", conditioning=neg_node.out(0))
+            neg_cond = neg_zero_node.out(0)
+        return {
+            "result": (pos_cond, neg_cond),
+            "expand": graph.finalize()
+        }

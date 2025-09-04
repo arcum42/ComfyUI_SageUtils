@@ -93,7 +93,14 @@ class SageSetWildcardText(ComfyNodeABC):
         generator = RandomPromptGenerator(wildcard_manager, seed=seed)
 
         # Replace wildcards in the string
-        str = generator.generate(str)[0]
+        gen_str = generator.generate(str)
+        str = ""
+        if not gen_str:
+            str = ""
+        elif isinstance(gen_str, list):
+            str = gen_str[0] if gen_str else ""
+        else:
+            str = gen_str
 
         # Clean the string if requested
         if clean:
