@@ -23,6 +23,20 @@ ComfyUI custom node providing utilities for model management, prompting, metadat
 **Formatting:** 2-space indent, semicolons, single quotes, ES6 modules  
 **Best Practices:** Arrow functions, array methods, strict equality, template literals
 
+**File Organization:**
+- `js/components/`: UI components and interface elements
+- `js/shared/`: Shared JavaScript code that's not UI components
+- `js/sidebar/`: Sidebar functionality and tab management
+- `js/nodes/`: Node-specific JavaScript implementations
+
+**Code Structure Guidelines:**
+- Prefer multiple shorter files (refactor when approaching 1000 lines)
+- Maximize code reuse through modular design
+- Create generic UI components for reusability across different contexts
+- Maintain clear separation between frontend and backend code
+- Split long functions into smaller, focused functions
+- Use composition over inheritance for component design
+
 ## Node Development
 - Place nodes in appropriate `nodes/*.py` module
 - Each node class needs docstring with purpose/inputs/outputs
