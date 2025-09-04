@@ -28,6 +28,7 @@ ComfyUI custom node providing utilities for model management, prompting, metadat
 - `js/shared/`: Shared JavaScript code that's not UI components
 - `js/sidebar/`: Sidebar functionality and tab management
 - `js/nodes/`: Node-specific JavaScript implementations
+- `js/docs/`: Documentation of nodes in markdown, with the filenames matching the node class names.
 
 **Code Structure Guidelines:**
 - Prefer multiple shorter files (refactor when approaching 1000 lines)

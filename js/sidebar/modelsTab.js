@@ -4,12 +4,7 @@
 
 import { 
     FILTER_OPTIONS, 
-    BUTTON_CONFIGS, 
-    API_ENDPOINTS,
-    FILE_TYPES,
-    getFileType,
-    supportsPreview,
-    getFileTypeIcon
+    BUTTON_CONFIGS
 } from "../shared/config.js";
 
 import { 
@@ -33,8 +28,6 @@ import {
 import { 
     escapeHtml, 
     formatFileSize, 
-    getBaseModelStyle, 
-    generateTableRows, 
     generateHtmlContent, 
     openHtmlReport 
 } from "../shared/reportGenerator.js";
@@ -42,9 +35,7 @@ import {
 import {
     confirmDialog,
     alertDialog,
-    promptDialog,
     createDialog,
-    createProgressDialog,
     createInlineProgressBar
 } from "../components/dialogManager.js";
 

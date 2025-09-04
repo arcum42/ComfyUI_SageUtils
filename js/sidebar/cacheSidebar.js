@@ -10,17 +10,6 @@ import {
     actions
 } from "../shared/stateManager.js";
 
-// Import configuration and error handling
-import { 
-    FILTER_OPTIONS, 
-    BUTTON_CONFIGS, 
-    API_ENDPOINTS,
-    FILE_TYPES,
-    getFileType,
-    supportsPreview,
-    getFileTypeIcon
-} from "../shared/config.js";
-
 import { 
     handleError
 } from "../shared/errorHandler.js";

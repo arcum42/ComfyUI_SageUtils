@@ -4,13 +4,10 @@
  */
 
 import {
-    getCivitaiImageApiUrl,
-    extractImageUrls,
     getModelUrl,
     hasUpdateAvailable,
     getUpdateStyle,
-    formatTriggerWords,
-    NSFW_LEVELS
+    formatTriggerWords
 } from './civitai.js';
 
 /**

@@ -4,12 +4,7 @@
 
 import { api } from "../../../scripts/api.js";
 
-import { 
-    API_ENDPOINTS,
-    FILE_TYPES,
-    GALLERY_CONFIG,
-    getFileType,
-    getFileTypeIcon,
+import {
     getThumbnailSize
 } from "../shared/config.js";
 
@@ -24,22 +19,8 @@ import {
 
 // Import shared UI components
 import {
-    createHeader,
-    createStyledButton,
-    createInfoDisplay
+    createHeader
 } from "../components/cacheUIComponents.js";
-
-// Import image operations
-import {
-    loadImagesFromFolder,
-    generateThumbnail,
-    copyImageToClipboard,
-    loadImageMetadata,
-    loadFullImage,
-    browseFolder,
-    getParentPath,
-    showTemporaryMessage
-} from "../shared/imageUtils.js";
 
 // Import dataset text management
 import {
@@ -55,14 +36,7 @@ import {
 
 // Import gallery components
 import {
-    createThumbnailGrid,
-    createThumbnailItem,
-    createFolderItem,
-    createSortControl,
-    createThumbnailSizeControl,
-    showImageContextMenu,
-    showFullImageModal,
-    showImageMetadata
+    createThumbnailGrid
 } from "../components/galleryComponents.js";
 
 // Import navigation components

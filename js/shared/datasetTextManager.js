@@ -7,8 +7,6 @@
 import { createDatasetNavigationControls } from '../components/navigationComponents.js';
 
 import { selectors } from "./stateManager.js";
-import { loadFullImage } from "./imageUtils.js";
-import { API_ENDPOINTS } from "./config.js";
 
 /**
  * Show the combined image and text editor modal

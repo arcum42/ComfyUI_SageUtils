@@ -5,14 +5,6 @@
 import { api } from "../../../scripts/api.js";
 
 import { 
-    API_ENDPOINTS,
-    FILE_TYPES,
-    getFileType,
-    supportsPreview,
-    getFileTypeIcon
-} from "../shared/config.js";
-
-import { 
     handleError
 } from "../shared/errorHandler.js";
 
@@ -28,9 +20,7 @@ import {
 
 // Import shared UI components
 import {
-    createHeader,
-    createStyledButton,
-    createInfoDisplay
+    createHeader
 } from "../components/cacheUIComponents.js";
 
 /**

@@ -3,13 +3,9 @@
  * Provides search functionality for discovering and downloading models from Civitai
  */
 
-import { 
-    getCivitaiImageApiUrl,
+import {
     getModelUrl,
-    getDownloadUrl,
-    formatTriggerWords,
-    extractImageUrls,
-    NSFW_LEVELS
+    getDownloadUrl
 } from '../shared/civitai.js';
 
 import { 
