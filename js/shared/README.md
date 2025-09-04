@@ -337,7 +337,7 @@ shared/
 **Node Components:**
 
 - Import utility functions for dynamic inputs
-- Use widget display components and markdown rendering
+- Use component display systems and markdown rendering
 - Integrate with error handling for robustness
 
 **Cross-Module Communication:**

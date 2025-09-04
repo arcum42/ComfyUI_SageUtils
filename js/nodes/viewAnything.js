@@ -1,7 +1,7 @@
 // Setup function for Sage_ViewAnything node
 // Displays text or any output in a read-only widget
 
-import { createTextOutputWidget, updateTextWidget } from "../widgets/display.js";
+import { createTextOutputWidget, updateTextWidget } from "../components/display.js";
 
 /**
  * Sets up a node to view text or any output, updating a read-only widget.

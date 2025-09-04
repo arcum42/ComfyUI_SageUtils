@@ -16,7 +16,7 @@ import {
     alertDialog,
     confirmDialog,
     createDialog
-} from '../widgets/dialogManager.js';
+} from '../components/dialogManager.js';
 
 import { escapeHtml, formatFileSize } from '../shared/reportGenerator.js';
 

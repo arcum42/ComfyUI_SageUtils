@@ -27,7 +27,7 @@ import {
     createHeader,
     createStyledButton,
     createInfoDisplay
-} from "../widgets/cacheUIComponents.js";
+} from "../components/cacheUIComponents.js";
 
 // Import image operations
 import {
@@ -53,7 +53,7 @@ import {
     refreshCurrentTextDisplay
 } from "../shared/datasetTextManager.js";
 
-// Import gallery widgets
+// Import gallery components
 import {
     createThumbnailGrid,
     createThumbnailItem,
@@ -63,10 +63,10 @@ import {
     showImageContextMenu,
     showFullImageModal,
     showImageMetadata
-} from "../widgets/galleryComponents.js";
+} from "../components/galleryComponents.js";
 
 // Import navigation components
-import { createDatasetNavigationControls } from "../widgets/navigationComponents.js";
+import { createDatasetNavigationControls } from "../components/navigationComponents.js";
 
 /**
  * Creates the Image Gallery tab header section
@@ -384,7 +384,7 @@ function createWrappedThumbnailGrid() {
         <span>Images <span id="image-count" style="color: #999; font-weight: normal;"></span></span>
     `;
     
-    // Use imported thumbnail grid widget
+    // Use imported thumbnail grid component
     const grid = createThumbnailGrid();
     grid.gridContainer.style.cssText += `
         border: 1px solid #555;
@@ -2136,7 +2136,7 @@ window.galleryTextManager = galleryTextManager;
 
 // Note: Dataset text management functions are now implemented in js/shared/datasetTextManager.js
 // Image utility functions are now implemented in js/shared/imageUtils.js
-// UI widget functions are now implemented in js/widgets/galleryComponents.js
+// UI component functions are now implemented in js/components/galleryComponents.js
 
 export function createImageGalleryTab(container) {
     // Create all components

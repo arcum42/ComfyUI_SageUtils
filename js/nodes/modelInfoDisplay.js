@@ -1,7 +1,7 @@
 // Setup function for Sage_ModelInfoDisplay and Sage_LoraStackInfoDisplay nodes
 // Displays formatted model/LoRA information as markdown with image support
 
-import { createTextOutputWidget, setupMarkdownDisplay } from "../widgets/display.js";
+import { createTextOutputWidget, setupMarkdownDisplay } from "../components/display.js";
 
 /**
  * Sets up the Sage_ModelInfoDisplay node to display markdown-formatted model information.

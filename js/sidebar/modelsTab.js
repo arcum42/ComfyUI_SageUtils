@@ -28,7 +28,7 @@ import {
 
 import { 
     createDetailedInfoDisplay 
-} from "../widgets/infoDisplay.js";
+} from "../components/infoDisplay.js";
 
 import { 
     escapeHtml, 
@@ -46,7 +46,7 @@ import {
     createDialog,
     createProgressDialog,
     createInlineProgressBar
-} from "../widgets/dialogManager.js";
+} from "../components/dialogManager.js";
 
 import {
     pullMetadata,
@@ -64,7 +64,7 @@ import {
     createStyledButton,
     addDropdownStyles as addCacheDropdownStyles,
     createInfoDisplay
-} from "../widgets/cacheUIComponents.js";
+} from "../components/cacheUIComponents.js";
 
 /**
  * Creates the Models tab header section

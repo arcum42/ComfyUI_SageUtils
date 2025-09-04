@@ -2,7 +2,7 @@
 // Handles file selection and preview functionality for notes with markdown, image, and video support
 
 import { api } from "../../../../scripts/api.js";
-import { createTextOutputWidget, setupMarkdownDisplay, setupImageDisplay, setupVideoDisplay } from "../widgets/display.js";
+import { createTextOutputWidget, setupMarkdownDisplay, setupImageDisplay, setupVideoDisplay } from "../components/display.js";
 import { renderMarkdown } from "../shared/markdown.js";
 
 /**

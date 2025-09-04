@@ -41,7 +41,7 @@ import {
 import {
     createMainContainer,
     createTabButton
-} from "../widgets/cacheUIComponents.js";
+} from "../components/cacheUIComponents.js";
 
 /**
  * Creates the tab header with Models, Notes, Search, and Gallery tabs

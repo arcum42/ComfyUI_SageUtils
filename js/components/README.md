@@ -1,16 +1,18 @@
-# js/widgets Directory Documentation
+# js/components Directory Documentation
 
-This directory contains widget utility functions that provide specialized display and interaction capabilities for ComfyUI custom nodes. The widgets system enables rich content display including text, markdown, images, and videos within the node interface.
+This directory contains component utility functions that provide specialized display and interaction capabilities for ComfyUI custom nodes. The components system enables rich content display including text, markdown, images, and videos within the node interface.
 
 ## Architecture Overview
 
-The widgets system provides a standardized approach to creating and managing display widgets that:
+The components system provides a standardized approach to creating and managing display components that:
 
 1. Extend ComfyUI's native widget system with custom functionality
 2. Support multiple content types with appropriate rendering
 3. Provide overlay-based display for rich content presentation
-4. Handle content updates and dynamic display switching
-5. Integrate seamlessly with the node graph interface
+4. Handle user interaction and content management
+5. Maintain consistent styling across the interface
+
+## Core Components
 
 The widgets are designed to work as overlays on top of standard ComfyUI text widgets, preserving compatibility while enhancing functionality.
 
@@ -181,7 +183,7 @@ The widgets use an overlay approach that provides several advantages:
 Widgets are typically used in node setup functions:
 
 ```javascript
-import { createTextOutputWidget, setupMarkdownDisplay } from "../widgets/display.js";
+import { createTextOutputWidget, setupMarkdownDisplay } from "../components/display.js";
 
 // Create base widget
 const widget = createTextOutputWidget(nodeData, app, "content");

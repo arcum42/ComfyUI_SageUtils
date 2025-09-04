@@ -1,5 +1,5 @@
 /**
- * Gallery Widgets Module
+ * Gallery Components Module
  * Reusable UI components specifically for the image gallery
  */
 
@@ -9,7 +9,7 @@ import { generateThumbnail, loadFullImage, copyImageToClipboard } from "../share
 import { handleDatasetText } from "../shared/datasetTextManager.js";
 
 /**
- * Create a thumbnail grid widget
+ * Create a thumbnail grid component
  * @returns {Object} Grid widget with container and utility functions
  */
 export function createThumbnailGrid() {

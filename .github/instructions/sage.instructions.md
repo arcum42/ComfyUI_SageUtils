@@ -53,7 +53,7 @@ ComfyUI custom node providing utilities for model management, prompting, metadat
   - `js/` - Main JavaScript overview and directory structure
   - `js/shared/` - Shared utilities and infrastructure documentation
   - `js/nodes/` - Node implementation system documentation
-  - `js/widgets/` - Widget display system documentation
+  - `js/components/` - Component display system documentation
   - `js/sidebar/` - Sidebar functionality documentation
 - Update file listings, function descriptions, and architectural notes to reflect changes
 - Remove references to deleted files and add documentation for new files
