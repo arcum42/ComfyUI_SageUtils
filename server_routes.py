@@ -1993,6 +1993,173 @@ try:
                     status=500
                 )
 
+        @routes.get('/sage_utils/wildcard_path')
+        async def get_wildcard_path(request):
+            """
+            Gets the wildcard directory path.
+            Returns: { "success": true, "path": "/path/to/wildcards" }
+            """
+            try:
+                from .utils import sage_wildcard_path
+                return web.json_response({
+                    "success": True,
+                    "path": str(sage_wildcard_path)
+                })
+            except Exception as e:
+                return web.json_response(
+                    {"success": False, "error": f"Failed to get wildcard path: {str(e)}"}, 
+                    status=500
+                )
+
+        @routes.get('/sage_utils/wildcard_files')
+        async def list_wildcard_files(request):
+            """
+            Lists all wildcard files in the wildcard directory.
+            Returns: { "success": true, "files": [{"name": "file.txt", "path": "/full/path"}] }
+            """
+            try:
+                from .utils import sage_wildcard_path
+                import pathlib
+                
+                wildcard_path = pathlib.Path(sage_wildcard_path)
+                
+                if not wildcard_path.exists():
+                    return web.json_response({
+                        "success": True,
+                        "files": [],
+                        "message": "Wildcard directory does not exist"
+                    })
+                
+                files = []
+                for file_path in wildcard_path.rglob('*.txt'):
+                    if file_path.is_file():
+                        # Get relative path from wildcard directory
+                        rel_path = file_path.relative_to(wildcard_path)
+                        files.append({
+                            "name": str(rel_path),
+                            "full_path": str(file_path),
+                            "size": file_path.stat().st_size
+                        })
+                
+                # Sort files by name
+                files.sort(key=lambda x: x['name'])
+                
+                return web.json_response({
+                    "success": True,
+                    "files": files,
+                    "total_files": len(files)
+                })
+                
+            except Exception as e:
+                return web.json_response(
+                    {"success": False, "error": f"Failed to list wildcard files: {str(e)}"}, 
+                    status=500
+                )
+
+        @routes.post('/sage_utils/generate_wildcard')
+        async def generate_wildcard_prompt(request):
+            """
+            Generates a prompt using the wildcard system.
+            Body: { "prompt": "text with __wildcards__", "seed": 0 }
+            Returns: { "success": true, "result": "generated text" }
+            """
+            try:
+                from .utils import sage_wildcard_path
+                from dynamicprompts.generators import RandomPromptGenerator
+                from dynamicprompts.wildcards.wildcard_manager import WildcardManager
+                
+                data = await request.json()
+                prompt = data.get('prompt', '')
+                seed = data.get('seed', 0)
+                
+                if not prompt:
+                    return web.json_response(
+                        {"success": False, "error": "Prompt is required"}, 
+                        status=400
+                    )
+                
+                # Initialize the wildcard manager
+                wildcard_manager = WildcardManager(sage_wildcard_path)
+                
+                # Generate a random prompt using the wildcard manager
+                generator = RandomPromptGenerator(wildcard_manager, seed=seed)
+                
+                # Replace wildcards in the string
+                gen_result = generator.generate(prompt)
+                
+                # Handle the result (same logic as the Python node)
+                result = ""
+                if not gen_result:
+                    result = ""
+                elif isinstance(gen_result, list):
+                    result = gen_result[0] if gen_result else ""
+                else:
+                    result = gen_result
+                
+                return web.json_response({
+                    "success": True,
+                    "result": result,
+                    "original_prompt": prompt,
+                    "seed": seed
+                })
+                
+            except Exception as e:
+                return web.json_response(
+                    {"success": False, "error": f"Failed to generate wildcard prompt: {str(e)}"}, 
+                    status=500
+                )
+
+        @routes.get('/sage_utils/wildcard_file/{filename:.*}')
+        async def get_wildcard_file_content(request):
+            """
+            Gets the content of a specific wildcard file.
+            Returns: { "success": true, "content": "file content", "filename": "file.txt" }
+            """
+            try:
+                from .utils import sage_wildcard_path
+                import pathlib
+                
+                filename = request.match_info.get('filename', '')
+                if not filename:
+                    return web.json_response(
+                        {"success": False, "error": "Filename is required"}, 
+                        status=400
+                    )
+                
+                # Construct safe path within wildcard directory
+                wildcard_path = pathlib.Path(sage_wildcard_path)
+                file_path = (wildcard_path / filename).resolve()
+                
+                # Security check: ensure file is within wildcard directory
+                if not str(file_path).startswith(str(wildcard_path.resolve())):
+                    return web.json_response(
+                        {"success": False, "error": "Access denied: file outside wildcard directory"}, 
+                        status=403
+                    )
+                
+                if not file_path.exists() or not file_path.is_file():
+                    return web.json_response(
+                        {"success": False, "error": f"File not found: {filename}"}, 
+                        status=404
+                    )
+                
+                # Read file content
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    content = f.read()
+                
+                return web.json_response({
+                    "success": True,
+                    "content": content,
+                    "filename": filename,
+                    "size": len(content)
+                })
+                
+            except Exception as e:
+                return web.json_response(
+                    {"success": False, "error": f"Failed to read wildcard file: {str(e)}"}, 
+                    status=500
+                )
+
         print("SageUtils custom routes loaded successfully!")
         record_initialization_milestone("ROUTES_REGISTERED", server_timer)
         

@@ -97,13 +97,15 @@ export function getBaseModelStyle(baseModel) {
  * Generate HTML table rows for models
  * @param {Array} models - Array of model objects with filePath, hash, and info
  * @param {Object} options - Generation options
+ * @param {Array} [options.groupInfo] - Array of grouping information for each model
  * @returns {Promise<string>} - HTML table rows
  */
 export async function generateTableRows(models, options = {}) {
     // First, create a cache for file sizes to avoid duplicate API calls
     const fileSizeCache = new Map();
+    const { groupInfo = [] } = options;
     
-    const rows = await Promise.all(models.map(async ({ filePath, hash, info }) => {
+    const rows = await Promise.all(models.map(async ({ filePath, hash, info }, index) => {
         const modelName = (info && info.model && info.model.name) || (info && info.name) || filePath.split('/').pop() || 'Unknown';
         const baseModel = (info && info.baseModel) || (info && info.base_model) || 'Unknown';
         const modelType = (info && info.model && info.model.type) || 'Unknown';
@@ -198,8 +200,24 @@ export async function generateTableRows(models, options = {}) {
                                     </div>`;
         }
 
+        // Determine grouping CSS classes
+        const groupData = groupInfo[index] || {};
+        const groupClasses = [];
+        
+        if (groupData.isGroupFirst) {
+            groupClasses.push('model-group-first');
+        }
+        if (groupData.isGroupMember) {
+            groupClasses.push('model-group');
+        }
+        if (groupData.isGroupLast) {
+            groupClasses.push('model-group-last');
+        }
+        
+        const groupClassAttribute = groupClasses.length > 0 ? ` class="${groupClasses.join(' ')}"` : '';
+
         return `
-            <tr>
+            <tr${groupClassAttribute}>
                 <td style="text-align:center;${nameStyle}">${escapeHtml(modelName)}</td>
                 <td style="text-align:center;">${escapeHtml(baseModel)}</td>
                 <td style="text-align:center;">${escapeHtml(modelType)}</td>
@@ -225,10 +243,11 @@ export async function generateTableRows(models, options = {}) {
  * @param {Array} models - Array of model objects with filePath, hash, and info
  * @param {Object} options - Generation options
  * @param {Function} [options.progressCallback] - Progress callback function
+ * @param {Array} [options.groupInfo] - Array of grouping information for each model
  * @returns {Promise<string>} - HTML table rows
  */
 export async function generateTableRowsWithProgress(models, options = {}) {
-    const { progressCallback } = options;
+    const { progressCallback, groupInfo = [] } = options;
     
     // First, create a cache for file sizes to avoid duplicate API calls
     const fileSizeCache = new Map();
@@ -244,7 +263,8 @@ export async function generateTableRowsWithProgress(models, options = {}) {
         }
         
         // Process batch in parallel for better performance
-        const batchRows = await Promise.all(batch.map(async ({ filePath, hash, info }) => {
+        const batchRows = await Promise.all(batch.map(async ({ filePath, hash, info }, batchIndex) => {
+            const actualIndex = i + batchIndex; // Calculate the actual index in the full array
             const modelName = (info && info.model && info.model.name) || (info && info.name) || filePath.split('/').pop() || 'Unknown';
             const baseModel = (info && info.baseModel) || (info && info.base_model) || 'Unknown';
             const modelType = (info && info.model && info.model.type) || 'Unknown';
@@ -334,8 +354,24 @@ export async function generateTableRowsWithProgress(models, options = {}) {
                                         </div>`;
             }
 
+            // Determine grouping CSS classes
+            const groupData = groupInfo[actualIndex] || {};
+            const groupClasses = [];
+            
+            if (groupData.isGroupFirst) {
+                groupClasses.push('model-group-first');
+            }
+            if (groupData.isGroupMember) {
+                groupClasses.push('model-group');
+            }
+            if (groupData.isGroupLast) {
+                groupClasses.push('model-group-last');
+            }
+            
+            const groupClassAttribute = groupClasses.length > 0 ? ` class="${groupClasses.join(' ')}"` : '';
+
             return `
-                <tr>
+                <tr${groupClassAttribute}>
                     <td style="text-align:center;${nameStyle}">${escapeHtml(modelName)}</td>
                     <td style="text-align:center;">${escapeHtml(baseModel)}</td>
                     <td style="text-align:center;">${escapeHtml(modelType)}</td>
@@ -363,6 +399,191 @@ export async function generateTableRowsWithProgress(models, options = {}) {
 }
 
 /**
+ * Sort models array based on the specified criteria
+ * @param {Array} models - Array of model objects
+ * @param {string} sortBy - Sort criteria
+ * @returns {Array} - Sorted array of models
+ */
+function sortModels(models, sortBy) {
+    return models.sort((a, b) => {
+        const infoA = a.info || {};
+        const infoB = b.info || {};
+        
+        switch (sortBy) {
+            case 'name': {
+                const nameA = (infoA.model && infoA.model.name) || infoA.name || a.filePath.split('/').pop() || '';
+                const nameB = (infoB.model && infoB.model.name) || infoB.name || b.filePath.split('/').pop() || '';
+                return nameA.localeCompare(nameB);
+            }
+            case 'name-desc': {
+                const nameA = (infoA.model && infoA.model.name) || infoA.name || a.filePath.split('/').pop() || '';
+                const nameB = (infoB.model && infoB.model.name) || infoB.name || b.filePath.split('/').pop() || '';
+                return nameB.localeCompare(nameA);
+            }
+            case 'lastused': {
+                const lastUsedA = (infoA.lastUsed || infoA.last_accessed) ? new Date(infoA.lastUsed || infoA.last_accessed) : new Date(0);
+                const lastUsedB = (infoB.lastUsed || infoB.last_accessed) ? new Date(infoB.lastUsed || infoB.last_accessed) : new Date(0);
+                return lastUsedB - lastUsedA; // Recent first
+            }
+            case 'lastused-desc': {
+                const lastUsedA = (infoA.lastUsed || infoA.last_accessed) ? new Date(infoA.lastUsed || infoA.last_accessed) : new Date(0);
+                const lastUsedB = (infoB.lastUsed || infoB.last_accessed) ? new Date(infoB.lastUsed || infoB.last_accessed) : new Date(0);
+                return lastUsedA - lastUsedB; // Oldest first
+            }
+            case 'size': {
+                const sizeA = infoA.file_size || 0;
+                const sizeB = infoB.file_size || 0;
+                return sizeA - sizeB; // Small to large
+            }
+            case 'size-desc': {
+                const sizeA = infoA.file_size || 0;
+                const sizeB = infoB.file_size || 0;
+                return sizeB - sizeA; // Large to small
+            }
+            case 'type': {
+                const typeA = (infoA.model && infoA.model.type) || infoA.model_type || 'ZZZ';
+                const typeB = (infoB.model && infoB.model.type) || infoB.model_type || 'ZZZ';
+                if (typeA !== typeB) {
+                    return typeA.localeCompare(typeB);
+                }
+                // Secondary sort by name
+                const nameA = (infoA.model && infoA.model.name) || infoA.name || a.filePath.split('/').pop() || '';
+                const nameB = (infoB.model && infoB.model.name) || infoB.name || b.filePath.split('/').pop() || '';
+                return nameA.localeCompare(nameB);
+            }
+            default: {
+                // Default to name sorting
+                const nameA = (infoA.model && infoA.model.name) || infoA.name || a.filePath.split('/').pop() || '';
+                const nameB = (infoB.model && infoB.model.name) || infoB.name || b.filePath.split('/').pop() || '';
+                return nameA.localeCompare(nameB);
+            }
+        }
+    });
+}
+
+/**
+ * Group models by Civitai ID, keeping different versions of the same model together
+ * @param {Array} models - Array of model objects
+ * @param {string} sortBy - Sort criteria to apply within groups
+ * @returns {Array} - Array of models grouped and sorted
+ */
+function groupModelsByCivitaiId(models, sortBy) {
+    // First, group models by Civitai ID
+    const groupedModels = new Map();
+    const ungroupedModels = [];
+    
+    models.forEach(model => {
+        const modelId = model.info && (model.info.modelId || model.info.model_id);
+        
+        if (modelId && modelId !== 'Unknown' && modelId !== null) {
+            if (!groupedModels.has(modelId)) {
+                groupedModels.set(modelId, []);
+            }
+            groupedModels.get(modelId).push(model);
+        } else {
+            ungroupedModels.push(model);
+        }
+    });
+    
+    // Sort models within each group
+    for (const [modelId, group] of groupedModels) {
+        groupedModels.set(modelId, sortModels(group, sortBy));
+    }
+    
+    // Sort ungrouped models
+    const sortedUngrouped = sortModels(ungroupedModels, sortBy);
+    
+    // Combine grouped and ungrouped models
+    // First, get all groups and sort them by the first model in each group
+    const sortedGroups = Array.from(groupedModels.entries()).sort((a, b) => {
+        const firstModelA = a[1][0];
+        const firstModelB = b[1][0];
+        
+        // Use the same sorting logic as the main sort
+        const tempModels = [firstModelA, firstModelB];
+        const sorted = sortModels(tempModels, sortBy);
+        return sorted[0] === firstModelA ? -1 : 1;
+    });
+    
+    // Flatten the result: grouped models first, then ungrouped models
+    const result = [];
+    
+    sortedGroups.forEach(([modelId, group]) => {
+        result.push(...group);
+    });
+    
+    result.push(...sortedUngrouped);
+    
+    return result;
+}
+
+/**
+ * Generate grouping information for models based on Civitai ID
+ * @param {Array} models - Array of models (already grouped and sorted)
+ * @returns {Array} - Array of group info objects for each model
+ */
+function generateGroupInfo(models) {
+    const groupInfo = [];
+    let currentModelId = null;
+    let groupStartIndex = -1;
+    let groupSize = 0;
+
+    models.forEach((model, index) => {
+        const modelId = model.info && (model.info.modelId || model.info.model_id);
+        const effectiveModelId = (modelId && modelId !== 'Unknown' && modelId !== null) ? modelId : null;
+        
+        if (effectiveModelId && effectiveModelId === currentModelId) {
+            // Continue current group
+            groupSize++;
+            groupInfo[index] = {
+                isGroupMember: true,
+                isGroupFirst: false,
+                isGroupLast: false,
+                groupSize: groupSize,
+                modelId: effectiveModelId
+            };
+        } else {
+            // End previous group if it had more than one model
+            if (groupSize > 1 && groupStartIndex !== -1) {
+                groupInfo[groupStartIndex].isGroupFirst = true;
+                groupInfo[index - 1].isGroupLast = true;
+                
+                // Mark all models in the group
+                for (let i = groupStartIndex; i < index; i++) {
+                    groupInfo[i].isGroupMember = true;
+                }
+            }
+            
+            // Start new group or single model
+            currentModelId = effectiveModelId;
+            groupStartIndex = effectiveModelId ? index : -1;
+            groupSize = effectiveModelId ? 1 : 0;
+            
+            groupInfo[index] = {
+                isGroupMember: effectiveModelId ? true : false,
+                isGroupFirst: false,
+                isGroupLast: false,
+                groupSize: groupSize,
+                modelId: effectiveModelId
+            };
+        }
+    });
+    
+    // Handle the last group if needed
+    if (groupSize > 1 && groupStartIndex !== -1) {
+        groupInfo[groupStartIndex].isGroupFirst = true;
+        groupInfo[models.length - 1].isGroupLast = true;
+        
+        // Mark all models in the final group
+        for (let i = groupStartIndex; i < models.length; i++) {
+            groupInfo[i].isGroupMember = true;
+        }
+    }
+    
+    return groupInfo;
+}
+
+/**
  * Generate complete HTML report with progress tracking and optimizations
  * @param {Object} options - Report generation options
  * @param {Array} options.models - Array of model objects with filePath, hash, and info
@@ -374,6 +595,7 @@ export async function generateTableRowsWithProgress(models, options = {}) {
  * @param {string} [options.searchDescription] - Description of search filter
  * @param {string} [options.lastUsedDescription] - Description of last used filter
  * @param {string} [options.sortDescription] - Description of sort criteria
+ * @param {string} [options.sortBy] - Current sort selection from model tab
  * @returns {Promise<string>} - Complete HTML document
  */
 export async function generateHtmlContentWithProgress(options) {
@@ -386,7 +608,8 @@ export async function generateHtmlContentWithProgress(options) {
         filterDescription = '',
         searchDescription = '',
         lastUsedDescription = '',
-        sortDescription = ''
+        sortDescription = '',
+        sortBy = 'name'
     } = options;
 
     // Process models array if provided (new format)
@@ -441,6 +664,16 @@ export async function generateHtmlContentWithProgress(options) {
             loraModels = loras || [];
         }
     }
+
+    // Apply sorting and grouping based on the sort criteria from the models tab
+    if (progressCallback) {
+        progressCallback(12, 'Sorting and grouping models...');
+    }
+    
+    // Group models by Civitai ID and apply sorting within groups
+    allModels = groupModelsByCivitaiId(allModels, sortBy);
+    checkpointModels = groupModelsByCivitaiId(checkpointModels, sortBy);
+    loraModels = groupModelsByCivitaiId(loraModels, sortBy);
 
     const currentDateTime = new Date().toLocaleString();
 
@@ -560,6 +793,22 @@ export async function generateHtmlContentWithProgress(options) {
         .sort-indicator {
             font-size: 14px;
             margin-left: 5px;
+        }
+        /* Model grouping styles */
+        .model-group-first {
+            border-top: 3px solid #4CAF50 !important;
+        }
+        .model-group {
+            background-color: rgba(76, 175, 80, 0.05);
+        }
+        .model-group-last {
+            border-bottom: 3px solid #4CAF50 !important;
+        }
+        .civitai-group-header {
+            background-color: #e8f5e8;
+            font-weight: bold;
+            color: #2e7d2e;
+            border: 2px solid #4CAF50 !important;
         }
     </style>
     <script>
@@ -812,7 +1061,11 @@ export async function generateHtmlContentWithProgress(options) {
             progressCallback(25, `Processing ${loraModels.length} LoRA models...`);
         }
         
+        // Generate grouping information for LoRA models
+        const loraGroupInfo = generateGroupInfo(loraModels);
+        
         const loraRows = await generateTableRowsWithProgress(loraModels, {
+            groupInfo: loraGroupInfo,
             progressCallback: progressCallback ? (progress, message) => {
                 // Map LoRA progress to 25-50% range
                 const adjustedProgress = 25 + (progress * 0.25);
@@ -846,7 +1099,11 @@ export async function generateHtmlContentWithProgress(options) {
             progressCallback(50, `Processing ${checkpointModels.length} checkpoint models...`);
         }
         
+        // Generate grouping information for Checkpoint models
+        const checkpointGroupInfo = generateGroupInfo(checkpointModels);
+        
         const checkpointRows = await generateTableRowsWithProgress(checkpointModels, {
+            groupInfo: checkpointGroupInfo,
             progressCallback: progressCallback ? (progress, message) => {
                 // Map Checkpoint progress to 50-80% range
                 const adjustedProgress = 50 + (progress * 0.30);
@@ -944,6 +1201,7 @@ function deduplicateModels(models) {
  * @param {string} [options.searchDescription] - Description of search filter
  * @param {string} [options.lastUsedDescription] - Description of last used filter
  * @param {string} [options.sortDescription] - Description of sort criteria
+ * @param {string} [options.sortBy] - Current sort selection from model tab
  * @returns {Promise<string>} - Complete HTML document
  */
 export async function generateHtmlContent(options) {
@@ -956,7 +1214,8 @@ export async function generateHtmlContent(options) {
         filterDescription = '',
         searchDescription = '',
         lastUsedDescription = '',
-        sortDescription = ''
+        sortDescription = '',
+        sortBy = 'name'
     } = options;
 
     // Use the optimized version with progress tracking
