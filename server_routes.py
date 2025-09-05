@@ -1579,6 +1579,126 @@ try:
                     status=500
                 )
 
+        @routes.post('/sage_utils/browse_directory_tree')
+        async def browse_directory_tree(request):
+            """
+            Browse directory tree for folder selection.
+            Body: { "path": "/current/path", "depth": 2 }
+            Returns: { "success": true, "current_path": "/path", "directories": [...] }
+            """
+            try:
+                import pathlib
+                import os
+                import pwd
+                import platform
+                
+                data = await request.json()
+                current_path_str = data.get('path', os.path.expanduser('~'))
+                max_depth = data.get('depth', 2)  # Limit depth to prevent performance issues
+                
+                # Handle Windows vs Unix paths properly
+                if platform.system() == 'Windows':
+                    current_path = pathlib.WindowsPath(current_path_str).resolve()
+                    restricted_paths = {
+                        'C:\\Windows\\System32', 'C:\\Windows\\SysWOW64', 
+                        'C:\\$Recycle.Bin', 'C:\\System Volume Information'
+                    }
+                else:
+                    current_path = pathlib.PosixPath(current_path_str).resolve()
+                    restricted_paths = {
+                        '/proc', '/sys', '/dev', '/run', '/tmp/.X11-unix'
+                    }
+                
+                # Check if current path is in restricted areas
+                path_str = str(current_path)
+                is_restricted = any(path_str.startswith(restricted) for restricted in restricted_paths)
+                
+                if is_restricted:
+                    # If trying to access restricted path, default to home directory
+                    current_path = pathlib.Path.home()
+                
+                # Ensure the path exists and is a directory
+                if not current_path.exists():
+                    # If path doesn't exist, try going to parent or default to home
+                    while current_path != current_path.parent and not current_path.exists():
+                        current_path = current_path.parent
+                    if not current_path.exists():
+                        current_path = pathlib.Path.home()
+                        
+                if not current_path.is_dir():
+                    current_path = current_path.parent
+                
+                directories = []
+                
+                # Add parent directory (..) if not at root
+                if current_path != current_path.parent:
+                    directories.append({
+                        "name": "..",
+                        "path": str(current_path.parent),
+                        "type": "parent",
+                        "accessible": True,
+                        "image_count": 0
+                    })
+                
+                # Get subdirectories
+                try:
+                    for item in sorted(current_path.iterdir(), key=lambda p: p.name.lower()):
+                        if item.is_dir():
+                            try:
+                                # Check if we can access the directory
+                                accessible = True
+                                image_count = 0
+                                
+                                try:
+                                    # Quick count of image files
+                                    image_extensions = {
+                                        '.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.svg',
+                                        '.tiff', '.tif', '.ico', '.heic', '.heif', '.avif'
+                                    }
+                                    
+                                    for file_item in item.iterdir():
+                                        if file_item.is_file() and file_item.suffix.lower() in image_extensions:
+                                            image_count += 1
+                                            if image_count >= 10:  # Stop counting at 10 for performance
+                                                break
+                                                
+                                except (PermissionError, OSError):
+                                    accessible = False
+                                    image_count = -1
+                                
+                                directories.append({
+                                    "name": item.name,
+                                    "path": str(item),
+                                    "type": "directory",
+                                    "accessible": accessible,
+                                    "image_count": image_count if image_count >= 0 else "Unknown"
+                                })
+                                
+                            except (OSError, PermissionError):
+                                # Skip directories we can't access
+                                continue
+                                
+                except PermissionError:
+                    # If we can't read the current directory, go up one level
+                    return web.json_response({
+                        "success": False,
+                        "error": f"Permission denied accessing directory: {current_path}",
+                        "suggested_path": str(current_path.parent)
+                    })
+                
+                return web.json_response({
+                    "success": True,
+                    "current_path": str(current_path),
+                    "directories": directories,
+                    "total_directories": len([d for d in directories if d["type"] == "directory"])
+                })
+                
+            except Exception as e:
+                return web.json_response(
+                    {"success": False, "error": f"Failed to browse directory tree: {str(e)}"}, 
+                    status=500
+                )
+
         @routes.post('/sage_utils/copy_image')
         async def copy_image_to_clipboard(request):
             """

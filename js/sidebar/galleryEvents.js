@@ -12,6 +12,535 @@ import { loadImageMetadata, formatMetadataForDisplay } from '../shared/galleryAp
 import { loadFullImage, openImageInNewTab as openImageInNewTabUtil, cleanupImageUrl } from '../shared/imageLoader.js';
 
 /**
+ * Shows a native OS folder picker dialog
+ * @returns {Promise<string|null>} Selected folder path or null if cancelled
+ */
+async function showNativeFolderPicker() {
+    return new Promise((resolve) => {
+        try {
+            // Create a modern folder browser dialog
+            showFolderBrowserDialog(resolve);
+        } catch (error) {
+            console.log('Folder browser error:', error);
+            resolve(null);
+        }
+    });
+}
+
+/**
+ * Creates and shows a modern folder browser dialog
+ * @param {Function} callback - Callback function to call with selected path
+ */
+async function showFolderBrowserDialog(callback) {
+    // Create modal overlay
+    const modal = document.createElement('div');
+    modal.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.8);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 10000;
+    `;
+    
+    // Create dialog container
+    const dialog = document.createElement('div');
+    dialog.style.cssText = `
+        background: #2a2a2a;
+        border-radius: 8px;
+        width: 600px;
+        height: 500px;
+        display: flex;
+        flex-direction: column;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+        border: 1px solid #444;
+    `;
+    
+    // Create header
+    const header = document.createElement('div');
+    header.style.cssText = `
+        padding: 16px 20px;
+        border-bottom: 1px solid #444;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background: #333;
+        border-radius: 8px 8px 0 0;
+    `;
+    
+    const title = document.createElement('h3');
+    title.textContent = 'Select Folder';
+    title.style.cssText = `
+        margin: 0;
+        color: #e0e0e0;
+        font-size: 16px;
+    `;
+    
+    const closeBtn = document.createElement('button');
+    closeBtn.innerHTML = '✕';
+    closeBtn.style.cssText = `
+        background: none;
+        border: none;
+        color: #999;
+        font-size: 18px;
+        cursor: pointer;
+        padding: 4px;
+        border-radius: 4px;
+    `;
+    closeBtn.addEventListener('mouseover', () => closeBtn.style.color = '#fff');
+    closeBtn.addEventListener('mouseout', () => closeBtn.style.color = '#999');
+    
+    header.appendChild(title);
+    header.appendChild(closeBtn);
+    
+    // Create path navigation with manual input
+    const pathNav = document.createElement('div');
+    pathNav.style.cssText = `
+        padding: 12px 20px;
+        border-bottom: 1px solid #444;
+        background: #333;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    `;
+    
+    const pathLabel = document.createElement('span');
+    pathLabel.textContent = '📁';
+    pathLabel.style.cssText = `
+        font-size: 16px;
+    `;
+    
+    const pathInput = document.createElement('input');
+    pathInput.type = 'text';
+    pathInput.style.cssText = `
+        flex: 1;
+        background: #2a2a2a;
+        border: 1px solid #555;
+        border-radius: 4px;
+        padding: 6px 10px;
+        color: #e0e0e0;
+        font-family: monospace;
+        font-size: 13px;
+    `;
+    pathInput.placeholder = 'Enter path or click folders below...';
+    
+    const goButton = document.createElement('button');
+    goButton.textContent = 'Go';
+    goButton.style.cssText = `
+        padding: 6px 12px;
+        background: #4CAF50;
+        border: none;
+        border-radius: 4px;
+        color: white;
+        cursor: pointer;
+        font-size: 12px;
+    `;
+    goButton.addEventListener('click', () => {
+        const inputPath = pathInput.value.trim();
+        if (inputPath) {
+            loadDirectory(inputPath);
+        }
+    });
+    
+    pathInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            goButton.click();
+        }
+    });
+    
+    pathNav.appendChild(pathLabel);
+    pathNav.appendChild(pathInput);
+    pathNav.appendChild(goButton);
+    
+    // Create directory listing
+    const directoryList = document.createElement('div');
+    directoryList.style.cssText = `
+        flex: 1;
+        overflow-y: auto;
+        padding: 8px;
+    `;
+    
+    // Create footer with buttons
+    const footer = document.createElement('div');
+    footer.style.cssText = `
+        padding: 16px 20px;
+        border-top: 1px solid #444;
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+        background: #333;
+        border-radius: 0 0 8px 8px;
+    `;
+    
+    const cancelBtn = document.createElement('button');
+    cancelBtn.textContent = 'Cancel';
+    cancelBtn.style.cssText = `
+        padding: 8px 16px;
+        background: #555;
+        border: none;
+        border-radius: 4px;
+        color: #e0e0e0;
+        cursor: pointer;
+        transition: background-color 0.2s;
+    `;
+    cancelBtn.addEventListener('mouseover', () => cancelBtn.style.backgroundColor = '#666');
+    cancelBtn.addEventListener('mouseout', () => cancelBtn.style.backgroundColor = '#555');
+    
+    const selectBtn = document.createElement('button');
+    selectBtn.textContent = 'Select Folder';
+    selectBtn.style.cssText = `
+        padding: 8px 16px;
+        background: #4CAF50;
+        border: none;
+        border-radius: 4px;
+        color: white;
+        cursor: pointer;
+        transition: background-color 0.2s;
+    `;
+    selectBtn.addEventListener('mouseover', () => selectBtn.style.backgroundColor = '#45a049');
+    selectBtn.addEventListener('mouseout', () => selectBtn.style.backgroundColor = '#4CAF50');
+    
+    footer.appendChild(cancelBtn);
+    footer.appendChild(selectBtn);
+    
+    // Assemble dialog
+    dialog.appendChild(header);
+    dialog.appendChild(pathNav);
+    dialog.appendChild(directoryList);
+    dialog.appendChild(footer);
+    modal.appendChild(dialog);
+    
+    // State management - detect platform and set appropriate default path
+    let currentPath = selectors.currentPath();
+    if (!currentPath) {
+        if (navigator.platform.startsWith('Win')) {
+            currentPath = 'C:\\Users';
+        } else {
+            currentPath = '/home';
+        }
+    }
+    
+    // Add quick access buttons for common locations
+    const quickAccess = document.createElement('div');
+    quickAccess.style.cssText = `
+        padding: 8px 12px;
+        border-bottom: 1px solid #444;
+        background: #2a2a2a;
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+    `;
+    
+    const commonPaths = [
+        { label: '🏠 Home', path: '/home' },
+        { label: '💾 Root', path: '/' },
+        { label: '🗂️ /mnt', path: '/mnt' },
+        { label: '💿 /opt', path: '/opt' }
+    ];
+    
+    // Get or create favorites from localStorage
+    const getFavorites = () => {
+        try {
+            const stored = localStorage.getItem('sageutils_folder_favorites');
+            if (stored) {
+                return JSON.parse(stored);
+            }
+        } catch (e) {
+            console.warn('Failed to load favorites:', e);
+        }
+        
+        // Default favorites based on platform
+        if (navigator.platform.startsWith('Win')) {
+            return [
+                { label: '🏠 Home', path: 'C:\\Users' },
+                { label: '💾 C:', path: 'C:\\' },
+                { label: '📁 Desktop', path: 'C:\\Users\\Public\\Desktop' },
+                { label: '🖼️ Pictures', path: 'C:\\Users\\Public\\Pictures' }
+            ];
+        } else {
+            return [
+                { label: '🏠 Home', path: '/home' },
+                { label: '💾 Root', path: '/' },
+                { label: '🗂️ /mnt', path: '/mnt' },
+                { label: '💿 /opt', path: '/opt' }
+            ];
+        }
+    };
+    
+    const saveFavorites = (favorites) => {
+        try {
+            localStorage.setItem('sageutils_folder_favorites', JSON.stringify(favorites));
+        } catch (e) {
+            console.warn('Failed to save favorites:', e);
+        }
+    };
+    
+    let favorites = getFavorites();
+    
+    const renderFavorites = () => {
+        // Clear existing buttons
+        quickAccess.innerHTML = '';
+        
+        // Add favorites label
+        const favoritesLabel = document.createElement('span');
+        favoritesLabel.textContent = '⭐ Favorites:';
+        favoritesLabel.style.cssText = `
+            color: #999;
+            font-size: 11px;
+            margin-right: 8px;
+        `;
+        quickAccess.appendChild(favoritesLabel);
+        
+        // Add favorite buttons
+        favorites.forEach((fav, index) => {
+            const btn = document.createElement('button');
+            btn.textContent = fav.label;
+            btn.style.cssText = `
+                padding: 4px 8px;
+                background: #444;
+                border: none;
+                border-radius: 3px;
+                color: #e0e0e0;
+                cursor: pointer;
+                font-size: 11px;
+                transition: background-color 0.2s;
+            `;
+            btn.addEventListener('mouseover', () => btn.style.backgroundColor = '#555');
+            btn.addEventListener('mouseout', () => btn.style.backgroundColor = '#444');
+            btn.addEventListener('click', () => loadDirectory(fav.path));
+            
+            // Right-click to remove favorite
+            btn.addEventListener('contextmenu', (e) => {
+                e.preventDefault();
+                if (confirm(`Remove "${fav.label}" from favorites?`)) {
+                    favorites.splice(index, 1);
+                    saveFavorites(favorites);
+                    renderFavorites();
+                }
+            });
+            
+            quickAccess.appendChild(btn);
+        });
+        
+        // Add "Add Favorite" button
+        const addBtn = document.createElement('button');
+        addBtn.textContent = '+ Add';
+        addBtn.style.cssText = `
+            padding: 4px 8px;
+            background: #4CAF50;
+            border: none;
+            border-radius: 3px;
+            color: white;
+            cursor: pointer;
+            font-size: 11px;
+            transition: background-color 0.2s;
+        `;
+        addBtn.addEventListener('mouseover', () => addBtn.style.backgroundColor = '#45a049');
+        addBtn.addEventListener('mouseout', () => addBtn.style.backgroundColor = '#4CAF50');
+        addBtn.addEventListener('click', () => {
+            const label = prompt('Enter a label for this favorite:', `📁 ${currentPath.split(/[/\\]/).pop() || 'Folder'}`);
+            if (label && label.trim()) {
+                favorites.push({ label: label.trim(), path: currentPath });
+                saveFavorites(favorites);
+                renderFavorites();
+            }
+        });
+        quickAccess.appendChild(addBtn);
+        
+        // Add "Help" button
+        const helpBtn = document.createElement('button');
+        helpBtn.textContent = '?';
+        helpBtn.title = 'Favorites help';
+        helpBtn.style.cssText = `
+            padding: 4px 8px;
+            background: #666;
+            border: none;
+            border-radius: 3px;
+            color: white;
+            cursor: pointer;
+            font-size: 11px;
+        `;
+        helpBtn.addEventListener('click', () => {
+            alert('Favorites:\n\n• Click to navigate to folder\n• Right-click to remove\n• "+ Add" to save current folder\n• Saved per system/browser');
+        });
+        quickAccess.appendChild(helpBtn);
+    };
+    
+    renderFavorites();
+    
+    // Insert quick access after path nav
+    dialog.insertBefore(quickAccess, directoryList);
+    
+    // Function to load directory contents
+    async function loadDirectory(path) {
+        try {
+            directoryList.innerHTML = `
+                <div style="
+                    text-align: center;
+                    padding: 40px;
+                    color: #4CAF50;
+                ">
+                    <div style="font-size: 24px; margin-bottom: 10px;">📁</div>
+                    <div>Loading directories...</div>
+                </div>
+            `;
+            
+            const response = await api.fetchApi('/sage_utils/browse_directory_tree', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ path })
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                currentPath = result.current_path;
+                pathInput.value = currentPath;
+                
+                directoryList.innerHTML = '';
+                
+                if (result.directories.length === 0) {
+                    directoryList.innerHTML = `
+                        <div style="
+                            text-align: center;
+                            padding: 40px;
+                            color: #888;
+                        ">
+                            <div style="font-size: 24px; margin-bottom: 10px;">📁</div>
+                            <div>No accessible subdirectories</div>
+                        </div>
+                    `;
+                } else {
+                    result.directories.forEach(dir => {
+                        const dirItem = document.createElement('div');
+                        dirItem.style.cssText = `
+                            padding: 12px 16px;
+                            border-radius: 4px;
+                            cursor: pointer;
+                            display: flex;
+                            align-items: center;
+                            gap: 12px;
+                            color: ${dir.accessible ? '#e0e0e0' : '#888'};
+                            margin-bottom: 2px;
+                            transition: background-color 0.2s;
+                        `;
+                        
+                        const icon = document.createElement('span');
+                        icon.style.fontSize = '18px';
+                        icon.textContent = dir.type === 'parent' ? '⬆️' : '📁';
+                        
+                        const name = document.createElement('span');
+                        name.style.flex = '1';
+                        name.textContent = dir.name;
+                        
+                        const info = document.createElement('span');
+                        info.style.cssText = `
+                            font-size: 12px;
+                            color: #888;
+                        `;
+                        
+                        if (dir.type === 'directory' && dir.image_count !== undefined) {
+                            if (dir.image_count > 0) {
+                                info.textContent = `${dir.image_count}${dir.image_count >= 10 ? '+' : ''} images`;
+                                info.style.color = '#4CAF50';
+                            } else if (dir.image_count === 0) {
+                                info.textContent = 'No images';
+                            } else {
+                                info.textContent = 'Access denied';
+                                info.style.color = '#f44336';
+                            }
+                        }
+                        
+                        dirItem.appendChild(icon);
+                        dirItem.appendChild(name);
+                        dirItem.appendChild(info);
+                        
+                        // Add hover effects
+                        dirItem.addEventListener('mouseenter', () => {
+                            if (dir.accessible) {
+                                dirItem.style.backgroundColor = '#444';
+                            }
+                        });
+                        
+                        dirItem.addEventListener('mouseleave', () => {
+                            dirItem.style.backgroundColor = 'transparent';
+                        });
+                        
+                        // Add click handler
+                        if (dir.accessible) {
+                            dirItem.addEventListener('click', () => {
+                                loadDirectory(dir.path);
+                            });
+                        }
+                        
+                        directoryList.appendChild(dirItem);
+                    });
+                }
+            } else {
+                throw new Error(result.error || 'Failed to load directory');
+            }
+            
+        } catch (error) {
+            console.error('Error loading directory:', error);
+            directoryList.innerHTML = `
+                <div style="
+                    text-align: center;
+                    padding: 40px;
+                    color: #f44336;
+                ">
+                    <div style="font-size: 24px; margin-bottom: 10px;">❌</div>
+                    <div>Error loading directory</div>
+                    <div style="font-size: 12px; margin-top: 8px;">${error.message}</div>
+                </div>
+            `;
+        }
+    }
+    
+    // Event handlers
+    closeBtn.addEventListener('click', () => {
+        document.body.removeChild(modal);
+        callback(null);
+    });
+    
+    cancelBtn.addEventListener('click', () => {
+        document.body.removeChild(modal);
+        callback(null);
+    });
+    
+    selectBtn.addEventListener('click', () => {
+        document.body.removeChild(modal);
+        callback(currentPath);
+    });
+    
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            document.body.removeChild(modal);
+            callback(null);
+        }
+    });
+    
+    // Keyboard handling
+    const handleKeyDown = (e) => {
+        if (e.key === 'Escape') {
+            document.body.removeChild(modal);
+            document.removeEventListener('keydown', handleKeyDown);
+            callback(null);
+        }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    
+    // Show the dialog
+    document.body.appendChild(modal);
+    
+    // Load initial directory
+    await loadDirectory(currentPath);
+}
+
+/**
  * Opens image in new tab using centralized image loader
  * @param {Object} image - Image object with path information
  */
@@ -581,17 +1110,9 @@ export async function browseCustomFolder(renderImageGrid) {
     try {
         console.log('Gallery: Opening folder browser...');
         
-        // For now, show an input dialog - in future could integrate with system file browser
-        const defaultPath = selectors.currentPath() || '/home/';
-        const folderPath = prompt(
-            'Enter the full path to a folder containing images:\n\n' +
-            'Examples:\n' +
-            '• /home/username/Pictures\n' +
-            '• /path/to/your/images\n' +
-            '• /mnt/drive/photos\n\n' +
-            'Path:', 
-            defaultPath
-        );
+        // Show the modern folder browser dialog
+        const folderPath = await showNativeFolderPicker();
+        
         if (!folderPath || folderPath.trim() === '') return;
         
         console.log('Gallery: Loading images from custom folder...');
