@@ -1596,7 +1596,6 @@ try:
             try:
                 import pathlib
                 import os
-                import pwd
                 import platform
                 
                 data = await request.json()
