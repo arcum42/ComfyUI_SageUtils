@@ -38,6 +38,13 @@ ComfyUI custom node providing utilities for model management, prompting, metadat
 - Split long functions into smaller, focused functions
 - Use composition over inheritance for component design
 
+**JavaScript Validation:**
+Always validate JavaScript files after making large changes using Node.js syntax checking:
+- Single file: `node -c path/to/file.js`
+- All JS files: `find js -name "*.js" -exec node -c {} \; && echo "All files valid"`
+- Specific directory: `find js/sidebar -name "*.js" -exec node -c {} \;`
+This catches syntax errors, missing imports, and basic structural issues before testing in ComfyUI.
+
 ## Node Development
 - Place nodes in appropriate `nodes/*.py` module
 - Each node class needs docstring with purpose/inputs/outputs

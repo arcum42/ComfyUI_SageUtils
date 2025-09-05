@@ -4,10 +4,6 @@
 
 import { api } from "../../../scripts/api.js";
 
-import {
-    getThumbnailSize
-} from "../shared/config.js";
-
 import { 
     handleError
 } from "../shared/errorHandler.js";
@@ -17,10 +13,32 @@ import {
     selectors 
 } from "../shared/stateManager.js";
 
-// Import shared UI components
+// Import gallery API functions
 import {
-    createHeader
-} from "../components/cacheUIComponents.js";
+    loadImagesFromFolder,
+    loadImageMetadata,
+    formatMetadataForDisplay,
+    generateFallbackMetadata
+} from "../shared/galleryApi.js";
+
+// Import image utilities
+import { copyImageToClipboard } from "../shared/imageUtils.js";
+
+// Import utilities
+import { formatFileSize } from "../shared/reportGenerator.js";
+
+// Import gallery event handlers
+import { showFullImage, showImageContextMenu, browseCustomFolder, toggleViewMode } from './galleryEvents.js';
+
+// Import configuration utilities
+import { getThumbnailSize } from "../shared/config.js";
+
+// Import grid components
+import {
+    createImageItem,
+    createFolderItem,
+    createBackNavigationItem
+} from "../shared/galleryGrid.js";
 
 // Import dataset text management
 import {
@@ -42,421 +60,14 @@ import {
 // Import navigation components
 import { createDatasetNavigationControls } from "../components/navigationComponents.js";
 
-/**
- * Creates the Image Gallery tab header section
- * @returns {HTMLElement} Header element with status display
- */
-function createGalleryHeader() {
-    const header = createHeader('Gallery', null); // No description for compactness
-    
-    // Add status display area
-    const statusDiv = document.createElement('div');
-    statusDiv.style.cssText = `
-        font-size: 11px;
-        margin-top: 5px;
-        min-height: 16px;
-        color: #4CAF50;
-        font-style: italic;
-    `;
-    statusDiv.textContent = '';
-    
-    header.appendChild(statusDiv);
-    header.statusDiv = statusDiv; // Store reference for easy access
-    
-    return header;
-}
-
-/**
- * Creates the combined folder selector and controls section for the Gallery tab
- * @returns {Object} Folder selector and controls components
- */
-function createFolderSelectorAndControls() {
-    const folderSection = document.createElement('div');
-    folderSection.style.cssText = `
-        margin-bottom: 15px;
-        padding: 15px;
-        background: #2a2a2a;
-        border-radius: 6px;
-        border: 1px solid #444;
-    `;
-    
-    const folderHeader = document.createElement('h4');
-    folderHeader.style.cssText = `
-        margin: 0 0 10px 0;
-        color: #4CAF50;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-    `;
-    folderHeader.textContent = 'Folder & Controls';
-    
-    const folderDropdown = document.createElement('select');
-    folderDropdown.id = 'gallery-folder-selector';
-    folderDropdown.style.cssText = `
-        width: 100%;
-        padding: 8px;
-        background: #333;
-        color: #fff;
-        border: 1px solid #555;
-        border-radius: 4px;
-        font-size: 12px;
-        cursor: pointer;
-    `;
-    
-    // Default folder options
-    const defaultOptions = [
-        { value: 'notes', text: '📝 Notes Folder', icon: '📝' },
-        { value: 'input', text: '📥 Input Folder', icon: '📥' },
-        { value: 'output', text: '📤 Output Folder', icon: '📤' },
-        { value: 'custom', text: '📁 Browse Custom Folder...', icon: '📁' }
-    ];
-    
-    defaultOptions.forEach(option => {
-        const optionElement = document.createElement('option');
-        optionElement.value = option.value;
-        optionElement.textContent = option.text;
-        folderDropdown.appendChild(optionElement);
-    });
-    
-    // Set default selection to notes
-    folderDropdown.value = 'notes';
-    
-    const browseButton = document.createElement('button');
-    browseButton.textContent = 'Browse...';
-    browseButton.style.cssText = `
-        background: #2196F3;
-        color: white;
-        border: none;
-        padding: 6px 12px;
-        border-radius: 4px;
-        cursor: pointer;
-        font-size: 12px;
-        margin-top: 8px;
-        display: none;
-    `;
-
-    folderSection.appendChild(folderHeader);
-    folderSection.appendChild(folderDropdown);
-    folderSection.appendChild(browseButton);
-
-    // Add controls to the same section
-    // Search bar
-    const searchContainer = document.createElement('div');
-    searchContainer.style.cssText = `
-        margin-top: 15px;
-        margin-bottom: 10px;
-        display: flex;
-        gap: 8px;
-    `;
-    
-    const searchInput = document.createElement('input');
-    searchInput.type = 'text';
-    searchInput.id = 'gallery-search';
-    searchInput.placeholder = 'Search images...';
-    searchInput.style.cssText = `
-        flex: 1;
-        padding: 6px 10px;
-        background: #333;
-        color: #fff;
-        border: 1px solid #555;
-        border-radius: 4px;
-        font-size: 12px;
-    `;
-    
-    const clearButton = document.createElement('button');
-    clearButton.textContent = '✕';
-    clearButton.title = 'Clear search';
-    clearButton.style.cssText = `
-        background: #666;
-        color: white;
-        border: none;
-        padding: 6px 10px;
-        border-radius: 4px;
-        cursor: pointer;
-        font-size: 12px;
-    `;
-    
-    searchContainer.appendChild(searchInput);
-    searchContainer.appendChild(clearButton);
-
-    // Sort controls
-    const sortContainer = document.createElement('div');
-    sortContainer.style.cssText = `
-        margin-bottom: 10px;
-        display: flex;
-        gap: 8px;
-        align-items: center;
-    `;
-    
-    const sortLabel = document.createElement('label');
-    sortLabel.textContent = 'Sort:';
-    sortLabel.style.cssText = `
-        color: #ccc;
-        font-size: 12px;
-        min-width: 35px;
-    `;
-    
-    const sortSelect = document.createElement('select');
-    sortSelect.id = 'gallery-sort';
-    sortSelect.style.cssText = `
-        flex: 1;
-        padding: 4px 8px;
-        background: #333;
-        color: #fff;
-        border: 1px solid #555;
-        border-radius: 4px;
-        font-size: 11px;
-        cursor: pointer;
-    `;
-    
-    const sortOptions = [
-        { value: 'name', text: 'Name' },
-        { value: 'date', text: 'Date Modified' },
-        { value: 'size', text: 'File Size' },
-        { value: 'type', text: 'File Type' }
-    ];
-    
-    sortOptions.forEach(option => {
-        const optionElement = document.createElement('option');
-        optionElement.value = option.value;
-        optionElement.textContent = option.text;
-        sortSelect.appendChild(optionElement);
-    });
-    
-    const orderButton = document.createElement('button');
-    orderButton.textContent = '↑';
-    orderButton.title = 'Toggle sort order';
-    orderButton.style.cssText = `
-        background: #444;
-        color: white;
-        border: none;
-        padding: 4px 8px;
-        border-radius: 4px;
-        cursor: pointer;
-        font-size: 12px;
-        min-width: 30px;
-    `;
-    
-    sortContainer.appendChild(sortLabel);
-    sortContainer.appendChild(sortSelect);
-    sortContainer.appendChild(orderButton);
-
-    // Thumbnail size and control buttons
-    const buttonsContainer = document.createElement('div');
-    buttonsContainer.style.cssText = `
-        display: flex;
-        gap: 8px;
-        flex-wrap: wrap;
-    `;
-    
-    const thumbnailSizeSelect = document.createElement('select');
-    thumbnailSizeSelect.id = 'gallery-thumbnail-size';
-    thumbnailSizeSelect.style.cssText = `
-        flex: 1;
-        min-width: 80px;
-        padding: 4px 8px;
-        background: #333;
-        color: #fff;
-        border: 1px solid #555;
-        border-radius: 4px;
-        font-size: 11px;
-        cursor: pointer;
-    `;
-    
-    const sizeOptions = [
-        { value: 'small', text: 'Small' },
-        { value: 'medium', text: 'Medium' },
-        { value: 'large', text: 'Large' }
-    ];
-    
-    sizeOptions.forEach(option => {
-        const optionElement = document.createElement('option');
-        optionElement.value = option.value;
-        optionElement.textContent = option.text;
-        thumbnailSizeSelect.appendChild(optionElement);
-    });
-    
-    const refreshButton = document.createElement('button');
-    refreshButton.textContent = '🔄';
-    refreshButton.title = 'Refresh images';
-    refreshButton.style.cssText = `
-        background: #4CAF50;
-        color: white;
-        border: none;
-        padding: 4px 8px;
-        border-radius: 4px;
-        cursor: pointer;
-        font-size: 12px;
-    `;
-    
-    const viewModeButton = document.createElement('button');
-    viewModeButton.textContent = '⊞ Grid View';
-    viewModeButton.title = 'Toggle view mode';
-    viewModeButton.style.cssText = `
-        background: #2196F3;
-        color: white;
-        border: none;
-        padding: 4px 8px;
-        border-radius: 4px;
-        cursor: pointer;
-        font-size: 12px;
-    `;
-    
-    buttonsContainer.appendChild(thumbnailSizeSelect);
-    buttonsContainer.appendChild(refreshButton);
-    buttonsContainer.appendChild(viewModeButton);
-
-    folderSection.appendChild(searchContainer);
-    folderSection.appendChild(sortContainer);
-    folderSection.appendChild(buttonsContainer);
-
-    return {
-        folderSection,
-        folderHeader,
-        folderDropdown,
-        browseButton,
-        // Controls components
-        searchContainer,
-        searchInput,
-        clearButton,
-        sortContainer,
-        sortSelect,
-        orderButton,
-        buttonsContainer,
-        thumbnailSizeSelect,
-        refreshButton,
-        viewModeButton
-    };
-}
-
-/**
- * Creates a wrapped thumbnail grid with header for the Gallery tab
- * @returns {Object} Thumbnail grid components
- */
-function createWrappedThumbnailGrid() {
-    const gridSection = document.createElement('div');
-    gridSection.style.cssText = `
-        margin-bottom: 15px;
-        padding: 15px;
-        background: #2a2a2a;
-        border-radius: 6px;
-        border: 1px solid #444;
-        flex: 1;
-        display: flex;
-        flex-direction: column;
-    `;
-    
-    const gridHeader = document.createElement('h4');
-    gridHeader.style.cssText = `
-        margin: 0 0 10px 0;
-        color: #4CAF50;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-    `;
-    gridHeader.innerHTML = `
-        <span>Images <span id="image-count" style="color: #999; font-weight: normal;"></span></span>
-    `;
-    
-    // Use imported thumbnail grid component
-    const grid = createThumbnailGrid();
-    grid.gridContainer.style.cssText += `
-        border: 1px solid #555;
-        border-radius: 4px;
-        background: #333;
-        flex: 1;
-    `;
-    
-    // Add placeholder content initially
-    grid.gridContainer.innerHTML = `
-        <div style="
-            grid-column: 1 / -1;
-            text-align: center;
-            color: #888;
-            padding: 40px;
-            font-style: italic;
-        ">
-            🖼️ Select a folder to view images
-        </div>
-    `;
-
-    gridSection.appendChild(gridHeader);
-    gridSection.appendChild(grid.gridContainer);
-
-    // Replace the imageCountSpan with the one from header
-    const imageCountSpan = gridHeader.querySelector('#image-count');
-
-    return {
-        gridSection,
-        gridHeader,
-        gridContainer: grid.gridContainer,
-        imageCountSpan,
-        updateGridLayout: grid.updateGridLayout,
-        clear: grid.clear
-    };
-}
-
-/**
- * Creates the metadata panel section for the Gallery tab
- * @returns {Object} Metadata panel components
- */
-function createMetadataPanel() {
-    const metadataSection = document.createElement('div');
-    metadataSection.style.cssText = `
-        padding: 15px;
-        background: #2a2a2a;
-        border-radius: 6px;
-        border: 1px solid #444;
-        display: block;
-    `;
-    
-    const metadataHeader = document.createElement('h4');
-    metadataHeader.style.cssText = `
-        margin: 0 0 10px 0;
-        color: #4CAF50;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-    `;
-    metadataHeader.innerHTML = `
-        <span>Image Details</span>
-        <button id="close-metadata" style="
-            background: #f44336;
-            color: white;
-            border: none;
-            padding: 4px 8px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 11px;
-        ">Clear</button>
-    `;
-    
-    const metadataContent = document.createElement('div');
-    metadataContent.id = 'metadata-content';
-    metadataContent.style.cssText = `
-        max-height: 300px;
-        overflow-y: auto;
-        background: #333;
-        border: 1px solid #555;
-        border-radius: 4px;
-        padding: 15px;
-        color: #e0e0e0;
-        font-family: 'Courier New', monospace;
-        font-size: 11px;
-        line-height: 1.4;
-    `;
-    metadataContent.innerHTML = '<em style="color: #999;">Select an image to view details...</em>';
-
-    metadataSection.appendChild(metadataHeader);
-    metadataSection.appendChild(metadataContent);
-
-    return {
-        metadataSection,
-        metadataHeader,
-        metadataContent,
-        closeButton: metadataHeader.querySelector('#close-metadata')
-    };
-}
+// Import gallery layout components
+import {
+    createGalleryHeader,
+    createFolderSelectorAndControls,
+    createWrappedThumbnailGrid,
+    createMetadataPanel,
+    assembleGalleryTabLayout
+} from "../components/galleryLayout.js";
 
 /**
  * Sets up event handlers for Gallery tab interactions
@@ -489,12 +100,9 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
         }
     }
 
-    // Load images from selected folder
-    async function loadImagesFromFolder(folderType, customPath = null) {
+    // Load images from selected folder - wrapper for imported API function
+    async function loadImagesWrapper(folderType, customPath = null) {
         try {
-            setStatus(`Loading images from ${folderType} folder...`);
-            actions.setGalleryLoading(true);
-            
             // Show loading indicator in grid with immediate count update
             grid.imageCountSpan.textContent = '(Loading...)';
             grid.gridContainer.innerHTML = `
@@ -528,48 +136,13 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
                 </style>
             `;
             
-            // Prepare request body
-            const requestBody = { folder: folderType };
-            if (customPath) {
-                requestBody.path = customPath;
-            }
+            // Call the imported API function
+            const result = await loadImagesFromFolder(folderType, customPath, setStatus);
             
-            const response = await api.fetchApi('/sage_utils/list_images', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(requestBody)
-            });
-            
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            
-            const result = await response.json();
-            
-            if (!result.success) {
-                throw new Error(result.error || 'Unknown error occurred');
-            }
-            
-            const images = result.images || [];
-            const folders = result.folders || [];
-            const totalItems = images.length + folders.length;
-            
-            // Update state with loaded images and folders
-            actions.setImages(images);
-            actions.setFolders(folders);
-            
-            // Manage current path based on folder type and custom path
-            if (folderType === 'custom' && customPath) {
-                // We're in a custom subfolder, set the path
-                actions.setCurrentPath(customPath);
-            } else {
-                // We're in a standard folder (input, output, etc.) or no custom path
-                actions.setCurrentPath('');
-            }
+            const { images, folders, totalItems } = result;
             
             // Update UI immediately with actual counts
             grid.imageCountSpan.textContent = `(${images.length} images, ${folders.length} folders)`;
-            setStatus(`Loaded ${images.length} images and ${folders.length} folders from ${folderType} folder`);
             
             // Render image grid with both images and folders
             await renderImageGrid(images, folders);
@@ -619,9 +192,6 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
             `;
             
             grid.imageCountSpan.textContent = '(Error)';
-            
-        } finally {
-            actions.setGalleryLoading(false);
         }
     }
 
@@ -713,7 +283,7 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
         } else {
             // Render all at once for small folders
             filteredImages.forEach(image => {
-                const imageItem = createImageItem(image);
+                const imageItem = createImageItem(image, showFullImage, showImageContextMenu);
                 grid.gridContainer.appendChild(imageItem);
             });
         }
@@ -769,7 +339,7 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
             // Create placeholders for this batch
             const batchItems = [];
             batch.forEach(image => {
-                const imageItem = createImageItem(image);
+                const imageItem = createImageItem(image, showFullImage, showImageContextMenu);
                 batchItems.push(imageItem);
                 grid.gridContainer.appendChild(imageItem);
             });
@@ -789,1003 +359,47 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
             }
         }, 1000);
     }
-
-    // Create individual image item
-    function createImageItem(image) {
-        const item = document.createElement('div');
-        item.className = 'gallery-image-item';
-        item.style.cssText = `
-            position: relative;
-            background: #444;
-            border-radius: 6px;
-            overflow: hidden;
-            cursor: pointer;
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
-            border: 2px solid transparent;
-        `;
-        
-        // Add hover effects
-        item.addEventListener('mouseenter', () => {
-            item.style.transform = 'scale(1.05)';
-            item.style.boxShadow = '0 4px 12px rgba(76, 175, 80, 0.3)';
-            item.style.borderColor = '#4CAF50';
-        });
-        
-        item.addEventListener('mouseleave', () => {
-            item.style.transform = 'scale(1)';
-            item.style.boxShadow = 'none';
-            item.style.borderColor = 'transparent';
-        });
-        
-        // Create thumbnail image
-        const thumbnail = document.createElement('img');
-        thumbnail.style.cssText = `
-            width: 100%;
-            height: 150px;
-            object-fit: cover;
-            background: #333;
-        `;
-        
-        // Set thumbnail source with error handling
-        const thumbnailSizeConfig = getThumbnailSize(selectors.thumbnailSize());
-        
-        // Generate thumbnail via POST request and create blob URL
-        const generateThumbnail = async () => {
-            try {
-                const response = await fetch('/sage_utils/thumbnail', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        image_path: image.path,
-                        size: thumbnailSizeConfig.width.toString()
-                    })
-                });
-                
-                if (response.ok) {
-                    const blob = await response.blob();
-                    const thumbnailUrl = URL.createObjectURL(blob);
-                    return thumbnailUrl;
-                } else {
-                    console.error('Thumbnail generation failed:', response.statusText);
-                    return null;
-                }
-            } catch (error) {
-                console.error('Error generating thumbnail:', error);
-                return null;
-            }
-        };
-        
-        // Generate thumbnail and set source
-        generateThumbnail().then(thumbnailUrl => {
-            if (thumbnailUrl) {
-                thumbnail.src = thumbnailUrl;
-            } else {
-                // Show error state
-                thumbnail.style.display = 'none';
-                const errorDiv = document.createElement('div');
-                errorDiv.style.cssText = `
-                    width: 100%;
-                    height: 150px;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    background: #333;
-                    color: #999;
-                    font-size: 12px;
-                `;
-                errorDiv.textContent = 'Thumbnail failed';
-                thumbnail.parentNode.insertBefore(errorDiv, thumbnail.nextSibling);
-            }
-        });
-        
-        thumbnail.addEventListener('error', () => {
-            thumbnail.style.display = 'none';
-            const errorDiv = document.createElement('div');
-            errorDiv.style.cssText = `
-                width: 100%;
-                height: 150px;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                background: #333;
-                color: #888;
-                font-size: 12px;
-            `;
-            errorDiv.textContent = '❌ Thumbnail failed';
-            item.insertBefore(errorDiv, thumbnail.nextSibling);
-        });
-        
-        // Create overlay with filename and info
-        const overlay = document.createElement('div');
-        overlay.style.cssText = `
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            background: linear-gradient(transparent, rgba(0,0,0,0.8));
-            color: white;
-            padding: 8px;
-            font-size: 11px;
-            opacity: 0;
-            transition: opacity 0.2s ease;
-        `;
-        
-        const filename = document.createElement('div');
-        filename.style.cssText = `
-            font-weight: bold;
-            margin-bottom: 2px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        `;
-        filename.textContent = image.filename;
-        
-        const info = document.createElement('div');
-        info.style.cssText = `
-            font-size: 10px;
-            color: #ccc;
-        `;
-        
-        let infoText = '';
-        if (image.dimensions) {
-            infoText += `${image.dimensions.width}×${image.dimensions.height} • `;
-        }
-        infoText += formatFileSize(image.size);
-        info.textContent = infoText;
-        
-        overlay.appendChild(filename);
-        overlay.appendChild(info);
-        
-        // Show overlay on hover
-        item.addEventListener('mouseenter', () => {
-            overlay.style.opacity = '1';
-        });
-        
-        item.addEventListener('mouseleave', () => {
-            overlay.style.opacity = '0';
-        });
-        
-        // Click handlers
-        item.addEventListener('click', (e) => {
-            if (e.shiftKey) {
-                // Copy to clipboard on Shift+click
-                copyImageToClipboard(image.path);
-            } else {
-                // Show full image on regular click
-                showFullImage(image);
-            }
-        });
-        
-        // Right-click context menu
-        item.addEventListener('contextmenu', (e) => {
-            e.preventDefault();
-            showImageContextMenu(e, image);
-        });
-        
-        item.appendChild(thumbnail);
-        item.appendChild(overlay);
-        
-        return item;
-    }
     
-    // Create folder navigation item
-    function createFolderItem(folder) {
-        const item = document.createElement('div');
-        item.className = 'gallery-folder-item';
-        item.style.cssText = `
-            position: relative;
-            background: #333;
-            border-radius: 6px;
-            overflow: hidden;
-            cursor: pointer;
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
-            border: 2px solid transparent;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            min-height: 150px;
-        `;
-        
-        // Add hover effects
-        item.addEventListener('mouseenter', () => {
-            item.style.transform = 'scale(1.05)';
-            item.style.boxShadow = '0 4px 12px rgba(76, 175, 80, 0.3)';
-            item.style.borderColor = '#4CAF50';
-        });
-        
-        item.addEventListener('mouseleave', () => {
-            item.style.transform = 'scale(1)';
-            item.style.boxShadow = 'none';
-            item.style.borderColor = 'transparent';
-        });
-        
-        // Folder icon
-        const folderIcon = document.createElement('div');
-        folderIcon.style.cssText = `
-            font-size: 48px;
-            color: #4CAF50;
-            margin-bottom: 10px;
-        `;
-        folderIcon.textContent = '📁';
-        
-        // Folder name
-        const folderName = document.createElement('div');
-        folderName.style.cssText = `
-            color: #fff;
-            font-size: 12px;
-            text-align: center;
-            padding: 0 8px;
-            word-break: break-word;
-            line-height: 1.2;
-        `;
-        folderName.textContent = folder.name;
-        
-        // Click handler for folder navigation
-        item.addEventListener('click', () => {
-            // Load images from the clicked folder
-            actions.setCurrentPath(folder.path);
-            if (window.galleryEventHandlers && window.galleryEventHandlers.loadImagesFromFolder) {
-                window.galleryEventHandlers.loadImagesFromFolder('custom', folder.path);
-            } else {
-                console.error('Gallery event handlers not available for folder navigation');
-            }
-        });
-        
-        item.appendChild(folderIcon);
-        item.appendChild(folderName);
-        
-        return item;
-    }
-    
-    // Create back navigation item
-    function createBackNavigationItem() {
-        const item = document.createElement('div');
-        item.className = 'gallery-back-item';
-        item.style.cssText = `
-            position: relative;
-            background: #2a2a2a;
-            border-radius: 6px;
-            overflow: hidden;
-            cursor: pointer;
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
-            border: 2px solid #555;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            min-height: 150px;
-        `;
-        
-        // Add hover effects
-        item.addEventListener('mouseenter', () => {
-            item.style.transform = 'scale(1.05)';
-            item.style.boxShadow = '0 4px 12px rgba(255, 193, 7, 0.3)';
-            item.style.borderColor = '#FFC107';
-        });
-        
-        item.addEventListener('mouseleave', () => {
-            item.style.transform = 'scale(1)';
-            item.style.boxShadow = 'none';
-            item.style.borderColor = '#555';
-        });
-        
-        // Back icon
-        const backIcon = document.createElement('div');
-        backIcon.style.cssText = `
-            font-size: 48px;
-            color: #FFC107;
-            margin-bottom: 10px;
-        `;
-        backIcon.textContent = '⬆️';
-        
-        // Back label
-        const backLabel = document.createElement('div');
-        backLabel.style.cssText = `
-            color: #FFC107;
-            font-size: 12px;
-            text-align: center;
-            font-weight: bold;
-        `;
-        backLabel.textContent = '.. (Back)';
-        
-        // Click handler for back navigation
-        item.addEventListener('click', () => {
-            const currentPath = selectors.currentPath();
-            if (currentPath && window.galleryEventHandlers && window.galleryEventHandlers.loadImagesFromFolder) {
-                // Navigate to parent directory
-                const pathParts = currentPath.split('/').filter(part => part.length > 0);
-                
-                // Get the selected folder type to determine the base path structure
-                const selectedFolderType = selectors.selectedFolder();
-                
-                // Check if we're going back to the root folder
-                // For standard folders like 'input', 'output', the structure is typically:
-                // /path/to/comfyui/input/subfolder, so if we remove one level and we're at the base input path,
-                // we should return to the root folder type
-                const parentPathParts = pathParts.slice(0, -1);
-                const parentPath = '/' + parentPathParts.join('/');
-                
-                // If the parent path ends with the selected folder type (like '/input'), 
-                // then we're going back to the root of that folder type
-                const isBackToRoot = parentPathParts.length > 0 && 
-                                   parentPathParts[parentPathParts.length - 1] === selectedFolderType;
-                
-                if (isBackToRoot) {
-                    // Back to root folder - load the selected folder type (input, output, etc.)
-                    window.galleryEventHandlers.loadImagesFromFolder(selectedFolderType);
-                } else {
-                    // Navigate to parent subfolder
-                    window.galleryEventHandlers.loadImagesFromFolder('custom', parentPath);
-                }
-            } else {
-                console.error('Gallery event handlers not available for back navigation');
-            }
-        });
-        
-        item.appendChild(backIcon);
-        item.appendChild(backLabel);
-        
-        return item;
-    }
-    
-    // Helper function to format file size
-    function formatFileSize(bytes) {
-        if (bytes === 0) return '0 B';
-        const k = 1024;
-        const sizes = ['B', 'KB', 'MB', 'GB'];
-        const i = Math.floor(Math.log(bytes) / Math.log(k));
-        return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
-    }
-
     // Show full image viewer
-    function showFullImage(image) {
-        // Get current images list and find the index of the current image
-        const allImages = selectors.galleryImages();
-        let currentImageIndex = allImages.findIndex(img => img.path === image.path);
-        if (currentImageIndex === -1) {
-            currentImageIndex = 0; // Fallback if not found
-        }
-        
-        let currentImage = image;
-        
-        actions.selectImage(currentImage.path);
-        
-        // Update metadata panel to show this image's details
-        showImageMetadata(currentImage);
-        
-        // Create modal overlay
-        const modal = document.createElement('div');
-        modal.style.cssText = `
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.9);
-            z-index: 10000;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            overflow: hidden;
-        `;
-        
-        // Create image container
-        const imageContainer = document.createElement('div');
-        imageContainer.style.cssText = `
-            position: relative;
-            width: 90vw;
-            height: 90vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            overflow: hidden;
-        `;
-        
-        // Create full image with zoom functionality
-        const fullImage = document.createElement('img');
-        let isZoomed = false;
-        let scale = 1;
-        let zoomIndicator; // Declare early, create later
-        
-        const updateZoomIndicator = () => {
-            if (zoomIndicator) {
-                if (isZoomed) {
-                    zoomIndicator.textContent = `🔍 ${Math.round(scale * 100)}% (Click to fit)`;
-                } else {
-                    zoomIndicator.textContent = '🔍 Click image to zoom';
-                }
-            }
-        };
-        
-        const updateImageStyle = () => {
-            if (isZoomed) {
-                // Enable scrolling when zoomed
-                imageContainer.style.overflow = 'auto';
-                fullImage.style.cssText = `
-                    max-width: none;
-                    max-height: none;
-                    width: auto;
-                    height: auto;
-                    transform: scale(${scale});
-                    border-radius: 8px;
-                    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
-                    cursor: zoom-out;
-                    transition: transform 0.3s ease;
-                    display: block;
-                    margin: auto;
-                `;
-            } else {
-                // Disable scrolling when fit to window
-                imageContainer.style.overflow = 'hidden';
-                fullImage.style.cssText = `
-                    max-width: 100%;
-                    max-height: 100%;
-                    width: auto;
-                    height: auto;
-                    object-fit: contain;
-                    border-radius: 8px;
-                    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
-                    cursor: zoom-in;
-                    transition: transform 0.3s ease;
-                `;
-            }
-            updateZoomIndicator();
-        };
-        
-        updateImageStyle();
-        
-        // Click to zoom functionality
-        fullImage.addEventListener('click', (e) => {
-            e.stopPropagation();
-            isZoomed = !isZoomed;
-            if (isZoomed) {
-                // Calculate scale to show image at 100% size
-                const containerRect = imageContainer.getBoundingClientRect();
-                const imageRect = fullImage.getBoundingClientRect();
-                
-                // Get natural dimensions
-                const naturalWidth = fullImage.naturalWidth;
-                const naturalHeight = fullImage.naturalHeight;
-                
-                // Calculate the scale needed to fit the image at its natural size
-                const scaleX = naturalWidth / imageRect.width;
-                const scaleY = naturalHeight / imageRect.height;
-                scale = Math.max(scaleX, scaleY, 1); // Ensure at least 1x zoom
-            } else {
-                scale = 1;
-            }
-            updateImageStyle();
-        });
-        // Generate full image via POST request and create blob URL
-        const generateFullImage = async () => {
-            try {
-                const response = await fetch('/sage_utils/image', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        image_path: currentImage.path
-                    })
-                });
-                
-                if (response.ok) {
-                    const blob = await response.blob();
-                    const imageUrl = URL.createObjectURL(blob);
-                    fullImage.src = imageUrl;
-                } else {
-                    console.error('Full image loading failed:', response.statusText);
-                    fullImage.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300"><rect width="400" height="300" fill="%23333"/><text x="200" y="150" text-anchor="middle" font-size="16" fill="%23999">Failed to load image</text></svg>';
-                }
-            } catch (error) {
-                console.error('Error loading full image:', error);
-                fullImage.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300"><rect width="400" height="300" fill="%23333"/><text x="200" y="150" text-anchor="middle" font-size="16" fill="%23999">Error loading image</text></svg>';
-            }
-        };
-        
-        generateFullImage();
-        
-        // Create close button
-        const closeButton = document.createElement('button');
-        closeButton.style.cssText = `
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            background: #f44336;
-            color: white;
-            border: none;
-            padding: 8px 12px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 14px;
-            font-weight: bold;
-            z-index: 10001;
-        `;
-        closeButton.textContent = '✕ Close';
-        
-        // Create zoom indicator
-        zoomIndicator = document.createElement('div');
-        zoomIndicator.style.cssText = `
-            position: absolute;
-            top: 10px;
-            left: 10px;
-            background: rgba(0, 0, 0, 0.7);
-            color: white;
-            padding: 8px 12px;
-            border-radius: 4px;
-            font-size: 12px;
-            z-index: 10001;
-            pointer-events: none;
-        `;
-        zoomIndicator.textContent = '🔍 Click image to zoom';
-        
-        // Create navigation controls using shared component (gradient style with labels)
-        const navButtons = createDatasetNavigationControls();
-        const { firstButton, prevButton, nextButton, lastButton, counterElement: imageCounter } = navButtons;
-        
-        const navControls = document.createElement('div');
-        navControls.style.cssText = `
-            position: absolute;
-            top: 10px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(0, 0, 0, 0.7);
-            padding: 8px 12px;
-            border-radius: 4px;
-            z-index: 10001;
-        `;
-        
-        // Add all navigation elements to container
-        navButtons.getAllElements().forEach(element => {
-            navControls.appendChild(element);
-        });
-        
-        // Navigation functionality
-        const updateImageAndMetadata = async (newIndex) => {
-            if (newIndex < 0 || newIndex >= allImages.length) return;
-            
-            currentImageIndex = newIndex;
-            currentImage = allImages[currentImageIndex];
-            
-            // Update navigation button states using shared component
-            navButtons.updateButtonStates(currentImageIndex, allImages.length);
-            
-            // Update image
-            generateFullImage();
-            
-            // Update metadata
-            showImageMetadata(currentImage);
-            
-            // Update state
-            actions.selectImage(currentImage.path);
-        };
-        
-        // Navigation event listeners
-        firstButton.addEventListener('click', (e) => {
-            e.stopPropagation();
-            updateImageAndMetadata(0);
-        });
-        prevButton.addEventListener('click', (e) => {
-            e.stopPropagation();
-            updateImageAndMetadata(currentImageIndex - 1);
-        });
-        nextButton.addEventListener('click', (e) => {
-            e.stopPropagation();
-            updateImageAndMetadata(currentImageIndex + 1);
-        });
-        lastButton.addEventListener('click', (e) => {
-            e.stopPropagation();
-            updateImageAndMetadata(allImages.length - 1);
-        });
-        
-        // Initial button state update
-        updateImageAndMetadata(currentImageIndex);
-        
-        // Create actions bar
-        const actionsBar = document.createElement('div');
-        actionsBar.style.cssText = `
-            position: absolute;
-            bottom: 10px;
-            left: 50%;
-            transform: translateX(-50%);
-            display: flex;
-            gap: 10px;
-            justify-content: center;
-            z-index: 10001;
-        `;
-        
-        const copyButton = document.createElement('button');
-        copyButton.style.cssText = `
-            background: #4CAF50;
-            color: white;
-            border: none;
-            padding: 8px 16px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 12px;
-        `;
-        copyButton.textContent = '📋 Copy';
-        copyButton.addEventListener('click', (e) => {
-            e.stopPropagation();
-            copyImageToClipboard(currentImage.path);
-        });
-        
-        const metadataButton = document.createElement('button');
-        metadataButton.style.cssText = `
-            background: #2196F3;
-            color: white;
-            border: none;
-            padding: 8px 16px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 12px;
-        `;
-        metadataButton.textContent = '🔍 Details';
-        metadataButton.addEventListener('click', (e) => {
-            e.stopPropagation();
-            showImageMetadata(currentImage);
-            modal.remove();
-        });
-
-        const datasetTextButton = document.createElement('button');
-        datasetTextButton.style.cssText = `
-            background: #FF9800;
-            color: white;
-            border: none;
-            padding: 8px 16px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 12px;
-        `;
-        datasetTextButton.textContent = '📝 Dataset Text';
-        datasetTextButton.addEventListener('click', (e) => {
-            e.stopPropagation();
-            modal.remove();
-            showCombinedImageTextEditor(currentImage);
-        });
-        
-        actionsBar.appendChild(copyButton);
-        actionsBar.appendChild(metadataButton);
-        actionsBar.appendChild(datasetTextButton);
-        
-        // Close handlers
-        const closeModal = () => {
-            document.removeEventListener('keydown', handleKeydown);
-            modal.remove();
-        };
-        closeButton.addEventListener('click', closeModal);
-        modal.addEventListener('click', (e) => {
-            if (e.target === modal) closeModal();
-        });
-        
-        // Keyboard handler with navigation
-        const handleKeydown = (e) => {
-            if (e.key === 'Escape') {
-                closeModal();
-                document.removeEventListener('keydown', handleKeydown);
-            } else if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') {
-                e.preventDefault();
-                updateImageAndMetadata(currentImageIndex - 1);
-            } else if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') {
-                e.preventDefault();
-                updateImageAndMetadata(currentImageIndex + 1);
-            } else if (e.key === 'Home') {
-                e.preventDefault();
-                updateImageAndMetadata(0);
-            } else if (e.key === 'End') {
-                e.preventDefault();
-                updateImageAndMetadata(allImages.length - 1);
-            }
-        };
-        document.addEventListener('keydown', handleKeydown);
-        
-        // Assemble modal
-        imageContainer.appendChild(fullImage);
-        imageContainer.appendChild(closeButton);
-        imageContainer.appendChild(navControls);
-        imageContainer.appendChild(zoomIndicator);
-        imageContainer.appendChild(actionsBar);
-        modal.appendChild(imageContainer);
-        document.body.appendChild(modal);
-        
-        // Prevent clicking on image from closing modal
-        imageContainer.addEventListener('click', (e) => e.stopPropagation());
-    }
-
-    // Copy image to clipboard
-    async function copyImageToClipboard(imagePath) {
-        try {
-            setStatus('Copying image to clipboard...');
-            
-            const response = await api.fetchApi('/sage_utils/copy_image', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ image_path: imagePath })
-            });
-            
-            const result = await response.json();
-            
-            if (result.success) {
-                setStatus('Image copied to clipboard!');
-            } else {
-                throw new Error(result.error || 'Failed to copy image');
-            }
-            
-        } catch (error) {
-            console.error('Error copying image:', error);
-            setStatus(`Error copying image: ${error.message}`, true);
-        }
-    }
-
-    // Show image metadata
     async function showImageMetadata(image) {
         try {
-            setStatus('Loading image metadata...');
-            actions.toggleMetadata(true);
             metadata.metadataSection.style.display = 'block';
             
-            const response = await api.fetchApi('/sage_utils/image_metadata', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ image_path: image.path })
-            });
-            
-            const result = await response.json();
+            // Call the imported API function
+            const result = await loadImageMetadata(image, setStatus);
             
             if (result.success) {
-                const metadataObj = result.metadata;
-                let html = '';
-                let hasErrors = false;
-                
-                // File Information - always try to show this first
-                try {
-                    if (metadataObj.file_info) {
-                        html += '<div style="color: #4CAF50; margin-bottom: 10px; font-weight: bold;">📄 File Information</div>';
-                        const fileInfo = metadataObj.file_info;
-                        
-                        if (fileInfo.filename) html += `<div>Name: ${fileInfo.filename}</div>`;
-                        if (fileInfo.dimensions) {
-                            html += `<div>Dimensions: ${fileInfo.dimensions.width} × ${fileInfo.dimensions.height}</div>`;
-                        }
-                        if (fileInfo.size_human || fileInfo.size) {
-                            html += `<div>Size: ${fileInfo.size_human || formatFileSize(fileInfo.size)}</div>`;
-                        }
-                        if (fileInfo.format) html += `<div>Format: ${fileInfo.format}</div>`;
-                        if (fileInfo.modified) {
-                            html += `<div>Modified: ${new Date(fileInfo.modified).toLocaleString()}</div>`;
-                        }
-                        if (fileInfo.error) {
-                            html += `<div style="color: #ff9800;">⚠️ ${fileInfo.error}</div>`;
-                            hasErrors = true;
-                        }
-                        html += '<br>';
-                    }
-                } catch (fileInfoError) {
-                    html += '<div style="color: #ff9800;">⚠️ Could not load file information</div><br>';
-                    hasErrors = true;
-                }
-                
-                // EXIF Data - handle gracefully if it fails
-                try {
-                    if (metadataObj.exif && Object.keys(metadataObj.exif).length > 0) {
-                        html += '<div style="color: #2196F3; margin-bottom: 10px; font-weight: bold;">📷 EXIF Data</div>';
-                        Object.entries(metadataObj.exif).forEach(([key, value]) => {
-                            try {
-                                // Handle values that might have conversion issues
-                                let displayValue = value;
-                                if (typeof value === 'number' && !Number.isFinite(value)) {
-                                    displayValue = 'N/A';
-                                } else if (typeof value === 'object' && value !== null) {
-                                    displayValue = JSON.stringify(value);
-                                }
-                                html += `<div>${key}: ${displayValue}</div>`;
-                            } catch (exifItemError) {
-                                html += `<div>${key}: <em style="color: #ff9800;">Error reading value</em></div>`;
-                            }
-                        });
-                        html += '<br>';
-                    }
-                } catch (exifError) {
-                    html += '<div style="color: #ff9800;">⚠️ EXIF data could not be fully loaded</div><br>';
-                    hasErrors = true;
-                }
-                
-                // Generation Parameters - handle gracefully if it fails
-                try {
-                    if (metadataObj.generation_params && Object.keys(metadataObj.generation_params).length > 0) {
-                        html += '<div style="color: #FF9800; margin-bottom: 10px; font-weight: bold;">🎨 Generation Parameters</div>';
-                        Object.entries(metadataObj.generation_params).forEach(([key, value]) => {
-                            try {
-                                if (typeof value === 'object') {
-                                    html += `<div>${key}: <pre style="margin: 5px 0; background: #444; padding: 5px; border-radius: 3px; font-size: 10px;">${JSON.stringify(value, null, 2)}</pre></div>`;
-                                } else {
-                                    html += `<div>${key}: ${value}</div>`;
-                                }
-                            } catch (paramError) {
-                                html += `<div>${key}: <em style="color: #ff9800;">Error reading parameter</em></div>`;
-                            }
-                        });
-                        html += '<br>';
-                    }
-                } catch (paramsError) {
-                    html += '<div style="color: #ff9800;">⚠️ Generation parameters could not be fully loaded</div><br>';
-                    hasErrors = true;
-                }
-                
-                if (!html) {
-                    html = '<em style="color: #999;">No metadata available for this image</em>';
-                }
-                
-                if (hasErrors) {
-                    html = '<div style="color: #ff9800; margin-bottom: 10px;">⚠️ Some metadata could not be loaded completely</div>' + html;
-                }
-                
+                // Format the metadata using the imported function
+                const { html, hasErrors } = formatMetadataForDisplay(result.metadata);
                 metadata.metadataContent.innerHTML = html;
-                setStatus(hasErrors ? 'Metadata loaded with some warnings' : 'Metadata loaded');
                 
-                // Scroll to metadata section to show the loaded details
-                setTimeout(() => {
-                    metadata.metadataSection.scrollIntoView({ 
-                        behavior: 'smooth', 
-                        block: 'start' 
-                    });
-                }, 100);
-                
-            } else {
-                throw new Error(result.error || 'Failed to load metadata');
-            }
-            
-        } catch (error) {
-            console.error('Error loading metadata:', error);
-            
-            // Try to show basic file information even if metadata extraction failed
-            let fallbackHtml = '';
-            try {
-                fallbackHtml += '<div style="color: #4CAF50; margin-bottom: 10px; font-weight: bold;">📄 Basic File Information</div>';
-                fallbackHtml += `<div>Path: ${image.path}</div>`;
-                fallbackHtml += `<div>Filename: ${image.filename || 'Unknown'}</div>`;
-                if (image.modified) {
-                    fallbackHtml += `<div>Modified: ${new Date(image.modified).toLocaleString()}</div>`;
+                if (setStatus) {
+                    setStatus(hasErrors ? 'Metadata loaded with some warnings' : 'Metadata loaded');
                 }
-                fallbackHtml += '<br>';
-            } catch (fallbackError) {
-                // If even basic info fails, show minimal info
-                fallbackHtml = `<div>Path: ${image.path}</div><br>`;
+            } else {
+                // Show fallback metadata using the imported function
+                const fallbackHtml = generateFallbackMetadata(image, result.error);
+                metadata.metadataContent.innerHTML = fallbackHtml;
             }
             
-            fallbackHtml += `
-                <div style="color: #f44336;">❌ Full metadata extraction failed</div>
-                <div style="color: #888; font-size: 10px; margin-top: 5px;">${error.message}</div>
-                <div style="color: #ff9800; font-size: 10px; margin-top: 5px;">
-                    This may be due to complex EXIF data that cannot be processed.
-                </div>
-            `;
-            
-            metadata.metadataContent.innerHTML = fallbackHtml;
-            setStatus(`Metadata extraction failed, showing basic info`, true);
-            
-            // Scroll to metadata section to show the fallback info
+            // Scroll to metadata section to show the loaded details
             setTimeout(() => {
                 metadata.metadataSection.scrollIntoView({ 
                     behavior: 'smooth', 
                     block: 'start' 
                 });
             }, 100);
+            
+        } catch (error) {
+            console.error('Error in showImageMetadata wrapper:', error);
+            const fallbackHtml = generateFallbackMetadata(image, error.message);
+            metadata.metadataContent.innerHTML = fallbackHtml;
         }
     }
 
     // Show image context menu
-    function showImageContextMenu(event, image) {
-        // Remove any existing context menu
-        const existingMenu = document.querySelector('.image-context-menu');
-        if (existingMenu) {
-            existingMenu.remove();
-        }
-        
-        // Remove any context menus without class (legacy cleanup)
-        const allMenus = document.querySelectorAll('div[style*="position: fixed"][style*="z-index: 1000"]');
-        allMenus.forEach(menu => {
-            if (menu.style.background === 'rgb(51, 51, 51)' || menu.style.background === '#333') {
-                menu.remove();
-            }
-        });
-        
-        // Create context menu
-        const menu = document.createElement('div');
-        menu.className = 'image-context-menu'; // Add class for easier identification
-        menu.style.cssText = `
-            position: fixed;
-            top: ${event.clientY}px;
-            left: ${event.clientX}px;
-            background: #333;
-            border: 1px solid #555;
-            border-radius: 4px;
-            padding: 5px 0;
-            z-index: 1000;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
-        `;
-        
-        const menuItems = [
-            { text: '👁️ View Full Size', action: () => showFullImage(image) },
-            { text: '📋 Copy to Clipboard', action: () => copyImageToClipboard(image.path) },
-            { text: '🔍 Show Details', action: () => showImageMetadata(image) },
-            { text: '📝 Dataset Text...', action: () => handleDatasetText(image), dynamic: true }
-        ];
-        
-        menuItems.forEach(item => {
-            const menuItem = document.createElement('div');
-            menuItem.style.cssText = `
-                padding: 8px 16px;
-                cursor: pointer;
-                font-size: 12px;
-                color: #fff;
-                transition: background-color 0.2s ease;
-            `;
-            
-            // Handle dynamic menu item
-            if (item.dynamic) {
-                menuItem.textContent = item.text; // Initially show generic text
-                // We'll update this dynamically in handleDatasetText
-            } else {
-                menuItem.textContent = item.text;
-            }
-            
-            menuItem.addEventListener('mouseenter', () => {
-                menuItem.style.backgroundColor = '#4CAF50';
-            });
-            
-            menuItem.addEventListener('mouseleave', () => {
-                menuItem.style.backgroundColor = 'transparent';
-            });
-            
-            menuItem.addEventListener('click', () => {
-                item.action();
-                menu.remove();
-            });
-            
-            menu.appendChild(menuItem);
-        });
-        
-        document.body.appendChild(menu);
-        
-        // Remove menu when clicking elsewhere or right-clicking
-        const removeMenu = (e) => {
-            if (!menu.contains(e.target)) {
-                menu.remove();
-                document.removeEventListener('click', removeMenu);
-                document.removeEventListener('contextmenu', removeMenu);
-            }
-        };
-        
-        setTimeout(() => {
-            document.addEventListener('click', removeMenu);
-            document.addEventListener('contextmenu', removeMenu);
-        }, 10);
-    }
 
     // Toggle view mode
-    function toggleViewMode() {
-        const currentMode = selectors.galleryViewMode();
-        const newMode = currentMode === 'grid' ? 'list' : 'grid';
-        actions.setViewMode(newMode);
-        
-        folderAndControls.viewModeButton.textContent = newMode === 'grid' ? '⊞ Grid View' : '☰ List View';
-        
-        // Update grid layout based on view mode
-        updateGridLayout();
-        
-        // Re-render images with new layout
-        const images = selectors.galleryImages();
-        const folders = selectors.galleryFolders();
-        if (images && images.length > 0) {
-            renderImageGrid(images, folders).catch(console.error);
-        }
-        setStatus(`Switched to ${newMode} view`);
-    }
 
     // Show metadata panel
     function showMetadata(imagePath) {
@@ -1843,13 +457,13 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
             setStatus('Please click Browse to select a custom folder');
         } else {
             folderAndControls.browseButton.style.display = 'none';
-            loadImagesFromFolder(selectedFolder);
+            loadImagesWrapper(selectedFolder);
         }
     });
 
     folderAndControls.browseButton.addEventListener('click', () => {
         // Implement custom folder browser
-        browseCustomFolder();
+        browseCustomFolder(renderImageGrid);
     });
 
     folderAndControls.searchInput.addEventListener('input', (e) => {
@@ -1874,7 +488,7 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
     });
 
     folderAndControls.refreshButton.addEventListener('click', refreshCurrentFolder);
-    folderAndControls.viewModeButton.addEventListener('click', toggleViewMode);
+    folderAndControls.viewModeButton.addEventListener('click', () => toggleViewMode(renderImageGrid));
 
     // Add event handlers for the new combined controls
     folderAndControls.clearButton.addEventListener('click', () => {
@@ -1953,64 +567,13 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
     });
 
     // Browse custom folder
-    async function browseCustomFolder() {
-        try {
-            setStatus('Opening folder browser...');
-            
-            // For now, show an input dialog - in future could integrate with system file browser
-            const folderPath = prompt('Enter folder path:', '/home/');
-            if (!folderPath) return;
-            
-            setStatus('Checking folder...');
-            
-            const response = await api.fetchApi('/sage_utils/browse_folder', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ folder_path: folderPath })
-            });
-            
-            const result = await response.json();
-            
-            if (result.success) {
-                const { path, folders, images } = result;
-                
-                if (images.length === 0) {
-                    setStatus(`Folder "${path}" contains no images`, true);
-                    return;
-                }
-                
-                // Add to folder selector if it's a valid custom folder
-                const customOption = document.createElement('option');
-                customOption.value = path;
-                customOption.textContent = `Custom: ${path}`;
-                folderAndControls.folderDropdown.appendChild(customOption);
-                
-                // Select the new folder
-                actions.selectFolder(path);
-                folderAndControls.folderDropdown.value = path;
-                
-                // Load images
-                actions.setImages(images);
-                renderImageGrid(images, folders).catch(console.error);
-                
-                setStatus(`Loaded ${images.length} images from custom folder`);
-                
-            } else {
-                throw new Error(result.error || 'Failed to browse folder');
-            }
-            
-        } catch (error) {
-            console.error('Error browsing folder:', error);
-            setStatus(`Error browsing folder: ${error.message}`, true);
-        }
-    }
 
     // Refresh current folder
     function refreshCurrentFolder() {
         const currentFolder = selectors.selectedFolder();
         if (currentFolder) {
             setStatus('Refreshing folder...');
-            loadImagesFromFolder(currentFolder);
+            loadImagesWrapper(currentFolder);
         } else {
             setStatus('No folder selected to refresh', true);
         }
@@ -2032,87 +595,40 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
 
     // Store functions for external access
     return {
-        loadImagesFromFolder,
+        loadImagesFromFolder: loadImagesWrapper,  // Export the wrapper, not the raw API function
         refreshCurrentFolder,
-        toggleViewMode,
+        toggleViewMode: () => toggleViewMode(renderImageGrid),  // Wrapper for imported function
         showMetadata,
         hideMetadata,
-        browseCustomFolder,
+        browseCustomFolder: () => browseCustomFolder(renderImageGrid),  // Wrapper for imported function
         filterAndSortImages,
         updateGridLayout,
-        updateThumbnailSizeUI
+        updateThumbnailSizeUI,
+        renderImageGrid  // Export for use by galleryEvents.js
     };
 }
 
-/**
- * Assembles the complete Image Gallery tab layout
- * @param {HTMLElement} container - Container element to populate
- * @param {Object} components - All tab components
- */
-function assembleGalleryTabLayout(container, components) {
-    const {
-        header,
-        folderAndControls, // Combined section
-        grid,
-        metadata
-    } = components;
-
-    // Clear container
-    container.innerHTML = '';
-
-    // Create main gallery container
-    const galleryContainer = document.createElement('div');
-    galleryContainer.style.cssText = `
-        padding: 15px;
-    `;
-
-    // Add header with reduced padding
-    header.style.padding = '10px 15px'; // Make header more compact
-    container.appendChild(header);
-
-    // Add all sections to gallery container
-    galleryContainer.appendChild(folderAndControls.folderSection); // Combined folder and controls
-    galleryContainer.appendChild(grid.gridSection);
-    galleryContainer.appendChild(metadata.metadataSection);
-
-    // Add gallery container to main container
-    container.appendChild(galleryContainer);
-}
-
-// Make functions globally accessible for backwards compatibility
-window.handleDatasetText = handleDatasetText;
-window.showCombinedImageTextEditor = showCombinedImageTextEditor;
-window.galleryTextManager = {
-    handleDatasetText,
-    showCombinedImageTextEditor,
-    editDatasetText,
-    createDatasetText,
-    batchCreateMissingTextFiles,
-    batchAppendToAllTextFiles,
-    batchFindReplaceAllTextFiles,
-    refreshCurrentTextDisplay
-};
-
-// Use imported dataset text manager functions instead of duplicating here
-const galleryTextManager = {
-    handleDatasetText,
-    showCombinedImageTextEditor,
-    batchCreateMissingTextFiles,
-    batchAppendToAllTextFiles,
-    batchFindReplaceAllTextFiles
-};
-
-// Make globally accessible
-window.handleDatasetText = handleDatasetText;
-window.showCombinedImageTextEditor = showCombinedImageTextEditor;
-window.galleryTextManager = galleryTextManager;
-
-
-// Note: Dataset text management functions are now implemented in js/shared/datasetTextManager.js
-// Image utility functions are now implemented in js/shared/imageUtils.js
-// UI component functions are now implemented in js/components/galleryComponents.js
-
 export function createImageGalleryTab(container) {
+    // Make functions globally accessible for backwards compatibility
+    window.handleDatasetText = handleDatasetText;
+    window.showCombinedImageTextEditor = showCombinedImageTextEditor;
+
+    // Make extracted event functions globally accessible
+    window.showFullImage = showFullImage;
+    window.showImageContextMenu = showImageContextMenu;
+    window.browseCustomFolder = browseCustomFolder;
+
+    window.galleryTextManager = {
+        handleDatasetText,
+        showCombinedImageTextEditor,
+        editDatasetText,
+        createDatasetText,
+        batchCreateMissingTextFiles,
+        batchAppendToAllTextFiles,
+        batchFindReplaceAllTextFiles,
+        refreshCurrentTextDisplay
+    };
+    
     // Create all components
     const header = createGalleryHeader();
     const folderAndControls = createFolderSelectorAndControls(); // Combined section
@@ -2158,3 +674,6 @@ export function createImageGalleryTab(container) {
         }
     }, 200);
 }
+
+// Default export for module compatibility
+export default createImageGalleryTab;

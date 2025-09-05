@@ -5,8 +5,8 @@
  */
 
 import { createDatasetNavigationControls } from '../components/navigationComponents.js';
-
 import { selectors } from "./stateManager.js";
+import { loadThumbnail } from "./imageLoader.js";
 
 /**
  * Show the combined image and text editor modal
@@ -192,40 +192,14 @@ export async function showCombinedImageTextEditor(image) {
         imageDisplay.style.display = 'none';
     };
     
-    // Load image
+    // Load image using centralized loader
     const loadCurrentImage = async () => {
         try {
             console.log('Loading image:', currentImage.path);
             
-            // Use the correct POST method for thumbnail endpoint
-            let imageUrl = null;
-            
-            console.log('Trying large thumbnail with POST method');
-            
             try {
-                const response = await fetch('/sage_utils/thumbnail', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        image_path: currentImage.path,
-                        size: 'large'
-                    })
-                });
+                const imageUrl = await loadThumbnail(currentImage, 'large');
                 
-                if (response.ok) {
-                    const blob = await response.blob();
-                    imageUrl = URL.createObjectURL(blob);
-                    console.log('Large thumbnail loaded successfully with POST');
-                } else {
-                    console.error('POST thumbnail failed:', response.status, response.statusText);
-                }
-            } catch (error) {
-                console.error('POST thumbnail approach failed:', error);
-            }
-            
-            if (imageUrl) {
                 // Clean up previous blob URL to prevent memory leaks
                 if (imageDisplay.dataset.previousUrl && imageDisplay.dataset.previousUrl.startsWith('blob:')) {
                     URL.revokeObjectURL(imageDisplay.dataset.previousUrl);
@@ -235,8 +209,8 @@ export async function showCombinedImageTextEditor(image) {
                 imageDisplay.style.display = 'block'; // Ensure image is visible
                 imageDisplay.dataset.previousUrl = imageUrl;
                 console.log('Image set successfully with URL:', imageUrl);
-            } else {
-                console.error('All image loading methods failed');
+            } catch (error) {
+                console.error('Image loading failed:', error);
                 imageDisplay.src = ''; // Clear broken image
                 imageDisplay.style.display = 'none';
             }
