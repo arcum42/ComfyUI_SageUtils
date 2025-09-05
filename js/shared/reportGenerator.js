@@ -10,6 +10,20 @@ import {
     formatTriggerWords
 } from './civitai.js';
 
+import {
+    MODEL_FILE_EXTENSIONS,
+    COMMON_MODEL_EXTENSIONS,
+    MODEL_TYPES,
+    DEFAULT_THUMBNAIL_WIDTH,
+    DEFAULT_THUMBNAIL_HEIGHT,
+    DEFAULT_BATCH_SIZE,
+    hasModelExtension,
+    hasCommonModelExtension,
+    isLikelyCheckpoint,
+    isLikelyLora,
+    getThumbnailStyle
+} from './constants.js';
+
 /**
  * Get file size from backend
  * @param {string} filePath - Path to the file
@@ -182,7 +196,7 @@ export async function generateTableRows(models, options = {}) {
             const firstImage = info.images[0];
             if (firstImage && firstImage.url) {
                 exampleImageContent = `<img src="${escapeHtml(firstImage.url)}" 
-                                           style="width:150px;height:100px;object-fit:cover;border-radius:4px;cursor:pointer;transition:all 0.3s ease;" 
+                                           style="${getThumbnailStyle()}" 
                                            alt="Example image" 
                                            loading="lazy" 
                                            title="Click to expand/collapse"
@@ -192,7 +206,7 @@ export async function generateTableRows(models, options = {}) {
         } else if (hash) {
             // Auto-load Civitai images with proper sizing
             const civitaiImageUrl = `https://civitai.com/api/v1/model-versions/by-hash/${encodeURIComponent(hash)}`;
-            exampleImageContent = `<div style="width:150px;height:100px;background:#f5f5f5;display:flex;align-items:center;justify-content:center;border-radius:4px;font-size:11px;color:#999;" 
+            exampleImageContent = `<div style="width:${DEFAULT_THUMBNAIL_WIDTH}px;height:${DEFAULT_THUMBNAIL_HEIGHT}px;background:#f5f5f5;display:flex;align-items:center;justify-content:center;border-radius:4px;font-size:11px;color:#999;" 
                                         data-civitai-hash="${escapeHtml(hash)}" 
                                         data-civitai-url="${escapeHtml(civitaiImageUrl)}"
                                         class="auto-load-image">
@@ -251,7 +265,7 @@ export async function generateTableRowsWithProgress(models, options = {}) {
     
     // First, create a cache for file sizes to avoid duplicate API calls
     const fileSizeCache = new Map();
-    const batchSize = 50; // Process models in batches to prevent blocking
+    const batchSize = DEFAULT_BATCH_SIZE; // Process models in batches to prevent blocking
     const rows = [];
     
     for (let i = 0; i < models.length; i += batchSize) {
@@ -634,17 +648,12 @@ export async function generateHtmlContentWithProgress(options) {
         checkpointModels = deduplicatedModels.filter(model => {
             const info = model.info || {};
             const filePath = model.filePath || '';
-            const isCheckpoint = info.model_type === 'Checkpoint' || 
-                               filePath.toLowerCase().includes('.safetensors') ||
-                               filePath.toLowerCase().includes('.ckpt');
-            return isCheckpoint;
+            return isLikelyCheckpoint(filePath, info);
         });
         loraModels = deduplicatedModels.filter(model => {
             const info = model.info || {};
             const filePath = model.filePath || '';
-            const isLora = info.model_type === 'LORA' || 
-                          filePath.toLowerCase().includes('lora');
-            return isLora;
+            return isLikelyLora(filePath, info);
         });
     } else {
         // Legacy format: use provided arrays (also deduplicate if they're model objects)
@@ -758,8 +767,8 @@ export async function generateHtmlContentWithProgress(options) {
             vertical-align: top;
         }
         td.image-cell {
-            width: 160px;
-            height: 110px;
+            width: ${DEFAULT_THUMBNAIL_WIDTH + 10}px;
+            height: ${DEFAULT_THUMBNAIL_HEIGHT + 10}px;
             padding: 5px;
             text-align: center;
             vertical-align: middle;
@@ -997,7 +1006,7 @@ export async function generateHtmlContentWithProgress(options) {
                     if (appropriateImage && appropriateImage.url) {
                         const imgElement = document.createElement('img');
                         imgElement.src = appropriateImage.url;
-                        imgElement.style.cssText = 'width:150px;height:100px;object-fit:cover;border-radius:4px;cursor:pointer;transition:all 0.3s ease;';
+                        imgElement.style.cssText = getThumbnailStyle();
                         imgElement.alt = 'Model example image';
                         imgElement.loading = 'lazy';
                         imgElement.title = 'Click to expand/collapse';

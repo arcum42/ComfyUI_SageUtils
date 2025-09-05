@@ -11,6 +11,7 @@ import comfy.utils
 
 from .model_cache import cache
 from .helpers_civitai import *
+from .constants import MODEL_FILE_EXTENSIONS
 
 def str_to_bool(value):
     if isinstance(value, bool):
@@ -49,6 +50,17 @@ def get_path_without_base(folder_type:str, path:str) -> str:
 def get_file_extension(path: str) -> str:
     """Get the file extension from a path."""
     return path.split(".")[-1] if "." in path else ""
+
+def has_model_extension(path: str) -> bool:
+    """Check if a file path has a model extension."""
+    if not path:
+        return False
+    extension = '.' + get_file_extension(path).lower()
+    return extension in {ext.lower() for ext in MODEL_FILE_EXTENSIONS}
+
+def is_model_file(path: str) -> bool:
+    """Check if a file is a valid model file based on its extension."""
+    return has_model_extension(path)
 
 def get_file_sha256(path):
     print(f"Calculating hash for {path}")
@@ -327,7 +339,7 @@ def model_scan(the_path, force = False):
     model_list = []
     for dir in the_paths:
         print(f"dir: {dir}")
-        result = list(p.resolve() for p in pathlib.Path(dir).glob("**/*") if p.suffix in {".safetensors", ".ckpt"})
+        result = list(p.resolve() for p in pathlib.Path(dir).glob("**/*") if p.suffix in MODEL_FILE_EXTENSIONS)
         model_list.extend(result)
 
     model_list = list(set(model_list))
