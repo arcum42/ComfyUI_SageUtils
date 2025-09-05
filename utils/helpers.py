@@ -222,17 +222,34 @@ def recheck_hash(file_path, hash):
         hash = new_hash
     return hash
 
-def update_model_timestamp(file_path):
+# Model path is inconsistent. Sometimes it is a list, and sometimes a string.
+# Also, different models vary on whether they use an absolute or relative path.
+# Loras and VAEs use a relative path from the loras folder. They are converted to absolute paths
+# when calling this function. get_full_path_or_raise will raise if passed an absolute path.
+# Unfortunately, this is set in the main program, not this node set.
+def pull_and_update_model_timestamp(file_paths, model_type):
+    if not isinstance(file_paths, (list, tuple)):
+        file_paths = [file_paths]
+
+    #if model_type == "lora":
+    #    file_paths = [folder_paths.get_full_path_or_raise("loras", lora) for lora in file_paths]
+
+    for path in file_paths:
+        pull_metadata(path, model_type=model_type)
+
+    update_model_timestamp(file_paths)
+
+def update_model_timestamp(file_paths):
     cache.load()
-    # If the file_path isn't a list, make it a list.
-    if not isinstance(file_path, (list, tuple)):
-        file_path = [file_path]
-    for path in file_path:
+    # If the file_paths isn't a list, make it a list.
+    if not isinstance(file_paths, (list, tuple)):
+        file_paths = [file_paths]
+    for path in file_paths:
         if path in cache.hash:
             cache.update_last_used_by_path(path)
     cache.save()
 
-def pull_metadata(file_paths, timestamp = True, force_all = False, pbar = None):
+def pull_metadata(file_paths, timestamp = True, force_all = False, pbar = None, model_type = None):
     pull_json = True
     metadata_days_recheck = 7
     
@@ -310,6 +327,9 @@ def pull_metadata(file_paths, timestamp = True, force_all = False, pbar = None):
 
         cache.hash[file_path] = hash
         cache.info[hash] = file_cache
+        if model_type is not None:
+            file_cache['model_type'] = model_type
+
         if pbar is not None:
             pbar.update(1)
     cache.save()
