@@ -3,16 +3,23 @@ Custom routes for SageUtils to expose cache data and settings via HTTP endpoints
 """
 
 import logging
+from .utils.performance_timer import server_timer, record_initialization_milestone, timer_context
+
+# Record server routes initialization start
+record_initialization_milestone("SERVER_ROUTES_START", server_timer)
 try:
     from server import PromptServer
     from aiohttp import web
     from .utils.model_cache import cache
     from .utils.settings import get_settings, SETTINGS_SCHEMA
+    
+    record_initialization_milestone("SERVER_IMPORTS_COMPLETE", server_timer)
 
     # Check if PromptServer instance is available
     if hasattr(PromptServer, 'instance') and PromptServer.instance is not None:
         # Get the PromptServer instance
         routes = PromptServer.instance.routes
+        record_initialization_milestone("PROMPT_SERVER_READY", server_timer)
 
         # Settings management routes
         @routes.get('/sage_utils/settings')
@@ -1893,9 +1900,106 @@ try:
             except Exception as e:
                 return web.Response(text=f"Failed to serve image: {str(e)}", status=500)
 
+        @routes.post('/sage_utils/timing_data')
+        async def receive_timing_data(request):
+            """
+            Receive timing data from JavaScript side for analysis and reporting.
+            """
+            try:
+                data = await request.json()
+                source = data.get('source', 'unknown')
+                timing_data = data.get('data', {})
+                
+                # Log the timing data
+                print(f"\\n=== Timing Data from {source.upper()} ===")
+                if 'initializationTimes' in timing_data:
+                    print("Initialization Times:")
+                    for milestone, time_ms in timing_data['initializationTimes'].items():
+                        if milestone != '__complete__':
+                            print(f"  {milestone}: {time_ms:.4f}ms")
+                    
+                    if '__complete__' in timing_data['initializationTimes']:
+                        total = timing_data['initializationTimes']['__complete__']
+                        print(f"  TOTAL: {total:.4f}ms")
+                
+                if 'runtimeStats' in timing_data:
+                    print("Runtime Statistics:")
+                    for operation, stats in timing_data['runtimeStats'].items():
+                        if stats:
+                            print(f"  {operation}: {stats.get('count', 0)} calls, "
+                                f"{stats.get('total', 0):.4f}ms total, "
+                                f"{stats.get('average', 0):.4f}ms avg")
+                
+                # Store timing data for potential analysis
+                if not hasattr(receive_timing_data, 'timing_store'):
+                    receive_timing_data.timing_store = []
+                
+                receive_timing_data.timing_store.append({
+                    'timestamp': data.get('timestamp'),
+                    'source': source,
+                    'data': timing_data
+                })
+                
+                # Keep only the last 10 entries to avoid memory issues
+                if len(receive_timing_data.timing_store) > 10:
+                    receive_timing_data.timing_store = receive_timing_data.timing_store[-10:]
+                
+                return web.json_response({
+                    "success": True,
+                    "message": f"Timing data received from {source}"
+                })
+                
+            except Exception as e:
+                return web.json_response(
+                    {"success": False, "error": f"Failed to process timing data: {str(e)}"}, 
+                    status=500
+                )
+
+        @routes.get('/sage_utils/timing_report')
+        async def get_timing_report(request):
+            """
+            Get a combined timing report from both Python and JavaScript sides.
+            """
+            try:
+                from .utils.performance_timer import python_timer, server_timer
+                
+                report = {
+                    "python_timing": python_timer.export_to_dict(),
+                    "server_timing": server_timer.export_to_dict(),
+                    "javascript_timing": None
+                }
+                
+                # Include recent JavaScript timing data if available
+                if hasattr(receive_timing_data, 'timing_store') and receive_timing_data.timing_store:
+                    # Get the most recent JavaScript timing data
+                    js_data = None
+                    for entry in reversed(receive_timing_data.timing_store):
+                        if entry['source'] == 'javascript':
+                            js_data = entry['data']
+                            break
+                    report["javascript_timing"] = js_data
+                
+                return web.json_response({
+                    "success": True,
+                    "timing_report": report
+                })
+                
+            except Exception as e:
+                return web.json_response(
+                    {"success": False, "error": f"Failed to generate timing report: {str(e)}"}, 
+                    status=500
+                )
+
         print("SageUtils custom routes loaded successfully!")
+        record_initialization_milestone("ROUTES_REGISTERED", server_timer)
+        
+        # Complete server timer initialization
+        from .utils.performance_timer import complete_initialization
+        server_init_time = complete_initialization(server_timer)
+        print(f"SageUtils server initialization completed in {server_init_time:.4f}s")
     else:
         print("Warning: PromptServer instance not available, skipping route registration")
+        record_initialization_milestone("PROMPT_SERVER_UNAVAILABLE", server_timer)
 
 except ImportError as e:
     print(f"Warning: Could not import required modules for SageUtils routes: {e}")

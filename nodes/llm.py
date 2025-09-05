@@ -14,6 +14,12 @@ from comfy.comfy_types.node_typing import ComfyNodeABC, InputTypeDict, IO
 # Import specific utilities instead of wildcard import
 from ..utils.config_manager import llm_prompts
 from ..utils import llm_wrapper as llm
+from ..utils.performance_fix import (
+    get_cached_ollama_models_for_input_types,
+    get_cached_lmstudio_models_for_input_types,
+    get_cached_ollama_vision_models_for_input_types,
+    get_cached_lmstudio_vision_models_for_input_types
+)
 
 # Attempt to import ollama, if available. Set a flag if it is not available.
 try:
@@ -190,7 +196,8 @@ class Sage_OllamaAdvancedOptions(ComfyNodeABC):
 class Sage_OllamaLLMPromptText(ComfyNodeABC):
     @classmethod
     def INPUT_TYPES(cls) -> InputTypeDict:
-        models = llm.get_ollama_models()
+        # Use cached models to avoid network delays during node registration
+        models = get_cached_ollama_models_for_input_types()
         if not models:
             models = ["(Ollama not available)"]
         models = sorted(models)
@@ -231,7 +238,8 @@ class Sage_OllamaLLMPromptText(ComfyNodeABC):
 class Sage_OllamaLLMPromptVision(ComfyNodeABC):
     @classmethod
     def INPUT_TYPES(cls) -> InputTypeDict:
-        models = llm.get_ollama_vision_models()
+        # Use cached models to avoid network delays during node registration
+        models = get_cached_ollama_vision_models_for_input_types()
         if not models:
             models = ["(No Ollama vision models available)"]
             print("No Ollama vision models are available.")
@@ -278,13 +286,14 @@ class Sage_OllamaLLMPromptVision(ComfyNodeABC):
 class Sage_OllamaLLMPromptVisionRefine(ComfyNodeABC):
     @classmethod
     def INPUT_TYPES(cls) -> InputTypeDict:
-        models = llm.get_ollama_vision_models()
+        # Use cached models to avoid network delays during node registration
+        models = get_cached_ollama_vision_models_for_input_types()
         if not models:
             models = ["(No Ollama vision models available)"]
             print("No Ollama vision models are available.")
         models = sorted(models)
         
-        refine_models = llm.get_ollama_models()
+        refine_models = get_cached_ollama_models_for_input_types()
         if not refine_models:
             refine_models = ["(Ollama not available)"]
         refine_models = sorted(refine_models)
@@ -340,7 +349,8 @@ class Sage_OllamaLLMPromptVisionRefine(ComfyNodeABC):
 class Sage_LMStudioLLMPromptText(ComfyNodeABC):
     @classmethod
     def INPUT_TYPES(cls) -> InputTypeDict:
-        models = llm.get_lmstudio_models()
+        # Use cached models to avoid network delays during node registration
+        models = get_cached_lmstudio_models_for_input_types()
         if not models:
             models = ["(LM Studio not available)"]
             print("LM Studio is not available or no models are loaded.")
@@ -382,7 +392,8 @@ class Sage_LMStudioLLMPromptText(ComfyNodeABC):
 class Sage_LMStudioLLMPromptVision(ComfyNodeABC):
     @classmethod
     def INPUT_TYPES(cls) -> InputTypeDict:
-        models = llm.get_lmstudio_vision_models()
+        # Use cached models to avoid network delays during node registration
+        models = get_cached_lmstudio_vision_models_for_input_types()
         if not models:
             models = ["(No LM Studio vision models available)"]
             print("No LM Studio vision models are available.")
@@ -429,13 +440,14 @@ class Sage_LMStudioLLMPromptVision(ComfyNodeABC):
 class Sage_LMStudioLLMPromptVisionRefine(ComfyNodeABC):
     @classmethod
     def INPUT_TYPES(cls) -> InputTypeDict:
-        models = llm.get_lmstudio_vision_models()
+        # Use cached models to avoid network delays during node registration
+        models = get_cached_lmstudio_vision_models_for_input_types()
         if not models:
             models = ["(No LM Studio vision models available)"]
             print("No LM Studio vision models are available.")
         models = sorted(models)
         
-        refine_models = llm.get_lmstudio_models()
+        refine_models = get_cached_lmstudio_models_for_input_types()
         if not refine_models:
             refine_models = ["(LM Studio not available)"]
         refine_models = sorted(refine_models)
