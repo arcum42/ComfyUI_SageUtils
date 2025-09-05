@@ -515,14 +515,24 @@ function setupModelsEventHandlers(filterControls, fileSelector, actionButtons, i
             progressBar.updateProgress(20, `Processing ${models.length} models...`);
             await new Promise(resolve => setTimeout(resolve, 100)); // Brief pause for UI update
             
-            // Get current sort selection from the models tab
+            // Get current filter selections from the models tab
             const currentSort = filterControls.sortSelector.value;
+            const currentModelTypeFilter = filterControls.filterSelector.value;
+            
+            // Build filter description for the report
+            let filterDescription = '';
+            if (currentModelTypeFilter !== 'all') {
+                const selectedFilterOption = filterControls.filterSelector.options[filterControls.filterSelector.selectedIndex];
+                filterDescription = `Filter: ${selectedFilterOption.text}`;
+            }
             
             // Generate HTML report with detailed progress updates
             const htmlContent = await generateHtmlContent({
                 models: models,
                 title: 'SageUtils Model Cache Report',
                 sortBy: currentSort,
+                modelTypeFilter: currentModelTypeFilter,
+                filterDescription: filterDescription,
                 sortDescription: ` • Sorted by: ${filterControls.sortSelector.options[filterControls.sortSelector.selectedIndex].text}`,
                 progressCallback: (progress, message) => {
                     // Map the HTML generation progress to the 40-95% range
