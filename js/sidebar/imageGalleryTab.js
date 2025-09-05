@@ -453,8 +453,17 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
         actions.selectFolder(selectedFolder);
         
         if (selectedFolder === 'custom') {
-            folderAndControls.browseButton.style.display = 'block';
-            setStatus('Please click Browse to select a custom folder');
+            const currentPath = selectors.currentPath();
+            if (currentPath && currentPath !== '') {
+                // We have a previously browsed custom folder, load it
+                folderAndControls.browseButton.style.display = 'block';
+                loadImagesWrapper('custom', currentPath);
+                setStatus(`Loading custom folder: ${currentPath}`);
+            } else {
+                // No custom path set, user needs to browse
+                folderAndControls.browseButton.style.display = 'block';
+                setStatus('Please click Browse to select a custom folder');
+            }
         } else {
             folderAndControls.browseButton.style.display = 'none';
             loadImagesWrapper(selectedFolder);

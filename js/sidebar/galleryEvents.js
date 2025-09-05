@@ -582,54 +582,111 @@ export async function browseCustomFolder(renderImageGrid) {
         console.log('Gallery: Opening folder browser...');
         
         // For now, show an input dialog - in future could integrate with system file browser
-        const folderPath = prompt('Enter folder path:', '/home/');
-        if (!folderPath) return;
+        const defaultPath = selectors.currentPath() || '/home/';
+        const folderPath = prompt(
+            'Enter the full path to a folder containing images:\n\n' +
+            'Examples:\n' +
+            '• /home/username/Pictures\n' +
+            '• /path/to/your/images\n' +
+            '• /mnt/drive/photos\n\n' +
+            'Path:', 
+            defaultPath
+        );
+        if (!folderPath || folderPath.trim() === '') return;
         
-        console.log('Gallery: Checking folder...');
+        console.log('Gallery: Loading images from custom folder...');
         
-        const response = await api.fetchApi('/sage_utils/browse_folder', {
+        // Use the same endpoint as the main gallery loading function
+        const response = await api.fetchApi('/sage_utils/list_images', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ folder_path: folderPath })
+            body: JSON.stringify({ 
+                folder: 'custom', 
+                path: folderPath.trim() 
+            })
         });
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
         
         const result = await response.json();
         
         if (result.success) {
-            const { path, folders, images } = result;
+            const { images = [], folders = [] } = result;
             
-            if (images.length === 0) {
-                console.log(`Gallery Error: Folder "${path}" contains no images`);
+            if (images.length === 0 && folders.length === 0) {
+                alert(`Folder "${folderPath}" contains no images or subfolders`);
                 return;
             }
             
             // Add to folder selector if it's a valid custom folder
             const folderDropdown = document.querySelector('#gallery-folder-dropdown');
             if (folderDropdown) {
+                // Remove any existing custom options to avoid duplicates
+                const existingCustomOptions = Array.from(folderDropdown.options).filter(opt => 
+                    opt.textContent.startsWith('Custom:')
+                );
+                existingCustomOptions.forEach(opt => opt.remove());
+                
                 const customOption = document.createElement('option');
-                customOption.value = path;
-                customOption.textContent = `Custom: ${path}`;
+                customOption.value = 'custom';
+                customOption.textContent = `Custom: ${folderPath}`;
                 folderDropdown.appendChild(customOption);
                 
                 // Select the new folder
-                folderDropdown.value = path;
+                folderDropdown.value = 'custom';
             }
             
             // Update state
-            actions.selectFolder(path);
+            actions.selectFolder('custom');
+            actions.setCurrentPath(folderPath);
             actions.setImages(images);
+            actions.setFolders(folders);
             
             // Render images
             renderImageGrid(images, folders).catch(console.error);
             
-            console.log(`Gallery: Loaded ${images.length} images from custom folder`);
+            console.log(`Gallery: Loaded ${images.length} images and ${folders.length} folders from custom folder: ${folderPath}`);
             
         } else {
-            throw new Error(result.error || 'Failed to browse folder');
+            // Check the specific error to provide helpful feedback
+            const errorMsg = result.error || 'Failed to browse folder';
+            if (errorMsg.includes('does not exist')) {
+                alert(`Path not found: "${folderPath}"\n\nPlease check that:\n• The path is correct\n• The folder exists\n• You have access permissions`);
+            } else if (errorMsg.includes('not a directory')) {
+                alert(`Not a folder: "${folderPath}"\n\nPlease provide a path to a folder, not a file.`);
+            } else if (errorMsg.includes('Permission denied')) {
+                alert(`Access denied: "${folderPath}"\n\nYou don't have permission to access this folder.`);
+            } else {
+                alert(`Error: ${errorMsg}`);
+            }
+            throw new Error(errorMsg);
         }
         
     } catch (error) {
         console.error('Error browsing folder:', error);
+        
+        // Provide specific error messages based on the type of error
+        if (error.message.includes('HTTP error! status:')) {
+            const status = error.message.match(/status: (\d+)/)?.[1];
+            if (status === '400') {
+                alert('Invalid folder path provided');
+            } else if (status === '403') {
+                alert('Access denied - you don\'t have permission to access this folder');
+            } else if (status === '404') {
+                alert('Folder not found');
+            } else {
+                alert(`Server error (${status}): Unable to browse folder`);
+            }
+        } else if (error.message.includes('Failed to fetch')) {
+            alert('Network error: Unable to connect to the server');
+        } else if (!error.message.startsWith('Path not found:') && 
+                   !error.message.startsWith('Not a folder:') && 
+                   !error.message.startsWith('Access denied:')) {
+            // Only show generic error if we haven't already shown a specific one
+            alert(`Error browsing folder: ${error.message}`);
+        }
     }
 }
 
