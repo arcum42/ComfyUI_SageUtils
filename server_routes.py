@@ -1602,6 +1602,10 @@ try:
                 current_path_str = data.get('path', os.path.expanduser('~'))
                 max_depth = data.get('depth', 2)  # Limit depth to prevent performance issues
                 
+                # Expand Windows environment variables if present
+                if platform.system() == 'Windows':
+                    current_path_str = os.path.expandvars(current_path_str)
+                
                 # Handle Windows vs Unix paths properly
                 if platform.system() == 'Windows':
                     current_path = pathlib.WindowsPath(current_path_str).resolve()

@@ -256,10 +256,10 @@ async function showFolderBrowserDialog(callback) {
         // Default favorites based on platform
         if (navigator.platform.startsWith('Win')) {
             return [
-                { label: '🏠 Home', path: 'C:\\Users' },
+                { label: '🏠 Users', path: 'C:\\Users' },
                 { label: '💾 C:', path: 'C:\\' },
-                { label: '📁 Desktop', path: 'C:\\Users\\Public\\Desktop' },
-                { label: '🖼️ Pictures', path: 'C:\\Users\\Public\\Pictures' }
+                { label: '📁 Desktop', path: '%USERPROFILE%\\Desktop' },
+                { label: '🖼️ Pictures', path: '%USERPROFILE%\\Pictures' }
             ];
         } else {
             return [
