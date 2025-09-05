@@ -222,6 +222,16 @@ def recheck_hash(file_path, hash):
         hash = new_hash
     return hash
 
+def update_model_timestamp(file_path):
+    cache.load()
+    # If the file_path isn't a list, make it a list.
+    if not isinstance(file_path, (list, tuple)):
+        file_path = [file_path]
+    for path in file_path:
+        if path in cache.hash:
+            cache.update_last_used_by_path(path)
+    cache.save()
+
 def pull_metadata(file_paths, timestamp = True, force_all = False, pbar = None):
     pull_json = True
     metadata_days_recheck = 7
@@ -237,10 +247,7 @@ def pull_metadata(file_paths, timestamp = True, force_all = False, pbar = None):
     
     for file_path in file_paths:
         force = force_all
-        #print(f"Processing file: {file_path}")
-        #print(f"cache.hash: {cache.hash}")
         hash = cache.hash.get(str(file_path), None)
-        #print(f"Current hash: {hash}")
         if hash is None:
             print(f"Hash not found in cache for {file_path}. Adding to cache.")
             hash = add_file_to_cache(file_path)
@@ -301,10 +308,6 @@ def pull_metadata(file_paths, timestamp = True, force_all = False, pbar = None):
                 retries += 1
                 file_cache['civitai_failed_count'] = retries
 
-        if timestamp:
-            print("Updating timestamp.")
-            cache.update_last_used_by_path(file_path)
-
         cache.hash[file_path] = hash
         cache.info[hash] = file_cache
         if pbar is not None:
@@ -346,7 +349,7 @@ def model_scan(the_path, force = False):
     model_list = [str(x) for x in model_list]
     print(f"Scanning {len(model_list)} models for metadata.")
     pbar = comfy.utils.ProgressBar(len(model_list))
-    pull_metadata(model_list, force_all=force, timestamp=False, pbar=pbar)
+    pull_metadata(model_list, force_all=force, pbar=pbar)
 
 def get_recently_used_models(model_type):
     model_list = list()

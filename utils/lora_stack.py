@@ -14,7 +14,7 @@ def get_lora_stack_keywords(lora_stack=None):
     # Collect unique lora names
     lora_names = {lora[0] for lora in lora_stack}
     lora_paths = [folder_paths.get_full_path_or_raise("loras", name) for name in lora_names]
-    pull_metadata(lora_paths, timestamp=True)
+    pull_metadata(lora_paths)
     # Gather all keywords into a set for uniqueness
     all_keywords = set()
     for name in lora_names:

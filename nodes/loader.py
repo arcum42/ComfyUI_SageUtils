@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 from comfy.comfy_types.node_typing import ComfyNodeABC, InputTypeDict, IO
+from ..utils.helpers import pull_metadata, update_model_timestamp
 
 # Import specific utilities instead of wildcard import
 from ..utils import get_lora_stack_keywords
@@ -49,6 +50,9 @@ class Sage_UNETLoaderFromInfo(ComfyNodeABC):
         unet_node = add_unet_node_from_info(graph, unet_info)
         if unet_node is None:
             raise ValueError("UNET info is missing or invalid.")
+        else:
+            update_model_timestamp(unet_info["path"])
+
         # Return the UNET node as a model component.
         print(f"UNET loaded: {unet_info['path']}")
         unet_out = unet_node.out(0) if unet_node else None
@@ -86,6 +90,9 @@ class Sage_CLIPLoaderFromInfo(ComfyNodeABC):
         clip_node = add_clip_node_from_info(graph, clip_info)
         if clip_node is None:
             raise ValueError("CLIP info is missing or invalid.")
+        else:
+            update_model_timestamp(clip_info["path"])
+
         # Return the CLIP node as a model component.
         print(f"CLIP loaded: {clip_info['path']}")
         clip_out = clip_node.out(0) if clip_node else None
@@ -123,6 +130,9 @@ class Sage_ChromaCLIPLoaderFromInfo(ComfyNodeABC):
         clip_node = add_clip_node_from_info(graph, clip_info)
         if clip_node is None:
             raise ValueError("CLIP info is missing or invalid.")
+        else:
+            update_model_timestamp(clip_info["path"])
+
         clip_node = graph.node("T5TokenizerOptions", clip=clip_node.out(0), min_padding=1, min_length=0)
         # Return the CLIP node as a model component.
         print(f"CLIP loaded: {clip_info['path']}")
@@ -159,6 +169,9 @@ class Sage_VAELoaderFromInfo(ComfyNodeABC):
         vae_node = add_vae_node_from_info(graph, vae_info)
         if vae_node is None:
             raise ValueError("VAE info is missing or invalid.")
+        else:
+            update_model_timestamp(vae_info["path"])
+
         # Return the VAE node as a model component.
         print(f"VAE loaded: {vae_info['path']}")
         vae_out = vae_node.out(0) if vae_node else None
@@ -286,18 +299,34 @@ class Sage_LoadModelFromInfo(ComfyNodeABC):
 
         if ckpt_info is not None:
             ckpt_node = add_ckpt_node_from_info(graph, ckpt_info)
+            if ckpt_node is None:
+                raise ValueError("Checkpoint info is missing or invalid.")
+            else:
+                update_model_timestamp(ckpt_info["path"])
         
         # If we have a UNET, load it with the UNETLoader node.
         if unet_info is not None:
             unet_node = add_unet_node_from_info(graph, unet_info)
+            if unet_node is None:
+                raise ValueError("UNET info is missing or invalid.")
+            else:
+                update_model_timestamp(unet_info["path"])
 
         # If we have a CLIP, load it with the appropriate CLIPLoader node.
         if clip_info is not None:
             clip_node = add_clip_node_from_info(graph, clip_info)
+            if clip_node is None:
+                raise ValueError("CLIP info is missing or invalid.")
+            else:
+                update_model_timestamp(clip_info["path"])
 
         # If we have a VAE, load it with the VAELoader node.
         if vae_info is not None:
             vae_node = add_vae_node_from_info(graph, vae_info)
+            if vae_node is None:
+                raise ValueError("VAE info is missing or invalid.")
+            else:
+                update_model_timestamp(vae_info["path"])
 
         # We need to determine which outputs to return from the nodes.
         # If there's a checkpoint, set all the outputs to use its outputs initially.
@@ -406,6 +435,8 @@ class Sage_UNETLoRALoader(ComfyNodeABC):
         unet_out = unet_node.out(0) if unet_node else None
         if unet_node is None:
             raise ValueError("UNET info is missing or invalid.")
+        else:
+            update_model_timestamp(unet_info["path"])
 
         if model_shifts is not None and unet_out is not None:
             unet_out = create_model_shift_nodes_v2(graph, unet_out, model_shifts)

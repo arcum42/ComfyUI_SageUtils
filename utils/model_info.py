@@ -23,7 +23,7 @@ def get_model_info_ckpt(ckpt_name: str) -> tuple:
         tuple: A tuple containing the model_info dictionary.
     """
     model_info = {"type": "CKPT", "path": folder_paths.get_full_path_or_raise("checkpoints", ckpt_name)}
-    pull_metadata(model_info["path"], timestamp=True)
+    pull_metadata(model_info["path"])
     model_info["hash"] = cache.hash[model_info["path"]]
     return (model_info,)
 
@@ -43,7 +43,7 @@ def get_model_info_unet(unet_name: str, weight_dtype: str = "default") -> tuple:
             unet_name = unet_name[len(base):].lstrip("/\\")
             break
     model_info = {"type": "UNET", "path": folder_paths.get_full_path_or_raise("diffusion_models", unet_name)}
-    pull_metadata(model_info["path"], timestamp=True)
+    pull_metadata(model_info["path"])
     model_info["hash"] = cache.hash[model_info["path"]]
     if weight_dtype and (weight_dtype in weight_dtype_options):
         model_info["weight_dtype"] = weight_dtype
@@ -73,7 +73,7 @@ def get_model_info_clips(clip_names: list, clip_type: str = "") -> tuple:
     clip_paths = []
     for key in clip_names:
         name = folder_paths.get_full_path_or_raise("text_encoders", key)
-        pull_metadata(name, timestamp=True)
+        pull_metadata(name)
         clip_paths.append(name)
 
     model_info = {
@@ -97,7 +97,7 @@ def get_model_info_vae(vae_name: str) -> tuple:
         tuple: A tuple containing the model_info dictionary.
     """
     model_info = {"type": "VAE", "path": folder_paths.get_full_path_or_raise("vae", vae_name)}
-    pull_metadata(model_info["path"], timestamp=True)
+    pull_metadata(model_info["path"])
     model_info["hash"] = cache.hash[model_info["path"]]
     print(f"VAE model info: {model_info}")
     return (model_info,)

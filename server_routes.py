@@ -501,7 +501,7 @@ try:
                 
                 # Call the pull_metadata function
                 try:
-                    pull_metadata(file_path, timestamp=True, force_all=force)
+                    pull_metadata(file_path, force_all=force)
                     
                     return web.json_response({
                         "success": True,

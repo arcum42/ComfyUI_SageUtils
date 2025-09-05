@@ -340,8 +340,12 @@ class SageCache:
         Update the 'lastUsed' field for a given file path.
         """
         file_hash = self.hash.get(file_path)
-        if file_hash and file_hash in self.info:
-            self.info[file_hash]['lastUsed'] = datetime.datetime.now().isoformat()
+        if file_hash:
+            if file_hash in self.info:
+                self.info[file_hash]['lastUsed'] = datetime.datetime.now().isoformat()
+            else:
+                self.add_entry(file_path, file_hash)
+                self.info[file_hash]['lastUsed'] = datetime.datetime.now().isoformat()
 
     def update_last_used_by_hash(self, file_hash: str) -> None:
         """
