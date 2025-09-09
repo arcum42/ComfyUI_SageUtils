@@ -112,12 +112,13 @@ export function getBaseModelStyle(baseModel) {
  * @param {Array} models - Array of model objects with filePath, hash, and info
  * @param {Object} options - Generation options
  * @param {Array} [options.groupInfo] - Array of grouping information for each model
+ * @param {Array} [options.visibleColumns] - Array of visible column configurations
  * @returns {Promise<string>} - HTML table rows
  */
 export async function generateTableRows(models, options = {}) {
     // First, create a cache for file sizes to avoid duplicate API calls
     const fileSizeCache = new Map();
-    const { groupInfo = [] } = options;
+    const { groupInfo = [], visibleColumns = null } = options;
     
     const rows = await Promise.all(models.map(async ({ filePath, hash, info }, index) => {
         const modelName = (info && info.model && info.model.name) || (info && info.name) || filePath.split('/').pop() || 'Unknown';
@@ -204,13 +205,15 @@ export async function generateTableRows(models, options = {}) {
         if (info && info.images && Array.isArray(info.images) && info.images.length > 0) {
             const firstImage = info.images[0];
             if (firstImage && firstImage.url) {
-                exampleImageContent = `<img src="${escapeHtml(firstImage.url)}" 
-                                           style="${getThumbnailStyle()}" 
-                                           alt="Example image" 
-                                           loading="lazy" 
-                                           title="Click to expand/collapse"
-                                           onclick="toggleImageExpand(this)"
-                                           onerror="this.style.display='none'">`;
+                exampleImageContent = `<div style="display:flex;align-items:center;justify-content:center;width:100%;height:100%;">
+                                           <img src="${escapeHtml(firstImage.url)}" 
+                                                style="${getThumbnailStyle()}" 
+                                                alt="Example image" 
+                                                loading="lazy" 
+                                                title="Click to expand/collapse"
+                                                onclick="toggleImageExpand(this)"
+                                                onerror="this.style.display='none'">
+                                       </div>`;
             }
         } else if (hash) {
             // Check if we should attempt to load from Civitai based on previous attempts
@@ -250,7 +253,7 @@ export async function generateTableRows(models, options = {}) {
             if (shouldAttemptCivitai) {
                 // Auto-load Civitai images with proper sizing
                 const civitaiImageUrl = `https://civitai.com/api/v1/model-versions/by-hash/${encodeURIComponent(hash)}`;
-                exampleImageContent = `<div style="width:${DEFAULT_THUMBNAIL_WIDTH}px;height:${DEFAULT_THUMBNAIL_HEIGHT}px;background:#f5f5f5;display:flex;align-items:center;justify-content:center;border-radius:4px;font-size:11px;color:#999;transition:all 0.3s ease;" 
+                exampleImageContent = `<div style="width:100%;height:${DEFAULT_THUMBNAIL_HEIGHT}px;background:#f5f5f5;display:flex;align-items:center;justify-content:center;border-radius:4px;font-size:11px;color:#999;transition:all 0.3s ease;" 
                                             data-civitai-hash="${escapeHtml(hash)}" 
                                             data-civitai-url="${escapeHtml(civitaiImageUrl)}"
                                             class="auto-load-image">
@@ -307,21 +310,67 @@ export async function generateTableRows(models, options = {}) {
             imageCellClass += " compact";
         }
 
+        // Generate table cells based on visible columns
+        const tableCells = [];
+        
+        // If no column configuration is provided, use default order (all columns visible)
+        const columnsToRender = visibleColumns || [
+            { key: 'name' }, { key: 'basemodel' }, { key: 'type' }, { key: 'triggers' }, 
+            { key: 'image' }, { key: 'civitai' }, { key: 'versionid' }, { key: 'hash' }, 
+            { key: 'size' }, { key: 'lastused' }, { key: 'path' }
+        ];
+        
+        columnsToRender.forEach(column => {
+            switch (column.key) {
+                case 'name':
+                    tableCells.push(`<td style="text-align:center;${nameStyle}">${escapeHtml(modelName)}</td>`);
+                    break;
+                case 'basemodel':
+                    tableCells.push(`<td style="text-align:center;">${escapeHtml(baseModel)}</td>`);
+                    break;
+                case 'type':
+                    tableCells.push(`<td style="text-align:center;">${escapeHtml(modelType)}</td>`);
+                    break;
+                case 'triggers':
+                    tableCells.push(`<td style="text-align:center;">${triggerCellContent}</td>`);
+                    break;
+                case 'image':
+                    tableCells.push(`<td class="${imageCellClass}">${exampleImageContent}</td>`);
+                    break;
+                case 'civitai':
+                    tableCells.push(`<td style="text-align:center;${civitaiStyle}">
+                        <a href="${civitaiUrl}" target="_blank">${modelId}</a>
+                        ${shouldShowUpdateMessage ? '<br><br><i>Update available</i>' : ''}
+                    </td>`);
+                    break;
+                case 'versionid':
+                    const versionId = (info && info.id) || 'Unknown';
+                    
+                    if (versionId !== 'Unknown' && versionId !== '' && versionId != null && modelId !== 'Unknown' && modelId !== '' && modelId != null) {
+                        const versionUrl = getModelUrl(modelId, versionId);
+                        tableCells.push(`<td style="text-align:center;${civitaiStyle}"><a href="${versionUrl}" target="_blank">${escapeHtml(String(versionId))}</a></td>`);
+                    } else {
+                        tableCells.push(`<td style="text-align:center;${civitaiStyle}">${escapeHtml(String(versionId))}</td>`);
+                    }
+                    break;
+                case 'hash':
+                    tableCells.push(`<td style="text-align:center;">${escapeHtml(modelHash.substring(0, 12))}...</td>`);
+                    break;
+                case 'size':
+                    tableCells.push(`<td style="text-align:center;" sorttable_customkey="${fileSizeBytes}">${escapeHtml(fileSize)}</td>`);
+                    break;
+                case 'lastused':
+                    tableCells.push(`<td style="text-align:center;" sorttable_customkey="${lastUsedTimestamp}">${formattedLastUsed}</td>`);
+                    break;
+                case 'path':
+                    tableCells.push(`<td style="text-align:left;">${escapeHtml(filePath)}</td>`);
+                    break;
+            }
+        });
+
         return `
             <tr${groupClassAttribute}>
-                <td style="text-align:center;${nameStyle}">${escapeHtml(modelName)}</td>
-                <td style="text-align:center;">${escapeHtml(baseModel)}</td>
-                <td style="text-align:center;">${escapeHtml(modelType)}</td>
-                <td style="text-align:center;">${triggerCellContent}</td>
-                <td class="${imageCellClass}">${exampleImageContent}</td>
-                <td style="text-align:center;${civitaiStyle}">
-                    <a href="${civitaiUrl}" target="_blank">${modelId}</a>
-                    ${shouldShowUpdateMessage ? '<br><br><i>Update available</i>' : ''}
-                </td>
-                <td style="text-align:center;">${escapeHtml(modelHash.substring(0, 12))}...</td>
-                <td style="text-align:center;" sorttable_customkey="${fileSizeBytes}">${escapeHtml(fileSize)}</td>
-                <td style="text-align:center;" sorttable_customkey="${lastUsedTimestamp}">${formattedLastUsed}</td>
-                <td style="text-align:left;">${escapeHtml(filePath)}</td>
+                ${tableCells.join('\n                ')}
             </tr>
         `;
     }));
@@ -335,10 +384,11 @@ export async function generateTableRows(models, options = {}) {
  * @param {Object} options - Generation options
  * @param {Function} [options.progressCallback] - Progress callback function
  * @param {Array} [options.groupInfo] - Array of grouping information for each model
+ * @param {Array} [options.visibleColumns] - Array of visible column configurations
  * @returns {Promise<string>} - HTML table rows
  */
 export async function generateTableRowsWithProgress(models, options = {}) {
-    const { progressCallback, groupInfo = [] } = options;
+    const { progressCallback, groupInfo = [], visibleColumns = null } = options;
     
     // First, create a cache for file sizes to avoid duplicate API calls
     const fileSizeCache = new Map();
@@ -435,13 +485,15 @@ export async function generateTableRowsWithProgress(models, options = {}) {
             if (info && info.images && Array.isArray(info.images) && info.images.length > 0) {
                 const firstImage = info.images[0];
                 if (firstImage && firstImage.url) {
-                    exampleImageContent = `<img src="${escapeHtml(firstImage.url)}" 
-                                               style="width:150px;height:100px;object-fit:cover;border-radius:4px;cursor:pointer;transition:all 0.3s ease;" 
-                                               alt="Example image" 
-                                               loading="lazy" 
-                                               title="Click to expand/collapse"
-                                               onclick="toggleImageExpand(this)"
-                                               onerror="this.style.display='none'">`;
+                    exampleImageContent = `<div style="display:flex;align-items:center;justify-content:center;width:100%;height:100%;">
+                                               <img src="${escapeHtml(firstImage.url)}" 
+                                                    style="width:150px;height:100px;object-fit:cover;border-radius:4px;cursor:pointer;transition:all 0.3s ease;" 
+                                                    alt="Example image" 
+                                                    loading="lazy" 
+                                                    title="Click to expand/collapse"
+                                                    onclick="toggleImageExpand(this)"
+                                                    onerror="this.style.display='none'">
+                                           </div>`;
                 }
             } else if (hash) {
                 // Check if we should attempt to load from Civitai based on previous attempts
@@ -481,7 +533,7 @@ export async function generateTableRowsWithProgress(models, options = {}) {
                 if (shouldAttemptCivitai) {
                     // Auto-load Civitai images with proper sizing
                     const civitaiImageUrl = `https://civitai.com/api/v1/model-versions/by-hash/${encodeURIComponent(hash)}`;
-                    exampleImageContent = `<div style="width:150px;height:100px;background:#f5f5f5;display:flex;align-items:center;justify-content:center;border-radius:4px;font-size:11px;color:#999;transition:all 0.3s ease;" 
+                    exampleImageContent = `<div style="width:100%;height:100px;background:#f5f5f5;display:flex;align-items:center;justify-content:center;border-radius:4px;font-size:11px;color:#999;transition:all 0.3s ease;" 
                                                 data-civitai-hash="${escapeHtml(hash)}" 
                                                 data-civitai-url="${escapeHtml(civitaiImageUrl)}"
                                                 class="auto-load-image">
@@ -538,21 +590,67 @@ export async function generateTableRowsWithProgress(models, options = {}) {
                 imageCellClass += " compact";
             }
 
+            // Generate table cells based on visible columns
+            const tableCells = [];
+            
+            // If no column configuration is provided, use default order (all columns visible)
+            const columnsToRender = visibleColumns || [
+                { key: 'name' }, { key: 'basemodel' }, { key: 'type' }, { key: 'triggers' }, 
+                { key: 'image' }, { key: 'civitai' }, { key: 'versionid' }, { key: 'hash' }, 
+                { key: 'size' }, { key: 'lastused' }, { key: 'path' }
+            ];
+            
+            columnsToRender.forEach(column => {
+                switch (column.key) {
+                    case 'name':
+                        tableCells.push(`<td style="text-align:center;${nameStyle}">${escapeHtml(modelName)}</td>`);
+                        break;
+                    case 'basemodel':
+                        tableCells.push(`<td style="text-align:center;">${escapeHtml(baseModel)}</td>`);
+                        break;
+                    case 'type':
+                        tableCells.push(`<td style="text-align:center;">${escapeHtml(modelType)}</td>`);
+                        break;
+                    case 'triggers':
+                        tableCells.push(`<td style="text-align:center;">${triggerCellContent}</td>`);
+                        break;
+                    case 'image':
+                        tableCells.push(`<td class="${imageCellClass}">${exampleImageContent}</td>`);
+                        break;
+                    case 'civitai':
+                        tableCells.push(`<td style="text-align:center;${civitaiStyle}">
+                            <a href="${civitaiUrl}" target="_blank">${modelId}</a>
+                            ${shouldShowUpdateMessage ? '<br><br><i>Update available</i>' : ''}
+                        </td>`);
+                        break;
+                    case 'versionid':
+                        const versionId = (info && info.id) || 'Unknown';
+                        
+                        if (versionId !== 'Unknown' && versionId !== '' && versionId != null && modelId !== 'Unknown' && modelId !== '' && modelId != null) {
+                            const versionUrl = getModelUrl(modelId, versionId);
+                            tableCells.push(`<td style="text-align:center;${civitaiStyle}"><a href="${versionUrl}" target="_blank">${escapeHtml(String(versionId))}</a></td>`);
+                        } else {
+                            tableCells.push(`<td style="text-align:center;${civitaiStyle}">${escapeHtml(String(versionId))}</td>`);
+                        }
+                        break;
+                    case 'hash':
+                        tableCells.push(`<td style="text-align:center;">${escapeHtml(modelHash.substring(0, 12))}...</td>`);
+                        break;
+                    case 'size':
+                        tableCells.push(`<td style="text-align:center;" sorttable_customkey="${fileSizeBytes}">${escapeHtml(fileSize)}</td>`);
+                        break;
+                    case 'lastused':
+                        tableCells.push(`<td style="text-align:center;" sorttable_customkey="${lastUsedTimestamp}">${formattedLastUsed}</td>`);
+                        break;
+                    case 'path':
+                        tableCells.push(`<td style="text-align:left;">${escapeHtml(filePath)}</td>`);
+                        break;
+                }
+            });
+
             return `
                 <tr${groupClassAttribute}>
-                    <td style="text-align:center;${nameStyle}">${escapeHtml(modelName)}</td>
-                    <td style="text-align:center;">${escapeHtml(baseModel)}</td>
-                    <td style="text-align:center;">${escapeHtml(modelType)}</td>
-                    <td style="text-align:center;">${triggerCellContent}</td>
-                    <td class="${imageCellClass}">${exampleImageContent}</td>
-                    <td style="text-align:center;${civitaiStyle}">
-                        <a href="${civitaiUrl}" target="_blank">${modelId}</a>
-                        ${shouldShowUpdateMessage ? '<br><br><i>Update available</i>' : ''}
-                    </td>
-                    <td style="text-align:center;">${escapeHtml(modelHash.substring(0, 12))}...</td>
-                    <td style="text-align:center;" sorttable_customkey="${fileSizeBytes}">${escapeHtml(fileSize)}</td>
-                    <td style="text-align:center;" sorttable_customkey="${lastUsedTimestamp}">${formattedLastUsed}</td>
-                    <td style="text-align:left;">${escapeHtml(filePath)}</td>
+                    ${tableCells.join('\n                    ')}
                 </tr>
             `;
         }));
@@ -805,6 +903,34 @@ export async function generateHtmlContentWithProgress(options) {
         modelTypeFilter = 'all'
     } = options;
 
+    // Column visibility configuration (hardcoded for now)
+    // This controls which columns appear in the generated reports
+    // To hide additional columns, set visible: false
+    // To show the Hash column, set visible: true for the Hash entry
+    const COLUMN_CONFIG = [
+        { name: 'Model Name', width: '200px', visible: true, sortable: true, key: 'name' },
+        { name: 'Base Model', width: '100px', visible: true, sortable: true, key: 'basemodel' },
+        { name: 'Type', width: '80px', visible: true, sortable: true, key: 'type' },
+        { name: 'Trigger Words', width: '175px', visible: true, sortable: false, key: 'triggers' },
+        { name: 'Example Image', width: '200px', visible: true, sortable: false, key: 'image' },
+        { name: 'Civitai ID', width: '100px', visible: true, sortable: true, key: 'civitai' },
+        { name: 'Version ID', width: '100px', visible: true, sortable: true, key: 'versionid' },
+        { name: 'Hash', width: '100px', visible: false, sortable: true, key: 'hash' }, // Hidden by default
+        { name: 'File Size', width: '80px', visible: true, sortable: true, key: 'size' },
+        { name: 'Last Used', width: '120px', visible: true, sortable: true, key: 'lastused' },
+        { name: 'Full Path', width: '250px', visible: false, sortable: true, key: 'path' } // Hidden by default
+    ];
+
+    // Get visible columns and their original indices for mapping
+    const visibleColumns = COLUMN_CONFIG.map((col, index) => ({ ...col, originalIndex: index }))
+                                        .filter(col => col.visible);
+    
+    // Create mapping from original column indices to visible column indices
+    const originalToVisibleIndex = {};
+    visibleColumns.forEach((col, visibleIndex) => {
+        originalToVisibleIndex[col.originalIndex] = visibleIndex;
+    });
+
     // Process models array if provided (new format)
     let allModels, checkpointModels, loraModels;
     
@@ -882,6 +1008,14 @@ export async function generateHtmlContentWithProgress(options) {
 
     const currentDateTime = new Date().toLocaleString();
 
+    // Helper function to generate table headers based on visible columns
+    function generateTableHeaders() {
+        return visibleColumns.map(col => {
+            const sortClass = col.sortable ? '' : ' class="sorttable_nosort"';
+            return `            <th style="width:${col.width};"${sortClass}><b>${col.name}</b></th>`;
+        }).join('\n');
+    }
+
     if (progressCallback) {
         progressCallback(15, 'Building HTML structure...');
     }
@@ -944,9 +1078,9 @@ export async function generateHtmlContentWithProgress(options) {
             vertical-align: top;
         }
         td.image-cell {
-            width: ${DEFAULT_THUMBNAIL_WIDTH + 10}px;
-            height: ${DEFAULT_THUMBNAIL_HEIGHT + 10}px;
-            padding: 5px;
+            width: ${DEFAULT_THUMBNAIL_WIDTH + 6}px;
+            height: ${DEFAULT_THUMBNAIL_HEIGHT + 6}px;
+            padding: 3px;
             text-align: center;
             vertical-align: middle;
         }
@@ -954,6 +1088,8 @@ export async function generateHtmlContentWithProgress(options) {
             width: auto;
             height: auto;
             min-height: 30px;
+            padding: 3px;
+            text-align: center;
             vertical-align: middle;
         }
         .section-header {
@@ -1026,15 +1162,15 @@ export async function generateHtmlContentWithProgress(options) {
         // Configuration from report generation
         const INITIAL_SORT_BY = '${sortBy}';
         
-        // Map sortBy values from Models tab to table column indices
+        // Map sortBy values from Models tab to table column indices (accounting for hidden columns)
         function getSortColumnIndex(sortBy) {
             const sortMap = {
                 'name': 0,              // Model Name
                 'name-desc': 0,         // Model Name (reverse)
                 'type': 2,              // Type  
-                'size': 7,              // File Size
+                'size': 7,              // File Size (shifted due to added Version ID column)
                 'size-desc': 7,         // File Size (reverse)
-                'lastused': 8,          // Last Used
+                'lastused': 8,          // Last Used (shifted due to added Version ID column)
                 'lastused-desc': 8      // Last Used (reverse)
             };
             
@@ -1189,7 +1325,7 @@ export async function generateHtmlContentWithProgress(options) {
             if (typeof additionalStyle !== 'string') additionalStyle = '';
             var DEFAULT_THUMBNAIL_WIDTH = 150;
             var DEFAULT_THUMBNAIL_HEIGHT = 100;
-            var baseStyle = 'width:' + DEFAULT_THUMBNAIL_WIDTH + 'px;height:' + DEFAULT_THUMBNAIL_HEIGHT + 'px;object-fit:cover;border-radius:4px;cursor:pointer;transition:all 0.3s ease;';
+            var baseStyle = 'max-width:' + DEFAULT_THUMBNAIL_WIDTH + 'px;max-height:' + DEFAULT_THUMBNAIL_HEIGHT + 'px;width:auto;height:auto;object-fit:cover;border-radius:4px;cursor:pointer;transition:all 0.3s ease;';
             return additionalStyle ? baseStyle + additionalStyle : baseStyle;
         }
         
@@ -1366,6 +1502,7 @@ export async function generateHtmlContentWithProgress(options) {
         
         const loraRows = await generateTableRowsWithProgress(loraModels, {
             groupInfo: loraGroupInfo,
+            visibleColumns: visibleColumns,
             progressCallback: progressCallback ? (progress, message) => {
                 // Map LoRA progress to 25-50% range
                 const adjustedProgress = 25 + (progress * 0.25);
@@ -1377,16 +1514,7 @@ export async function generateHtmlContentWithProgress(options) {
     <div class="section-header">LoRA Models (${loraModels.length})</div>
     <table class="sortable">
         <tr>
-            <th style="width:200px;"><b>Model Name</b></th>
-            <th style="width:100px;"><b>Base Model</b></th>
-            <th style="width:80px;"><b>Type</b></th>
-            <th style="width:175px;" class="sorttable_nosort"><b>Trigger Words</b></th>
-            <th style="width:200px;" class="sorttable_nosort"><b>Example Image</b></th>
-            <th style="width:100px;"><b>Civitai ID</b></th>
-            <th style="width:100px;"><b>Hash</b></th>
-            <th style="width:80px;"><b>File Size</b></th>
-            <th style="width:120px;"><b>Last Used</b></th>
-            <th style="width:250px;"><b>Full Path</b></th>
+${generateTableHeaders()}
         </tr>
         ${loraRows}
     </table>
@@ -1404,6 +1532,7 @@ export async function generateHtmlContentWithProgress(options) {
         
         const checkpointRows = await generateTableRowsWithProgress(checkpointModels, {
             groupInfo: checkpointGroupInfo,
+            visibleColumns: visibleColumns,
             progressCallback: progressCallback ? (progress, message) => {
                 // Map Checkpoint progress to 50-80% range
                 const adjustedProgress = 50 + (progress * 0.30);
@@ -1415,16 +1544,7 @@ export async function generateHtmlContentWithProgress(options) {
     <div class="section-header">Checkpoint Models (${checkpointModels.length})</div>
     <table class="sortable">
         <tr>
-            <th style="width:200px;"><b>Model Name</b></th>
-            <th style="width:100px;"><b>Base Model</b></th>
-            <th style="width:80px;"><b>Type</b></th>
-            <th style="width:175px;" class="sorttable_nosort"><b>Trigger Words</b></th>
-            <th style="width:200px;" class="sorttable_nosort"><b>Example Image</b></th>
-            <th style="width:100px;"><b>Civitai ID</b></th>
-            <th style="width:100px;"><b>Hash</b></th>
-            <th style="width:80px;"><b>File Size</b></th>
-            <th style="width:120px;"><b>Last Used</b></th>
-            <th style="width:250px;"><b>Full Path</b></th>
+${generateTableHeaders()}
         </tr>
         ${checkpointRows}
     </table>
