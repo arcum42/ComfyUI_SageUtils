@@ -178,7 +178,16 @@ export async function generateTableRows(models, options = {}) {
         }
 
         const nameStyle = getBaseModelStyle(baseModel);
-        const civitaiStyle = getUpdateStyle(info);
+        
+        // Determine grouping CSS classes first
+        const groupData = groupInfo[index] || {};
+        
+        // Determine whether to show "Update available" message
+        // If this model is part of a group that already has the latest version, don't show the message
+        const shouldShowUpdateMessage = updateAvailable && !(groupData.isGroupMember && groupData.groupHasLatestVersion);
+        
+        // Apply update styling only if we're showing the update message
+        const civitaiStyle = shouldShowUpdateMessage ? getUpdateStyle(info) : '';
         
         // Format trigger words with copy functionality
         const triggerCellContent = formatTriggerWords(triggerWords);
@@ -204,18 +213,45 @@ export async function generateTableRows(models, options = {}) {
                                            onerror="this.style.display='none'">`;
             }
         } else if (hash) {
-            // Auto-load Civitai images with proper sizing
-            const civitaiImageUrl = `https://civitai.com/api/v1/model-versions/by-hash/${encodeURIComponent(hash)}`;
-            exampleImageContent = `<div style="width:${DEFAULT_THUMBNAIL_WIDTH}px;height:${DEFAULT_THUMBNAIL_HEIGHT}px;background:#f5f5f5;display:flex;align-items:center;justify-content:center;border-radius:4px;font-size:11px;color:#999;transition:all 0.3s ease;" 
-                                        data-civitai-hash="${escapeHtml(hash)}" 
-                                        data-civitai-url="${escapeHtml(civitaiImageUrl)}"
-                                        class="auto-load-image">
-                                        <span style="text-align:center;">Loading...</span>
-                                    </div>`;
+            // Check if we should attempt to load from Civitai based on previous attempts
+            let shouldAttemptCivitai = true;
+            
+            if (info) {
+                // Check civitai status - could be string or boolean, any case
+                const civitaiStatus = info.civitai;
+                if (civitaiStatus !== undefined && civitaiStatus !== null) {
+                    if (typeof civitaiStatus === 'string') {
+                        shouldAttemptCivitai = civitaiStatus.toLowerCase() === 'true';
+                    } else if (typeof civitaiStatus === 'boolean') {
+                        shouldAttemptCivitai = civitaiStatus;
+                    }
+                }
+                
+                // Also check failed count - if there have been multiple failures, don't try
+                const failedCount = info.civitai_failed_count || info.civitaiFailedCount || 0;
+                if (failedCount > 0) {
+                    shouldAttemptCivitai = false;
+                }
+            }
+            
+            if (shouldAttemptCivitai) {
+                // Auto-load Civitai images with proper sizing
+                const civitaiImageUrl = `https://civitai.com/api/v1/model-versions/by-hash/${encodeURIComponent(hash)}`;
+                exampleImageContent = `<div style="width:${DEFAULT_THUMBNAIL_WIDTH}px;height:${DEFAULT_THUMBNAIL_HEIGHT}px;background:#f5f5f5;display:flex;align-items:center;justify-content:center;border-radius:4px;font-size:11px;color:#999;transition:all 0.3s ease;" 
+                                            data-civitai-hash="${escapeHtml(hash)}" 
+                                            data-civitai-url="${escapeHtml(civitaiImageUrl)}"
+                                            class="auto-load-image">
+                                            <span style="text-align:center;">Loading...</span>
+                                        </div>`;
+            } else {
+                // Don't attempt Civitai load, create compact container immediately
+                exampleImageContent = `<div style="width:auto;height:auto;min-width:60px;min-height:20px;padding:8px;display:flex;align-items:center;justify-content:center;border-radius:4px;font-size:11px;color:#999;background:#f9f9f9;">
+                                           <span style="text-align:center;">No image available</span>
+                                       </div>`;
+            }
         }
 
         // Determine grouping CSS classes
-        const groupData = groupInfo[index] || {};
         const groupClasses = [];
         
         if (groupData.isGroupFirst) {
@@ -230,16 +266,44 @@ export async function generateTableRows(models, options = {}) {
         
         const groupClassAttribute = groupClasses.length > 0 ? ` class="${groupClasses.join(' ')}"` : '';
 
+        // Determine if image cell should be compact
+        let imageCellClass = "image-cell";
+        let shouldAttemptCivitai = true;
+        
+        if (info && hash) {
+            // Check civitai status - could be string or boolean, any case
+            const civitaiStatus = info.civitai;
+            if (civitaiStatus !== undefined && civitaiStatus !== null) {
+                if (typeof civitaiStatus === 'string') {
+                    shouldAttemptCivitai = civitaiStatus.toLowerCase() === 'true';
+                } else if (typeof civitaiStatus === 'boolean') {
+                    shouldAttemptCivitai = civitaiStatus;
+                }
+            }
+            
+            // Also check failed count - if there have been multiple failures, don't try
+            const failedCount = info.civitai_failed_count || info.civitaiFailedCount || 0;
+            if (failedCount > 0) {
+                shouldAttemptCivitai = false;
+            }
+        }
+        
+        // If no cached image and not attempting Civitai, make cell compact
+        const hasExistingImage = info && info.images && Array.isArray(info.images) && info.images.length > 0;
+        if (!hasExistingImage && !shouldAttemptCivitai) {
+            imageCellClass += " compact";
+        }
+
         return `
             <tr${groupClassAttribute}>
                 <td style="text-align:center;${nameStyle}">${escapeHtml(modelName)}</td>
                 <td style="text-align:center;">${escapeHtml(baseModel)}</td>
                 <td style="text-align:center;">${escapeHtml(modelType)}</td>
                 <td style="text-align:center;">${triggerCellContent}</td>
-                <td class="image-cell">${exampleImageContent}</td>
+                <td class="${imageCellClass}">${exampleImageContent}</td>
                 <td style="text-align:center;${civitaiStyle}">
                     <a href="${civitaiUrl}" target="_blank">${modelId}</a>
-                    ${updateAvailable ? '<br><br><i>Update available</i>' : ''}
+                    ${shouldShowUpdateMessage ? '<br><br><i>Update available</i>' : ''}
                 </td>
                 <td style="text-align:center;">${escapeHtml(modelHash.substring(0, 12))}...</td>
                 <td style="text-align:center;" sorttable_customkey="${fileSizeBytes}">${escapeHtml(fileSize)}</td>
@@ -332,7 +396,16 @@ export async function generateTableRowsWithProgress(models, options = {}) {
             }
 
             const nameStyle = getBaseModelStyle(baseModel);
-            const civitaiStyle = getUpdateStyle(info);
+            
+            // Determine grouping CSS classes first
+            const groupData = groupInfo[actualIndex] || {};
+            
+            // Determine whether to show "Update available" message
+            // If this model is part of a group that already has the latest version, don't show the message
+            const shouldShowUpdateMessage = updateAvailable && !(groupData.isGroupMember && groupData.groupHasLatestVersion);
+            
+            // Apply update styling only if we're showing the update message
+            const civitaiStyle = shouldShowUpdateMessage ? getUpdateStyle(info) : '';
             
             // Format trigger words with copy functionality
             const triggerCellContent = formatTriggerWords(triggerWords);
@@ -358,18 +431,45 @@ export async function generateTableRowsWithProgress(models, options = {}) {
                                                onerror="this.style.display='none'">`;
                 }
             } else if (hash) {
-                // Auto-load Civitai images with proper sizing
-                const civitaiImageUrl = `https://civitai.com/api/v1/model-versions/by-hash/${encodeURIComponent(hash)}`;
-                exampleImageContent = `<div style="width:150px;height:100px;background:#f5f5f5;display:flex;align-items:center;justify-content:center;border-radius:4px;font-size:11px;color:#999;transition:all 0.3s ease;" 
-                                            data-civitai-hash="${escapeHtml(hash)}" 
-                                            data-civitai-url="${escapeHtml(civitaiImageUrl)}"
-                                            class="auto-load-image">
-                                            <span style="text-align:center;">Loading...</span>
-                                        </div>`;
+                // Check if we should attempt to load from Civitai based on previous attempts
+                let shouldAttemptCivitai = true;
+                
+                if (info) {
+                    // Check civitai status - could be string or boolean, any case
+                    const civitaiStatus = info.civitai;
+                    if (civitaiStatus !== undefined && civitaiStatus !== null) {
+                        if (typeof civitaiStatus === 'string') {
+                            shouldAttemptCivitai = civitaiStatus.toLowerCase() === 'true';
+                        } else if (typeof civitaiStatus === 'boolean') {
+                            shouldAttemptCivitai = civitaiStatus;
+                        }
+                    }
+                    
+                    // Also check failed count - if there have been multiple failures, don't try
+                    const failedCount = info.civitai_failed_count || info.civitaiFailedCount || 0;
+                    if (failedCount > 0) {
+                        shouldAttemptCivitai = false;
+                    }
+                }
+                
+                if (shouldAttemptCivitai) {
+                    // Auto-load Civitai images with proper sizing
+                    const civitaiImageUrl = `https://civitai.com/api/v1/model-versions/by-hash/${encodeURIComponent(hash)}`;
+                    exampleImageContent = `<div style="width:150px;height:100px;background:#f5f5f5;display:flex;align-items:center;justify-content:center;border-radius:4px;font-size:11px;color:#999;transition:all 0.3s ease;" 
+                                                data-civitai-hash="${escapeHtml(hash)}" 
+                                                data-civitai-url="${escapeHtml(civitaiImageUrl)}"
+                                                class="auto-load-image">
+                                                <span style="text-align:center;">Loading...</span>
+                                            </div>`;
+                } else {
+                    // Don't attempt Civitai load, create compact container immediately
+                    exampleImageContent = `<div style="width:auto;height:auto;min-width:60px;min-height:20px;padding:8px;display:flex;align-items:center;justify-content:center;border-radius:4px;font-size:11px;color:#999;background:#f9f9f9;">
+                                               <span style="text-align:center;">No image available</span>
+                                           </div>`;
+                }
             }
 
             // Determine grouping CSS classes
-            const groupData = groupInfo[actualIndex] || {};
             const groupClasses = [];
             
             if (groupData.isGroupFirst) {
@@ -384,16 +484,44 @@ export async function generateTableRowsWithProgress(models, options = {}) {
             
             const groupClassAttribute = groupClasses.length > 0 ? ` class="${groupClasses.join(' ')}"` : '';
 
+            // Determine if image cell should be compact
+            let imageCellClass = "image-cell";
+            let shouldAttemptCivitai = true;
+            
+            if (info && hash) {
+                // Check civitai status - could be string or boolean, any case
+                const civitaiStatus = info.civitai;
+                if (civitaiStatus !== undefined && civitaiStatus !== null) {
+                    if (typeof civitaiStatus === 'string') {
+                        shouldAttemptCivitai = civitaiStatus.toLowerCase() === 'true';
+                    } else if (typeof civitaiStatus === 'boolean') {
+                        shouldAttemptCivitai = civitaiStatus;
+                    }
+                }
+                
+                // Also check failed count - if there have been multiple failures, don't try
+                const failedCount = info.civitai_failed_count || info.civitaiFailedCount || 0;
+                if (failedCount > 0) {
+                    shouldAttemptCivitai = false;
+                }
+            }
+            
+            // If no cached image and not attempting Civitai, make cell compact
+            const hasExistingImage = info && info.images && Array.isArray(info.images) && info.images.length > 0;
+            if (!hasExistingImage && !shouldAttemptCivitai) {
+                imageCellClass += " compact";
+            }
+
             return `
                 <tr${groupClassAttribute}>
                     <td style="text-align:center;${nameStyle}">${escapeHtml(modelName)}</td>
                     <td style="text-align:center;">${escapeHtml(baseModel)}</td>
                     <td style="text-align:center;">${escapeHtml(modelType)}</td>
                     <td style="text-align:center;">${triggerCellContent}</td>
-                    <td class="image-cell">${exampleImageContent}</td>
+                    <td class="${imageCellClass}">${exampleImageContent}</td>
                     <td style="text-align:center;${civitaiStyle}">
                         <a href="${civitaiUrl}" target="_blank">${modelId}</a>
-                        ${updateAvailable ? '<br><br><i>Update available</i>' : ''}
+                        ${shouldShowUpdateMessage ? '<br><br><i>Update available</i>' : ''}
                     </td>
                     <td style="text-align:center;">${escapeHtml(modelHash.substring(0, 12))}...</td>
                     <td style="text-align:center;" sorttable_customkey="${fileSizeBytes}">${escapeHtml(fileSize)}</td>
@@ -562,9 +690,21 @@ function generateGroupInfo(models) {
                 groupInfo[groupStartIndex].isGroupFirst = true;
                 groupInfo[index - 1].isGroupLast = true;
                 
+                // Check if any model in the group doesn't have an update available
+                // If so, we likely already have the latest version
+                let groupHasLatestVersion = false;
+                for (let i = groupStartIndex; i < index; i++) {
+                    const modelInGroup = models[i];
+                    if (modelInGroup && modelInGroup.info && !hasUpdateAvailable(modelInGroup.info)) {
+                        groupHasLatestVersion = true;
+                        break;
+                    }
+                }
+                
                 // Mark all models in the group
                 for (let i = groupStartIndex; i < index; i++) {
                     groupInfo[i].isGroupMember = true;
+                    groupInfo[i].groupHasLatestVersion = groupHasLatestVersion;
                 }
             }
             
@@ -588,9 +728,20 @@ function generateGroupInfo(models) {
         groupInfo[groupStartIndex].isGroupFirst = true;
         groupInfo[models.length - 1].isGroupLast = true;
         
+        // Check if any model in the final group doesn't have an update available
+        let groupHasLatestVersion = false;
+        for (let i = groupStartIndex; i < models.length; i++) {
+            const modelInGroup = models[i];
+            if (modelInGroup && modelInGroup.info && !hasUpdateAvailable(modelInGroup.info)) {
+                groupHasLatestVersion = true;
+                break;
+            }
+        }
+        
         // Mark all models in the final group
         for (let i = groupStartIndex; i < models.length; i++) {
             groupInfo[i].isGroupMember = true;
+            groupInfo[i].groupHasLatestVersion = groupHasLatestVersion;
         }
     }
     
@@ -771,6 +922,12 @@ export async function generateHtmlContentWithProgress(options) {
             height: ${DEFAULT_THUMBNAIL_HEIGHT + 10}px;
             padding: 5px;
             text-align: center;
+            vertical-align: middle;
+        }
+        td.image-cell.compact {
+            width: auto;
+            height: auto;
+            min-height: 30px;
             vertical-align: middle;
         }
         .section-header {
@@ -1072,6 +1229,10 @@ export async function generateHtmlContentWithProgress(options) {
         // Auto-load all images when page loads
         function autoLoadImages() {
             const imageContainers = document.querySelectorAll('.auto-load-image');
+            const compactContainers = document.querySelectorAll('.image-cell.compact').length;
+            
+            console.log('Loading ' + imageContainers.length + ' images from Civitai. ' + compactContainers + ' entries skipped due to previous failures.');
+            
             imageContainers.forEach((container, index) => {
                 // Stagger the loading to avoid overwhelming the API
                 setTimeout(() => {
