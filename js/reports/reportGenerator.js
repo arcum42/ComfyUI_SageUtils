@@ -55,6 +55,53 @@ import {
 } from './htmlTemplates.js';
 
 /**
+ * Extract folder type from file path
+ * @param {string} filePath - The file path to analyze
+ * @returns {string} The folder type (checkpoints, loras, etc.)
+ */
+function getFolderTypeFromPath(filePath) {
+    if (!filePath) return 'unknown';
+    
+    if (filePath.includes('/checkpoints/')) return 'checkpoints';
+    if (filePath.includes('/loras/')) return 'loras';
+    if (filePath.includes('/vae/')) return 'vae';
+    if (filePath.includes('/text_encoders/') || filePath.includes('/clip/')) return 'text_encoders';
+    if (filePath.includes('/diffusion_models/') || filePath.includes('/unet/')) return 'diffusion_models';
+    if (filePath.includes('/embeddings/')) return 'embeddings';
+    if (filePath.includes('/clip_vision/')) return 'clip_vision';
+    if (filePath.includes('/style_models/')) return 'style_models';
+    if (filePath.includes('/controlnet/') || filePath.includes('/t2i_adapter/')) return 'controlnet';
+    if (filePath.includes('/upscale_models/')) return 'upscale_models';
+    if (filePath.includes('/hypernetworks/')) return 'hypernetworks';
+    
+    return 'unknown';
+}
+
+/**
+ * Get display name for folder type
+ * @param {string} folderType - The folder type key
+ * @returns {string} Human-readable folder name
+ */
+function getFolderDisplayName(folderType) {
+    const folderNames = {
+        'checkpoints': 'Checkpoints',
+        'loras': 'LoRA',
+        'vae': 'VAE',
+        'text_encoders': 'Text Encoders',
+        'diffusion_models': 'Diffusion Models',
+        'embeddings': 'Embeddings',
+        'clip_vision': 'CLIP Vision',
+        'style_models': 'Style Models',
+        'controlnet': 'ControlNet',
+        'upscale_models': 'Upscale Models',
+        'hypernetworks': 'Hypernetworks',
+        'unknown': 'Unknown'
+    };
+    
+    return folderNames[folderType] || 'Unknown';
+}
+
+/**
  * Get file size from backend
  * @param {string} filePath - Path to the file
  * @returns {Promise<number|null>} File size in bytes or null if failed
@@ -274,7 +321,7 @@ export async function generateTableRows(models, options = {}) {
         
         // If no column configuration is provided, use default order (all columns visible)
         const columnsToRender = visibleColumns || [
-            { key: 'name' }, { key: 'basemodel' }, { key: 'type' }, { key: 'triggers' }, 
+            { key: 'name' }, { key: 'basemodel' }, { key: 'type' }, { key: 'folder' }, { key: 'triggers' }, 
             { key: 'image' }, { key: 'civitai' }, { key: 'versionid' }, { key: 'hash' }, 
             { key: 'size' }, { key: 'lastused' }, { key: 'path' }
         ];
@@ -289,6 +336,11 @@ export async function generateTableRows(models, options = {}) {
                     break;
                 case 'type':
                     tableCells.push(`<td style="text-align:center;">${escapeHtml(modelType)}</td>`);
+                    break;
+                case 'folder':
+                    const folderType = getFolderTypeFromPath(filePath);
+                    const folderDisplayName = getFolderDisplayName(folderType);
+                    tableCells.push(`<td style="text-align:center;">${escapeHtml(folderDisplayName)}</td>`);
                     break;
                 case 'triggers':
                     tableCells.push(`<td style="text-align:center;">${triggerCellContent}</td>`);
@@ -554,7 +606,7 @@ export async function generateTableRowsWithProgress(models, options = {}) {
             
             // If no column configuration is provided, use default order (all columns visible)
             const columnsToRender = visibleColumns || [
-                { key: 'name' }, { key: 'basemodel' }, { key: 'type' }, { key: 'triggers' }, 
+                { key: 'name' }, { key: 'basemodel' }, { key: 'type' }, { key: 'folder' }, { key: 'triggers' }, 
                 { key: 'image' }, { key: 'civitai' }, { key: 'versionid' }, { key: 'hash' }, 
                 { key: 'size' }, { key: 'lastused' }, { key: 'path' }
             ];
@@ -569,6 +621,11 @@ export async function generateTableRowsWithProgress(models, options = {}) {
                         break;
                     case 'type':
                         tableCells.push(`<td style="text-align:center;">${escapeHtml(modelType)}</td>`);
+                        break;
+                    case 'folder':
+                        const folderType = getFolderTypeFromPath(filePath);
+                        const folderDisplayName = getFolderDisplayName(folderType);
+                        tableCells.push(`<td style="text-align:center;">${escapeHtml(folderDisplayName)}</td>`);
                         break;
                     case 'triggers':
                         tableCells.push(`<td style="text-align:center;">${triggerCellContent}</td>`);
@@ -636,7 +693,8 @@ export async function generateTableRowsWithProgress(models, options = {}) {
  * @param {string} [options.lastUsedDescription] - Description of last used filter
  * @param {string} [options.sortDescription] - Description of sort criteria
  * @param {string} [options.sortBy] - Current sort selection from model tab
- * @param {string} [options.modelTypeFilter] - Current model type filter from model tab
+ * @param {string} [options.folderFilter] - Current folder filter from model tab (all, checkpoints, loras, vae, etc.)
+ * @param {string} [options.modelTypeFilter] - Legacy model type filter for backwards compatibility
  * @returns {Promise<string>} - Complete HTML document
  */
 export async function generateHtmlContentWithProgress(options) {
@@ -651,6 +709,7 @@ export async function generateHtmlContentWithProgress(options) {
         lastUsedDescription = '',
         sortDescription = '',
         sortBy = 'name',
+        folderFilter = 'all',
         modelTypeFilter = 'all'
     } = options;
 
@@ -661,7 +720,8 @@ export async function generateHtmlContentWithProgress(options) {
     const COLUMN_CONFIG = [
         { name: 'Model Name', width: '200px', visible: true, sortable: true, key: 'name' },
         { name: 'Base Model', width: '100px', visible: true, sortable: true, key: 'basemodel' },
-        { name: 'Type', width: '80px', visible: true, sortable: true, key: 'type' },
+        { name: 'Type', width: '80px', visible: false, sortable: true, key: 'type' }, // Hidden - replaced by folder
+        { name: 'Folder', width: '120px', visible: true, sortable: true, key: 'folder' },
         { name: 'Trigger Words', width: '175px', visible: true, sortable: false, key: 'triggers' },
         { name: 'Example Image', width: '200px', visible: true, sortable: false, key: 'image' },
         { name: 'Civitai ID', width: '100px', visible: true, sortable: true, key: 'civitai' },
@@ -699,15 +759,15 @@ export async function generateHtmlContentWithProgress(options) {
         }
         
         allModels = deduplicatedModels;
+        
+        // Categorize models by folder type instead of using unreliable Civitai model type
         checkpointModels = deduplicatedModels.filter(model => {
-            const info = model.info || {};
             const filePath = model.filePath || '';
-            return isLikelyCheckpoint(filePath, info);
+            return getFolderTypeFromPath(filePath) === 'checkpoints';
         });
         loraModels = deduplicatedModels.filter(model => {
-            const info = model.info || {};
             const filePath = model.filePath || '';
-            return isLikelyLora(filePath, info);
+            return getFolderTypeFromPath(filePath) === 'loras';
         });
     } else {
         // Legacy format: use provided arrays (also deduplicate if they're model objects)
@@ -730,20 +790,56 @@ export async function generateHtmlContentWithProgress(options) {
         }
     }
 
-    // Apply model type filtering based on the selected filter from the models tab
-    if (modelTypeFilter !== 'all') {
+    // Apply folder-based filtering based on the selected filter from the models tab
+    if (folderFilter !== 'all') {
+        if (progressCallback) {
+            progressCallback(11, `Filtering models by folder: ${folderFilter}...`);
+        }
+        
+        // Filter all models by the selected folder type
+        allModels = allModels.filter(model => {
+            const filePath = model.filePath || '';
+            return getFolderTypeFromPath(filePath) === folderFilter;
+        });
+        
+        // Update categorized lists based on the filtered results
+        checkpointModels = allModels.filter(model => {
+            const filePath = model.filePath || '';
+            return getFolderTypeFromPath(filePath) === 'checkpoints';
+        });
+        loraModels = allModels.filter(model => {
+            const filePath = model.filePath || '';
+            return getFolderTypeFromPath(filePath) === 'loras';
+        });
+    }
+    // Fallback to legacy modelTypeFilter for backwards compatibility
+    else if (modelTypeFilter !== 'all') {
         if (progressCallback) {
             progressCallback(11, `Filtering models by type: ${modelTypeFilter}...`);
         }
         
+        // Filter all models by the selected folder type (mapped from legacy filter)
+        let targetFolderType = null;
         if (modelTypeFilter === 'Checkpoint') {
-            // Only keep checkpoint models
-            allModels = checkpointModels;
-            loraModels = []; // Clear LoRA models since we're only showing checkpoints
+            targetFolderType = 'checkpoints';
         } else if (modelTypeFilter === 'LORA') {
-            // Only keep LoRA models
-            allModels = loraModels;
-            checkpointModels = []; // Clear checkpoint models since we're only showing LoRAs
+            targetFolderType = 'loras';
+        }
+        
+        if (targetFolderType) {
+            allModels = allModels.filter(model => {
+                const filePath = model.filePath || '';
+                return getFolderTypeFromPath(filePath) === targetFolderType;
+            });
+            
+            // Update categorized lists as well
+            if (targetFolderType === 'checkpoints') {
+                checkpointModels = allModels;
+                loraModels = [];
+            } else if (targetFolderType === 'loras') {
+                loraModels = allModels;
+                checkpointModels = [];
+            }
         }
     }
 
@@ -768,10 +864,26 @@ export async function generateHtmlContentWithProgress(options) {
     const clientJs = generateClientSideJs(sortBy);
     const htmlStart = generateHtmlDocumentStart(currentDateTime, cssStyles, clientJs);
     
-    let htmlContent = htmlStart + generateModelStatsSection(currentDateTime, filterDescription, searchDescription, lastUsedDescription, sortDescription, allModels, checkpointModels, loraModels, modelTypeFilter);
+    let htmlContent = htmlStart + generateModelStatsSection(currentDateTime, filterDescription, searchDescription, lastUsedDescription, sortDescription, allModels, checkpointModels, loraModels, folderFilter || modelTypeFilter);
 
-    // Add LoRAs section if any exist and filter allows
-    if (loraModels.length > 0 && (modelTypeFilter === 'all' || modelTypeFilter === 'LORA')) {
+    // Determine which sections to show based on folder filter
+    const shouldShowSection = (sectionFolderType, modelArray) => {
+        if (folderFilter !== 'all') {
+            // If a specific folder is selected, only show that section
+            return folderFilter === sectionFolderType && modelArray.length > 0;
+        } else if (modelTypeFilter !== 'all') {
+            // Legacy compatibility: use modelTypeFilter
+            return (modelTypeFilter === 'LORA' && sectionFolderType === 'loras') ||
+                   (modelTypeFilter === 'Checkpoint' && sectionFolderType === 'checkpoints') ||
+                   (modelTypeFilter === 'all');
+        } else {
+            // Show all sections that have models
+            return modelArray.length > 0;
+        }
+    };
+
+    // Add LoRAs section if it should be shown
+    if (shouldShowSection('loras', loraModels)) {
         if (progressCallback) {
             progressCallback(25, `Processing ${loraModels.length} LoRA models...`);
         }
@@ -792,8 +904,8 @@ export async function generateHtmlContentWithProgress(options) {
         htmlContent += generateTableSection('LoRA Models', loraModels.length, loraRows, visibleColumns);
     }
 
-    // Add Checkpoints section if any exist and filter allows
-    if (checkpointModels.length > 0 && (modelTypeFilter === 'all' || modelTypeFilter === 'Checkpoint')) {
+    // Add Checkpoints section if it should be shown
+    if (shouldShowSection('checkpoints', checkpointModels)) {
         if (progressCallback) {
             progressCallback(50, `Processing ${checkpointModels.length} checkpoint models...`);
         }
@@ -812,6 +924,48 @@ export async function generateHtmlContentWithProgress(options) {
         });
         
         htmlContent += generateTableSection('Checkpoint Models', checkpointModels.length, checkpointRows, visibleColumns);
+    }
+
+    // Add sections for other folder types if they should be shown
+    const otherFolderTypes = [
+        { key: 'vae', displayName: 'VAE Models' },
+        { key: 'text_encoders', displayName: 'Text Encoders' },
+        { key: 'diffusion_models', displayName: 'Diffusion Models' },
+        { key: 'embeddings', displayName: 'Embeddings' },
+        { key: 'clip_vision', displayName: 'CLIP Vision' },
+        { key: 'style_models', displayName: 'Style Models' },
+        { key: 'controlnet', displayName: 'ControlNet' },
+        { key: 'upscale_models', displayName: 'Upscale Models' },
+        { key: 'hypernetworks', displayName: 'Hypernetworks' }
+    ];
+
+    for (const folderType of otherFolderTypes) {
+        // Filter models for this folder type
+        const folderModels = allModels.filter(model => {
+            const filePath = model.filePath || '';
+            return getFolderTypeFromPath(filePath) === folderType.key;
+        });
+
+        if (shouldShowSection(folderType.key, folderModels)) {
+            if (progressCallback) {
+                progressCallback(70, `Processing ${folderModels.length} ${folderType.displayName.toLowerCase()}...`);
+            }
+            
+            // Generate grouping information for this folder type
+            const folderGroupInfo = generateGroupInfo(folderModels);
+            
+            const folderRows = await generateTableRowsWithProgress(folderModels, {
+                groupInfo: folderGroupInfo,
+                visibleColumns: visibleColumns,
+                progressCallback: progressCallback ? (progress, message) => {
+                    // Map progress to remaining range
+                    const adjustedProgress = 70 + (progress * 0.15);
+                    progressCallback(adjustedProgress, `${folderType.displayName}: ${message}`);
+                } : null
+            });
+            
+            htmlContent += generateTableSection(folderType.displayName, folderModels.length, folderRows, visibleColumns);
+        }
     }
 
     htmlContent += generateHtmlDocumentEnd();

@@ -71,7 +71,7 @@ function createModelsHeader() {
  */
 function createModelsFilterControls() {
     // Create individual filter elements
-    const { container: filterContainer, select: filterSelector } = createFilterSection('Filter by Type:', FILTER_OPTIONS.modelType);
+    const { container: filterContainer, select: filterSelector } = createFilterSection('Filter by Folder:', FILTER_OPTIONS.folderType);
     const { container: searchContainer, input: searchInput } = createSearchSection();
     const { container: lastUsedContainer, select: lastUsedSelector } = createFilterSection('Filter by Last Used:', FILTER_OPTIONS.lastUsed);
     const { container: updateContainer, select: updateSelector } = createFilterSection('Filter by Updates:', FILTER_OPTIONS.updates);
@@ -568,13 +568,21 @@ function setupModelsEventHandlers(filterControls, fileSelector, actionButtons, i
             
             // Get current filter selections from the models tab
             const currentSort = filterControls.sortSelector.value;
-            const currentModelTypeFilter = filterControls.filterSelector.value;
+            const currentFolderFilter = filterControls.filterSelector.value;
             
             // Build filter description for the report
             let filterDescription = '';
-            if (currentModelTypeFilter !== 'all') {
+            if (currentFolderFilter !== 'all') {
                 const selectedFilterOption = filterControls.filterSelector.options[filterControls.filterSelector.selectedIndex];
                 filterDescription = `Filter: ${selectedFilterOption.text}`;
+            }
+            
+            // Map folder filter to report generator's expected modelTypeFilter for compatibility
+            let reportModelTypeFilter = 'all';
+            if (currentFolderFilter === 'checkpoints') {
+                reportModelTypeFilter = 'Checkpoint';
+            } else if (currentFolderFilter === 'loras') {
+                reportModelTypeFilter = 'LORA';
             }
             
             // Generate HTML report with detailed progress updates
@@ -582,7 +590,8 @@ function setupModelsEventHandlers(filterControls, fileSelector, actionButtons, i
                 models: models,
                 title: 'SageUtils Model Cache Report',
                 sortBy: currentSort,
-                modelTypeFilter: currentModelTypeFilter,
+                folderFilter: currentFolderFilter, // Pass the actual folder filter
+                modelTypeFilter: reportModelTypeFilter, // Keep the old parameter name for compatibility
                 filterDescription: filterDescription,
                 sortDescription: ` • Sorted by: ${filterControls.sortSelector.options[filterControls.sortSelector.selectedIndex].text}`,
                 progressCallback: (progress, message) => {
@@ -691,9 +700,26 @@ function setupModelsEventHandlers(filterControls, fileSelector, actionButtons, i
                 const hash = hashData[filePath];
                 const info = infoData[hash];
                 
-                // Check model type filter
+                // Check folder type filter
                 if (filterType !== 'all') {
-                    if (!info || !info.model || info.model.type !== filterType) {
+                    // Extract folder type from file path
+                    let folderType = null;
+                    
+                    // Check which folder type this file belongs to based on its path
+                    if (filePath.includes('/checkpoints/')) {
+                        folderType = 'checkpoints';
+                    } else if (filePath.includes('/loras/')) {
+                        folderType = 'loras';
+                    } else if (filePath.includes('/vae/')) {
+                        folderType = 'vae';
+                    } else if (filePath.includes('/text_encoders/') || filePath.includes('/clip/')) {
+                        folderType = 'text_encoders';
+                    } else if (filePath.includes('/diffusion_models/') || filePath.includes('/unet/')) {
+                        folderType = 'diffusion_models';
+                    }
+                    
+                    // If the folder type doesn't match the filter, exclude this file
+                    if (folderType !== filterType) {
                         return false;
                     }
                 }
@@ -775,7 +801,7 @@ function setupModelsEventHandlers(filterControls, fileSelector, actionButtons, i
             const sortedFiles = sortFiles(filteredFiles, sortBy, hashData, infoData);
             
             if (sortedFiles.length === 0) {
-                const filterText = filterType === 'all' ? 'cached files' : `${filterType.toLowerCase()}s`;
+                const filterText = filterType === 'all' ? 'cached files' : `files from ${filterType} folder`;
                 const noFilesItem = document.createElement('div');
                 noFilesItem.className = 'cache-dropdown-item';
                 noFilesItem.textContent = `No ${filterText} found`;
@@ -820,14 +846,35 @@ function sortFiles(files, sortBy, hashData, infoData) {
                 const lastUsedB = (infoB && (infoB.lastUsed || infoB.last_accessed)) ? new Date(infoB.lastUsed || infoB.last_accessed) : new Date(0);
                 return lastUsedB - lastUsedA; // Recent first
             }
+            case 'lastused-desc': {
+                const lastUsedA = (infoA && (infoA.lastUsed || infoA.last_accessed)) ? new Date(infoA.lastUsed || infoA.last_accessed) : new Date(0);
+                const lastUsedB = (infoB && (infoB.lastUsed || infoB.last_accessed)) ? new Date(infoB.lastUsed || infoB.last_accessed) : new Date(0);
+                return lastUsedA - lastUsedB; // Oldest first
+            }
             case 'size': {
                 const sizeA = (infoA && infoA.file_size) ? infoA.file_size : 0;
                 const sizeB = (infoB && infoB.file_size) ? infoB.file_size : 0;
                 return sizeA - sizeB; // Small to large
             }
+            case 'size-desc': {
+                const sizeA = (infoA && infoA.file_size) ? infoA.file_size : 0;
+                const sizeB = (infoB && infoB.file_size) ? infoB.file_size : 0;
+                return sizeB - sizeA; // Large to small
+            }
             case 'type': {
-                const typeA = (infoA && infoA.model && infoA.model.type) ? infoA.model.type : 'ZZZ';
-                const typeB = (infoB && infoB.model && infoB.model.type) ? infoB.model.type : 'ZZZ';
+                // Sort by folder type instead of Civitai model type
+                const getFolderType = (path) => {
+                    if (path.includes('/checkpoints/')) return 'checkpoints';
+                    if (path.includes('/loras/')) return 'loras';
+                    if (path.includes('/vae/')) return 'vae';
+                    if (path.includes('/text_encoders/') || path.includes('/clip/')) return 'text_encoders';
+                    if (path.includes('/diffusion_models/') || path.includes('/unet/')) return 'diffusion_models';
+                    return 'unknown';
+                };
+                
+                const typeA = getFolderType(a);
+                const typeB = getFolderType(b);
+                
                 if (typeA !== typeB) {
                     return typeA.localeCompare(typeB);
                 }
@@ -847,38 +894,49 @@ function organizeFolderStructure(sortedFiles, hashData, infoData) {
         const hash = hashData[filePath];
         const info = infoData[hash];
         
-        // Extract relative path based on model type
+        // Extract relative path based on folder structure rather than model type
         let relativePath = filePath;
-        if (info && info.model && info.model.type) {
-            const modelType = info.model.type.toLowerCase();
+        let folderType = null;
+        
+        // Determine folder type from path
+        if (filePath.includes('/checkpoints/')) {
+            folderType = 'checkpoints';
+        } else if (filePath.includes('/loras/')) {
+            folderType = 'loras';
+        } else if (filePath.includes('/vae/')) {
+            folderType = 'vae';
+        } else if (filePath.includes('/text_encoders/') || filePath.includes('/clip/')) {
+            folderType = 'text_encoders';
+        } else if (filePath.includes('/diffusion_models/') || filePath.includes('/unet/')) {
+            folderType = 'diffusion_models';
+        }
+        
+        if (folderType) {
+            // Find the base directory in the path
+            const pathParts = filePath.split('/');
+            let baseDirIndex = -1;
             
-            // Find the appropriate base directory in the path
-            let baseDirName = '';
-            if (modelType === 'checkpoint') {
-                baseDirName = 'checkpoints';
-            } else if (modelType === 'lora') {
-                baseDirName = 'loras';
-            }
-            
-            if (baseDirName) {
-                // Look for the base directory in the path
-                const pathParts = filePath.split('/');
-                const baseDirIndex = pathParts.findIndex(part => 
-                    part.toLowerCase() === baseDirName || 
-                    part.toLowerCase().includes(baseDirName)
-                );
-                
-                if (baseDirIndex !== -1 && baseDirIndex < pathParts.length - 1) {
-                    // Extract the relative path from the base directory
-                    relativePath = pathParts.slice(baseDirIndex + 1).join('/');
-                } else {
-                    // Fallback to just the filename if we can't find the base directory
-                    relativePath = pathParts[pathParts.length - 1];
+            // Look for the folder type in the path
+            for (let i = 0; i < pathParts.length; i++) {
+                const part = pathParts[i];
+                if (part === folderType || 
+                    (folderType === 'text_encoders' && part === 'clip') ||
+                    (folderType === 'diffusion_models' && part === 'unet')) {
+                    baseDirIndex = i;
+                    break;
                 }
-            } else {
-                // For other types, just show the filename
-                relativePath = filePath.split('/').pop() || filePath;
             }
+            
+            if (baseDirIndex !== -1 && baseDirIndex < pathParts.length - 1) {
+                // Extract the relative path from the base directory
+                relativePath = pathParts.slice(baseDirIndex + 1).join('/');
+            } else {
+                // Fallback to just the filename if we can't find the base directory
+                relativePath = pathParts[pathParts.length - 1];
+            }
+        } else {
+            // For files not in recognized folders, just show the filename
+            relativePath = filePath.split('/').pop() || filePath;
         }
         
         // Split the relative path into folder structure

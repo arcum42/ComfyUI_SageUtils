@@ -45,10 +45,18 @@ export const API_ENDPOINTS = {
  * Filter options for dropdowns
  */
 export const FILTER_OPTIONS = {
-    modelType: [
-        { value: 'all', text: 'All Types' },
-        { value: 'Checkpoint', text: 'Checkpoints' },
-        { value: 'LORA', text: 'LoRA Models' }
+    folderType: [
+        { value: 'all', text: 'All Folders' },
+        { value: 'checkpoints', text: 'Checkpoints' },
+        { value: 'loras', text: 'LoRA Models' },
+        { value: 'vae', text: 'VAE Models' },
+        { value: 'text_encoders', text: 'Text Encoders' },
+        { value: 'diffusion_models', text: 'Diffusion Models' },
+        // Additional folder types that might be wanted later:
+        // { value: 'embeddings', text: 'Embeddings' },
+        // { value: 'clip_vision', text: 'CLIP Vision' },
+        // { value: 'style_models', text: 'Style Models' },
+        // { value: 'controlnet', text: 'ControlNet' }
     ],
     
     lastUsed: [
@@ -72,7 +80,7 @@ export const FILTER_OPTIONS = {
         { value: 'lastused-desc', text: 'Oldest Used' },
         { value: 'size', text: 'File Size (Small)' },
         { value: 'size-desc', text: 'File Size (Large)' },
-        { value: 'type', text: 'Model Type' }
+        { value: 'type', text: 'Folder Type' }
     ]
 };
 
