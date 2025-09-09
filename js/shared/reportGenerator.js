@@ -1023,6 +1023,29 @@ export async function generateHtmlContentWithProgress(options) {
         }
     </style>
     <script>
+        // Configuration from report generation
+        const INITIAL_SORT_BY = '${sortBy}';
+        
+        // Map sortBy values from Models tab to table column indices
+        function getSortColumnIndex(sortBy) {
+            const sortMap = {
+                'name': 0,              // Model Name
+                'name-desc': 0,         // Model Name (reverse)
+                'type': 2,              // Type  
+                'size': 7,              // File Size
+                'size-desc': 7,         // File Size (reverse)
+                'lastused': 8,          // Last Used
+                'lastused-desc': 8      // Last Used (reverse)
+            };
+            
+            return sortMap[sortBy] !== undefined ? sortMap[sortBy] : -1;
+        }
+        
+        // Determine if initial sort should be descending
+        function isDescendingSort(sortBy) {
+            return sortBy.endsWith('-desc');
+        }
+        
         // Custom sortable table implementation
         let sortDirection = {};
         
@@ -1271,6 +1294,33 @@ export async function generateHtmlContentWithProgress(options) {
         function initializePage() {
             makeSortable();
             autoLoadImages();
+            applyInitialSort();
+        }
+        
+        // Apply initial sort based on Models tab selection
+        function applyInitialSort() {
+            const columnIndex = getSortColumnIndex(INITIAL_SORT_BY);
+            
+            if (columnIndex >= 0) {
+                const isDescending = isDescendingSort(INITIAL_SORT_BY);
+                const tables = document.querySelectorAll('table.sortable');
+                
+                tables.forEach(table => {
+                    const headers = table.querySelectorAll('th');
+                    if (headers[columnIndex] && !headers[columnIndex].classList.contains('sorttable_nosort')) {
+                        // Set up the sort direction before calling sortTable
+                        const tableId = table.id || 'table_' + Math.random().toString(36).substr(2, 9);
+                        if (!table.id) table.id = tableId;
+                        
+                        const sortKey = tableId + '_' + columnIndex;
+                        // Set opposite direction so sortTable will switch to desired direction
+                        sortDirection[sortKey] = isDescending ? 'asc' : 'desc';
+                        
+                        // Trigger the sort
+                        sortTable(table, columnIndex);
+                    }
+                });
+            }
         }
 
         // Load functionality after page content is ready
