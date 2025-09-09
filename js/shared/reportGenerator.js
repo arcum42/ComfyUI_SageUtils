@@ -206,7 +206,7 @@ export async function generateTableRows(models, options = {}) {
         } else if (hash) {
             // Auto-load Civitai images with proper sizing
             const civitaiImageUrl = `https://civitai.com/api/v1/model-versions/by-hash/${encodeURIComponent(hash)}`;
-            exampleImageContent = `<div style="width:${DEFAULT_THUMBNAIL_WIDTH}px;height:${DEFAULT_THUMBNAIL_HEIGHT}px;background:#f5f5f5;display:flex;align-items:center;justify-content:center;border-radius:4px;font-size:11px;color:#999;" 
+            exampleImageContent = `<div style="width:${DEFAULT_THUMBNAIL_WIDTH}px;height:${DEFAULT_THUMBNAIL_HEIGHT}px;background:#f5f5f5;display:flex;align-items:center;justify-content:center;border-radius:4px;font-size:11px;color:#999;transition:all 0.3s ease;" 
                                         data-civitai-hash="${escapeHtml(hash)}" 
                                         data-civitai-url="${escapeHtml(civitaiImageUrl)}"
                                         class="auto-load-image">
@@ -360,7 +360,7 @@ export async function generateTableRowsWithProgress(models, options = {}) {
             } else if (hash) {
                 // Auto-load Civitai images with proper sizing
                 const civitaiImageUrl = `https://civitai.com/api/v1/model-versions/by-hash/${encodeURIComponent(hash)}`;
-                exampleImageContent = `<div style="width:150px;height:100px;background:#f5f5f5;display:flex;align-items:center;justify-content:center;border-radius:4px;font-size:11px;color:#999;" 
+                exampleImageContent = `<div style="width:150px;height:100px;background:#f5f5f5;display:flex;align-items:center;justify-content:center;border-radius:4px;font-size:11px;color:#999;transition:all 0.3s ease;" 
                                             data-civitai-hash="${escapeHtml(hash)}" 
                                             data-civitai-url="${escapeHtml(civitaiImageUrl)}"
                                             class="auto-load-image">
@@ -979,6 +979,37 @@ export async function generateHtmlContentWithProgress(options) {
             }
         }
         
+        function getThumbnailStyle(additionalStyle) {
+            if (typeof additionalStyle !== 'string') additionalStyle = '';
+            var DEFAULT_THUMBNAIL_WIDTH = 150;
+            var DEFAULT_THUMBNAIL_HEIGHT = 100;
+            var baseStyle = 'width:' + DEFAULT_THUMBNAIL_WIDTH + 'px;height:' + DEFAULT_THUMBNAIL_HEIGHT + 'px;object-fit:cover;border-radius:4px;cursor:pointer;transition:all 0.3s ease;';
+            return additionalStyle ? baseStyle + additionalStyle : baseStyle;
+        }
+        
+        function makeContainerCompact(container) {
+            // Resize container to be compact for text-only content
+            container.style.width = 'auto';
+            container.style.height = 'auto';
+            container.style.minWidth = '60px';
+            container.style.minHeight = '20px';
+            container.style.padding = '8px';
+            container.style.display = 'flex';
+            container.style.alignItems = 'center';
+            container.style.justifyContent = 'center';
+            
+            // Also resize the parent table cell to be compact
+            var parentCell = container.parentElement;
+            while (parentCell && parentCell.tagName !== 'TD') {
+                parentCell = parentCell.parentElement;
+            }
+            if (parentCell && parentCell.classList.contains('image-cell')) {
+                parentCell.style.height = 'auto';
+                parentCell.style.minHeight = '30px';
+                parentCell.style.verticalAlign = 'middle';
+            }
+        }
+        
         async function loadCivitaiImage(element) {
             // Check if the current element has the attributes, if not check parent
             let hash = element.getAttribute('data-civitai-hash');
@@ -1011,6 +1042,7 @@ export async function generateHtmlContentWithProgress(options) {
                         imgElement.loading = 'lazy';
                         imgElement.title = 'Click to expand/collapse';
                         imgElement.onerror = function() { 
+                            makeContainerCompact(this.parentElement);
                             this.parentElement.innerHTML = '<span style="color:#999;font-size:11px;">No image</span>';
                         };
                         
@@ -1023,13 +1055,16 @@ export async function generateHtmlContentWithProgress(options) {
                         targetElement.innerHTML = '';
                         targetElement.appendChild(imgElement);
                     } else {
+                        makeContainerCompact(targetElement);
                         targetElement.innerHTML = '<span style="color:#999;font-size:11px;">No image</span>';
                     }
                 } else {
+                    makeContainerCompact(targetElement);
                     targetElement.innerHTML = '<span style="color:#999;font-size:11px;">Not available</span>';
                 }
             } catch (error) {
                 console.debug('Failed to load Civitai image:', error);
+                makeContainerCompact(targetElement);
                 targetElement.innerHTML = '<span style="color:#999;font-size:11px;">Load failed</span>';
             }
         }
