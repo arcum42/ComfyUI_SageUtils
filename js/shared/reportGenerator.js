@@ -234,6 +234,19 @@ export async function generateTableRows(models, options = {}) {
                 }
             }
             
+            // Determine the reason for not attempting Civitai for better messaging
+            let noImageReason = "No image available";
+            if (info) {
+                const failedCount = info.civitai_failed_count || info.civitaiFailedCount || 0;
+                const civitaiStatus = info.civitai;
+                
+                if (failedCount > 0) {
+                    noImageReason = "Not available on Civitai";
+                } else if (civitaiStatus === false || (typeof civitaiStatus === 'string' && civitaiStatus.toLowerCase() === 'false')) {
+                    noImageReason = "Not available on Civitai";
+                }
+            }
+            
             if (shouldAttemptCivitai) {
                 // Auto-load Civitai images with proper sizing
                 const civitaiImageUrl = `https://civitai.com/api/v1/model-versions/by-hash/${encodeURIComponent(hash)}`;
@@ -246,7 +259,7 @@ export async function generateTableRows(models, options = {}) {
             } else {
                 // Don't attempt Civitai load, create compact container immediately
                 exampleImageContent = `<div style="width:auto;height:auto;min-width:60px;min-height:20px;padding:8px;display:flex;align-items:center;justify-content:center;border-radius:4px;font-size:11px;color:#999;background:#f9f9f9;">
-                                           <span style="text-align:center;">No image available</span>
+                                           <span style="text-align:center;">${noImageReason}</span>
                                        </div>`;
             }
         }
@@ -452,6 +465,19 @@ export async function generateTableRowsWithProgress(models, options = {}) {
                     }
                 }
                 
+                // Determine the reason for not attempting Civitai for better messaging
+                let noImageReason = "No image available";
+                if (info) {
+                    const failedCount = info.civitai_failed_count || info.civitaiFailedCount || 0;
+                    const civitaiStatus = info.civitai;
+                    
+                    if (failedCount > 0) {
+                        noImageReason = "Not available on Civitai";
+                    } else if (civitaiStatus === false || (typeof civitaiStatus === 'string' && civitaiStatus.toLowerCase() === 'false')) {
+                        noImageReason = "Not available on Civitai";
+                    }
+                }
+                
                 if (shouldAttemptCivitai) {
                     // Auto-load Civitai images with proper sizing
                     const civitaiImageUrl = `https://civitai.com/api/v1/model-versions/by-hash/${encodeURIComponent(hash)}`;
@@ -464,7 +490,7 @@ export async function generateTableRowsWithProgress(models, options = {}) {
                 } else {
                     // Don't attempt Civitai load, create compact container immediately
                     exampleImageContent = `<div style="width:auto;height:auto;min-width:60px;min-height:20px;padding:8px;display:flex;align-items:center;justify-content:center;border-radius:4px;font-size:11px;color:#999;background:#f9f9f9;">
-                                               <span style="text-align:center;">No image available</span>
+                                               <span style="text-align:center;">${noImageReason}</span>
                                            </div>`;
                 }
             }
