@@ -160,3 +160,33 @@ export function getFilePathForHash(hash) {
     }
     return null;
 }
+
+/**
+ * Scan filesystem for model files in specified folder types
+ * @param {Array<string>} folderTypes - Array of folder types to scan (e.g., ['checkpoints', 'loras'])
+ * @returns {Promise<Object>} - Object mapping folder types to arrays of file paths
+ */
+export async function scanModelFolders(folderTypes = ['all']) {
+    try {
+        // Convert folderTypes array to query parameter
+        const folderType = folderTypes.length === 1 ? folderTypes[0] : 'all';
+        const url = `/sage_cache/scan_model_folders${folderType !== 'all' ? `?folderType=${folderType}` : ''}`;
+        
+        const response = await api.fetchApi(url, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        });
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        return data;
+    } catch (error) {
+        console.error('Error scanning model folders:', error);
+        throw error;
+    }
+}

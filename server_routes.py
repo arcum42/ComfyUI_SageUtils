@@ -250,6 +250,126 @@ try:
                     status=500
                 )
 
+        @routes.get('/sage_cache/scan_model_folders')
+        async def scan_model_folders(request):
+            """
+            Scans ComfyUI model folders for files and returns filesystem information.
+            Accepts optional folder_type filter in JSON body.
+            """
+            try:
+                import os
+                import json
+                from pathlib import Path
+                import folder_paths
+                
+                # Parse query parameters for folder type filter
+                folder_type_filter = request.query.get('folderType', 'all')
+                
+                # Define model file extensions
+                MODEL_FILE_EXTENSIONS = {
+                    '.ckpt', '.pt', '.pt2', '.bin', '.pth', '.safetensors', '.pkl', '.sft', '.gguf', '.nf4'
+                }
+                
+                def has_model_extension(filename):
+                    return any(filename.lower().endswith(ext) for ext in MODEL_FILE_EXTENSIONS)
+                
+                def get_folder_type_from_path(file_path):
+                    """Determine folder type based on file path"""
+                    path_parts = Path(file_path).parts
+                    
+                    # Look for ComfyUI model folder names in the path
+                    for part in reversed(path_parts):
+                        part_lower = part.lower()
+                        if 'checkpoint' in part_lower:
+                            return 'checkpoints'
+                        elif 'lora' in part_lower:
+                            return 'loras'  
+                        elif part_lower in ['vae', 'vae_approx']:
+                            return 'vae'
+                        elif 'text_encoder' in part_lower or part_lower in ['clip', 't5']:
+                            return 'text_encoders'
+                        elif 'diffusion' in part_lower or part_lower in ['unet']:
+                            return 'diffusion_models'
+                    
+                    return 'unknown'
+                
+                scanned_files = []
+                
+                # Get ComfyUI folder mappings
+                folder_mappings = {
+                    'checkpoints': ['checkpoints'],
+                    'loras': ['loras'],
+                    'vae': ['vae', 'vae_approx'],
+                    'text_encoders': ['text_encoders', 'clip', 't5'],
+                    'diffusion_models': ['diffusion_models', 'unet']
+                }
+                
+                # Scan specified folder types or all if 'all'
+                folders_to_scan = []
+                if folder_type_filter == 'all':
+                    for folder_keys in folder_mappings.values():
+                        folders_to_scan.extend(folder_keys)
+                else:
+                    folders_to_scan = folder_mappings.get(folder_type_filter, [])
+                
+                for folder_key in folders_to_scan:
+                    try:
+                        # Get folder paths using ComfyUI's folder_paths
+                        if hasattr(folder_paths, 'get_folder_paths'):
+                            folder_list = folder_paths.get_folder_paths(folder_key)
+                        else:
+                            # Fallback method
+                            folder_list = getattr(folder_paths, f'folder_names_and_paths', {}).get(folder_key, [[]])[0]
+                        
+                        if not folder_list:
+                            continue
+                            
+                        for folder_path in folder_list:
+                            if not os.path.exists(folder_path):
+                                continue
+                                
+                            # Recursively scan folder for model files
+                            for root, dirs, files in os.walk(folder_path):
+                                for file in files:
+                                    if has_model_extension(file):
+                                        full_path = os.path.join(root, file)
+                                        relative_path = os.path.relpath(full_path, folder_path)
+                                        folder_type = get_folder_type_from_path(full_path)
+                                        
+                                        # Skip if filtering by folder type and doesn't match
+                                        if folder_type_filter != 'all' and folder_type != folder_type_filter:
+                                            continue
+                                            
+                                        file_info = {
+                                            'fileName': file,
+                                            'fullPath': full_path,
+                                            'relativePath': relative_path,
+                                            'folderType': folder_type,
+                                            'folderKey': folder_key,
+                                            'size': os.path.getsize(full_path) if os.path.exists(full_path) else 0
+                                        }
+                                        scanned_files.append(file_info)
+                                        
+                    except Exception as folder_error:
+                        print(f"Error scanning folder '{folder_key}': {str(folder_error)}")
+                        continue
+                
+                return web.json_response({
+                    'success': True,
+                    'files': scanned_files,
+                    'folder_type': folder_type_filter,
+                    'total_files': len(scanned_files)
+                })
+                
+            except Exception as e:
+                import traceback
+                error_details = traceback.format_exc()
+                print(f"SageUtils scan model folders error: {error_details}")
+                return web.json_response(
+                    {"success": False, "error": f"Failed to scan model folders: {str(e)}"}, 
+                    status=500
+                )
+
         @routes.get('/sage_cache/path')
         async def get_sage_cache_path_info(request):
             """

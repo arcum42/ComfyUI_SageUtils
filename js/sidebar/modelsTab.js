@@ -7,6 +7,11 @@ import {
     BUTTON_CONFIGS
 } from "../shared/config.js";
 
+import {
+    MODEL_FILE_EXTENSIONS,
+    hasModelExtension
+} from "../shared/constants.js";
+
 import { 
     handleError
 } from "../shared/errorHandler.js";
@@ -18,7 +23,8 @@ import {
 
 import { 
     fetchCacheHash, 
-    fetchCacheInfo 
+    fetchCacheInfo,
+    scanModelFolders
 } from "../shared/cacheApi.js";
 
 import { 
@@ -661,26 +667,84 @@ function setupModelsEventHandlers(filterControls, fileSelector, actionButtons, i
     // Initialize data loading
     updateFileList();
     
+    /**
+     * Merge filesystem scan results with cache data
+     * @param {Object} filesystemData - Results from scanModelFolders
+     * @param {Object} hashData - Cache hash data
+     * @param {Object} infoData - Cache info data
+     * @returns {Object} - Merged data with all files (cached and uncached)
+     */
+    function mergeFilesystemWithCache(filesystemData, hashData, infoData) {
+        const mergedFiles = {};
+        
+        // Add all files from filesystem scan
+        for (const [folderType, files] of Object.entries(filesystemData)) {
+            if (Array.isArray(files)) {
+                files.forEach(filePath => {
+                    if (hasModelExtension(filePath)) {
+                        const hash = hashData[filePath] || null;
+                        const info = hash ? infoData[hash] || {} : {};
+                        
+                        mergedFiles[filePath] = {
+                            hash: hash,
+                            info: info,
+                            isCached: !!hash,
+                            folderType: folderType
+                        };
+                    }
+                });
+            }
+        }
+        
+        // Add any cached files that might not have been found in filesystem scan
+        // (edge case for files that might be in cache but moved/deleted)
+        for (const [filePath, hash] of Object.entries(hashData)) {
+            if (!mergedFiles[filePath]) {
+                mergedFiles[filePath] = {
+                    hash: hash,
+                    info: infoData[hash] || {},
+                    isCached: true,
+                    folderType: 'unknown' // We can't determine folder type from cache alone
+                };
+            }
+        }
+        
+        return mergedFiles;
+    }
+    
     // Populate dropdown with files
     async function updateFileList() {
         try {
             const { dropdownMenu, dropdownButton } = fileSelector;
             
             // Show loading state
-            infoDisplay.innerHTML = '<div style="text-align: center; padding: 20px; color: #888; font-style: italic;">Loading cache data...</div>';
+            infoDisplay.innerHTML = '<div style="text-align: center; padding: 20px; color: #888; font-style: italic;">Loading models from filesystem and cache...</div>';
 
             // Clean up any existing submenus
             document.querySelectorAll('.cache-dropdown-submenu').forEach(menu => {
                 menu.remove();
             });
 
-            // Fetch both hash and info data
-            const [hashData, infoData] = await Promise.all([
+            // Get current filter type to optimize filesystem scan
+            const filterType = filterControls.filterSelector.value;
+            
+            // Determine which folders to scan based on filter
+            let foldersToScan = ['all'];
+            if (filterType !== 'all') {
+                foldersToScan = [filterType];
+            }
+
+            // Fetch cache data, info data, and filesystem scan in parallel
+            const [hashData, infoData, filesystemData] = await Promise.all([
                 fetchCacheHash(),
-                fetchCacheInfo()
+                fetchCacheInfo(),
+                scanModelFolders(foldersToScan)
             ]);
 
-            // Store cache data in state management
+            // Merge filesystem scan with cache data
+            const allFiles = mergeFilesystemWithCache(filesystemData, hashData, infoData);
+
+            // Store cache data in state management (for compatibility)
             actions.setCacheData({ hash: hashData, info: infoData });
 
             // Clear and populate dropdown menu
@@ -688,38 +752,37 @@ function setupModelsEventHandlers(filterControls, fileSelector, actionButtons, i
             dropdownButton.innerHTML = '<span>Select a file...</span><span>▼</span>';
             actions.selectModel(null);
 
-            // Get current filter values (for now, use defaults since filters aren't fully implemented)
-            const filterType = filterControls.filterSelector.value;
+            // Get current filter values
             const searchTerm = filterControls.searchInput.value.toLowerCase().trim();
             const lastUsedFilter = filterControls.lastUsedSelector.value;
             const updateFilter = filterControls.updateSelector.value;
             const sortBy = filterControls.sortSelector.value;
 
             // Filter files based on criteria
-            const filteredFiles = Object.keys(hashData).filter(filePath => {
-                const hash = hashData[filePath];
-                const info = infoData[hash];
+            const filteredFiles = Object.keys(allFiles).filter(filePath => {
+                const fileData = allFiles[filePath];
+                const { hash, info, isCached, folderType } = fileData;
                 
-                // Check folder type filter
+                // Check folder type filter (already handled by filesystem scan optimization, but double-check)
                 if (filterType !== 'all') {
-                    // Extract folder type from file path
-                    let folderType = null;
-                    
-                    // Check which folder type this file belongs to based on its path
-                    if (filePath.includes('/checkpoints/')) {
-                        folderType = 'checkpoints';
-                    } else if (filePath.includes('/loras/')) {
-                        folderType = 'loras';
-                    } else if (filePath.includes('/vae/')) {
-                        folderType = 'vae';
-                    } else if (filePath.includes('/text_encoders/') || filePath.includes('/clip/')) {
-                        folderType = 'text_encoders';
-                    } else if (filePath.includes('/diffusion_models/') || filePath.includes('/unet/')) {
-                        folderType = 'diffusion_models';
+                    // Extract folder type from file path as fallback
+                    let detectedFolderType = folderType;
+                    if (!detectedFolderType || detectedFolderType === 'unknown') {
+                        if (filePath.includes('/checkpoints/')) {
+                            detectedFolderType = 'checkpoints';
+                        } else if (filePath.includes('/loras/')) {
+                            detectedFolderType = 'loras';
+                        } else if (filePath.includes('/vae/')) {
+                            detectedFolderType = 'vae';
+                        } else if (filePath.includes('/text_encoders/') || filePath.includes('/clip/')) {
+                            detectedFolderType = 'text_encoders';
+                        } else if (filePath.includes('/diffusion_models/') || filePath.includes('/unet/')) {
+                            detectedFolderType = 'diffusion_models';
+                        }
                     }
                     
                     // If the folder type doesn't match the filter, exclude this file
-                    if (folderType !== filterType) {
+                    if (detectedFolderType !== filterType) {
                         return false;
                     }
                 }
@@ -798,10 +861,10 @@ function setupModelsEventHandlers(filterControls, fileSelector, actionButtons, i
             });
 
             // Sort files
-            const sortedFiles = sortFiles(filteredFiles, sortBy, hashData, infoData);
+            const sortedFiles = sortFiles(filteredFiles, sortBy, allFiles);
             
             if (sortedFiles.length === 0) {
-                const filterText = filterType === 'all' ? 'cached files' : `files from ${filterType} folder`;
+                const filterText = filterType === 'all' ? 'model files' : `files from ${filterType} folder`;
                 const noFilesItem = document.createElement('div');
                 noFilesItem.className = 'cache-dropdown-item';
                 noFilesItem.textContent = `No ${filterText} found`;
@@ -812,7 +875,7 @@ function setupModelsEventHandlers(filterControls, fileSelector, actionButtons, i
             }
 
             // Organize files into folder structure
-            const folderStructure = organizeFolderStructure(sortedFiles, hashData, infoData);
+            const folderStructure = organizeFolderStructure(sortedFiles, allFiles);
             
             // Create dropdown items
             createDropdownItems(folderStructure, sortBy, hashData, infoData, fileSelector, actionButtons, infoDisplay, filterControls);
@@ -829,12 +892,12 @@ function setupModelsEventHandlers(filterControls, fileSelector, actionButtons, i
 }
 
 // Helper function to sort files based on selected criteria
-function sortFiles(files, sortBy, hashData, infoData) {
+function sortFiles(files, sortBy, allFiles) {
     return files.sort((a, b) => {
-        const hashA = hashData[a];
-        const hashB = hashData[b];
-        const infoA = infoData[hashA];
-        const infoB = infoData[hashB];
+        const fileDataA = allFiles[a];
+        const fileDataB = allFiles[b];
+        const infoA = fileDataA ? fileDataA.info : {};
+        const infoB = fileDataB ? fileDataB.info : {};
         
         switch (sortBy) {
             case 'name':
@@ -887,31 +950,33 @@ function sortFiles(files, sortBy, hashData, infoData) {
 }
 
 // Helper function to organize files into folder structure
-function organizeFolderStructure(sortedFiles, hashData, infoData) {
+function organizeFolderStructure(sortedFiles, allFiles) {
     const folderStructure = {};
     
     sortedFiles.forEach(filePath => {
-        const hash = hashData[filePath];
-        const info = infoData[hash];
+        const fileData = allFiles[filePath];
+        const { hash, info, isCached, folderType } = fileData || {};
         
         // Extract relative path based on folder structure rather than model type
         let relativePath = filePath;
-        let folderType = null;
+        let detectedFolderType = folderType;
         
-        // Determine folder type from path
-        if (filePath.includes('/checkpoints/')) {
-            folderType = 'checkpoints';
-        } else if (filePath.includes('/loras/')) {
-            folderType = 'loras';
-        } else if (filePath.includes('/vae/')) {
-            folderType = 'vae';
-        } else if (filePath.includes('/text_encoders/') || filePath.includes('/clip/')) {
-            folderType = 'text_encoders';
-        } else if (filePath.includes('/diffusion_models/') || filePath.includes('/unet/')) {
-            folderType = 'diffusion_models';
+        // Determine folder type from path if not already determined
+        if (!detectedFolderType || detectedFolderType === 'unknown') {
+            if (filePath.includes('/checkpoints/')) {
+                detectedFolderType = 'checkpoints';
+            } else if (filePath.includes('/loras/')) {
+                detectedFolderType = 'loras';
+            } else if (filePath.includes('/vae/')) {
+                detectedFolderType = 'vae';
+            } else if (filePath.includes('/text_encoders/') || filePath.includes('/clip/')) {
+                detectedFolderType = 'text_encoders';
+            } else if (filePath.includes('/diffusion_models/') || filePath.includes('/unet/')) {
+                detectedFolderType = 'diffusion_models';
+            }
         }
         
-        if (folderType) {
+        if (detectedFolderType && detectedFolderType !== 'unknown') {
             // Find the base directory in the path
             const pathParts = filePath.split('/');
             let baseDirIndex = -1;
@@ -919,9 +984,9 @@ function organizeFolderStructure(sortedFiles, hashData, infoData) {
             // Look for the folder type in the path
             for (let i = 0; i < pathParts.length; i++) {
                 const part = pathParts[i];
-                if (part === folderType || 
-                    (folderType === 'text_encoders' && part === 'clip') ||
-                    (folderType === 'diffusion_models' && part === 'unet')) {
+                if (part === detectedFolderType || 
+                    (detectedFolderType === 'text_encoders' && part === 'clip') ||
+                    (detectedFolderType === 'diffusion_models' && part === 'unet')) {
                     baseDirIndex = i;
                     break;
                 }
@@ -949,12 +1014,13 @@ function organizeFolderStructure(sortedFiles, hashData, infoData) {
             folderStructure[folderPath] = [];
         }
         
-        // Add file to the appropriate folder
+        // Add file to the appropriate folder (include cached status)
         folderStructure[folderPath].push({
             hash: hash,
             fileName: fileName,
             fullPath: filePath,
-            info: info
+            info: info || {},
+            isCached: isCached || false
         });
     });
     
@@ -1116,67 +1182,117 @@ function createFileItem(file, fileSelector, actionButtons, infoDisplay, filterCo
     
     const item = document.createElement('div');
     item.className = 'cache-dropdown-item file';
-    item.dataset.hash = file.hash;
+    
+    // Handle both cached and uncached models
+    if (file.isCached) {
+        item.dataset.hash = file.hash;
+    } else {
+        item.dataset.uncachedPath = file.fullPath;
+    }
     
     let displayName = file.fileName;
+    
+    // Show model type from cache if available
     if (file.info && file.info.model && file.info.model.type) {
         displayName += ` [${file.info.model.type}]`;
     }
     
+    // Add visual indicator for uncached models
+    if (!file.isCached) {
+        displayName += ' (uncached)';
+        item.style.fontStyle = 'italic';
+        item.style.color = '#999';
+    }
+    
     item.textContent = displayName;
-    item.title = file.fullPath;
+    item.title = file.fullPath + (file.isCached ? '' : ' - Click to cache model information');
     
     item.addEventListener('click', async () => {
-        actions.selectModel(file.hash);
-        dropdownButton.innerHTML = `<span>${displayName}</span><span>▼</span>`;
-        dropdownMenu.style.display = 'none';
-        actions.toggleDropdown(false);
-        
-        // Hide all submenus when selecting a file
-        document.querySelectorAll('.cache-dropdown-submenu').forEach(menu => {
-            menu.style.display = 'none';
-        });
-        
-        // Enable buttons when a file is selected
-        if (pullButton) {
-            pullButton.disabled = false;
-            pullButton.style.opacity = '1';
-        }
-        if (editButton) {
-            editButton.disabled = false;
-            editButton.style.opacity = '1';
-        }
-        
-        // Show loading while creating info display
-        infoDisplay.innerHTML = '<div style="text-align: center; padding: 20px; color: #888; font-style: italic;">Loading model information...</div>';
-        
-        // Update info display - use selector to get current selected hash
-        const selectedHash = selectors.selectedHash();
-        const cacheData = selectors.cacheData();
-        const selectedInfo = cacheData.info[selectedHash];
-        const showNsfw = filterControls.nsfwCheckbox.checked; // Connected to actual checkbox
-        
-        // Use proper detailed info display
-        try {
-            const infoElement = await createDetailedInfoDisplay(selectedHash, selectedInfo, showNsfw);
-            infoDisplay.innerHTML = '';
-            infoDisplay.appendChild(infoElement);
-        } catch (error) {
-            console.error('Error creating info display:', error);
-            // Fallback to basic display
-            const infoHtml = `
-                <div style="padding: 15px; background: #2a2a2a; border-radius: 8px; margin: 10px 0;">
-                    <h3 style="margin: 0 0 10px 0; color: #569cd6;">${file.fileName}</h3>
-                    <p><strong>Path:</strong> ${file.fullPath}</p>
-                    <p><strong>Hash:</strong> ${file.hash.substring(0, 16)}...</p>
-                    ${file.info ? `
-                        <p><strong>Type:</strong> ${file.info.model?.type || 'Unknown'}</p>
-                        <p><strong>Size:</strong> ${file.info.file_size ? formatFileSize(file.info.file_size) : 'Unknown'}</p>
-                        ${file.info.model?.name ? `<p><strong>Model:</strong> ${file.info.model.name}</p>` : ''}
-                    ` : '<p><em>No additional information available</em></p>'}
-                </div>
-            `;
-            infoDisplay.innerHTML = infoHtml;
+        if (file.isCached) {
+            // Handle cached model selection
+            actions.selectModel(file.hash);
+            dropdownButton.innerHTML = `<span>${displayName}</span><span>▼</span>`;
+            dropdownMenu.style.display = 'none';
+            actions.toggleDropdown(false);
+            
+            // Hide all submenus when selecting a file
+            document.querySelectorAll('.cache-dropdown-submenu').forEach(menu => {
+                menu.style.display = 'none';
+            });
+            
+            // Enable buttons when a file is selected
+            if (pullButton) {
+                pullButton.disabled = false;
+                pullButton.style.opacity = '1';
+            }
+            if (editButton) {
+                editButton.disabled = false;
+                editButton.style.opacity = '1';
+            }
+            
+            // Show loading while creating info display
+            infoDisplay.innerHTML = '<div style="text-align: center; padding: 20px; color: #888; font-style: italic;">Loading model information...</div>';
+            
+            // Update info display - use selector to get current selected hash
+            const selectedHash = selectors.selectedHash();
+            const cacheData = selectors.cacheData();
+            const selectedInfo = cacheData.info[selectedHash];
+            const showNsfw = filterControls.nsfwCheckbox.checked;
+            
+            // Use proper detailed info display
+            try {
+                const infoElement = await createDetailedInfoDisplay(selectedHash, selectedInfo, showNsfw);
+                infoDisplay.innerHTML = '';
+                infoDisplay.appendChild(infoElement);
+            } catch (error) {
+                console.error('Error updating info display:', error);
+                infoDisplay.innerHTML = `
+                    <div style="padding: 15px; background: #2a2a2a; border-radius: 8px; margin: 10px 0;">
+                        <h3 style="margin: 0 0 10px 0; color: #569cd6;">Error loading model information</h3>
+                        <p>Failed to update display: ${error.message}</p>
+                    </div>
+                `;
+            }
+        } else {
+            // Handle uncached model - automatically pull metadata
+            dropdownButton.innerHTML = `<span>Processing ${file.fileName}...</span><span>▼</span>`;
+            dropdownMenu.style.display = 'none';
+            actions.toggleDropdown(false);
+            
+            infoDisplay.innerHTML = '<div style="text-align: center; padding: 20px; color: #569cd6; font-style: italic;">🔄 Automatically pulling metadata for uncached model...</div>';
+            
+            try {
+                // Automatically pull metadata for uncached model
+                const result = await pullMetadata(file.fullPath);
+                
+                if (result.success) {
+                    // Refresh the file list to show the newly cached model
+                    await updateFileList();
+                    
+                    // Show success message
+                    infoDisplay.innerHTML = `
+                        <div style="padding: 15px; background: #2d4a2d; border-radius: 8px; margin: 10px 0; border: 1px solid #4CAF50;">
+                            <h3 style="margin: 0 0 10px 0; color: #4CAF50;">✅ Model Cached Successfully</h3>
+                            <p><strong>File:</strong> ${file.fileName}</p>
+                            <p><strong>Hash:</strong> ${result.hash || 'Generated'}</p>
+                            <p>Model information has been cached. You can now select it from the dropdown.</p>
+                        </div>
+                    `;
+                } else {
+                    throw new Error(result.error || 'Unknown error occurred');
+                }
+            } catch (error) {
+                console.error('Error auto-pulling metadata:', error);
+                infoDisplay.innerHTML = `
+                    <div style="padding: 15px; background: #4a2d2d; border-radius: 8px; margin: 10px 0; border: 1px solid #F44336;">
+                        <h3 style="margin: 0 0 10px 0; color: #F44336;">❌ Failed to Cache Model</h3>
+                        <p><strong>File:</strong> ${file.fileName}</p>
+                        <p><strong>Error:</strong> ${error.message}</p>
+                        <p>You can try again by clicking the Pull button or manually refreshing the list.</p>
+                    </div>
+                `;
+                dropdownButton.innerHTML = '<span>Select a file...</span><span>▼</span>';
+            }
         }
     });
     

@@ -23,6 +23,7 @@ export const API_ENDPOINTS = {
     cacheInfo: '/sage_utils/cache_info',
     updateCacheInfo: '/sage_utils/update_cache_info',
     pullMetadata: '/sage_utils/pull_metadata',
+    scanModelFolders: '/sage_utils/scan_model_folders',
     
     // Notes management
     listNotes: '/sage_utils/list_notes',
