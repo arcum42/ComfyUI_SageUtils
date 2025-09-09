@@ -70,35 +70,86 @@ function createModelsHeader() {
  * @returns {Object} Filter controls object with references to all filter elements
  */
 function createModelsFilterControls() {
-    // Filter dropdown
+    // Create individual filter elements
     const { container: filterContainer, select: filterSelector } = createFilterSection('Filter by Type:', FILTER_OPTIONS.modelType);
-
-    // Search filter
     const { container: searchContainer, input: searchInput } = createSearchSection();
-
-    // Last Used filter
     const { container: lastUsedContainer, select: lastUsedSelector } = createFilterSection('Filter by Last Used:', FILTER_OPTIONS.lastUsed);
-
-    // Update Available filter
     const { container: updateContainer, select: updateSelector } = createFilterSection('Filter by Updates:', FILTER_OPTIONS.updates);
-
-    // Sort options
     const { container: sortContainer, select: sortSelector } = createFilterSection('Sort by:', FILTER_OPTIONS.sort);
-
-    // NSFW toggle
     const { container: nsfwContainer, checkbox: nsfwCheckbox } = createToggleSection('Show NSFW Images', 'nsfw-toggle');
 
+    // Create main filters container with visual grouping
+    const filtersMainContainer = document.createElement('div');
+    filtersMainContainer.style.cssText = `
+        background: #2d2d2d;
+        border: 1px solid #3e3e42;
+        border-radius: 8px;
+        padding: 15px;
+        margin-bottom: 20px;
+    `;
+
+    // Create filters header
+    const filtersHeader = document.createElement('div');
+    filtersHeader.style.cssText = `
+        font-weight: bold;
+        color: #569cd6;
+        margin-bottom: 15px;
+        font-size: 14px;
+        border-bottom: 1px solid #3e3e42;
+        padding-bottom: 5px;
+    `;
+    filtersHeader.textContent = '🔍 Filter & Search Options';
+
+    // Search gets full width
+    searchContainer.style.marginBottom = '15px';
+
+    // Create primary filters row (most commonly used)
+    const primaryFiltersContainer = document.createElement('div');
+    primaryFiltersContainer.style.cssText = `
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 15px;
+        margin-bottom: 15px;
+        align-items: end;
+    `;
+
+    // Create secondary filters row
+    const secondaryFiltersContainer = document.createElement('div');
+    secondaryFiltersContainer.style.cssText = `
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 15px;
+        align-items: end;
+    `;
+
+    // Assemble the filters container
+    filtersMainContainer.appendChild(filtersHeader);
+    filtersMainContainer.appendChild(searchContainer);
+    filtersMainContainer.appendChild(primaryFiltersContainer);
+    filtersMainContainer.appendChild(secondaryFiltersContainer);
+
+    // Group primary filters (Type and Sort are most commonly used)
+    primaryFiltersContainer.appendChild(filterContainer);
+    primaryFiltersContainer.appendChild(sortContainer);
+
+    // Group secondary filters
+    secondaryFiltersContainer.appendChild(lastUsedContainer);
+    secondaryFiltersContainer.appendChild(updateContainer);
+
     return {
-        filterContainer,
-        filterSelector,
+        filtersMainContainer,
         searchContainer, 
         searchInput,
+        primaryFiltersContainer,
+        filterContainer,
+        filterSelector,
+        sortContainer,
+        sortSelector,
+        secondaryFiltersContainer,
         lastUsedContainer,
         lastUsedSelector,
         updateContainer,
         updateSelector,
-        sortContainer,
-        sortSelector,
         nsfwContainer,
         nsfwCheckbox
     };
@@ -1094,13 +1145,8 @@ function assembleModelsTabLayout(container, components) {
     // Add header
     container.appendChild(header);
 
-    // Add filter controls
-    container.appendChild(filterControls.filterContainer);
-    container.appendChild(filterControls.searchContainer);
-    container.appendChild(filterControls.lastUsedContainer);
-    container.appendChild(filterControls.updateContainer);
-    container.appendChild(filterControls.sortContainer);
-    // Note: NSFW checkbox moved below to be above model information
+    // Add organized filters section
+    container.appendChild(filterControls.filtersMainContainer);
 
     // Add file selector
     container.appendChild(fileSelector.selectorContainer);
