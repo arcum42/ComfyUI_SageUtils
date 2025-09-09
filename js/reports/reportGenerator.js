@@ -8,7 +8,7 @@ import {
     hasUpdateAvailable,
     getUpdateStyle,
     formatTriggerWords
-} from './civitai.js';
+} from '../shared/civitai.js';
 
 import {
     MODEL_FILE_EXTENSIONS,
@@ -22,7 +22,7 @@ import {
     isLikelyCheckpoint,
     isLikelyLora,
     getThumbnailStyle
-} from './constants.js';
+} from '../shared/constants.js';
 
 /**
  * Get file size from backend

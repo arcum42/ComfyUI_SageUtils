@@ -256,9 +256,9 @@ All modules are designed to be independently testable while maintaining tight in
 
 **Usage**: Primary interface for displaying detailed model information with version comparison and update detection.
 
-### 10. reportGenerator.js
+### 10. reportGenerator.js (moved to js/reports/)
 
-**Purpose**: HTML report generation for model collections  
+**Purpose**: HTML report generation for model collections (now located in `js/reports/reportGenerator.js`)  
 **Lines**: 677  
 **Complexity**: High  
 
@@ -277,6 +277,8 @@ All modules are designed to be independently testable while maintaining tight in
 - **Image Integration**: Automatic image loading from Civitai
 - **Filter Integration**: Reflects current filter settings in report
 - **Statistics**: Model count and distribution statistics
+
+**Note**: This module has been moved to `js/reports/reportGenerator.js` to better organize report-related functionality.
 
 **Usage**: Generates comprehensive HTML reports for model collections with interactive features.
 
@@ -322,7 +324,9 @@ shared/
 ├── markdown.js (depends on config.js)
 ├── cacheUIComponents.js (depends on config.js, stateManager.js)
 ├── dialogManager.js (depends on config.js)
-├── infoDisplay.js (depends on stateManager.js, civitai.js)
+└── infoDisplay.js (depends on stateManager.js, civitai.js)
+
+**Reports Directory:**
 └── reportGenerator.js (depends on civitai.js, config.js)
 ```
 

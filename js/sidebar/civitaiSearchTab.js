@@ -14,7 +14,7 @@ import {
     createDialog
 } from '../components/dialogManager.js';
 
-import { escapeHtml, formatFileSize } from '../shared/reportGenerator.js';
+import { escapeHtml, formatFileSize } from '../reports/reportGenerator.js';
 
 /**
  * Configuration for Civitai search

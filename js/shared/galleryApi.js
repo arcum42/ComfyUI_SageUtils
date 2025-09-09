@@ -7,7 +7,7 @@
 import { api } from "../../../scripts/api.js";
 import { actions } from "./stateManager.js";
 import { handleError } from "./errorHandler.js";
-import { formatFileSize } from "./reportGenerator.js";
+import { formatFileSize } from "../reports/reportGenerator.js";
 
 /**
  * Load images and folders from a specified folder type

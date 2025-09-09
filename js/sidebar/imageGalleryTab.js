@@ -21,12 +21,6 @@ import {
     generateFallbackMetadata
 } from "../shared/galleryApi.js";
 
-// Import image utilities
-import { copyImageToClipboard } from "../shared/imageUtils.js";
-
-// Import utilities
-import { formatFileSize } from "../shared/reportGenerator.js";
-
 // Import gallery event handlers
 import { showFullImage, showImageContextMenu, browseCustomFolder, toggleViewMode } from './galleryEvents.js';
 

@@ -26,11 +26,11 @@ import {
 } from "../components/infoDisplay.js";
 
 import { 
-    escapeHtml, 
-    formatFileSize, 
-    generateHtmlContent, 
-    openHtmlReport 
-} from "../shared/reportGenerator.js";
+    escapeHtml,
+    formatFileSize,
+    generateHtmlContent,
+    openHtmlReport
+} from "../reports/reportGenerator.js";
 
 import {
     confirmDialog,
