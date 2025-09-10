@@ -557,15 +557,314 @@ async function showImageMetadata(image) {
         const result = await loadImageMetadata(image);
         
         if (result.success) {
-            const { html } = formatMetadataForDisplay(result.metadata);
-            // You could display this in a modal or update the metadata panel
-            console.log('Image metadata loaded successfully');
+            const { html, hasErrors } = formatMetadataForDisplay(result.metadata);
+            showMetadataModal(image, html, hasErrors, result.metadata);
         } else {
-            console.error('Failed to load metadata:', result.error);
+            const fallbackHtml = generateFallbackMetadata(image, result.error);
+            showMetadataModal(image, fallbackHtml, true, null);
         }
     } catch (error) {
         console.error('Error loading image metadata:', error);
+        const fallbackHtml = generateFallbackMetadata(image, `Error: ${error.message}`);
+        showMetadataModal(image, fallbackHtml, true, null);
     }
+}
+
+/**
+ * Shows image metadata in a modal dialog
+ * @param {Object} image - Image object
+ * @param {string} metadataHtml - HTML content for metadata
+ * @param {boolean} hasErrors - Whether metadata loading had errors
+ * @param {Object|null} metadata - Raw metadata object for parameter extraction
+ */
+function showMetadataModal(image, metadataHtml, hasErrors = false, metadata = null) {
+    // Remove any existing metadata modal
+    const existingModal = document.querySelector('.metadata-modal');
+    if (existingModal) {
+        existingModal.remove();
+    }
+
+    // Create modal overlay
+    const modal = document.createElement('div');
+    modal.className = 'metadata-modal';
+    modal.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.8);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 10000;
+        backdrop-filter: blur(2px);
+    `;
+
+    // Create modal content container
+    const modalContent = document.createElement('div');
+    modalContent.style.cssText = `
+        background: #2a2a2a;
+        border-radius: 8px;
+        width: 90%;
+        max-width: 700px;
+        max-height: 90%;
+        display: flex;
+        flex-direction: column;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+        border: 1px solid #444;
+        overflow: hidden;
+    `;
+
+    // Create header
+    const header = document.createElement('div');
+    header.style.cssText = `
+        padding: 16px 20px;
+        border-bottom: 1px solid #444;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background: #333;
+        flex-shrink: 0;
+    `;
+
+    const title = document.createElement('div');
+    title.style.cssText = `
+        color: #e0e0e0;
+        font-size: 16px;
+        font-weight: bold;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    `;
+    
+    const statusIcon = hasErrors ? '⚠️' : '📄';
+    const statusText = hasErrors ? 'Image Metadata (with warnings)' : 'Image Metadata';
+    title.innerHTML = `${statusIcon} ${statusText}`;
+
+    const closeBtn = document.createElement('button');
+    closeBtn.innerHTML = '✕';
+    closeBtn.style.cssText = `
+        background: none;
+        border: none;
+        color: #999;
+        font-size: 18px;
+        cursor: pointer;
+        padding: 4px 8px;
+        border-radius: 4px;
+        transition: all 0.2s ease;
+    `;
+    closeBtn.addEventListener('mouseover', () => {
+        closeBtn.style.backgroundColor = '#444';
+        closeBtn.style.color = '#fff';
+    });
+    closeBtn.addEventListener('mouseout', () => {
+        closeBtn.style.backgroundColor = 'transparent';
+        closeBtn.style.color = '#999';
+    });
+
+    header.appendChild(title);
+    header.appendChild(closeBtn);
+
+    // Create content area
+    const content = document.createElement('div');
+    content.style.cssText = `
+        padding: 20px;
+        overflow-y: auto;
+        flex: 1;
+        color: #e0e0e0;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        font-size: 13px;
+        line-height: 1.4;
+    `;
+
+    // Add filename info at the top
+    const filenameInfo = document.createElement('div');
+    filenameInfo.style.cssText = `
+        background: #333;
+        border: 1px solid #555;
+        border-radius: 4px;
+        padding: 12px;
+        margin-bottom: 16px;
+        word-break: break-all;
+    `;
+    filenameInfo.innerHTML = `
+        <div style="color: #4CAF50; font-weight: bold; margin-bottom: 6px;">📁 File Information</div>
+        <div><strong>Name:</strong> ${image.filename || image.name || 'Unknown'}</div>
+        <div style="font-size: 11px; color: #888; margin-top: 4px; font-family: monospace;">
+            ${image.path || image.relative_path || 'No path available'}
+        </div>
+    `;
+
+    content.appendChild(filenameInfo);
+
+    // Add the metadata content
+    const metadataDiv = document.createElement('div');
+    metadataDiv.innerHTML = metadataHtml;
+    content.appendChild(metadataDiv);
+
+    // Add copy button for generation parameters if they exist
+    if (metadata && metadata.generation_params && Object.keys(metadata.generation_params).length > 0) {
+        // Find the generation parameters section and add the button
+        const genParamsHeaders = metadataDiv.querySelectorAll('div');
+        let genParamsHeader = null;
+        
+        for (const header of genParamsHeaders) {
+            if (header.textContent && header.textContent.includes('🎨 Generation Parameters')) {
+                genParamsHeader = header;
+                break;
+            }
+        }
+        
+        if (genParamsHeader) {
+            // Create a container for the header and button
+            const headerContainer = document.createElement('div');
+            headerContainer.style.cssText = `
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                margin-bottom: 10px;
+            `;
+            
+            // Create the copy button
+            const copyBtn = document.createElement('button');
+            copyBtn.innerHTML = '📋';
+            copyBtn.title = 'Copy generation parameters to clipboard';
+            copyBtn.style.cssText = `
+                background: #4CAF50;
+                border: none;
+                color: white;
+                font-size: 12px;
+                cursor: pointer;
+                padding: 4px 6px;
+                border-radius: 3px;
+                transition: all 0.2s ease;
+                margin-left: 8px;
+                flex-shrink: 0;
+                min-width: 24px;
+                height: 24px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            `;
+            
+            copyBtn.addEventListener('mouseover', () => {
+                if (!copyBtn.disabled) {
+                    copyBtn.style.backgroundColor = '#45a049';
+                }
+            });
+            
+            copyBtn.addEventListener('mouseout', () => {
+                if (!copyBtn.disabled) {
+                    copyBtn.style.backgroundColor = '#4CAF50';
+                }
+            });
+            
+            copyBtn.addEventListener('click', async () => {
+                try {
+                    const genParams = metadata.generation_params;
+                    let textToCopy = '';
+                    
+                    // Format generation parameters as readable text
+                    Object.entries(genParams).forEach(([key, value]) => {
+                        if (typeof value === 'object') {
+                            textToCopy += `${key}:\n${JSON.stringify(value, null, 2)}\n\n`;
+                        } else {
+                            textToCopy += `${key}: ${value}\n`;
+                        }
+                    });
+                    
+                    // Try modern clipboard API first
+                    if (navigator.clipboard && navigator.clipboard.writeText) {
+                        await navigator.clipboard.writeText(textToCopy.trim());
+                    } else {
+                        // Fallback for older browsers
+                        const textArea = document.createElement('textarea');
+                        textArea.value = textToCopy.trim();
+                        textArea.style.position = 'fixed';
+                        textArea.style.left = '-999999px';
+                        textArea.style.top = '-999999px';
+                        document.body.appendChild(textArea);
+                        textArea.focus();
+                        textArea.select();
+                        document.execCommand('copy');
+                        document.body.removeChild(textArea);
+                    }
+                    
+                    // Show success feedback
+                    const originalText = copyBtn.innerHTML;
+                    const originalBg = copyBtn.style.backgroundColor;
+                    copyBtn.innerHTML = '✅';
+                    copyBtn.style.backgroundColor = '#2196F3';
+                    copyBtn.style.cursor = 'default';
+                    copyBtn.disabled = true;
+                    
+                    setTimeout(() => {
+                        copyBtn.innerHTML = originalText;
+                        copyBtn.style.backgroundColor = originalBg;
+                        copyBtn.style.cursor = 'pointer';
+                        copyBtn.disabled = false;
+                    }, 1500);
+                    
+                } catch (error) {
+                    console.error('Error copying to clipboard:', error);
+                    
+                    // Show error feedback
+                    const originalText = copyBtn.innerHTML;
+                    const originalBg = copyBtn.style.backgroundColor;
+                    copyBtn.innerHTML = '❌';
+                    copyBtn.style.backgroundColor = '#f44336';
+                    copyBtn.style.cursor = 'default';
+                    copyBtn.disabled = true;
+                    
+                    setTimeout(() => {
+                        copyBtn.innerHTML = originalText;
+                        copyBtn.style.backgroundColor = originalBg;
+                        copyBtn.style.cursor = 'pointer';
+                        copyBtn.disabled = false;
+                    }, 1500);
+                }
+            });
+            
+            // Move the original header styling to a new div
+            const headerText = document.createElement('div');
+            headerText.style.cssText = genParamsHeader.style.cssText;
+            headerText.innerHTML = genParamsHeader.innerHTML;
+            
+            // Replace the original header with the container
+            headerContainer.appendChild(headerText);
+            headerContainer.appendChild(copyBtn);
+            genParamsHeader.parentNode.replaceChild(headerContainer, genParamsHeader);
+        }
+    }
+
+    // Assemble modal
+    modalContent.appendChild(header);
+    modalContent.appendChild(content);
+    modal.appendChild(modalContent);
+
+    // Event handlers
+    closeBtn.addEventListener('click', () => {
+        document.body.removeChild(modal);
+    });
+
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            document.body.removeChild(modal);
+        }
+    });
+
+    // Keyboard handling
+    const handleKeyDown = (e) => {
+        if (e.key === 'Escape') {
+            document.body.removeChild(modal);
+            document.removeEventListener('keydown', handleKeyDown);
+        }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+
+    // Show modal
+    document.body.appendChild(modal);
 }
 
 /**
@@ -1088,7 +1387,7 @@ export function showImageContextMenu(event, image) {
 /**
  * Helper function to show image metadata from path
  */
-function showImageInfoFromPath(imagePath) {
+async function showImageInfoFromPath(imagePath) {
     const images = selectors.galleryImages();
     if (images) {
         const image = images.find(img => 
@@ -1097,8 +1396,8 @@ function showImageInfoFromPath(imagePath) {
             img.name === imagePath.split('/').pop()
         );
         if (image) {
-            // TODO: Access showImageMetadata through callback
-            console.log('Would show metadata for image:', image.name);
+            // Show metadata for the found image
+            await showImageMetadata(image);
         }
     }
 }
