@@ -10,6 +10,7 @@ import { copyImageToClipboard } from '../shared/imageUtils.js';
 import { handleDatasetText } from '../shared/datasetTextManager.js';
 import { loadImageMetadata, formatMetadataForDisplay } from '../shared/galleryApi.js';
 import { loadFullImage, openImageInNewTab as openImageInNewTabUtil, cleanupImageUrl } from '../shared/imageLoader.js';
+import { CONTEXT_MENU_WIDTH, CONTEXT_MENU_ITEM_HEIGHT } from '../shared/constants.js';
 
 /**
  * Shows a native OS folder picker dialog
@@ -1361,8 +1362,8 @@ export function showImageContextMenu(event, image) {
     });
     
     // Position context menu
-    const x = Math.min(event.clientX, window.innerWidth - 180);
-    const y = Math.min(event.clientY, window.innerHeight - menuItems.length * 35);
+    const x = Math.min(event.clientX, window.innerWidth - CONTEXT_MENU_WIDTH);
+    const y = Math.min(event.clientY, window.innerHeight - menuItems.length * CONTEXT_MENU_ITEM_HEIGHT);
     
     contextMenu.style.left = `${x}px`;
     contextMenu.style.top = `${y}px`;

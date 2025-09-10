@@ -17,6 +17,7 @@ import {
     DEFAULT_THUMBNAIL_WIDTH,
     DEFAULT_THUMBNAIL_HEIGHT,
     DEFAULT_BATCH_SIZE,
+    REPORT_COLUMN_CONFIG,
     hasModelExtension,
     hasCommonModelExtension,
     isLikelyCheckpoint,
@@ -711,24 +712,11 @@ export async function generateHtmlContentWithProgress(options) {
         folderFilter = 'all'
     } = options;
 
-    // Column visibility configuration (hardcoded for now)
+    // Column visibility configuration (now centralized in constants.js)
     // This controls which columns appear in the generated reports
-    // To hide additional columns, set visible: false
-    // To show the Hash column, set visible: true for the Hash entry
-    const COLUMN_CONFIG = [
-        { name: 'Model Name', width: '200px', visible: true, sortable: true, key: 'name' },
-        { name: 'Base Model', width: '100px', visible: true, sortable: true, key: 'basemodel' },
-        { name: 'Type', width: '80px', visible: false, sortable: true, key: 'type' }, // Hidden - replaced by folder
-        { name: 'Folder', width: '120px', visible: true, sortable: true, key: 'folder' },
-        { name: 'Trigger Words', width: '175px', visible: true, sortable: false, key: 'triggers' },
-        { name: 'Example Image', width: '200px', visible: true, sortable: false, key: 'image' },
-        { name: 'Civitai ID', width: '100px', visible: true, sortable: true, key: 'civitai' },
-        { name: 'Version ID', width: '100px', visible: true, sortable: true, key: 'versionid' },
-        { name: 'Hash', width: '100px', visible: false, sortable: true, key: 'hash' }, // Hidden by default
-        { name: 'File Size', width: '80px', visible: true, sortable: true, key: 'size' },
-        { name: 'Last Used', width: '120px', visible: true, sortable: true, key: 'lastused' },
-        { name: 'Full Path', width: '250px', visible: false, sortable: true, key: 'path' } // Hidden by default
-    ];
+    // To hide additional columns, set visible: false in the REPORT_COLUMN_CONFIG
+    // To show the Hash column, set visible: true for the Hash entry in constants.js
+    const COLUMN_CONFIG = REPORT_COLUMN_CONFIG;
 
     // Get visible columns and their original indices for mapping
     const visibleColumns = COLUMN_CONFIG.map((col, index) => ({ ...col, originalIndex: index }))

@@ -39,6 +39,26 @@ export const BYTES_PER_KB = 1024;
 export const BYTES_PER_MB = BYTES_PER_KB * 1024;
 export const BYTES_PER_GB = BYTES_PER_MB * 1024;
 
+// UI Layout constants
+export const CONTEXT_MENU_WIDTH = 180; // Width of context menus for edge detection
+export const CONTEXT_MENU_ITEM_HEIGHT = 35; // Height of each context menu item
+
+// Report column configuration
+export const REPORT_COLUMN_CONFIG = [
+    { name: 'Model Name', width: '200px', visible: true, sortable: true, key: 'name' },
+    { name: 'Base Model', width: '100px', visible: true, sortable: true, key: 'basemodel' },
+    { name: 'Type', width: '80px', visible: false, sortable: true, key: 'type' }, // Hidden - replaced by folder
+    { name: 'Folder', width: '120px', visible: true, sortable: true, key: 'folder' },
+    { name: 'Trigger Words', width: '175px', visible: true, sortable: false, key: 'triggers' },
+    { name: 'Example Image', width: '200px', visible: true, sortable: false, key: 'image' },
+    { name: 'Civitai ID', width: '100px', visible: true, sortable: true, key: 'civitai' },
+    { name: 'Version ID', width: '100px', visible: true, sortable: true, key: 'versionid' },
+    { name: 'Hash', width: '100px', visible: false, sortable: true, key: 'hash' }, // Hidden by default
+    { name: 'File Size', width: '80px', visible: true, sortable: true, key: 'size' },
+    { name: 'Last Used', width: '120px', visible: true, sortable: true, key: 'lastused' },
+    { name: 'Full Path', width: '250px', visible: false, sortable: true, key: 'path' } // Hidden by default
+];
+
 /**
  * Check if a file path has a model extension
  * @param {string} filePath - The file path to check
