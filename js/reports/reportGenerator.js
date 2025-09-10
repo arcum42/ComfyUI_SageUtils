@@ -694,7 +694,6 @@ export async function generateTableRowsWithProgress(models, options = {}) {
  * @param {string} [options.sortDescription] - Description of sort criteria
  * @param {string} [options.sortBy] - Current sort selection from model tab
  * @param {string} [options.folderFilter] - Current folder filter from model tab (all, checkpoints, loras, vae, etc.)
- * @param {string} [options.modelTypeFilter] - Legacy model type filter for backwards compatibility
  * @returns {Promise<string>} - Complete HTML document
  */
 export async function generateHtmlContentWithProgress(options) {
@@ -709,8 +708,7 @@ export async function generateHtmlContentWithProgress(options) {
         lastUsedDescription = '',
         sortDescription = '',
         sortBy = 'name',
-        folderFilter = 'all',
-        modelTypeFilter = 'all'
+        folderFilter = 'all'
     } = options;
 
     // Column visibility configuration (hardcoded for now)
@@ -812,36 +810,6 @@ export async function generateHtmlContentWithProgress(options) {
             return getFolderTypeFromPath(filePath) === 'loras';
         });
     }
-    // Fallback to legacy modelTypeFilter for backwards compatibility
-    else if (modelTypeFilter !== 'all') {
-        if (progressCallback) {
-            progressCallback(11, `Filtering models by type: ${modelTypeFilter}...`);
-        }
-        
-        // Filter all models by the selected folder type (mapped from legacy filter)
-        let targetFolderType = null;
-        if (modelTypeFilter === 'Checkpoint') {
-            targetFolderType = 'checkpoints';
-        } else if (modelTypeFilter === 'LORA') {
-            targetFolderType = 'loras';
-        }
-        
-        if (targetFolderType) {
-            allModels = allModels.filter(model => {
-                const filePath = model.filePath || '';
-                return getFolderTypeFromPath(filePath) === targetFolderType;
-            });
-            
-            // Update categorized lists as well
-            if (targetFolderType === 'checkpoints') {
-                checkpointModels = allModels;
-                loraModels = [];
-            } else if (targetFolderType === 'loras') {
-                loraModels = allModels;
-                checkpointModels = [];
-            }
-        }
-    }
 
     // Apply sorting and grouping based on the sort criteria from the models tab
     if (progressCallback) {
@@ -864,18 +832,13 @@ export async function generateHtmlContentWithProgress(options) {
     const clientJs = generateClientSideJs(sortBy);
     const htmlStart = generateHtmlDocumentStart(currentDateTime, cssStyles, clientJs);
     
-    let htmlContent = htmlStart + generateModelStatsSection(currentDateTime, filterDescription, searchDescription, lastUsedDescription, sortDescription, allModels, checkpointModels, loraModels, folderFilter || modelTypeFilter);
+    let htmlContent = htmlStart + generateModelStatsSection(currentDateTime, filterDescription, searchDescription, lastUsedDescription, sortDescription, allModels, checkpointModels, loraModels, folderFilter);
 
     // Determine which sections to show based on folder filter
     const shouldShowSection = (sectionFolderType, modelArray) => {
         if (folderFilter !== 'all') {
             // If a specific folder is selected, only show that section
             return folderFilter === sectionFolderType && modelArray.length > 0;
-        } else if (modelTypeFilter !== 'all') {
-            // Legacy compatibility: use modelTypeFilter
-            return (modelTypeFilter === 'LORA' && sectionFolderType === 'loras') ||
-                   (modelTypeFilter === 'Checkpoint' && sectionFolderType === 'checkpoints') ||
-                   (modelTypeFilter === 'all');
         } else {
             // Show all sections that have models
             return modelArray.length > 0;
@@ -1013,5 +976,5 @@ export function openHtmlReport(htmlContent, title) {
     }
 }
 
-// Re-export utility functions to maintain API compatibility
+// Re-export utility functions for backward compatibility with existing imports
 export { escapeHtml, formatFileSize } from './modelFormatters.js';

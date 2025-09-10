@@ -493,7 +493,7 @@ export function generateClientSideJs(sortBy = 'name') {
  * @param {Array} options.allModels - All models array
  * @param {Array} options.checkpointModels - Checkpoint models array
  * @param {Array} options.loraModels - LoRA models array
- * @param {string} options.modelTypeFilter - Current model type filter
+ * @param {string} options.folderFilter - Current folder filter
  * @returns {string} - Complete HTML document template
  */
 export function generateHtmlDocumentStart(currentDateTime, cssStyles, clientJs) {
@@ -567,13 +567,13 @@ ${generateTableHeaders(visibleColumns)}
 /**
  * Generate model statistics section
  */
-export function generateModelStatsSection(currentDateTime, filterDescription, searchDescription, lastUsedDescription, sortDescription, allModels, checkpointModels, loraModels, modelTypeFilter) {
+export function generateModelStatsSection(currentDateTime, filterDescription, searchDescription, lastUsedDescription, sortDescription, allModels, checkpointModels, loraModels, folderFilter) {
     return `
     <h1>SageUtils Model Report</h1>
     <h2>Generated: ${currentDateTime}</h2>
         <div class="info">
         Filters Applied: ${filterDescription}${searchDescription}${lastUsedDescription}${sortDescription}<br>
-        Total Models: ${allModels.length}${modelTypeFilter === 'all' ? ` (${checkpointModels.length} Checkpoints, ${loraModels.length} LoRAs)` : ''}<br>
+        Total Models: ${allModels.length}${folderFilter === 'all' ? ` (${checkpointModels.length} Checkpoints, ${loraModels.length} LoRAs)` : ''}<br>
         <small style="color: #999; font-style: italic;">Click column headers to sort • Images load automatically from Civitai</small>
     </div>
 `;

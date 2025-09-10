@@ -474,8 +474,6 @@ function setupModelsEventHandlers(filterControls, fileSelector, actionButtons, i
                         ...(modelType && { type: modelType })
                     };
                     
-                    // Also set legacy fields for compatibility
-                    if (modelType) updatedInfo.model_type = modelType;
                     if (baseModel) {
                         updatedInfo.baseModel = baseModel;
                         updatedInfo.base_model = baseModel;
@@ -583,21 +581,12 @@ function setupModelsEventHandlers(filterControls, fileSelector, actionButtons, i
                 filterDescription = `Filter: ${selectedFilterOption.text}`;
             }
             
-            // Map folder filter to report generator's expected modelTypeFilter for compatibility
-            let reportModelTypeFilter = 'all';
-            if (currentFolderFilter === 'checkpoints') {
-                reportModelTypeFilter = 'Checkpoint';
-            } else if (currentFolderFilter === 'loras') {
-                reportModelTypeFilter = 'LORA';
-            }
-            
             // Generate HTML report with detailed progress updates
             const htmlContent = await generateHtmlContent({
                 models: models,
                 title: 'SageUtils Model Cache Report',
                 sortBy: currentSort,
-                folderFilter: currentFolderFilter, // Pass the actual folder filter
-                modelTypeFilter: reportModelTypeFilter, // Keep the old parameter name for compatibility
+                folderFilter: currentFolderFilter,
                 filterDescription: filterDescription,
                 sortDescription: ` • Sorted by: ${filterControls.sortSelector.options[filterControls.sortSelector.selectedIndex].text}`,
                 progressCallback: (progress, message) => {
