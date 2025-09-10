@@ -11,6 +11,7 @@ import { handleDatasetText } from '../shared/datasetTextManager.js';
 import { loadImageMetadata, formatMetadataForDisplay } from '../shared/galleryApi.js';
 import { loadFullImage, openImageInNewTab as openImageInNewTabUtil, cleanupImageUrl } from '../shared/imageLoader.js';
 import { CONTEXT_MENU_WIDTH, CONTEXT_MENU_ITEM_HEIGHT } from '../shared/constants.js';
+import { notifications } from '../shared/notifications.js';
 
 /**
  * Shows a native OS folder picker dialog
@@ -366,7 +367,7 @@ async function showFolderBrowserDialog(callback) {
             font-size: 11px;
         `;
         helpBtn.addEventListener('click', () => {
-            alert('Favorites:\n\n• Click to navigate to folder\n• Right-click to remove\n• "+ Add" to save current folder\n• Saved per system/browser');
+            notifications.info('Favorites:\n\n• Click to navigate to folder\n• Right-click to remove\n• "+ Add" to save current folder\n• Saved per system/browser', 8000);
         });
         quickAccess.appendChild(helpBtn);
     };
@@ -1437,7 +1438,7 @@ export async function browseCustomFolder(renderImageGrid) {
             const { images = [], folders = [] } = result;
             
             if (images.length === 0 && folders.length === 0) {
-                alert(`Folder "${folderPath}" contains no images or subfolders`);
+                notifications.warning(`Folder "${folderPath}" contains no images or subfolders`);
                 return;
             }
             
@@ -1474,13 +1475,13 @@ export async function browseCustomFolder(renderImageGrid) {
             // Check the specific error to provide helpful feedback
             const errorMsg = result.error || 'Failed to browse folder';
             if (errorMsg.includes('does not exist')) {
-                alert(`Path not found: "${folderPath}"\n\nPlease check that:\n• The path is correct\n• The folder exists\n• You have access permissions`);
+                notifications.error(`Path not found: "${folderPath}"\n\nPlease check that:\n• The path is correct\n• The folder exists\n• You have access permissions`);
             } else if (errorMsg.includes('not a directory')) {
-                alert(`Not a folder: "${folderPath}"\n\nPlease provide a path to a folder, not a file.`);
+                notifications.error(`Not a folder: "${folderPath}"\n\nPlease provide a path to a folder, not a file.`);
             } else if (errorMsg.includes('Permission denied')) {
-                alert(`Access denied: "${folderPath}"\n\nYou don't have permission to access this folder.`);
+                notifications.error(`Access denied: "${folderPath}"\n\nYou don't have permission to access this folder.`);
             } else {
-                alert(`Error: ${errorMsg}`);
+                notifications.error(`Error: ${errorMsg}`);
             }
             throw new Error(errorMsg);
         }
@@ -1492,21 +1493,21 @@ export async function browseCustomFolder(renderImageGrid) {
         if (error.message.includes('HTTP error! status:')) {
             const status = error.message.match(/status: (\d+)/)?.[1];
             if (status === '400') {
-                alert('Invalid folder path provided');
+                notifications.error('Invalid folder path provided');
             } else if (status === '403') {
-                alert('Access denied - you don\'t have permission to access this folder');
+                notifications.error('Access denied - you don\'t have permission to access this folder');
             } else if (status === '404') {
-                alert('Folder not found');
+                notifications.error('Folder not found');
             } else {
-                alert(`Server error (${status}): Unable to browse folder`);
+                notifications.error(`Server error (${status}): Unable to browse folder`);
             }
         } else if (error.message.includes('Failed to fetch')) {
-            alert('Network error: Unable to connect to the server');
+            notifications.error('Network error: Unable to connect to the server');
         } else if (!error.message.startsWith('Path not found:') && 
                    !error.message.startsWith('Not a folder:') && 
                    !error.message.startsWith('Access denied:')) {
             // Only show generic error if we haven't already shown a specific one
-            alert(`Error browsing folder: ${error.message}`);
+            notifications.error(`Error browsing folder: ${error.message}`);
         }
     }
 }

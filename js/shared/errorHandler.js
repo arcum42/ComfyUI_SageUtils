@@ -4,6 +4,7 @@
  */
 
 import { MESSAGES, DEBUG } from './config.js';
+import { notifications } from './notifications.js';
 
 /**
  * @typedef {Object} ErrorContext
@@ -211,12 +212,16 @@ function createUserMessage(errorInfo) {
 function showUserError(errorInfo) {
     const message = createUserMessage(errorInfo);
     
-    // For now, use simple alert - can be replaced with toast notifications
+    // Use modern notification system instead of alerts
     if (errorInfo.severity === ERROR_LEVELS.CRITICAL) {
-        alert(`Critical Error: ${message}`);
+        notifications.error(`Critical Error: ${message}`, 0); // 0 = permanent until dismissed
     } else if (errorInfo.severity === ERROR_LEVELS.HIGH) {
+        notifications.error(`Error: ${message}`);
         console.error(`Error: ${message}`);
-        // Could show toast notification here
+    } else if (errorInfo.severity === ERROR_LEVELS.MEDIUM) {
+        notifications.warning(message);
+    } else {
+        notifications.info(message);
     }
 }
 

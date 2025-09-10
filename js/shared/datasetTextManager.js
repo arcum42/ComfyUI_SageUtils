@@ -7,6 +7,7 @@
 import { createDatasetNavigationControls } from '../components/navigationComponents.js';
 import { selectors } from "./stateManager.js";
 import { loadThumbnail } from "./imageLoader.js";
+import { notifications } from './notifications.js';
 
 /**
  * Show the combined image and text editor modal
@@ -385,7 +386,7 @@ export async function showCombinedImageTextEditor(image) {
             const { textContent: newTextContent } = await loadDatasetText();
             textArea.value = newTextContent;
         } else {
-            alert('Please enter text to prepend.');
+            notifications.warning('Please enter text to prepend.');
         }
     });
     
@@ -397,7 +398,7 @@ export async function showCombinedImageTextEditor(image) {
             const { textContent: newTextContent } = await loadDatasetText();
             textArea.value = newTextContent;
         } else {
-            alert('Please enter text to append.');
+            notifications.warning('Please enter text to append.');
         }
     });
     
@@ -461,7 +462,7 @@ export async function showCombinedImageTextEditor(image) {
             const { textContent: newTextContent } = await loadDatasetText();
             textArea.value = newTextContent;
         } else {
-            alert('Please enter text to find.');
+            notifications.warning('Please enter text to find.');
         }
     });
     
@@ -560,11 +561,11 @@ export async function showCombinedImageTextEditor(image) {
                 }, 2000);
                 
             } else {
-                alert(`Error saving: ${result.error}`);
+                notifications.error(`Error saving: ${result.error}`);
             }
         } catch (error) {
             console.error('Error saving dataset text:', error);
-            alert(`Error saving: ${error.message}`);
+            notifications.error(`Error saving: ${error.message}`);
         }
     });
     
@@ -644,7 +645,7 @@ export async function editDatasetText(image, callbacks = null) {
         const readResult = await readResponse.json();
         if (!readResult.success) {
             console.error('Failed to read dataset text:', readResult.error);
-            alert(`Failed to read text file: ${readResult.error}`);
+            notifications.error(`Failed to read text file: ${readResult.error}`);
             return;
         }
         
@@ -653,7 +654,7 @@ export async function editDatasetText(image, callbacks = null) {
         
     } catch (error) {
         console.error('Error editing dataset text:', error);
-        alert(`Error editing dataset text: ${error.message}`);
+        notifications.error(`Error editing dataset text: ${error.message}`);
     }
 }
 
@@ -669,7 +670,7 @@ export async function createDatasetText(image, callbacks = null) {
         
     } catch (error) {
         console.error('Error creating dataset text:', error);
-        alert(`Error creating dataset text: ${error.message}`);
+        notifications.error(`Error creating dataset text: ${error.message}`);
     }
 }
 
@@ -782,11 +783,11 @@ export function showDatasetTextEditor(image, content, isNew, callbacks = null) {
                     callbacks.refreshCurrentTextDisplay();
                 }
             } else {
-                alert(`Error saving: ${result.error}`);
+                notifications.error(`Error saving: ${result.error}`);
             }
         } catch (error) {
             console.error('Error saving dataset text:', error);
-            alert(`Error saving: ${error.message}`);
+            notifications.error(`Error saving: ${error.message}`);
         }
     });
     
@@ -874,7 +875,7 @@ export async function batchCreateMissingTextFiles() {
     try {
         const allImages = selectors.galleryImages();
         if (!allImages || allImages.length === 0) {
-            alert('No images found in current folder.');
+            notifications.warning('No images found in current folder.');
             return;
         }
         
@@ -925,11 +926,11 @@ export async function batchCreateMissingTextFiles() {
             }
         }
         
-        alert(message);
+        notifications.info(message, 8000); // Longer duration for batch operation results
         
     } catch (error) {
         console.error('Error in batch create:', error);
-        alert(`Error in batch create: ${error.message}`);
+        notifications.error(`Error in batch create: ${error.message}`);
     }
 }
 
@@ -942,12 +943,12 @@ export async function batchAppendToAllTextFiles(textToAdd, addToBeginning = fals
     try {
         const allImages = selectors.galleryImages();
         if (!allImages || allImages.length === 0) {
-            alert('No images found in current folder.');
+            notifications.warning('No images found in current folder.');
             return;
         }
         
         if (!textToAdd || textToAdd.trim() === '') {
-            alert('No text provided to append.');
+            notifications.warning('No text provided to append.');
             return;
         }
         
@@ -1025,11 +1026,11 @@ export async function batchAppendToAllTextFiles(textToAdd, addToBeginning = fals
             }
         }
         
-        alert(message);
+        notifications.info(message, 8000);
         
     } catch (error) {
         console.error('Error in batch append:', error);
-        alert(`Error in batch append: ${error.message}`);
+        notifications.error(`Error in batch append: ${error.message}`);
     }
 }
 
@@ -1042,12 +1043,12 @@ export async function batchFindReplaceAllTextFiles(findText, replaceText) {
     try {
         const allImages = selectors.galleryImages();
         if (!allImages || allImages.length === 0) {
-            alert('No images found in current folder.');
+            notifications.warning('No images found in current folder.');
             return;
         }
         
         if (!findText || findText.trim() === '') {
-            alert('No search text provided.');
+            notifications.warning('No search text provided.');
             return;
         }
         
@@ -1117,11 +1118,11 @@ export async function batchFindReplaceAllTextFiles(findText, replaceText) {
             }
         }
         
-        alert(message);
+        notifications.info(message, 8000);
         
     } catch (error) {
         console.error('Error in batch find/replace:', error);
-        alert(`Error in batch find/replace: ${error.message}`);
+        notifications.error(`Error in batch find/replace: ${error.message}`);
     }
 }
 

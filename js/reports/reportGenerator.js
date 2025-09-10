@@ -10,6 +10,8 @@ import {
     formatTriggerWords
 } from '../shared/civitai.js';
 
+import { notifications } from '../shared/notifications.js';
+
 import {
     MODEL_FILE_EXTENSIONS,
     COMMON_MODEL_EXTENSIONS,
@@ -959,7 +961,7 @@ export function openHtmlReport(htmlContent, title) {
         
         return true;
     } else {
-        alert('Unable to open new window. Please check your popup blocker settings.');
+        notifications.warning('Unable to open new window. Please check your popup blocker settings.');
         return false;
     }
 }
