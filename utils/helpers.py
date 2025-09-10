@@ -62,13 +62,75 @@ def is_model_file(path: str) -> bool:
     """Check if a file is a valid model file based on its extension."""
     return has_model_extension(path)
 
-def get_file_sha256(path):
+# fast_hash_threshold=100*1024*1024  # 100MB threshold
+def get_file_sha256(path, fast_hash_threshold=0):  # Full hashing by default
+    """
+    Calculate SHA256 hash of a file with optimizations for large files.
+    
+    Args:
+        path: File path to hash
+        fast_hash_threshold: File size threshold (in bytes) above which to use fast hashing.
+                           Set to 0 to always use full hashing.
+    
+    Returns:
+        First 10 characters of the SHA256 hash
+    """
     print(f"Calculating hash for {path}")
-    m = hashlib.sha256()
-    with open(path, 'rb') as f:
-        for chunk in iter(lambda: f.read(8192), b''):
-            m.update(chunk)
-    full_hash = m.digest().hex()
+    import hashlib
+    import os
+    
+    # Use a larger buffer size for better I/O performance
+    BUFFER_SIZE = 65536  # 64KB chunks
+    
+    try:
+        file_size = os.path.getsize(path)
+        print(f"File size: {file_size / (1024*1024):.1f} MB")
+        
+        m = hashlib.sha256()
+        
+        # For very large files, use a sampling approach for speed
+        if fast_hash_threshold > 0 and file_size > fast_hash_threshold:
+            print(f"Large file detected, using fast hashing strategy")
+            
+            # Sample strategy: hash beginning, middle, and end of file + file size + filename
+            # This creates a unique signature that's very unlikely to collide for different files
+            sample_size = min(BUFFER_SIZE * 4, file_size // 10)  # Sample up to 256KB or 10% of file
+            
+            with open(path, 'rb') as f:
+                # Hash file metadata first (size and name)
+                m.update(str(file_size).encode())
+                m.update(os.path.basename(path).encode())
+                
+                # Hash beginning of file
+                beginning = f.read(sample_size)
+                m.update(beginning)
+                
+                # Hash middle of file
+                if file_size > sample_size * 2:
+                    middle_pos = file_size // 2 - sample_size // 2
+                    f.seek(middle_pos)
+                    middle = f.read(sample_size)
+                    m.update(middle)
+                
+                # Hash end of file
+                if file_size > sample_size * 3:
+                    f.seek(-sample_size, 2)  # Seek to sample_size bytes from end
+                    end = f.read(sample_size)
+                    m.update(end)
+        else:
+            # Full file hashing for smaller files or when requested
+            with open(path, 'rb') as f:
+                while True:
+                    chunk = f.read(BUFFER_SIZE)
+                    if not chunk:
+                        break
+                    m.update(chunk)
+                
+    except (OSError, IOError) as e:
+        print(f"Error reading file {path}: {e}")
+        raise
+    
+    full_hash = m.hexdigest()
     print(f"Got full hash {full_hash}")
     result = full_hash[:10]
     print(f"Got hash {result}")

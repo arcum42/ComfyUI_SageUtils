@@ -12,6 +12,8 @@ import {
     hasModelExtension
 } from "../shared/constants.js";
 
+import { notifications } from "../shared/notifications.js";
+
 import { 
     handleError
 } from "../shared/errorHandler.js";
@@ -506,31 +508,21 @@ function setupModelsEventHandlers(filterControls, fileSelector, actionButtons, i
         dialog.show();
     });
     
-    // Scan button handler - scans for new models
+    // Scan button handler - opens comprehensive scan dialog
     scanButton.addEventListener('click', async () => {
         try {
-            scanButton.disabled = true;
-            scanButton.textContent = 'Scanning...';
-            scanButton.style.opacity = '0.6';
+            const { ModelScanDialog } = await import('../dialogs/modelScanDialog.js');
+            const scanDialog = new ModelScanDialog({
+                onScanComplete: () => {
+                    // Refresh the file list after successful scan
+                    updateFileList();
+                }
+            });
             
-            const confirmed = await confirmDialog(
-                'Scan for new models in the configured directories?\nThis may take a few moments.',
-                'Scan for Models'
-            );
-            
-            if (confirmed) {
-                // For now, we'll just refresh the cache data as there's no dedicated scan endpoint
-                // In a full implementation, this would call a scan endpoint
-                await updateFileList();
-                alertDialog('Scan completed! Cache has been refreshed.', 'Scan Complete');
-            }
+            await scanDialog.show();
         } catch (error) {
-            console.error('Error scanning for models:', error);
-            alertDialog(`Failed to scan for models: ${error.message}`, 'Error');
-        } finally {
-            scanButton.disabled = false;
-            scanButton.textContent = BUTTON_CONFIGS.scan.text;
-            scanButton.style.opacity = '1';
+            console.error('Error opening scan dialog:', error);
+            notifications.error('Failed to open scan dialog', error.message);
         }
     });
     
