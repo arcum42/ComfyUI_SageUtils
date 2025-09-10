@@ -69,11 +69,20 @@ import {
  * @param {Object} controls - Controls panel components  
  * @param {Object} grid - Thumbnail grid components
  * @param {Object} metadata - Metadata panel components
+ * @param {Object} header - Header components
+ * @param {Object} galleryFunctions - Gallery function dependencies
  */
-function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, header) {
-    // Extract components from the combined folderAndControls object
-    const folderSelector = folderAndControls;
-    const controls = folderAndControls; // Same object contains both folder and control elements
+function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, header, galleryFunctions) {
+    // Extract gallery functions from parameters instead of global window
+    const { 
+        showFullImage, 
+        showImageContextMenu, 
+        browseCustomFolder, 
+        toggleViewMode,
+        handleDatasetText,
+        showCombinedImageTextEditor,
+        datasetTextManager
+    } = galleryFunctions;
     // Helper function to update status
     function setStatus(message, isError = false) {
         console.log(isError ? `Gallery Error: ${message}` : `Gallery: ${message}`);
@@ -139,7 +148,7 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
             grid.imageCountSpan.textContent = `(${images.length} images, ${folders.length} folders)`;
             
             // Render image grid with both images and folders
-            await renderImageGrid(images, folders);
+            await renderImageGrid(images, folders, loadImagesWrapper);
             
             // Auto-show metadata for the first image if available
             if (images && images.length > 0) {
@@ -190,7 +199,7 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
     }
 
     // Render image grid with actual images and folders
-    async function renderImageGrid(images, folders = []) {
+    async function renderImageGrid(images, folders = [], loadImagesCallback = null) {
         
         grid.gridContainer.innerHTML = '';
         
@@ -260,14 +269,14 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
         
         // Render folders first
         sortedFolders.forEach(folder => {
-            const folderItem = createFolderItem(folder);
+            const folderItem = createFolderItem(folder, loadImagesCallback);
             grid.gridContainer.appendChild(folderItem);
         });
         
         // Add "back" navigation if we're in a custom path
         const currentPath = selectors.currentPath();
         if (currentPath && currentPath !== '') {
-            const backItem = createBackNavigationItem();
+            const backItem = createBackNavigationItem(loadImagesCallback);
             grid.gridContainer.insertBefore(backItem, grid.gridContainer.firstChild);
         }
         
@@ -465,8 +474,9 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
     });
 
     folderAndControls.browseButton.addEventListener('click', () => {
-        // Implement custom folder browser
-        browseCustomFolder(renderImageGrid);
+        // Create wrapper that provides the callback to renderImageGrid
+        const renderGridWithCallback = (images, folders) => renderImageGrid(images, folders, loadImagesWrapper);
+        browseCustomFolder(renderGridWithCallback);
     });
 
     folderAndControls.searchInput.addEventListener('input', (e) => {
@@ -491,7 +501,10 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
     });
 
     folderAndControls.refreshButton.addEventListener('click', refreshCurrentFolder);
-    folderAndControls.viewModeButton.addEventListener('click', () => toggleViewMode(renderImageGrid));
+    folderAndControls.viewModeButton.addEventListener('click', () => {
+        const renderGridWithCallback = (images, folders) => renderImageGrid(images, folders, loadImagesWrapper);
+        toggleViewMode(renderGridWithCallback);
+    });
 
     // Add event handlers for the new combined controls
     folderAndControls.clearButton.addEventListener('click', () => {
@@ -587,7 +600,7 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
         const images = selectors.galleryImages();
         const folders = selectors.galleryFolders();
         if (images && images.length > 0) {
-            renderImageGrid(images, folders).catch(console.error);
+            renderImageGrid(images, folders, loadImagesWrapper).catch(console.error);
         }
     }
 
@@ -600,47 +613,49 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
     return {
         loadImagesFromFolder: loadImagesWrapper,  // Export the wrapper, not the raw API function
         refreshCurrentFolder,
-        toggleViewMode: () => toggleViewMode(renderImageGrid),  // Wrapper for imported function
+        toggleViewMode: () => {
+            const renderGridWithCallback = (images, folders) => renderImageGrid(images, folders, loadImagesWrapper);
+            toggleViewMode(renderGridWithCallback);
+        },
         showMetadata,
         hideMetadata,
-        browseCustomFolder: () => browseCustomFolder(renderImageGrid),  // Wrapper for imported function
+        browseCustomFolder: () => {
+            const renderGridWithCallback = (images, folders) => renderImageGrid(images, folders, loadImagesWrapper);
+            browseCustomFolder(renderGridWithCallback);
+        },
         filterAndSortImages,
         updateGridLayout,
         updateThumbnailSizeUI,
-        renderImageGrid  // Export for use by galleryEvents.js
+        renderImageGrid: (images, folders) => renderImageGrid(images, folders, loadImagesWrapper)
     };
 }
 
 export function createImageGalleryTab(container) {
-    // Make functions globally accessible for backwards compatibility
-    window.handleDatasetText = handleDatasetText;
-    window.showCombinedImageTextEditor = showCombinedImageTextEditor;
-
-    // Make extracted event functions globally accessible
-    window.showFullImage = showFullImage;
-    window.showImageContextMenu = showImageContextMenu;
-    window.browseCustomFolder = browseCustomFolder;
-
-    window.galleryTextManager = {
-        handleDatasetText,
-        showCombinedImageTextEditor,
-        editDatasetText,
-        createDatasetText,
-        batchCreateMissingTextFiles,
-        batchAppendToAllTextFiles,
-        batchFindReplaceAllTextFiles,
-        refreshCurrentTextDisplay
-    };
-    
     // Create all components
     const header = createGalleryHeader();
     const folderAndControls = createFolderSelectorAndControls(); // Combined section
     const grid = createWrappedThumbnailGrid();
     const metadata = createMetadataPanel();
 
-    // Set up event handlers and store them globally for access  
-    const eventHandlers = setupGalleryEventHandlers(folderAndControls, null, grid, metadata, header);
-    window.galleryEventHandlers = eventHandlers;
+    // Set up event handlers and provide necessary functions via parameters
+    const galleryFunctions = {
+        showFullImage,
+        showImageContextMenu, 
+        browseCustomFolder,
+        toggleViewMode,
+        handleDatasetText,
+        showCombinedImageTextEditor,
+        datasetTextManager: {
+            editDatasetText,
+            createDatasetText,
+            batchCreateMissingTextFiles,
+            batchAppendToAllTextFiles,
+            batchFindReplaceAllTextFiles,
+            refreshCurrentTextDisplay
+        }
+    };
+    
+    const eventHandlers = setupGalleryEventHandlers(folderAndControls, null, grid, metadata, header, galleryFunctions);
 
     // Assemble the layout
     assembleGalleryTabLayout(container, {
@@ -667,8 +682,8 @@ export function createImageGalleryTab(container) {
     setTimeout(() => {
         try {
             const savedFolder = selectors.selectedFolder() || 'notes';
-            if (window.galleryEventHandlers && window.galleryEventHandlers.loadImagesFromFolder) {
-                window.galleryEventHandlers.loadImagesFromFolder(savedFolder);
+            if (eventHandlers && eventHandlers.loadImagesFromFolder) {
+                eventHandlers.loadImagesFromFolder(savedFolder);
             } else {
                 console.warn('Gallery event handlers not available for auto-initialization');
             }

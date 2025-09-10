@@ -630,8 +630,9 @@ export async function showCombinedImageTextEditor(image) {
 /**
  * Edit an existing dataset text file
  * @param {Object} image - The image object with path and metadata
+ * @param {Object} callbacks - Callback functions for refresh operations
  */
-export async function editDatasetText(image) {
+export async function editDatasetText(image, callbacks = null) {
     try {
         // Read the existing text
         const readResponse = await fetch('/sage_utils/read_dataset_text', {
@@ -648,7 +649,7 @@ export async function editDatasetText(image) {
         }
         
         // Show edit dialog
-        showDatasetTextEditor(image, readResult.content, false);
+        showDatasetTextEditor(image, readResult.content, false, callbacks);
         
     } catch (error) {
         console.error('Error editing dataset text:', error);
@@ -659,11 +660,12 @@ export async function editDatasetText(image) {
 /**
  * Create a new dataset text file
  * @param {Object} image - The image object with path and metadata
+ * @param {Object} callbacks - Callback functions for refresh operations
  */
-export async function createDatasetText(image) {
+export async function createDatasetText(image, callbacks = null) {
     try {
         // Show create dialog with empty content
-        showDatasetTextEditor(image, '', true);
+        showDatasetTextEditor(image, '', true, callbacks);
         
     } catch (error) {
         console.error('Error creating dataset text:', error);
@@ -677,7 +679,7 @@ export async function createDatasetText(image) {
  * @param {string} content - The text content
  * @param {boolean} isNew - Whether this is a new file
  */
-export function showDatasetTextEditor(image, content, isNew) {
+export function showDatasetTextEditor(image, content, isNew, callbacks = null) {
     // Get the image name from the path
     const imageName = image.name || image.path.split('/').pop() || 'Unknown Image';
     
@@ -775,9 +777,9 @@ export function showDatasetTextEditor(image, content, isNew) {
             if (result.success) {
                 // Close modal
                 document.body.removeChild(overlay);
-                // Refresh current text display if this is the current image
-                if (window.galleryTextManager && window.galleryTextManager.refreshCurrentTextDisplay) {
-                    window.galleryTextManager.refreshCurrentTextDisplay();
+                // Refresh current text display via callback
+                if (callbacks && callbacks.refreshCurrentTextDisplay) {
+                    callbacks.refreshCurrentTextDisplay();
                 }
             } else {
                 alert(`Error saving: ${result.error}`);

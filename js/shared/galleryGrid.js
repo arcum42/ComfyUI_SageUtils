@@ -185,9 +185,10 @@ export function createImageItem(image, showFullImage, showImageContextMenu) {
 /**
  * Creates a folder navigation item with click handler for folder browsing
  * @param {Object} folder - Folder object with name and path
+ * @param {Function} loadImagesFromFolder - Callback to load images from folder
  * @returns {HTMLElement} Folder item element
  */
-export function createFolderItem(folder) {
+export function createFolderItem(folder, loadImagesFromFolder = null) {
     const item = document.createElement('div');
     item.className = 'gallery-folder-item';
     item.style.cssText = `
@@ -243,10 +244,10 @@ export function createFolderItem(folder) {
     item.addEventListener('click', () => {
         // Load images from the clicked folder
         actions.setCurrentPath(folder.path);
-        if (window.galleryEventHandlers && window.galleryEventHandlers.loadImagesFromFolder) {
-            window.galleryEventHandlers.loadImagesFromFolder('custom', folder.path);
+        if (loadImagesFromFolder) {
+            loadImagesFromFolder('custom', folder.path);
         } else {
-            console.error('Gallery event handlers not available for folder navigation');
+            console.error('loadImagesFromFolder callback not provided for folder navigation');
         }
     });
     
@@ -258,9 +259,10 @@ export function createFolderItem(folder) {
 
 /**
  * Creates a back navigation item for returning to parent directory
+ * @param {Function} loadImagesFromFolder - Callback to load images from folder
  * @returns {HTMLElement} Back navigation item element
  */
-export function createBackNavigationItem() {
+export function createBackNavigationItem(loadImagesFromFolder = null) {
     const item = document.createElement('div');
     item.className = 'gallery-back-item';
     item.style.cssText = `
@@ -313,7 +315,7 @@ export function createBackNavigationItem() {
     // Click handler for back navigation
     item.addEventListener('click', () => {
         const currentPath = selectors.currentPath();
-        if (currentPath && window.galleryEventHandlers && window.galleryEventHandlers.loadImagesFromFolder) {
+        if (currentPath && loadImagesFromFolder) {
             // Navigate to parent directory
             const pathParts = currentPath.split('/').filter(part => part.length > 0);
             
@@ -334,13 +336,13 @@ export function createBackNavigationItem() {
             
             if (isBackToRoot) {
                 // Back to root folder - load the selected folder type (input, output, etc.)
-                window.galleryEventHandlers.loadImagesFromFolder(selectedFolderType);
+                loadImagesFromFolder(selectedFolderType);
             } else {
                 // Navigate to parent subfolder
-                window.galleryEventHandlers.loadImagesFromFolder('custom', parentPath);
+                loadImagesFromFolder('custom', parentPath);
             }
         } else {
-            console.error('Gallery event handlers not available for back navigation');
+            console.error('loadImagesFromFolder callback not provided for back navigation');
         }
     });
     
