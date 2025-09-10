@@ -262,13 +262,3 @@ export class WildcardManager {
 
 // Export a default instance for convenience
 export const wildcardManager = new WildcardManager();
-
-// Default export for module compatibility
-export default {
-    getWildcardPath,
-    listWildcardFiles,
-    generateWildcardPrompt,
-    getWildcardFileContent,
-    WildcardManager,
-    wildcardManager
-};

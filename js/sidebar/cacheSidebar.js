@@ -415,8 +415,3 @@ export function createCacheSidebar(el) {
         initializedTabs
     };
 }
-
-/**
- * Legacy export for backwards compatibility
- */
-export { createCacheSidebar as default };
