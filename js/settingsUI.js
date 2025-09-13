@@ -17,7 +17,8 @@ async function loadSageSettings() {
         if (response.ok) {
             const data = await response.json();
             if (data.success) {
-                return data.settings;
+                // Handle both legacy format (data.settings) and new format (data.data.settings)
+                return data.settings || data.data?.settings;
             } else {
                 console.error('Server returned error:', data.error);
                 if (data.details) {
