@@ -1,5 +1,6 @@
 """
 Custom routes for SageUtils to expose cache data and settings via HTTP endpoints.
+This file now uses a modular route system for better maintainability.
 """
 
 import logging
@@ -7,11 +8,20 @@ from .utils.performance_timer import server_timer, record_initialization_milesto
 
 # Record server routes initialization start
 record_initialization_milestone("SERVER_ROUTES_START", server_timer)
+
 try:
     from server import PromptServer
     from aiohttp import web
     from .utils.model_cache import cache
     from .utils.settings import get_settings, SETTINGS_SCHEMA
+    
+    # Try to import the new modular route system
+    try:
+        from .routes import register_routes, is_initialized
+        _modular_routes_available = True
+    except ImportError as e:
+        print(f"SageUtils: Modular routes not available ({e}), using legacy routes only")
+        _modular_routes_available = False
     
     record_initialization_milestone("SERVER_IMPORTS_COMPLETE", server_timer)
 
@@ -20,6 +30,19 @@ try:
         # Get the PromptServer instance
         routes = PromptServer.instance.routes
         record_initialization_milestone("PROMPT_SERVER_READY", server_timer)
+        
+        # Try to use the new modular route system (when available and working)
+        if _modular_routes_available:
+            try:
+                route_count = register_routes(routes)
+                if route_count > 0:
+                    print(f"SageUtils: Registered {route_count} additional routes using modular system")
+                    record_initialization_milestone("MODULAR_ROUTES_REGISTERED", server_timer)
+                else:
+                    print("SageUtils: Modular system loaded but no routes registered yet (Phase 2)")
+            except Exception as modular_error:
+                print(f"SageUtils: Error with modular routes ({modular_error}), continuing with legacy routes")
+                record_initialization_milestone("MODULAR_ROUTES_ERROR", server_timer)
 
         # Settings management routes
         @routes.get('/sage_utils/settings')
