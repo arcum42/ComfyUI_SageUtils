@@ -19,7 +19,7 @@ import {
 
 // Import decomposed tab modules
 import { createModelsTab } from "./modelsTab.js";
-import { createNotesTab } from "./notesTabNew.js";
+import { createFilesTab } from "./filesTab.js";
 import { createCivitaiSearchTab } from "./civitaiSearchTab.js";
 import { createImageGalleryTab } from "./imageGalleryTab.js";
 
@@ -166,7 +166,7 @@ function setupTabSwitching(tabComponents, tabContentData) {
         notes: {
             button: notesTab,
             container: containers.notes,
-            createFunction: createNotesTab
+            createFunction: createFilesTab
         },
         civitai: {
             button: civitaiTab,

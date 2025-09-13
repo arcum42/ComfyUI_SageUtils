@@ -1,12 +1,12 @@
 /**
- * Notes Tab - Updated to use shared file management components
- * Handles file editing, viewing, and management for notes directory using generic components
+ * Files Tab - File management components for notes and wildcards directories
+ * Handles file editing, viewing, and management using generic components with folder navigation
  */
 
 import { GenericFileManager } from "../components/shared/fileManager.js";
 
 /**
- * Creates a folder selector for the Notes tab
+ * Creates a folder selector for the Files tab
  * @param {Function} onFolderChange - Callback when folder selection changes
  * @returns {Object} Folder selector components
  */
@@ -170,10 +170,10 @@ function createStatusDisplay() {
 }
 
 /**
- * Main function to create the Notes tab using shared components
+ * Main function to create the Files tab using shared components
  * @param {HTMLElement} container - Container element to populate
  */
-export function createNotesTab(container) {
+export function createFilesTab(container) {
     // Clear container
     container.innerHTML = '';
 
@@ -293,4 +293,4 @@ export function destroyNotesTab(container) {
 }
 
 // Default export for module compatibility
-export default createNotesTab;
+export default createFilesTab;
