@@ -438,6 +438,24 @@ export class GenericFilePreview {
     }
 
     /**
+     * Changes the configuration
+     * @param {string} newConfigKey - New configuration key
+     */
+    changeConfiguration(newConfigKey) {
+        this.configKey = newConfigKey;
+        this.config = FILE_BROWSER_CONFIGS[newConfigKey];
+        if (!this.config) {
+            throw new Error(`Unknown file preview config: ${newConfigKey}`);
+        }
+        
+        // Clear current preview
+        this.currentFile = null;
+        if (this.previewContainer) {
+            this.previewContainer.innerHTML = '<em style="color: #999;">Select a file to preview...</em>';
+        }
+    }
+
+    /**
      * Destroys the preview and cleans up
      */
     destroy() {

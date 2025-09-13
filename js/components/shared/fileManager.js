@@ -534,6 +534,34 @@ export class GenericFileManager {
     }
 
     /**
+     * Changes the configuration key and updates all components
+     * @param {string} newConfigKey - New configuration key (e.g., 'notes', 'wildcards')
+     */
+    changeConfiguration(newConfigKey) {
+        this.configKey = newConfigKey;
+        
+        // Update file browser configuration
+        if (this.fileBrowser) {
+            this.fileBrowser.changeConfiguration(newConfigKey);
+        }
+        
+        // Update file editor configuration
+        if (this.fileEditor) {
+            this.fileEditor.changeConfiguration(newConfigKey);
+        }
+        
+        // Update file preview configuration
+        if (this.filePreview) {
+            this.filePreview.changeConfiguration(newConfigKey);
+        }
+        
+        // Trigger callbacks if available
+        if (this.callbacks.onConfigChange) {
+            this.callbacks.onConfigChange(newConfigKey);
+        }
+    }
+
+    /**
      * Destroys the file manager and all components
      */
     destroy() {

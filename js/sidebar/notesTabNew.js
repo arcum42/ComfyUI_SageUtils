@@ -6,6 +6,79 @@
 import { GenericFileManager } from "../components/shared/fileManager.js";
 
 /**
+ * Creates a folder selector for the Notes tab
+ * @param {Function} onFolderChange - Callback when folder selection changes
+ * @returns {Object} Folder selector components
+ */
+function createFolderSelector(onFolderChange) {
+    const selectorContainer = document.createElement('div');
+    selectorContainer.className = 'folder-selector';
+    selectorContainer.style.cssText = `
+        padding: 15px;
+        background: #2d2d2d;
+        border: 1px solid #3e3e42;
+        border-radius: 8px;
+        margin-bottom: 15px;
+    `;
+
+    const label = document.createElement('label');
+    label.style.cssText = `
+        display: block;
+        color: #4CAF50;
+        font-size: 14px;
+        font-weight: bold;
+        margin-bottom: 8px;
+    `;
+    label.textContent = 'Folder:';
+
+    const folderDropdown = document.createElement('select');
+    folderDropdown.style.cssText = `
+        width: 100%;
+        padding: 8px 12px;
+        background: #333;
+        color: #fff;
+        border: 1px solid #555;
+        border-radius: 4px;
+        font-size: 13px;
+        cursor: pointer;
+    `;
+
+    // Add folder options
+    const folders = [
+        { value: 'notes', text: '📝 Notes', icon: '📝' },
+        { value: 'wildcards', text: '🎲 Wildcards', icon: '🎲' }
+    ];
+
+    folders.forEach(folder => {
+        const option = document.createElement('option');
+        option.value = folder.value;
+        option.textContent = folder.text;
+        folderDropdown.appendChild(option);
+    });
+
+    // Set default to notes
+    folderDropdown.value = 'notes';
+
+    // Add event listener
+    folderDropdown.addEventListener('change', (e) => {
+        if (onFolderChange) {
+            onFolderChange(e.target.value);
+        }
+    });
+
+    selectorContainer.appendChild(label);
+    selectorContainer.appendChild(folderDropdown);
+
+    return {
+        container: selectorContainer,
+        dropdown: folderDropdown,
+        setFolder: (folderKey) => {
+            folderDropdown.value = folderKey;
+        }
+    };
+}
+
+/**
  * Creates the Notes tab header section
  * @returns {HTMLElement} Header element
  */
@@ -26,7 +99,7 @@ function createNotesHeader() {
         color: #569cd6;
         font-size: 16px;
     `;
-    title.textContent = 'Notes Manager';
+    title.textContent = 'File Manager';
 
     const description = document.createElement('p');
     description.style.cssText = `
@@ -34,7 +107,7 @@ function createNotesHeader() {
         color: #888;
         font-size: 13px;
     `;
-    description.textContent = 'View, edit, and create notes files';
+    description.textContent = 'View, edit, and create files across different folders';
 
     header.appendChild(title);
     header.appendChild(description);
@@ -149,6 +222,9 @@ export function createNotesTab(container) {
                 status.setStatus(`Error in ${source}: ${error.message}`, true);
                 console.error(`Notes Tab ${source} Error:`, error);
             },
+            onConfigChange: (newConfigKey) => {
+                status.setStatus(`Switched to ${newConfigKey} folder`);
+            },
             browser: {
                 // Browser-specific callbacks can go here
             },
@@ -160,6 +236,16 @@ export function createNotesTab(container) {
             }
         }
     });
+
+    // Create folder selector
+    const folderSelector = createFolderSelector((folderKey) => {
+        // Handle folder change
+        fileManager.changeConfiguration(folderKey);
+        status.setStatus(`Switched to ${folderKey} folder`);
+    });
+    
+    // Add folder selector to container
+    container.appendChild(folderSelector.container);
 
     // Render the file manager
     const fileManagerComponents = fileManager.render(container);
@@ -183,6 +269,7 @@ export function createNotesTab(container) {
 
     return {
         fileManager,
+        folderSelector,
         header,
         status,
         destroy: () => {

@@ -61,6 +61,8 @@ export class GenericFileBrowser {
         this.container = null;
         this.fileListContainer = null;
         this.isLoading = false;
+        this.currentPath = ''; // Current folder path for navigation
+        this.pathHistory = []; // Navigation history
     }
 
     /**
@@ -203,15 +205,27 @@ export class GenericFileBrowser {
 
     /**
      * Loads files from the API endpoint
+     * @param {string} path - Optional path to load (defaults to current path)
      */
-    async loadFiles() {
+    async loadFiles(path = null) {
         if (this.isLoading) return;
+        
+        if (path !== null) {
+            this.currentPath = path;
+        }
         
         this.isLoading = true;
         this.showLoadingState();
 
         try {
-            const response = await api.fetchApi(this.config.apiEndpoint);
+            // Construct API URL with path parameter if needed
+            let apiUrl = this.config.apiEndpoint;
+            if (this.currentPath) {
+                const separator = apiUrl.includes('?') ? '&' : '?';
+                apiUrl += `${separator}path=${encodeURIComponent(this.currentPath)}`;
+            }
+            
+            const response = await api.fetchApi(apiUrl);
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
@@ -306,8 +320,14 @@ export class GenericFileBrowser {
      * Renders files in a flat list (used by notes)
      */
     renderFlatList() {
-        this.files.forEach(filename => {
-            const fileItem = this.createFileItem(filename);
+        this.files.forEach(file => {
+            // Handle both string filenames and file objects
+            const filename = typeof file === 'string' ? file : (file.name || file.filename || 'Unknown');
+            const metadata = typeof file === 'object' ? file : {};
+            // For flat lists, use the full path if available (for notes with subfolders)
+            const fullPath = typeof file === 'object' ? (file.path || filename) : filename;
+            
+            const fileItem = this.createFileItem(filename, metadata, fullPath);
             this.fileListContainer.appendChild(fileItem);
         });
     }
@@ -316,9 +336,49 @@ export class GenericFileBrowser {
      * Renders files in a hierarchical tree structure (used by wildcards)
      */
     renderHierarchicalList() {
-        // For now, implement as flat list
-        // TODO: Implement proper tree structure for wildcards
-        this.renderFlatList();
+        // Add back navigation if not at root
+        if (this.currentPath) {
+            const backItem = this.createBackNavigationItem();
+            this.fileListContainer.appendChild(backItem);
+        }
+
+        // Separate files and folders
+        const folders = [];
+        const files = [];
+
+        this.files.forEach(item => {
+            // Handle both string and object formats
+            let itemData;
+            if (typeof item === 'string') {
+                itemData = { name: item, type: 'file' };
+            } else {
+                itemData = {
+                    name: item.name || item.filename || 'Unknown',
+                    type: item.type || (item.is_directory ? 'directory' : 'file'),
+                    ...item
+                };
+            }
+
+            if (itemData.type === 'directory' || itemData.is_directory) {
+                folders.push(itemData);
+            } else {
+                files.push(itemData);
+            }
+        });
+
+        // Render folders first
+        folders.forEach(folder => {
+            const folderItem = this.createFolderItem(folder.name, folder);
+            this.fileListContainer.appendChild(folderItem);
+        });
+
+        // Then render files
+        files.forEach(file => {
+            // Use file.path for file selection (includes folder path), but file.name for display
+            const filePath = file.path || file.name;  // fallback to name if path not available
+            const fileItem = this.createFileItem(file.name, file, filePath);
+            this.fileListContainer.appendChild(fileItem);
+        });
     }
 
     /**
@@ -327,10 +387,12 @@ export class GenericFileBrowser {
      * @param {Object} metadata - Additional file metadata (optional)
      * @returns {HTMLElement} - File item element
      */
-    createFileItem(filename, metadata = {}) {
+    createFileItem(filename, metadata = {}, fullPath = null) {
         const fileItem = document.createElement('div');
         fileItem.className = 'file-item';
-        fileItem.dataset.filename = filename;
+        // Use full path for data attribute if available, fallback to filename
+        const pathForSelection = fullPath || filename;
+        fileItem.dataset.filename = pathForSelection;
         fileItem.style.cssText = `
             padding: 8px 12px;
             cursor: pointer;
@@ -379,22 +441,187 @@ export class GenericFileBrowser {
         });
 
         fileItem.addEventListener('mouseleave', () => {
-            fileItem.style.backgroundColor = this.selectedFile === filename ? '#444' : 'transparent';
+            fileItem.style.backgroundColor = this.selectedFile === pathForSelection ? '#444' : 'transparent';
         });
 
         fileItem.addEventListener('click', () => {
-            this.selectFile(filename);
+            this.selectFile(pathForSelection);
         });
 
         return fileItem;
     }
 
     /**
-     * Gets appropriate icon for file type
-     * @param {string} filename - Name of the file
+     * Creates a folder item element
+     * @param {string} folderName - Name of the folder
+     * @param {Object} metadata - Additional folder metadata (optional)
+     * @returns {HTMLElement} - Folder item element
+     */
+    createFolderItem(folderName, metadata = {}) {
+        const folderItem = document.createElement('div');
+        folderItem.className = 'folder-item';
+        folderItem.dataset.foldername = folderName;
+        folderItem.style.cssText = `
+            padding: 8px 12px;
+            cursor: pointer;
+            border-bottom: 1px solid #333;
+            transition: background-color 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            min-height: ${this.config.fileItemHeight};
+            font-weight: bold;
+        `;
+
+        // Folder icon
+        const icon = document.createElement('span');
+        icon.style.cssText = `
+            color: #4CAF50;
+            font-size: 14px;
+        `;
+        icon.textContent = '📁';
+
+        // Folder name
+        const nameSpan = document.createElement('span');
+        nameSpan.style.cssText = `
+            flex: 1;
+            color: #fff;
+            font-size: 13px;
+        `;
+        nameSpan.textContent = folderName;
+
+        folderItem.appendChild(icon);
+        folderItem.appendChild(nameSpan);
+
+        // Event handlers
+        folderItem.addEventListener('mouseenter', () => {
+            folderItem.style.backgroundColor = '#333';
+        });
+
+        folderItem.addEventListener('mouseleave', () => {
+            folderItem.style.backgroundColor = 'transparent';
+        });
+
+        folderItem.addEventListener('click', () => {
+            this.navigateToFolder(folderName);
+        });
+
+        return folderItem;
+    }
+
+    /**
+     * Creates a back navigation item
+     * @returns {HTMLElement} - Back navigation element
+     */
+    createBackNavigationItem() {
+        const backItem = document.createElement('div');
+        backItem.className = 'back-item';
+        backItem.style.cssText = `
+            padding: 8px 12px;
+            cursor: pointer;
+            border-bottom: 1px solid #333;
+            transition: background-color 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            min-height: ${this.config.fileItemHeight};
+            font-style: italic;
+            color: #888;
+        `;
+
+        // Back icon
+        const icon = document.createElement('span');
+        icon.style.cssText = `
+            color: #888;
+            font-size: 14px;
+        `;
+        icon.textContent = '⬅️';
+
+        // Back text
+        const nameSpan = document.createElement('span');
+        nameSpan.style.cssText = `
+            flex: 1;
+            font-size: 13px;
+        `;
+        nameSpan.textContent = '.. (Back)';
+
+        backItem.appendChild(icon);
+        backItem.appendChild(nameSpan);
+
+        // Event handlers
+        backItem.addEventListener('mouseenter', () => {
+            backItem.style.backgroundColor = '#333';
+        });
+
+        backItem.addEventListener('mouseleave', () => {
+            backItem.style.backgroundColor = 'transparent';
+        });
+
+        backItem.addEventListener('click', () => {
+            this.navigateBack();
+        });
+
+        return backItem;
+    }
+
+    /**
+     * Navigates to a folder
+     * @param {string} folderName - Name of the folder to navigate to
+     */
+    navigateToFolder(folderName) {
+        // Add current path to history
+        this.pathHistory.push(this.currentPath);
+        
+        // Update current path
+        this.currentPath = this.currentPath ? 
+            `${this.currentPath}/${folderName}` : 
+            folderName;
+        
+        // Load files in the new folder
+        this.loadFiles();
+    }
+
+    /**
+     * Navigates back to the previous folder
+     */
+    navigateBack() {
+        if (this.pathHistory.length > 0) {
+            this.currentPath = this.pathHistory.pop();
+            this.loadFiles();
+        }
+    }
+
+    /**
+     * Gets the current folder path
+     * @returns {string} - Current folder path
+     */
+    getCurrentPath() {
+        return this.currentPath;
+    }
+
+    /**
+     * Navigates to a specific path
+     * @param {string} path - Path to navigate to
+     */
+    navigateToPath(path) {
+        this.currentPath = path || '';
+        this.pathHistory = [];
+        this.loadFiles();
+    }
+
+    /**
+     * Gets the appropriate icon for a file based on its extension
+     * @param {string|Object} file - Filename string or file object
      * @returns {string} - Icon character
      */
-    getFileIcon(filename) {
+    getFileIcon(file) {
+        // Handle both string filenames and file objects
+        const filename = typeof file === 'string' ? file : (file.name || file.filename || '');
+        
+        if (!filename || typeof filename !== 'string') {
+            return this.config.defaultIcon;
+        }
+        
         const ext = filename.toLowerCase().split('.').pop();
         
         const iconMap = {
@@ -476,6 +703,28 @@ export class GenericFileBrowser {
         const div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
+    }
+
+    /**
+     * Changes the configuration and reloads files
+     * @param {string} newConfigKey - New configuration key
+     */
+    changeConfiguration(newConfigKey) {
+        this.config = FILE_BROWSER_CONFIGS[newConfigKey];
+        if (!this.config) {
+            throw new Error(`Unknown file browser config: ${newConfigKey}`);
+        }
+        
+        // Clear current selection and files
+        this.selectedFile = null;
+        this.files = [];
+        
+        // Reset navigation state
+        this.currentPath = '';
+        this.pathHistory = [];
+        
+        // Reload files with new configuration
+        this.loadFiles();
     }
 
     /**

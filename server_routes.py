@@ -2488,40 +2488,71 @@ try:
         @routes.get('/sage_utils/wildcard_files')
         async def list_wildcard_files(request):
             """
-            Lists all wildcard files in the wildcard directory.
-            Returns: { "success": true, "files": [{"name": "file.txt", "path": "/full/path"}] }
+            Lists all wildcard files in the wildcard directory with folder support.
+            Query params: path (optional) - subdirectory path
+            Returns: { "success": true, "files": [{"name": "file.txt", "path": "/full/path", "type": "file|directory"}] }
             """
             try:
                 from .utils import sage_wildcard_path
                 import pathlib
                 
+                # Get the requested path from query parameters
+                requested_path = request.query.get('path', '')
+                
                 wildcard_path = pathlib.Path(sage_wildcard_path)
                 
-                if not wildcard_path.exists():
+                # Construct the target directory
+                if requested_path:
+                    target_path = wildcard_path / requested_path
+                    # Security check: ensure the path is within the wildcard directory
+                    if not str(target_path.resolve()).startswith(str(wildcard_path.resolve())):
+                        return web.json_response(
+                            {"success": False, "error": "Invalid path"}, 
+                            status=400
+                        )
+                else:
+                    target_path = wildcard_path
+                
+                if not target_path.exists():
                     return web.json_response({
                         "success": True,
                         "files": [],
-                        "message": "Wildcard directory does not exist"
+                        "message": "Directory does not exist"
                     })
                 
                 files = []
-                for file_path in wildcard_path.rglob('*.txt'):
-                    if file_path.is_file():
-                        # Get relative path from wildcard directory
-                        rel_path = file_path.relative_to(wildcard_path)
-                        files.append({
-                            "name": str(rel_path),
-                            "full_path": str(file_path),
-                            "size": file_path.stat().st_size
-                        })
                 
-                # Sort files by name
-                files.sort(key=lambda x: x['name'])
+                # List directories and files in the current directory
+                for item in target_path.iterdir():
+                    if item.is_dir():
+                        # Add directories
+                        rel_path = item.relative_to(wildcard_path)
+                        files.append({
+                            "name": item.name,
+                            "path": str(rel_path),
+                            "type": "directory",
+                            "size": 0
+                        })
+                    elif item.is_file():
+                        # Add files with supported extensions
+                        supported_extensions = ['.txt', '.py', '.yaml', '.yml', '.json', '.md', '.markdown']
+                        if any(item.name.lower().endswith(ext) for ext in supported_extensions):
+                            rel_path = item.relative_to(wildcard_path)
+                            files.append({
+                                "name": item.name,
+                                "path": str(rel_path),
+                                "type": "file",
+                                "size": item.stat().st_size
+                            })
+                
+                # Sort: directories first, then files, both alphabetically
+                files.sort(key=lambda x: (x['type'] != 'directory', x['name'].lower()))
                 
                 return web.json_response({
                     "success": True,
                     "files": files,
-                    "total_files": len(files)
+                    "total_files": len(files),
+                    "current_path": requested_path
                 })
                 
             except Exception as e:
@@ -2631,6 +2662,59 @@ try:
             except Exception as e:
                 return web.json_response(
                     {"success": False, "error": f"Failed to read wildcard file: {str(e)}"}, 
+                    status=500
+                )
+
+        @routes.post('/sage_utils/wildcard/file/save')
+        async def save_wildcard_file(request):
+            """
+            Saves content to a wildcard file.
+            Body: { "filename": "path/to/file.txt", "content": "file content" }
+            Returns: { "success": true, "message": "File saved successfully" }
+            """
+            try:
+                from .utils import sage_wildcard_path
+                import pathlib
+                
+                # Parse request body
+                data = await request.json()
+                filename = data.get('filename', '')
+                content = data.get('content', '')
+                
+                if not filename:
+                    return web.json_response(
+                        {"success": False, "error": "Filename is required"}, 
+                        status=400
+                    )
+                
+                # Construct safe path within wildcard directory
+                wildcard_path = pathlib.Path(sage_wildcard_path)
+                file_path = (wildcard_path / filename).resolve()
+                
+                # Security check: ensure file is within wildcard directory
+                if not str(file_path).startswith(str(wildcard_path.resolve())):
+                    return web.json_response(
+                        {"success": False, "error": "Access denied: file outside wildcard directory"}, 
+                        status=403
+                    )
+                
+                # Ensure parent directory exists
+                file_path.parent.mkdir(parents=True, exist_ok=True)
+                
+                # Write file content
+                with open(file_path, 'w', encoding='utf-8') as f:
+                    f.write(content)
+                
+                return web.json_response({
+                    "success": True,
+                    "message": f"File '{filename}' saved successfully",
+                    "filename": filename,
+                    "size": len(content)
+                })
+                
+            except Exception as e:
+                return web.json_response(
+                    {"success": False, "error": f"Failed to save wildcard file: {str(e)}"}, 
                     status=500
                 )
 

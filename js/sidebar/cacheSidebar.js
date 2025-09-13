@@ -1,6 +1,6 @@
 /**
  * SageUtils Sidebar Tab with Multiple Sub-tabs
- * Multi-tabbed interface for model browser and notes manager
+ * Multi-tabbed interface for model browser and file manager
  * 
  * Performance Optimization: Uses hide/show approach instead of recreating tab content
  * each time, which maintains state and reduces loading times for subsequent tab switches.
@@ -36,8 +36,8 @@ import {
 } from "../components/cacheUIComponents.js";
 
 /**
- * Creates the tab header with Models, Notes, Search, and Gallery tabs
- * @returns {Object} Tab header components
+ * Creates the tab header with Models, Files, Search, and Gallery tabs
+ * @returns {Object} Object containing tab button elements
  */
 function createTabHeader() {
     const tabHeader = document.createElement('div');
@@ -51,7 +51,7 @@ function createTabHeader() {
     `;
 
     const modelsTab = createTabButton('Models', true);
-    const notesTab = createTabButton('Notes', false);
+    const notesTab = createTabButton('Files', false);
     const civitaiTab = createTabButton('Search', false);
     const galleryTab = createTabButton('Gallery', false);
 

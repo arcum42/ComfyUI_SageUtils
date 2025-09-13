@@ -252,11 +252,18 @@ export class GenericFileEditor {
             }
 
             // Load file content
-            const response = await api.fetchApi(endpoint, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ filename })
-            });
+            let response;
+            if (this.config.apiEndpoint.includes('wildcard')) {
+                // Wildcard files use GET with path parameter
+                response = await api.fetchApi(endpoint);
+            } else {
+                // Notes files use POST with JSON body
+                response = await api.fetchApi(endpoint, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ filename })
+                });
+            }
 
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
@@ -309,7 +316,7 @@ export class GenericFileEditor {
      * @returns {boolean} - True if file can be edited as text
      */
     isEditableFile(filename) {
-        const textExtensions = ['.txt', '.md', '.markdown', '.json', '.yaml', '.yml'];
+        const textExtensions = ['.txt', '.md', '.markdown', '.json', '.yaml', '.yml', '.py'];
         const fileExt = '.' + filename.toLowerCase().split('.').pop();
         return textExtensions.includes(fileExt);
     }
@@ -541,6 +548,33 @@ export class GenericFileEditor {
      */
     getIsModified() {
         return this.isModified;
+    }
+
+    /**
+     * Changes the configuration
+     * @param {string} newConfigKey - New configuration key
+     */
+    changeConfiguration(newConfigKey) {
+        this.configKey = newConfigKey;
+        this.config = FILE_BROWSER_CONFIGS[newConfigKey];
+        if (!this.config) {
+            throw new Error(`Unknown file editor config: ${newConfigKey}`);
+        }
+        
+        // Clear current file and reset state
+        this.currentFile = null;
+        this.isModified = false;
+        
+        if (this.textEditor) {
+            this.textEditor.value = '';
+            this.textEditor.disabled = true;
+        }
+        
+        if (this.currentFileNameSpan) {
+            this.currentFileNameSpan.textContent = '';
+        }
+        
+        this.updateFileDisplay(null);
     }
 
     /**
