@@ -19,7 +19,7 @@ import {
 
 // Import decomposed tab modules
 import { createModelsTab } from "./modelsTab.js";
-import { createNotesTab } from "./notesTab.js";
+import { createNotesTab } from "./notesTabNew.js";
 import { createCivitaiSearchTab } from "./civitaiSearchTab.js";
 import { createImageGalleryTab } from "./imageGalleryTab.js";
 
