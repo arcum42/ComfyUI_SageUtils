@@ -145,7 +145,7 @@ ROUTE_GROUPS = {
     },
     'notes': {
         'description': 'Notes file management and serving',
-        'endpoints': 4,
+        'endpoints': 5,
         'module': 'notes_routes'
     },
     'gallery': {
