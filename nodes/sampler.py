@@ -147,7 +147,7 @@ class Sage_KSampler(ComfyNodeABC):
         return {
             "required": {
                 "model": (IO.MODEL, {"tooltip": "The model used for denoising the input latent."}),
-                "sampler_info": ('SAMPLER_INFO', { "defaultInput": True, "tooltip": "Adds in most of the KSampler options. Should be piped both here and to the Construct Metadata node."}),
+                "sampler_info": ('SAMPLER_INFO', {"tooltip": "Adds in most of the KSampler options. Should be piped both here and to the Construct Metadata node."}),
                 "positive": (IO.CONDITIONING, {"tooltip": "The conditioning describing the attributes you want to include in the image."}),
                 "negative": (IO.CONDITIONING, {"tooltip": "The conditioning describing the attributes you want to exclude from the image."}),
                 "latent_image": (IO.LATENT, {"tooltip": "The latent image to denoise."}),
@@ -184,7 +184,7 @@ class Sage_KSamplerTiledDecoder(ComfyNodeABC):
         return {
             "required": {
                 "model": (IO.MODEL, {"tooltip": "The model used for denoising the input latent."}),
-                "sampler_info": ('SAMPLER_INFO', { "defaultInput": True, "tooltip": "Adds in most of the KSampler options. Should be piped both here and to the Construct Metadata node."}),
+                "sampler_info": ('SAMPLER_INFO', {"tooltip": "Adds in most of the KSampler options. Should be piped both here and to the Construct Metadata node."}),
                 "positive": (IO.CONDITIONING, {"tooltip": "The conditioning describing the attributes you want to include in the image."}),
                 "negative": (IO.CONDITIONING, {"tooltip": "The conditioning describing the attributes you want to exclude from the image."}),
                 "latent_image": (IO.LATENT, {"tooltip": "The latent image to denoise."}),
@@ -263,7 +263,7 @@ class Sage_KSamplerAudioDecoder(ComfyNodeABC):
         return {
             "required": {
                 "model": (IO.MODEL, {"tooltip": "The model used for denoising the input latent."}),
-                "sampler_info": ('SAMPLER_INFO', { "defaultInput": True, "tooltip": "Adds in most of the KSampler options. Should be piped both here and to the Construct Metadata node."}),
+                "sampler_info": ('SAMPLER_INFO', {"tooltip": "Adds in most of the KSampler options. Should be piped both here and to the Construct Metadata node."}),
                 "positive": (IO.CONDITIONING, {"tooltip": "The conditioning describing the attributes you want to include in the audio."}),
                 "negative": (IO.CONDITIONING, {"tooltip": "The conditioning describing the attributes you want to exclude from the audio."}),
                 "latent_audio": (IO.LATENT, {"tooltip": "The latent audio to denoise."}),

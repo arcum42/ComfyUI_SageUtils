@@ -69,8 +69,8 @@ class SageSetWildcardText(ComfyNodeABC):
             },
             "required": {
                 "str": (IO.STRING, {"forceInput": False, "dynamicPrompts": True, "multiline": True}),
-                "seed": (IO.INT, {"defaultInput": False, "default": 0, "min": 0, "max": 2**32-1, "step": 1}),
-                "clean": (IO.BOOLEAN, {"defaultInput": False, "default": False})
+                "seed": (IO.INT, {"default": 0, "min": 0, "max": 2**32-1, "step": 1}),
+                "clean": (IO.BOOLEAN, {"default": False})
             }
         }
 
@@ -163,7 +163,7 @@ class Sage_TextSwitch(ComfyNodeABC):
         return {
             "required": {
                 "str": (IO.STRING, {"forceInput": True, "multiline": True}),
-                "active": (IO.BOOLEAN, {"defaultInput": False, "default": True})
+                "active": (IO.BOOLEAN, {"default": True})
             }
         }
 
@@ -184,7 +184,7 @@ class Sage_SaveText(ComfyNodeABC):
         return {
             "required": {
                 "filename_prefix": (IO.STRING, {"default": "ComfyUI_Text", "tooltip": "The prefix for the file to save. This may include formatting information such as %date:yyyy-MM-dd% to include values from nodes."}),
-                "file_extension": (IO.STRING, {"defaultInput": False, "default": "txt", "tooltip": "The file extension to use for the saved file."}),
+                "file_extension": (IO.STRING, {"default": "txt", "tooltip": "The file extension to use for the saved file."}),
                 "text": (IO.STRING, {"forceInput": True, "multiline": True}),
                 "batch_size": (IO.INT, {"default": 1, "tooltip": "The number of files to save."})
             }
@@ -221,10 +221,10 @@ class Sage_JoinText(ComfyNodeABC):
     def INPUT_TYPES(cls) -> InputTypeDict:
         return {
             "required": {
-                "separator": (IO.STRING, {"defaultInput": False, "default": ', '}),
-                "add_separator_to_end": (IO.BOOLEAN, {"defaultInput": False, "default": False, "tooltip": "Add separator to the end of the joined string."}),
-                "str1": (IO.STRING, {"defaultInput": True, "multiline": True}),
-                "str2": (IO.STRING, {"defaultInput": True, "multiline": True}),
+                "separator": (IO.STRING, {"default": ', '}),
+                "add_separator_to_end": (IO.BOOLEAN, {"default": False, "tooltip": "Add separator to the end of the joined string."}),
+                "str1": (IO.STRING, {"multiline": True}),
+                "str2": (IO.STRING, {"multiline": True}),
             }
         }
 
@@ -252,11 +252,11 @@ class Sage_TripleJoinText(ComfyNodeABC):
     def INPUT_TYPES(cls) -> InputTypeDict:
         return {
             "required": {
-                "separator": (IO.STRING, {"defaultInput": False, "default": ', '}),
-                "add_separator_to_end": (IO.BOOLEAN, {"defaultInput": False, "default": False, "tooltip": "Add separator to the end of the joined string."}),
-                "str1": (IO.STRING, {"defaultInput": True, "multiline": True}),
-                "str2": (IO.STRING, {"defaultInput": True, "multiline": True}),
-                "str3": (IO.STRING, {"defaultInput": True, "multiline": True})
+                "separator": (IO.STRING, {"default": ', '}),
+                "add_separator_to_end": (IO.BOOLEAN, {"default": False, "tooltip": "Add separator to the end of the joined string."}),
+                "str1": (IO.STRING, {"multiline": True}),
+                "str2": (IO.STRING, {"multiline": True}),
+                "str3": (IO.STRING, {"multiline": True})
             }
         }
 
@@ -279,7 +279,7 @@ class Sage_CleanText(ComfyNodeABC):
     def INPUT_TYPES(cls) -> InputTypeDict:
         return {
             "required": {
-                "str": (IO.STRING, {"defaultInput": True, "multiline": True}),
+                "str": (IO.STRING, {"multiline": True}),
             }
         }
 
@@ -327,8 +327,8 @@ class Sage_TextRandomLine(ComfyNodeABC):
     def INPUT_TYPES(cls) -> InputTypeDict:
         return {
             "required": {
-                "text": (IO.STRING, {"defaultInput": True, "multiline": True}),
-                "seed": (IO.INT, {"defaultInput": False, "default": 0, "min": 0, "max": 2**32-1, "step": 1})
+                "text": (IO.STRING, {"multiline": True}),
+                "seed": (IO.INT, {"default": 0, "min": 0, "max": 2**32-1, "step": 1})
             }
         }
 
@@ -353,8 +353,8 @@ class Sage_TextSelectLine(ComfyNodeABC):
     def INPUT_TYPES(cls) -> InputTypeDict:
         return {
             "required": {
-                "text": (IO.STRING, {"defaultInput": True, "multiline": True}),
-                "line_number": (IO.INT, {"defaultInput": False, "default": 0, "min": 0, "max": 10000, "step": 1})
+                "text": (IO.STRING, {"multiline": True}),
+                "line_number": (IO.INT, {"default": 0, "min": 0, "max": 10000, "step": 1})
             }
         }
 
@@ -384,8 +384,8 @@ class Sage_TextSubstitution(ComfyNodeABC):
     def INPUT_TYPES(cls) -> InputTypeDict:
         return {
             "required": {
-                "text": (IO.STRING, {"defaultInput": True, "multiline": True}),
-                "delimiter": (IO.STRING, {"defaultInput": False, "default": "$"})
+                "text": (IO.STRING, {"default": "", "multiline": True}),
+                "delimiter": (IO.STRING, {"default": "$"})
             },
             "optional": {
                 "prefix": (IO.STRING, {"defaultInput": True, "multiline": True}),
@@ -455,11 +455,11 @@ class Sage_PonyPrefix(ComfyNodeABC):
     def INPUT_TYPES(cls) -> InputTypeDict:
         return {
             "required": {
-                "add_score": (IO.BOOLEAN, {"defaultInput": False}),
-                "score_start": (IO.INT, {"defaultInput": False, "default": 9, "min": 0, "max": 9, "step": 1}),
-                "score_end": (IO.INT, {"defaultInput": False, "default": 4, "min": 0, "max": 9, "step": 1}),
-                "rating": (["none", "safe", "questionable", "explicit"], {"defaultInput": False}),
-                "source": (["none", "pony", "furry", "anime", "cartoon", "3d", "western", "comic", "monster"], {"defaultInput": False}),
+                "add_score": (IO.BOOLEAN, {}),
+                "score_start": (IO.INT, {"default": 9, "min": 0, "max": 9, "step": 1}),
+                "score_end": (IO.INT, {"default": 4, "min": 0, "max": 9, "step": 1}),
+                "rating": (["none", "safe", "questionable", "explicit"], {}),
+                "source": (["none", "pony", "furry", "anime", "cartoon", "3d", "western", "comic", "monster"], {}),
             }
         }
 
@@ -490,9 +490,9 @@ class Sage_TextWeight(ComfyNodeABC):
     def INPUT_TYPES(cls) -> InputTypeDict:
         return {
             "required": {
-                "text": (IO.STRING, {"defaultInput": True, "multiline": True}),
-                "weight": (IO.FLOAT, {"defaultInput": False, "default": 1.0, "min": -10.0, "max": 10.0, "step": 0.05}),
-                "separator": (IO.STRING, {"defaultInput": False, "default": ', '})
+                "text": (IO.STRING, {"multiline": True}),
+                "weight": (IO.FLOAT, {"default": 1.0, "min": -10.0, "max": 10.0, "step": 0.05}),
+                "separator": (IO.STRING, {"default": ', '})
             }
         }
 
@@ -512,8 +512,8 @@ class Sage_HiDreamE1_Instruction(ComfyNodeABC):
     def INPUT_TYPES(cls) -> InputTypeDict:
         return {
             "required": {
-                "instruction": (IO.STRING, {"defaultInput": True, "multiline": True}),
-                "description": (IO.STRING, {"defaultInput": True, "multiline": True})
+                "instruction": (IO.STRING, {"multiline": True}),
+                "description": (IO.STRING, {"multiline": True})
             }
         }
 
@@ -550,7 +550,7 @@ class Sage_PonyStyle(ComfyNodeABC):
     def INPUT_TYPES(cls) -> InputTypeDict:
         return {
             "required": {
-                "style": (pony_strings, {"defaultInput": False, "multi_select": True, "chip": True, "placeholder": "Pony Style"})
+                "style": (pony_strings, {"multi_select": True, "chip": True, "placeholder": "Pony Style"})
             }
         }
 

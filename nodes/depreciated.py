@@ -15,12 +15,12 @@ class Sage_ConstructMetadata(Sage_ConstructMetadataFlexible):
     def INPUT_TYPES(cls):  # type: ignore
         return {
             "required": {
-                "model_info": ('MODEL_INFO', {"defaultInput": True}),
-                "positive_string": (IO.STRING, {"defaultInput": True}),
-                "negative_string": (IO.STRING, {"defaultInput": True}),
-                "sampler_info": ('SAMPLER_INFO', {"defaultInput": True}),
-                "width": (IO.INT, {"defaultInput": True}),
-                "height": (IO.INT, {"defaultInput": True})
+                "model_info": ('MODEL_INFO', {}),
+                "positive_string": (IO.STRING, {"default": ""}),
+                "negative_string": (IO.STRING, {"default": ""}),
+                "sampler_info": ('SAMPLER_INFO', {}),
+                "width": (IO.INT, {"default": 1024}),
+                "height": (IO.INT, {"default": 1024})
             },
             "optional": {
                 "lora_stack": ('LORA_STACK', {"defaultInput": True})
@@ -46,12 +46,12 @@ class Sage_ConstructMetadataLite(Sage_ConstructMetadataFlexible):
     def INPUT_TYPES(cls):  # type: ignore
         return {
             "required": {
-                "model_info": ('MODEL_INFO', {"defaultInput": True}),
-                "positive_string": (IO.STRING, {"defaultInput": True}),
-                "negative_string": (IO.STRING, {"defaultInput": True}),
-                "sampler_info": ('SAMPLER_INFO', {"defaultInput": True}),
-                "width": (IO.INT, {"defaultInput": True}),
-                "height": (IO.INT, {"defaultInput": True})
+                "model_info": ('MODEL_INFO', {}),
+                "positive_string": (IO.STRING, {"default": ""}),
+                "negative_string": (IO.STRING, {"default": ""}),
+                "sampler_info": ('SAMPLER_INFO', {}),
+                "width": (IO.INT, {"default": 1024}),
+                "height": (IO.INT, {"default": 1024})
             },
             "optional": {
                 "lora_stack": ('LORA_STACK', {"defaultInput": True})
@@ -76,7 +76,7 @@ class Sage_KSamplerDecoder(ComfyNodeABC):
         return {
             "required": {
                 "model": (IO.MODEL, {"tooltip": "The model used for denoising the input latent."}),
-                "sampler_info": ('SAMPLER_INFO', { "defaultInput": True, "tooltip": "Adds in most of the KSampler options. Should be piped both here and to the Construct Metadata node."}),
+                "sampler_info": ('SAMPLER_INFO', {"tooltip": "Adds in most of the KSampler options. Should be piped both here and to the Construct Metadata node."}),
                 "positive": (IO.CONDITIONING, {"tooltip": "The conditioning describing the attributes you want to include in the image."}),
                 "negative": (IO.CONDITIONING, {"tooltip": "The conditioning describing the attributes you want to exclude from the image."}),
                 "latent_image": (IO.LATENT, {"tooltip": "The latent image to denoise."}),

@@ -32,12 +32,12 @@ class Sage_ConstructMetadataFlexible(ComfyNodeABC):
     def INPUT_TYPES(cls):  # type: ignore
         return {
             "required": {
-                "model_info": ('MODEL_INFO,UNET_INFO', {"defaultInput": True}),
-                "positive_string": (IO.STRING, {"defaultInput": True}),
-                "negative_string": (IO.STRING, {"defaultInput": True}),
-                "sampler_info": ('SAMPLER_INFO', {"defaultInput": True}),
-                "width": (IO.INT, {"defaultInput": True}),
-                "height": (IO.INT, {"defaultInput": True}),
+                "model_info": ('MODEL_INFO,UNET_INFO', {}),
+                "positive_string": (IO.STRING, {"default": ""}),
+                "negative_string": (IO.STRING, {"default": ""}),
+                "sampler_info": ('SAMPLER_INFO', {}),
+                "width": (IO.INT, {"default": 1024}),
+                "height": (IO.INT, {"default": 1024}),
                 "metadata_style": (list(metadata_templates.keys()), {"default": "A1111 Full", "tooltip": "Select the metadata style to use."}),
             },
             "optional": {

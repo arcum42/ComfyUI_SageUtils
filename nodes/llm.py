@@ -49,7 +49,7 @@ class Sage_ConstructLLMPrompt(ComfyNodeABC):
             prompt_list.append(f"{category}/{key}")
         
         inputs["required"] = {
-            "prompt": (prompt_list, {"defaultInput": True, "multiline": True}),
+            "prompt": (prompt_list, { "multiline": True}),
             "extra_instructions": (IO.STRING, {"default": "", "multiline": True})
         }
 
@@ -106,7 +106,7 @@ class Sage_ConstructLLMPromptExtra(ComfyNodeABC):
     @classmethod
     def INPUT_TYPES(s) -> InputTypeDict:
         inputs: InputTypeDict =  {}
-        inputs["required"] = { "extra_instructions": (IO.STRING, {"default": "", "defaultInput": True, "multiline": True}) }
+        inputs["required"] = { "extra_instructions": (IO.STRING, {"default": "",  "multiline": True}) }
         for key in llm_prompts["extra"].keys():
             if llm_prompts["extra"][key]["category"] not in ("style", "quality", "content_focus"):
                 if llm_prompts["extra"][key]["type"] == "boolean":
@@ -204,7 +204,7 @@ class Sage_OllamaLLMPromptText(ComfyNodeABC):
 
         return {
             "required": {
-                "prompt": (IO.STRING, {"defaultInput": True, "default": DEFAULT_TEXT_PROMPT, "multiline": True}),
+                "prompt": (IO.STRING, {"default": DEFAULT_TEXT_PROMPT, "multiline": True}),
                 "model": (models, ),
                 "seed": (IO.INT, {"default": 0, "min": 0, "max": 2**32 - 1, "step": 1, "tooltip": "Seed for random number generation."}),
                 "load_for_seconds": (IO.FLOAT, {"default": 0.0, "min": -1.0, "max": 60.0 * 60.0, "step": 1, "tooltip": "Time in seconds to load the image for. -1 to load indefinitely."})
@@ -247,9 +247,9 @@ class Sage_OllamaLLMPromptVision(ComfyNodeABC):
 
         return {
             "required": {
-                "prompt": (IO.STRING, {"defaultInput": True, "default": DEFAULT_VISION_PROMPT, "multiline": True}),
+                "prompt": (IO.STRING, {"default": DEFAULT_VISION_PROMPT, "multiline": True}),
                 "model": (models, ),
-                "image": (IO.IMAGE, {"defaultInput": True}),
+                "image": (IO.IMAGE, {}),
                 "seed": (IO.INT, {"default": 0, "min": 0, "max": 2**32 - 1, "step": 1, "tooltip": "Seed for random number generation."}),
                 "load_for_seconds": (IO.FLOAT, {"default": 0.0, "min": -1.0, "max": 60.0 * 60.0, "step": 0.1, "tooltip": "Time in seconds to load the image for. -1 to load indefinitely."})  
             }
@@ -300,9 +300,9 @@ class Sage_OllamaLLMPromptVisionRefine(ComfyNodeABC):
 
         return {
             "required": {
-                "prompt": (IO.STRING, {"defaultInput": True, "default": DEFAULT_VISION_PROMPT, "multiline": True}),
+                "prompt": (IO.STRING, {"default": DEFAULT_VISION_PROMPT, "multiline": True}),
                 "model": (models, ),
-                "image": (IO.IMAGE, {"defaultInput": True}),
+                "image": (IO.IMAGE, {}),
                 "seed": (IO.INT, {"default": 0, "min": 0, "max": 2**32 - 1, "step": 1, "tooltip": "Seed for random number generation."}),
                 "refine_prompt": (IO.STRING, {"default": "Take the provided text description and rewrite it to be more vivid, detailed, and engaging, while preserving the original meaning.", "multiline": True, "tooltip": "Prompt to refine the description of the image."}),
                 "refine_model": (refine_models, ),
@@ -358,7 +358,7 @@ class Sage_LMStudioLLMPromptText(ComfyNodeABC):
 
         return {
             "required": {
-                "prompt": (IO.STRING, {"defaultInput": True, "default": DEFAULT_TEXT_PROMPT, "multiline": True}),
+                "prompt": (IO.STRING, {"default": DEFAULT_TEXT_PROMPT, "multiline": True}),
                 "model": (models, ),
                 "seed": (IO.INT, {"default": 0, "min": 0, "max": 2**32 - 1, "step": 1, "tooltip": "Seed for random number generation."}),
                 "load_for_seconds": (IO.INT, {"default": 0, "min": -1, "max": 60*60, "step": 1, "tooltip": "Time in seconds to load the image for. -1 to load indefinitely."})
@@ -401,9 +401,9 @@ class Sage_LMStudioLLMPromptVision(ComfyNodeABC):
 
         return {
             "required": {
-                "prompt": (IO.STRING, {"defaultInput": True, "default": DEFAULT_VISION_PROMPT, "multiline": True}),
+                "prompt": (IO.STRING, {"default": DEFAULT_VISION_PROMPT, "multiline": True}),
                 "model": (models, ),
-                "image": (IO.IMAGE, {"defaultInput": True}),
+                "image": (IO.IMAGE, {}),
                 "seed": (IO.INT, {"default": 0, "min": 0, "max": 2**32 - 1, "step": 1, "tooltip": "Seed for random number generation."}),
                 "load_for_seconds": (IO.INT, {"default": 0, "min": -1, "max": 60*60, "step": 1, "tooltip": "Time in seconds to load the image for. -1 to load indefinitely."})
             }
@@ -454,9 +454,9 @@ class Sage_LMStudioLLMPromptVisionRefine(ComfyNodeABC):
 
         return {
             "required": {
-                "prompt": (IO.STRING, {"defaultInput": True, "default": DEFAULT_VISION_PROMPT, "multiline": True}),
+                "prompt": (IO.STRING, {"default": DEFAULT_VISION_PROMPT, "multiline": True}),
                 "model": (models, ),
-                "image": (IO.IMAGE, {"defaultInput": True}),
+                "image": (IO.IMAGE, {}),
                 "seed": (IO.INT, {"default": 0, "min": 0, "max": 2**32 - 1, "step": 1, "tooltip": "Seed for random number generation."}),
                 "refine_prompt": (IO.STRING, {"default": "Take the provided text description and rewrite it to be more vivid, detailed, and engaging, while preserving the original meaning.", "multiline": True, "tooltip": "Prompt to refine the description of the image."}),
                 "refine_model": (refine_models, ),

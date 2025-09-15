@@ -24,8 +24,8 @@ class Sage_FreeMemory(ComfyNodeABC):
     def INPUT_TYPES(cls) -> InputTypeDict:
         return {
             "required": {
-                "free_memory": (IO.BOOLEAN, {"defaultInput": False}),
-                "value": (IO.ANY,{"defaultInput": False})
+                "free_memory": (IO.BOOLEAN, {}),
+                "value": (IO.ANY,{})
             }
         }
 
@@ -53,8 +53,8 @@ class Sage_Halt(ComfyNodeABC):
     def INPUT_TYPES(cls) -> InputTypeDict:
         return {
             "required": {
-                "continue_executing": (IO.BOOLEAN, {"label_on": "Continue", "label_off": "Halt", "defaultInput": False}),
-                "value": (IO.ANY,{"defaultInput": False})
+                "continue_executing": (IO.BOOLEAN, {"label_on": "Continue", "label_off": "Halt"}),
+                "value": (IO.ANY,{})
             }
         }
 
@@ -85,9 +85,9 @@ class Sage_LogicalSwitch(ComfyNodeABC):
     def INPUT_TYPES(cls) -> InputTypeDict:
         return {
             "required": {
-                "condition": (IO.BOOLEAN, {"defaultInput": False}),
-                "true_value": (IO.ANY,{"defaultInput": False}),
-                "false_value": (IO.ANY,{"defaultInput": False})
+                "condition": (IO.BOOLEAN, {}),
+                "true_value": (IO.ANY, {}),
+                "false_value": (IO.ANY, {})
             }
         }
 
@@ -111,7 +111,7 @@ class Sage_ModelInfo(ComfyNodeABC):
     def INPUT_TYPES(cls) -> InputTypeDict:
         return {
             "required": {
-                "model_info": ("MODEL_INFO", {"defaultInput": True})
+                "model_info": ("MODEL_INFO", {})
             }
         }
 
@@ -164,7 +164,7 @@ class Sage_ModelInfoDisplay(ComfyNodeABC):
     def INPUT_TYPES(cls) -> InputTypeDict:
         return {
             "required": {
-                "model_info": ("MODEL_INFO", {"defaultInput": True})
+                "model_info": ("MODEL_INFO", {})
             }
         }
 
@@ -303,7 +303,7 @@ class Sage_LoraStackInfoDisplay(ComfyNodeABC):
     def INPUT_TYPES(cls) -> InputTypeDict:
         return {
             "required": {
-                "lora_stack": ("LORA_STACK", {"defaultInput": True})
+                "lora_stack": ("LORA_STACK", {})
             }
         }
 
@@ -463,7 +463,7 @@ class Sage_LastLoraInfo(ComfyNodeABC):
     def INPUT_TYPES(cls) -> InputTypeDict:
         return {
             "required": {
-                "lora_stack": ("LORA_STACK", {"defaultInput": True})
+                "lora_stack": ("LORA_STACK", {})
             }
         }
 
@@ -518,8 +518,8 @@ class Sage_GetFileHash(ComfyNodeABC):
         folder_list = list(folder_paths.folder_names_and_paths.keys())
         return {
             "required": {
-                "base_dir": (folder_list, {"defaultInput": False}),
-                "filename": (IO.STRING, {"defaultInput": False}),
+                "base_dir": (folder_list, {}),
+                "filename": (IO.STRING, {}),
             }
         }
 
@@ -549,7 +549,7 @@ class Sage_CacheMaintenance(ComfyNodeABC):
     def INPUT_TYPES(cls) -> InputTypeDict:
         return {
             "required": {
-                "remove_ghost_entries": (IO.BOOLEAN, {"defaultInput": True})
+                "remove_ghost_entries": (IO.BOOLEAN, {})
             }
         }
 
@@ -617,8 +617,8 @@ class Sage_ModelReport(ComfyNodeABC):
     def INPUT_TYPES(cls):
         return {
             "required": {
-                "scan_models": (["none", "loras", "checkpoints", "all"], {"defaultInput": False, "default": "none"}),
-                "force_recheck": (IO.BOOLEAN, {"defaultInput": False, "default": "False"}),
+                "scan_models": (["none", "loras", "checkpoints", "all"], {"default": "none"}),
+                "force_recheck": (IO.BOOLEAN, {"default": False}),
             }
         }
 
@@ -705,7 +705,7 @@ class Sage_CollectKeywordsFromLoraStack(ComfyNodeABC):
     def INPUT_TYPES(cls) -> InputTypeDict:
         return {
             "required": {
-                "lora_stack": ("LORA_STACK", {"defaultInput": True})
+                "lora_stack": ("LORA_STACK", {})
             }
         }
 
@@ -728,8 +728,8 @@ class Sage_CheckLorasForUpdates(ComfyNodeABC):
     def INPUT_TYPES(cls) -> InputTypeDict:
         return {
             "required": {
-                "lora_stack": ("LORA_STACK", {"defaultInput": True}),
-                "force": (IO.BOOLEAN, {"defaultInput": False, "default": False, "tooltip": "Force a check for updates, even if the lora is up to date."}),
+                "lora_stack": ("LORA_STACK", {}),
+                "force": (IO.BOOLEAN, {"default": False, "tooltip": "Force a check for updates, even if the lora is up to date."}),
             }
         }
 

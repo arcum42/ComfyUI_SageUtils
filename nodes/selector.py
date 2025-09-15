@@ -50,7 +50,7 @@ class Sage_UNETSelector(ComfyNodeABC):
         return {
                 "required": {
                     "unet_name": (unet_names, {"tooltip": "The name of the UNET model to load."}),
-                    "weight_dtype": (mi.weight_dtype_options, {"defaultInput": True, "default": "default", "tooltip": "The weight dtype to use for the UNET model."})
+                    "weight_dtype": (mi.weight_dtype_options, {"default": "default", "tooltip": "The weight dtype to use for the UNET model."})
                 }
             }
 
@@ -102,7 +102,7 @@ class Sage_CLIPSelector(ComfyNodeABC):
         return {
                 "required": {
                     "clip_name": (model_list, {"tooltip": "The name of the CLIP model to load."}),
-                    "clip_type": (mi.single_clip_loader_options, {"defaultInput": True, "default": "chroma", "tooltip": "The type of CLIP model. If empty, will use the default type."})
+                    "clip_type": (mi.single_clip_loader_options, {"default": "chroma", "tooltip": "The type of CLIP model. If empty, will use the default type."})
                 }
             }
 
@@ -133,7 +133,7 @@ class Sage_DualCLIPSelector(ComfyNodeABC):
                 "required": {
                     "clip_name_1": (model_list, {"tooltip": "The name of the first CLIP model to load."}),
                     "clip_name_2": (model_list, {"tooltip": "The name of the second CLIP model to load."}),
-                    "clip_type": (mi.dual_clip_loader_options, {"defaultInput": True, "default": "sdxl", "tooltip": "The type of CLIP models. If empty, will use the default type."})
+                    "clip_type": (mi.dual_clip_loader_options, {"default": "sdxl", "tooltip": "The type of CLIP models. If empty, will use the default type."})
                 }
             }
 
@@ -219,13 +219,13 @@ class Sage_ModelShifts(ComfyNodeABC):
     def INPUT_TYPES(cls) -> InputTypeDict:
         return {
             "required": {
-                "shift_type": (["None", "x1", "x1000"], {"defaultInput": True, "tooltip": "The type of shift to apply to the model. x1 for Auraflow and Lumina2, x1000 for other models."}),
-                "shift": (IO.FLOAT, {"defaultInput": False, "default": 3.0, "min": 0.0, "max": 100.0, "step": 0.01}),
-                "freeu_v2": (IO.BOOLEAN, {"defaultInput": False, "default": False}),
-                "b1": (IO.FLOAT, {"defaultInput": False, "default": 1.3, "min": 0.0, "max": 10.0, "step": 0.01}),
-                "b2": (IO.FLOAT, {"defaultInput": False, "default": 1.4, "min": 0.0, "max": 10.0, "step": 0.01}),
-                "s1": (IO.FLOAT, {"defaultInput": False, "default": 0.9, "min": 0.0, "max": 10.0, "step": 0.01}),
-                "s2": (IO.FLOAT, {"defaultInput": False, "default": 0.2, "min": 0.0, "max": 10.0, "step": 0.01}),
+                "shift_type": (["None", "x1", "x1000"], {"tooltip": "The type of shift to apply to the model. x1 for Auraflow and Lumina2, x1000 for other models."}),
+                "shift": (IO.FLOAT, {"default": 3.0, "min": 0.0, "max": 100.0, "step": 0.01}),
+                "freeu_v2": (IO.BOOLEAN, {"default": False}),
+                "b1": (IO.FLOAT, {"default": 1.3, "min": 0.0, "max": 10.0, "step": 0.01}),
+                "b2": (IO.FLOAT, {"default": 1.4, "min": 0.0, "max": 10.0, "step": 0.01}),
+                "s1": (IO.FLOAT, {"default": 0.9, "min": 0.0, "max": 10.0, "step": 0.01}),
+                "s2": (IO.FLOAT, {"default": 0.2, "min": 0.0, "max": 10.0, "step": 0.01}),
                 },
             }
     RETURN_TYPES = ("MODEL_SHIFTS",)
@@ -249,8 +249,8 @@ class Sage_ModelShiftOnly(ComfyNodeABC):
     def INPUT_TYPES(cls) -> InputTypeDict:
         return {
             "required": {
-                "shift_type": (["None", "x1", "x1000"], {"defaultInput": True, "tooltip": "The type of shift to apply to the model. x1 for Auraflow and Lumina2, x1000 for other models."}),
-                "shift": (IO.FLOAT, {"defaultInput": False, "default": 3.0, "min": 0.0, "max": 100.0, "step": 0.01}),
+                "shift_type": (["None", "x1", "x1000"], {"tooltip": "The type of shift to apply to the model. x1 for Auraflow and Lumina2, x1000 for other models."}),
+                "shift": (IO.FLOAT, {"default": 3.0, "min": 0.0, "max": 100.0, "step": 0.01}),
             }
         }
     RETURN_TYPES = ("MODEL_SHIFTS",)
@@ -274,11 +274,11 @@ class Sage_FreeU2(ComfyNodeABC):
     def INPUT_TYPES(cls) -> InputTypeDict:
         return {
             "required": {
-                "freeu_v2": (IO.BOOLEAN, {"defaultInput": True, "default": False}),
-                "b1": (IO.FLOAT, {"defaultInput": False, "default": 1.3, "min": 0.0, "max": 10.0, "step": 0.01}),
-                "b2": (IO.FLOAT, {"defaultInput": False, "default": 1.4, "min": 0.0, "max": 10.0, "step": 0.01}),
-                "s1": (IO.FLOAT, {"defaultInput": False, "default": 0.9, "min": 0.0, "max": 10.0, "step": 0.01}),
-                "s2": (IO.FLOAT, {"defaultInput": False, "default": 0.2, "min": 0.0, "max": 10.0, "step": 0.01}),
+                "freeu_v2": (IO.BOOLEAN, {"default": False}),
+                "b1": (IO.FLOAT, {"default": 1.3, "min": 0.0, "max": 10.0, "step": 0.01}),
+                "b2": (IO.FLOAT, {"default": 1.4, "min": 0.0, "max": 10.0, "step": 0.01}),
+                "s1": (IO.FLOAT, {"default": 0.9, "min": 0.0, "max": 10.0, "step": 0.01}),
+                "s2": (IO.FLOAT, {"default": 0.2, "min": 0.0, "max": 10.0, "step": 0.01}),
             }
         }
     RETURN_TYPES = ("MODEL_SHIFTS",)
@@ -333,10 +333,10 @@ class Sage_LoraStack(ComfyNodeABC):
         lora_list = folder_paths.get_filename_list("loras")
         return {
             "required": {
-                "enabled": (IO.BOOLEAN, {"defaultInput": False, "default": True}),
-                "lora_name": (lora_list, {"defaultInput": False, "tooltip": "The name of the LoRA."}),
-                "model_weight": (IO.FLOAT, {"defaultInput": False, "default": 1.0, "min": -100.0, "max": 100.0, "step": 0.01, "tooltip": "How strongly to modify the diffusion model. This value can be negative."}),
-                "clip_weight": (IO.FLOAT, {"defaultInput": False, "default": 1.0, "min": -100.0, "max": 100.0, "step": 0.01, "tooltip": "How strongly to modify the CLIP model. This value can be negative."}),
+                "enabled": (IO.BOOLEAN, {"default": False, "tooltip": "Whether to enable this LoRA."}),
+                "lora_name": (lora_list, {"tooltip": "The name of the LoRA."}),
+                "model_weight": (IO.FLOAT, {"default": 1.0, "min": -100.0, "max": 100.0, "step": 0.01, "tooltip": "How strongly to modify the diffusion model. This value can be negative."}),
+                "clip_weight": (IO.FLOAT, {"default": 1.0, "min": -100.0, "max": 100.0, "step": 0.01, "tooltip": "How strongly to modify the CLIP model. This value can be negative."}),
                 },
             "optional": {
                 "lora_stack": ("LORA_STACK", {"defaultInput": True}),
@@ -369,9 +369,9 @@ class Sage_QuickLoraStack(Sage_LoraStack):
         lora_list = folder_paths.get_filename_list("loras")
         return {
             "required": {
-                "enabled": (IO.BOOLEAN, {"defaultInput": False, "default": True}),
-                "lora_name": (lora_list, {"defaultInput": False, "tooltip": "The name of the LoRA."}),
-                "model_weight": (IO.FLOAT, {"defaultInput": False, "default": 1.0, "min": -100.0, "max": 100.0, "step": 0.01, "tooltip": "How strongly to modify the diffusion model. This value can be negative."}),
+                "enabled": (IO.BOOLEAN, {"default": True}),
+                "lora_name": (lora_list, {"tooltip": "The name of the LoRA."}),
+                "model_weight": (IO.FLOAT, {"default": 1.0, "min": -100.0, "max": 100.0, "step": 0.01, "tooltip": "How strongly to modify the diffusion model. This value can be negative."}),
                 },
             "optional": {
                 "lora_stack": ("LORA_STACK", {"defaultInput": True}),
@@ -400,10 +400,10 @@ class Sage_TripleLoraStack(ComfyNodeABC):
         lora_list = folder_paths.get_filename_list("loras")
         required_list = {}
         for i in range(1, cls.NUM_OF_ENTRIES + 1):
-            required_list[f"enabled_{i}"] = (IO.BOOLEAN, {"defaultInput": False, "default": True})
-            required_list[f"lora_{i}_name"] = (lora_list, {"options": lora_list, "defaultInput": False, "tooltip": "The name of the LoRA."})
-            required_list[f"model_{i}_weight"] = (IO.FLOAT, {"defaultInput": False, "default": 1.0, "min": -100.0, "max": 100.0, "step": 0.01, "tooltip": "How strongly to modify the diffusion model. This value can be negative."})
-            required_list[f"clip_{i}_weight"] = (IO.FLOAT, {"defaultInput": False, "default": 1.0, "min": -100.0, "max": 100.0, "step": 0.01, "tooltip": "How strongly to modify the CLIP model. This value can be negative."})
+            required_list[f"enabled_{i}"] = (IO.BOOLEAN, {"default": True})
+            required_list[f"lora_{i}_name"] = (lora_list, {"options": lora_list, "tooltip": "The name of the LoRA."})
+            required_list[f"model_{i}_weight"] = (IO.FLOAT, {"default": 1.0, "min": -100.0, "max": 100.0, "step": 0.01, "tooltip": "How strongly to modify the diffusion model. This value can be negative."})
+            required_list[f"clip_{i}_weight"] = (IO.FLOAT, {"default": 1.0, "min": -100.0, "max": 100.0, "step": 0.01, "tooltip": "How strongly to modify the CLIP model. This value can be negative."})
 
         return {
             "required": required_list,
@@ -451,9 +451,9 @@ class Sage_TripleQuickLoraStack(ComfyNodeABC):
         lora_list = folder_paths.get_filename_list("loras")
         required_list = {}
         for i in range(1, cls.NUM_OF_ENTRIES + 1):
-            required_list[f"enabled_{i}"] = (IO.BOOLEAN, {"defaultInput": False, "default": True})
-            required_list[f"lora_{i}_name"] = (lora_list, {"options": lora_list, "defaultInput": False, "tooltip": "The name of the LoRA."})
-            required_list[f"model_{i}_weight"] = (IO.FLOAT, {"defaultInput": False, "default": 1.0, "min": -100.0, "max": 100.0, "step": 0.01, "tooltip": "How strongly to modify the diffusion model. This value can be negative."})
+            required_list[f"enabled_{i}"] = (IO.BOOLEAN, {"default": True})
+            required_list[f"lora_{i}_name"] = (lora_list, {"options": lora_list, "tooltip": "The name of the LoRA."})
+            required_list[f"model_{i}_weight"] = (IO.FLOAT, {"default": 1.0, "min": -100.0, "max": 100.0, "step": 0.01, "tooltip": "How strongly to modify the diffusion model. This value can be negative."})
 
         return {
             "required": required_list,

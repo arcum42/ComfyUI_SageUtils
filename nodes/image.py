@@ -36,8 +36,8 @@ class Sage_EmptyLatentImagePassthrough(ComfyNodeABC):
     def INPUT_TYPES(cls) -> InputTypeDict:
         return {
             "required": {
-                "width": (IO.INT, {"defaultInput": True, "default": 1024, "min": 16, "max": nodes.MAX_RESOLUTION, "step": 8, "tooltip": "The width of the latent images in pixels.", }),
-                "height": (IO.INT, {"defaultInput": True, "default": 1024, "min": 16, "max": nodes.MAX_RESOLUTION, "step": 8, "tooltip": "The height of the latent images in pixels."}),
+                "width": (IO.INT, {"default": 1024, "min": 16, "max": nodes.MAX_RESOLUTION, "step": 8, "tooltip": "The width of the latent images in pixels.", }),
+                "height": (IO.INT, {"default": 1024, "min": 16, "max": nodes.MAX_RESOLUTION, "step": 8, "tooltip": "The height of the latent images in pixels."}),
                 "batch_size": (IO.INT, { "default": 1, "min": 1, "max": 4096, "tooltip": "The number of latent images in the batch."}),
                 "sd3": (IO.BOOLEAN, {"default": False})
             }
@@ -136,8 +136,8 @@ class Sage_SaveImageWithMetadata(ComfyNodeABC):
             "required": {
                 "images": (IO.IMAGE, {"tooltip": "The images to save."}),
                 "filename_prefix": (IO.STRING, {"default": "ComfyUI_Meta", "tooltip": "The prefix for the file to save. %batch_num% will be replaced with the batch number."}),
-                "include_node_metadata": (IO.BOOLEAN, {"default": True, "defaultInput": False}),
-                "include_extra_pnginfo_metadata": (IO.BOOLEAN,{"default": True, "defaultInput": False}),
+                "include_node_metadata": (IO.BOOLEAN, {"default": True}),
+                "include_extra_pnginfo_metadata": (IO.BOOLEAN,{"default": True}),
                 "save_text": (IO.COMBO, {"default": "Image Only", "options": ["Image Only", "Param to Text", "Extra to Text", "All to Text"], "tooltip": "Optionally allow you to save a text file alongside the image with the contents of param, extra, or all the metadata. Useful, if, for example, you are generating images to be used for training."}),
             },
             "optional": {
@@ -270,8 +270,8 @@ class Sage_GuessResolutionByRatio(ComfyNodeABC):
     def INPUT_TYPES(cls) -> InputTypeDict:
         return {
             "required": {
-                "width": (IO.INT, {"defaultInput": True, "min": 64, "max": 8192, "step": 1}),
-                "height": (IO.INT, {"defaultInput": True, "min": 64, "max": 8192, "step": 1}),
+                "width": (IO.INT, {"min": 64, "max": 8192, "step": 1}),
+                "height": (IO.INT, {"min": 64, "max": 8192, "step": 1}),
             }
         }
 
@@ -345,8 +345,8 @@ class Sage_QuickResPicker(ComfyNodeABC):
 
         return {
             "required": {
-                "aspect_ratio": (IO.COMBO, {"defaultInput": True, "options": aspect_ratios}),
-                "orientation": (IO.COMBO, {"defaultInput": True, "options": orientations}),
+                "aspect_ratio": (IO.COMBO, {"options": aspect_ratios}),
+                "orientation": (IO.COMBO, {"options": orientations}),
                 "multiplier": (IO.FLOAT, {"default": 1.0, "min": 0.1, "max": 10.0, "step": 0.1, "round": 0.001})
             }
         }

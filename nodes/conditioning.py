@@ -25,7 +25,7 @@ class Sage_ConditioningZeroOut(ComfyNodeABC):
     def INPUT_TYPES(cls) -> InputTypeDict:
         return {
             "required": {
-                "clip": (IO.CLIP, {"defaultInput": True, "tooltip": "The CLIP model used for encoding."})
+                "clip": (IO.CLIP, {"tooltip": "The CLIP model used for encoding."})
             }
         }
 
@@ -46,8 +46,8 @@ class Sage_DualCLIPTextEncode(ComfyNodeABC):
     def INPUT_TYPES(cls) -> InputTypeDict:
         return {
             "required": {
-                "clip": (IO.CLIP, {"defaultInput": True, "tooltip": "The CLIP model used for encoding the text."}),
-                "clean": (IO.BOOLEAN, {"defaultInput": False, "tooltip": "Clean up the text, getting rid of extra spaces, commas, etc."})
+                "clip": (IO.CLIP, {"tooltip": "The CLIP model used for encoding the text."}),
+                "clean": (IO.BOOLEAN, {"tooltip": "Clean up the text, getting rid of extra spaces, commas, etc."})
             },
             "optional": {
                 "pos": (IO.STRING, {"defaultInput": True, "multiline": True, "dynamicPrompts": True, "tooltip": "The positive prompt's text."}),
@@ -100,9 +100,9 @@ class Sage_DualCLIPTextEncodeLumina2(ComfyNodeABC):
     def INPUT_TYPES(cls) -> InputTypeDict:
         return {
             "required": {
-                "clip": (IO.CLIP, {"defaultInput": True, "tooltip": "The CLIP model used for encoding the text."}),
+                "clip": (IO.CLIP, {"tooltip": "The CLIP model used for encoding the text."}),
                 "system_prompt": (IO.STRING, {"tooltip": cls.SYSTEM_PROMPT_TIP}),
-                "clean": (IO.BOOLEAN, {"defaultInput": False, "tooltip": "Clean up the text, getting rid of extra spaces, commas, etc."}),
+                "clean": (IO.BOOLEAN, {"tooltip": "Clean up the text, getting rid of extra spaces, commas, etc."}),
             },
             "optional": {
                 "pos": (IO.STRING, {"defaultInput": True, "multiline": True, "dynamicPrompts": True, "tooltip": "The positive prompt's text."}),
@@ -141,8 +141,8 @@ class Sage_DualCLIPTextEncodeQwen(ComfyNodeABC):
     def INPUT_TYPES(cls) -> InputTypeDict:
         return {
             "required": {
-                "clip": (IO.CLIP, {"defaultInput": True, "tooltip": "The CLIP model used for encoding the text."}),
-                "clean": (IO.BOOLEAN, {"defaultInput": False, "tooltip": "Clean up the text, getting rid of extra spaces, commas, etc."})
+                "clip": (IO.CLIP, {"tooltip": "The CLIP model used for encoding the text."}),
+                "clean": (IO.BOOLEAN, {"tooltip": "Clean up the text, getting rid of extra spaces, commas, etc."})
             },
             "optional": {
                 "vae": (IO.VAE, {"defaultInput": True, "tooltip": "The VAE model used for encoding the reference image."}),
