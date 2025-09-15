@@ -36,6 +36,7 @@ def register_routes(routes_instance):
         from . import gallery_routes
         from . import wildcard_routes
         from . import tag_routes
+        from . import prompt_storage_routes
         from . import utility_routes
         
         # Track successful registrations
@@ -50,6 +51,7 @@ def register_routes(routes_instance):
             ("Gallery", gallery_routes),
             ("Wildcard", wildcard_routes),
             ("Tag", tag_routes),
+            ("Prompt Storage", prompt_storage_routes),
             ("Utility", utility_routes)
         ]
         
@@ -164,6 +166,11 @@ ROUTE_GROUPS = {
         'description': 'Tag library management and prompt tagging',
         'endpoints': 5,
         'module': 'tag_routes'
+    },
+    'prompt_storage': {
+        'description': 'Saved prompts management and storage',
+        'endpoints': 5,
+        'module': 'prompt_storage_routes'
     },
     'utility': {
         'description': 'Utility functions and miscellaneous endpoints',

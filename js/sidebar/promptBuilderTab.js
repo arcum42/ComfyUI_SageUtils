@@ -4,6 +4,7 @@
 
 import { promptGenerationComponent } from '../components/promptBuilder/promptGeneration.js';
 import { tagLibraryComponent } from '../components/promptBuilder/tagLibrary.js';
+import { savedPromptsComponent } from '../components/promptBuilder/savedPrompts.js';
 
 /**
  * Creates the main Prompt Builder tab content
@@ -35,9 +36,9 @@ export function createPromptBuilderTab(container) {
     const tagLibrarySection = createTagLibrarySection();
     contentArea.appendChild(tagLibrarySection);
 
-    // TODO: Add saved prompts section
-    // const savedPromptsSection = createSavedPromptsSection();
-    // contentArea.appendChild(savedPromptsSection);
+    // Add saved prompts section (collapsible)
+    const savedPromptsSection = createSavedPromptsSection();
+    contentArea.appendChild(savedPromptsSection);
 
     wrapper.appendChild(contentArea);
     container.appendChild(wrapper);
@@ -50,6 +51,7 @@ export function createPromptBuilderTab(container) {
         wrapper,
         generationSection,
         tagLibrarySection,
+        savedPromptsSection,
         destroy: () => {
             destroyPromptBuilderTab(container);
         }
@@ -211,13 +213,91 @@ function createTagLibrarySection() {
 }
 
 /**
+ * Creates the saved prompts section
+ * @returns {HTMLElement} - The saved prompts section element
+ */
+function createSavedPromptsSection() {
+    const section = document.createElement('div');
+    section.className = 'prompt-builder-section saved-prompts-section';
+
+    const sectionHeader = document.createElement('div');
+    sectionHeader.className = 'section-header collapsible-header';
+    
+    const sectionTitle = document.createElement('h3');
+    sectionTitle.textContent = '💾 Saved Prompts';
+    sectionTitle.className = 'section-title';
+    
+    const collapseBtn = document.createElement('button');
+    collapseBtn.className = 'collapse-btn';
+    collapseBtn.textContent = '▶'; // Default: collapsed
+    collapseBtn.title = 'Toggle saved prompts';
+    
+    sectionHeader.appendChild(sectionTitle);
+    sectionHeader.appendChild(collapseBtn);
+    section.appendChild(sectionHeader);
+
+    const sectionContent = document.createElement('div');
+    sectionContent.className = 'section-content';
+    sectionContent.style.display = 'none'; // Default: collapsed
+    
+    // Add collapsible functionality
+    let isCollapsed = true; // Default: collapsed
+    
+    const toggleCollapse = () => {
+        isCollapsed = !isCollapsed;
+        sectionContent.style.display = isCollapsed ? 'none' : 'block';
+        collapseBtn.textContent = isCollapsed ? '▶' : '▼';
+        section.classList.toggle('collapsed', isCollapsed);
+        
+        // Load component when expanded for first time
+        if (!isCollapsed && !sectionContent.hasChildNodes()) {
+            loadSavedPromptsComponent(sectionContent);
+        }
+    };
+    
+    sectionHeader.addEventListener('click', toggleCollapse);
+
+    section.appendChild(sectionContent);
+    return section;
+}
+
+/**
+ * Load the saved prompts component
+ * @param {HTMLElement} container - Container for the component
+ */
+function loadSavedPromptsComponent(container) {
+    try {
+        // Show loading state
+        container.innerHTML = '<div class="loading-state">Loading saved prompts...</div>';
+        
+        // Create the component
+        const component = savedPromptsComponent.create();
+        container.innerHTML = '';
+        container.appendChild(component);
+        
+        console.log('Saved prompts component loaded successfully');
+    } catch (error) {
+        console.error('Failed to load saved prompts component:', error);
+        container.innerHTML = `
+            <div class="saved-prompts-fallback">
+                <div style="padding: 16px;">
+                    <h4>Saved Prompts</h4>
+                    <p>Error loading saved prompts: ${error.message}</p>
+                    <p>Please check the console for more details.</p>
+                </div>
+            </div>
+        `;
+    }
+}
+
+/**
  * Insert a tag into the active prompt field
  * @param {string} tag - The tag text to insert
  */
 function insertTagIntoActivePrompt(tag) {
     try {
         // Find the currently focused prompt input
-        const activeInput = document.querySelector('.prompt-generation-section .positive-prompt:focus, .prompt-generation-section .negative-prompt:focus');
+        const activeInput = document.querySelector('.prompt-generation-component .positive-prompt:focus, .prompt-generation-component .negative-prompt:focus');
         
         if (activeInput) {
             // Insert at cursor position
@@ -430,8 +510,259 @@ function addPromptBuilderStyles() {
             cursor: pointer;
         }
 
-        .tag-library-section .section-title {
+        .saved-prompts-section {
+            border-color: var(--warning-color, #ffa726);
+        }
+
+        .saved-prompts-section .section-header {
+            background: linear-gradient(135deg, var(--warning-color, #ffa726) 0%, var(--warning-dark, #f57c00) 100%);
+            cursor: pointer;
+        }
+
+        .saved-prompts-section .section-title {
             color: white;
+        }
+
+        /* Saved Prompts Component Styles */
+        .saved-prompts-component {
+            padding: 0;
+        }
+
+        .saved-prompts-header {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+        }
+
+        .search-input, .category-filter {
+            flex: 1;
+            min-width: 120px;
+            padding: 8px;
+            border: 1px solid var(--border-color, #444);
+            border-radius: 4px;
+            background: var(--bg-color, #1a1a1a);
+            color: var(--fg-color, #ffffff);
+        }
+
+        .save-prompt-btn {
+            padding: 8px 16px;
+            background: var(--primary-color, #4a9eff);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+
+        .save-prompt-btn:hover {
+            background: var(--primary-dark, #357abd);
+        }
+
+        .prompts-list {
+            max-height: 400px;
+            overflow-y: auto;
+            border: 1px solid var(--border-color, #444);
+            border-radius: 4px;
+            background: var(--bg-color-tertiary, #1e1e1e);
+        }
+
+        .prompt-card {
+            padding: 12px;
+            border-bottom: 1px solid var(--border-color, #444);
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .prompt-card:hover {
+            background: var(--bg-color-secondary, #2a2a2a);
+        }
+
+        .prompt-card:last-child {
+            border-bottom: none;
+        }
+
+        .prompt-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .prompt-name {
+            margin: 0;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--primary-color, #4a9eff);
+        }
+
+        .prompt-actions {
+            display: flex;
+            gap: 4px;
+        }
+
+        .load-btn, .delete-btn {
+            padding: 4px 8px;
+            font-size: 12px;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+
+        .load-btn {
+            background: var(--success-color, #6bcf7f);
+            color: white;
+        }
+
+        .delete-btn {
+            background: var(--error-color, #ff6b6b);
+            color: white;
+            width: 24px;
+            height: 24px;
+            padding: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .prompt-preview {
+            font-size: 12px;
+            color: var(--text-secondary, #cccccc);
+            margin-bottom: 8px;
+            line-height: 1.4;
+        }
+
+        .prompt-meta {
+            display: flex;
+            justify-content: space-between;
+            font-size: 11px;
+            color: var(--text-tertiary, #888);
+        }
+
+        .category {
+            background: var(--bg-color-secondary, #2a2a2a);
+            padding: 2px 6px;
+            border-radius: 2px;
+            font-weight: 500;
+        }
+
+        .empty-state, .error-state {
+            text-align: center;
+            padding: 32px 16px;
+            color: var(--text-secondary, #cccccc);
+        }
+
+        .empty-content h4 {
+            margin: 0 0 8px 0;
+            color: var(--fg-color, #ffffff);
+        }
+
+        /* Dialog Styles */
+        .dialog-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+        }
+
+        .save-prompt-dialog {
+            background: var(--bg-color, #1a1a1a);
+            border: 1px solid var(--border-color, #444);
+            border-radius: 8px;
+            width: 90%;
+            max-width: 500px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .dialog-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px;
+            border-bottom: 1px solid var(--border-color, #444);
+        }
+
+        .dialog-header h3 {
+            margin: 0;
+            color: var(--fg-color, #ffffff);
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            color: var(--text-secondary, #cccccc);
+            font-size: 18px;
+            cursor: pointer;
+            padding: 4px;
+        }
+
+        .dialog-content {
+            padding: 16px;
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 4px;
+            font-weight: 500;
+            color: var(--fg-color, #ffffff);
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid var(--border-color, #444);
+            border-radius: 4px;
+            background: var(--bg-color-tertiary, #1e1e1e);
+            color: var(--fg-color, #ffffff);
+            font-family: inherit;
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 60px;
+        }
+
+        .dialog-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+            padding: 16px;
+            border-top: 1px solid var(--border-color, #444);
+        }
+
+        .cancel-btn {
+            padding: 8px 16px;
+            background: var(--bg-color-secondary, #2a2a2a);
+            color: var(--fg-color, #ffffff);
+            border: 1px solid var(--border-color, #444);
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .primary-btn {
+            padding: 8px 16px;
+            background: var(--primary-color, #4a9eff);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .primary-btn:hover {
+            background: var(--primary-dark, #357abd);
         }
 
         .collapsible-header {
