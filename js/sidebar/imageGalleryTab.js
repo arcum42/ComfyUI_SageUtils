@@ -364,7 +364,7 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
     }
     
     // Show full image viewer
-    async function showImageMetadata(image) {
+    async function showImageMetadata(image, autoScroll = false) {
         try {
             metadata.metadataSection.style.display = 'block';
             
@@ -385,13 +385,15 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
                 metadata.metadataContent.innerHTML = fallbackHtml;
             }
             
-            // Scroll to metadata section to show the loaded details
-            setTimeout(() => {
-                metadata.metadataSection.scrollIntoView({ 
-                    behavior: 'smooth', 
-                    block: 'start' 
-                });
-            }, 100);
+            // Only scroll to metadata section if explicitly requested
+            if (autoScroll) {
+                setTimeout(() => {
+                    metadata.metadataSection.scrollIntoView({ 
+                        behavior: 'smooth', 
+                        block: 'start' 
+                    });
+                }, 100);
+            }
             
         } catch (error) {
             console.error('Error in showImageMetadata wrapper:', error);
@@ -414,7 +416,7 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
         if (images) {
             const image = images.find(img => img.path === imagePath || img.relative_path === imagePath);
             if (image) {
-                showImageMetadata(image);
+                showImageMetadata(image, true); // Auto-scroll when explicitly requested
                 return; // Exit early, showImageMetadata will handle the display
             }
         }
