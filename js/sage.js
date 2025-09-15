@@ -49,7 +49,7 @@ app.registerExtension({
         id: "sageUtilsCache",
         icon: "pi pi-hammer",
         title: "SageUtils",
-        tooltip: "SageUtils tools: Model browser and notes manager",
+        tooltip: "SageUtils tools: Model browser, file manager, and prompt builder",
         type: "custom",
         render: createCacheSidebar
       });

@@ -22,6 +22,7 @@ import { createModelsTab } from "./modelsTab.js";
 import { createFilesTab } from "./filesTab.js";
 import { createCivitaiSearchTab } from "./civitaiSearchTab.js";
 import { createImageGalleryTab } from "./imageGalleryTab.js";
+import { createPromptBuilderTab } from "./promptBuilderTab.js";
 
 // Import cache API functions
 import { 
@@ -36,7 +37,7 @@ import {
 } from "../components/cacheUIComponents.js";
 
 /**
- * Creates the tab header with Models, Files, Search, and Gallery tabs
+ * Creates the tab header with Models, Files, Search, Gallery, and Prompt Builder tabs
  * @returns {Object} Object containing tab button elements
  */
 function createTabHeader() {
@@ -54,24 +55,28 @@ function createTabHeader() {
     const notesTab = createTabButton('Files', false);
     const civitaiTab = createTabButton('Search', false);
     const galleryTab = createTabButton('Gallery', false);
+    const promptBuilderTab = createTabButton('Prompts', false);
 
     // Ensure tabs are properly sized
     modelsTab.style.flexShrink = '0';
     notesTab.style.flexShrink = '0';
     civitaiTab.style.flexShrink = '0';
     galleryTab.style.flexShrink = '0';
+    promptBuilderTab.style.flexShrink = '0';
 
     tabHeader.appendChild(modelsTab);
     tabHeader.appendChild(notesTab);
     tabHeader.appendChild(civitaiTab);
     tabHeader.appendChild(galleryTab);
+    tabHeader.appendChild(promptBuilderTab);
 
     return {
         tabHeader,
         modelsTab,
         notesTab,
         civitaiTab,
-        galleryTab
+        galleryTab,
+        promptBuilderTab
     };
 }
 
@@ -122,11 +127,20 @@ function createTabContent() {
     `;
     galleryContainer.setAttribute('data-tab', 'gallery');
 
+    const promptBuilderContainer = document.createElement('div');
+    promptBuilderContainer.style.cssText = `
+        display: none;
+        width: 100%;
+        height: 100%;
+    `;
+    promptBuilderContainer.setAttribute('data-tab', 'promptBuilder');
+
     // Append all containers to main content
     tabContent.appendChild(modelsContainer);
     tabContent.appendChild(notesContainer);
     tabContent.appendChild(civitaiContainer);
     tabContent.appendChild(galleryContainer);
+    tabContent.appendChild(promptBuilderContainer);
 
     return {
         tabContent,
@@ -134,7 +148,8 @@ function createTabContent() {
             models: modelsContainer,
             notes: notesContainer,
             civitai: civitaiContainer,
-            gallery: galleryContainer
+            gallery: galleryContainer,
+            promptBuilder: promptBuilderContainer
         }
     };
 }
@@ -145,7 +160,7 @@ function createTabContent() {
  * @param {Object} tabContentData - Tab content data with containers
  */
 function setupTabSwitching(tabComponents, tabContentData) {
-    const { modelsTab, notesTab, civitaiTab, galleryTab } = tabComponents;
+    const { modelsTab, notesTab, civitaiTab, galleryTab, promptBuilderTab } = tabComponents;
     const { containers } = tabContentData;
     
     // Track which tabs have been initialized
@@ -153,7 +168,8 @@ function setupTabSwitching(tabComponents, tabContentData) {
         models: false,
         notes: false,
         civitai: false,
-        gallery: false
+        gallery: false,
+        promptBuilder: false
     };
     
     // Tab configuration mapping
@@ -177,6 +193,11 @@ function setupTabSwitching(tabComponents, tabContentData) {
             button: galleryTab,
             container: containers.gallery,
             createFunction: createImageGalleryTab
+        },
+        promptBuilder: {
+            button: promptBuilderTab,
+            container: containers.promptBuilder,
+            createFunction: createPromptBuilderTab
         }
     };
 
@@ -234,6 +255,7 @@ function setupTabSwitching(tabComponents, tabContentData) {
                     // Initialize the tab content with a small delay to show loading state
                     setTimeout(() => {
                         try {
+                            console.log(`Calling createFunction for ${activeTabKey} with container:`, config.container);
                             config.createFunction(config.container);
                             initializedTabs[activeTabKey] = true;
                             console.debug(`${activeTabKey} tab initialized successfully`);
@@ -274,6 +296,7 @@ function setupTabSwitching(tabComponents, tabContentData) {
     notesTab.addEventListener('click', () => switchTab('notes'));
     civitaiTab.addEventListener('click', () => switchTab('civitai'));
     galleryTab.addEventListener('click', () => switchTab('gallery'));
+    promptBuilderTab.addEventListener('click', () => switchTab('promptBuilder'));
 
     return { switchTab, initializedTabs };
 }

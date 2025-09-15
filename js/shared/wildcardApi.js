@@ -13,6 +13,15 @@ export async function getWildcardPath() {
     try {
         const response = await api.fetchApi('/sage_utils/wildcard_path');
         const result = await response.json();
+        
+        // Handle the response format - check if data is nested
+        if (result.success && result.data) {
+            return {
+                success: true,
+                path: result.data.path
+            };
+        }
+        
         return result;
     } catch (error) {
         console.error('Error getting wildcard path:', error);
@@ -59,6 +68,17 @@ export async function generateWildcardPrompt(prompt, seed = 0) {
         });
         
         const result = await response.json();
+        
+        // Handle the response format - check if data is nested
+        if (result.success && result.data) {
+            return {
+                success: true,
+                result: result.data.result,
+                original_prompt: result.data.original_prompt,
+                seed: result.data.seed
+            };
+        }
+        
         return result;
     } catch (error) {
         console.error('Error generating wildcard prompt:', error);
