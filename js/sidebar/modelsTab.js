@@ -685,6 +685,9 @@ function setupModelsEventHandlers(filterControls, fileSelector, actionButtons, i
             const isDescending = filterControls.sortOrderButton.textContent === '↓';
             const currentFolderFilter = filterControls.filterSelector.value;
             
+            // Create the sort key for the report generator (which expects -desc suffix for descending)
+            const reportSortBy = isDescending ? `${currentSort}-desc` : currentSort;
+            
             // Build filter description for the report
             let filterDescription = '';
             if (currentFolderFilter !== 'all') {
@@ -696,7 +699,7 @@ function setupModelsEventHandlers(filterControls, fileSelector, actionButtons, i
             const htmlContent = await generateHtmlContent({
                 models: models,
                 title: 'SageUtils Model Cache Report',
-                sortBy: currentSort,
+                sortBy: reportSortBy,
                 folderFilter: currentFolderFilter,
                 filterDescription: filterDescription,
                 sortDescription: ` • Sorted by: ${filterControls.sortSelector.options[filterControls.sortSelector.selectedIndex].text} (${isDescending ? 'Descending' : 'Ascending'})`,

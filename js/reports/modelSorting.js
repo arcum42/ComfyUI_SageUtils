@@ -60,6 +60,17 @@ export function sortModels(models, sortBy) {
                 const nameB = (infoB.model && infoB.model.name) || infoB.name || b.filePath.split('/').pop() || '';
                 return nameA.localeCompare(nameB);
             }
+            case 'type-desc': {
+                const typeA = (infoA.model && infoA.model.type) || infoA.model_type || 'ZZZ';
+                const typeB = (infoB.model && infoB.model.type) || infoB.model_type || 'ZZZ';
+                if (typeA !== typeB) {
+                    return typeB.localeCompare(typeA); // Reversed for descending
+                }
+                // Secondary sort by name (also reversed for descending)
+                const nameA = (infoA.model && infoA.model.name) || infoA.name || a.filePath.split('/').pop() || '';
+                const nameB = (infoB.model && infoB.model.name) || infoB.name || b.filePath.split('/').pop() || '';
+                return nameB.localeCompare(nameA);
+            }
             default: {
                 // Default to name sorting
                 const nameA = (infoA.model && infoA.model.name) || infoA.name || a.filePath.split('/').pop() || '';
