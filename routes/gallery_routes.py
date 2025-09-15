@@ -669,6 +669,384 @@ def register_routes(routes_instance):
                 {"success": False, "error": f"Failed to save text file: {str(e)}"}, 
                 status=500
             )
+
+    @routes_instance.post('/sage_utils/browse_folder')
+    @route_error_handler
+    async def browse_folder(request):
+        """
+        Browse and validate a custom folder path.
+        Body: { "path": "/custom/folder/path" }
+        """
+        import pathlib
+        import os
+        from aiohttp import web
+        
+        data = await request.json()
+        folder_path_str = data.get('path', '')
+        
+        if not folder_path_str:
+            return web.json_response(
+                {"success": False, "error": "Path is required"}, 
+                status=400
+            )
+        
+        folder_path = pathlib.Path(folder_path_str).resolve()
+        
+        # Check if path exists and is a directory
+        if not folder_path.exists():
+            return web.json_response({
+                "success": False,
+                "valid": False,
+                "error": "Path does not exist",
+                "path": str(folder_path)
+            })
+        
+        if not folder_path.is_dir():
+            return web.json_response({
+                "success": False,
+                "valid": False,
+                "error": "Path is not a directory",
+                "path": str(folder_path)
+            })
+        
+        # Check if we can access the directory
+        try:
+            # Try to list the directory
+            list(folder_path.iterdir())
+            accessible = True
+        except PermissionError:
+            accessible = False
+        
+        # Count images in the directory
+        image_count = 0
+        if accessible:
+            image_extensions = {
+                '.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.svg',
+                '.tiff', '.tif', '.ico', '.heic', '.heif', '.avif',
+                '.raw', '.cr2', '.nef', '.arw', '.dng', '.orf', 
+                '.pef', '.sr2', '.srw', '.x3f'
+            }
+            
+            try:
+                for file_path in folder_path.rglob('*'):
+                    if file_path.is_file() and file_path.suffix.lower() in image_extensions:
+                        image_count += 1
+            except (PermissionError, OSError):
+                # If we can't count, set to unknown
+                image_count = -1
+        
+        return web.json_response({
+            "success": True,
+            "valid": True,
+            "accessible": accessible,
+            "image_count": image_count,
+            "path": str(folder_path)
+        })
+
+    @routes_instance.post('/sage_utils/browse_directory_tree')
+    @route_error_handler
+    async def browse_directory_tree(request):
+        """
+        Browse directory tree for folder selection.
+        Body: { "path": "/current/path", "depth": 2 }
+        Returns: { "success": true, "current_path": "/path", "directories": [...] }
+        """
+        import pathlib
+        import os
+        import platform
+        from aiohttp import web
+        
+        data = await request.json()
+        current_path_str = data.get('path', os.path.expanduser('~'))
+        max_depth = data.get('depth', 2)  # Limit depth to prevent performance issues
+        
+        # Expand Windows environment variables if present
+        if platform.system() == 'Windows':
+            current_path_str = os.path.expandvars(current_path_str)
+        
+        # Handle Windows vs Unix paths properly
+        if platform.system() == 'Windows':
+            current_path = pathlib.WindowsPath(current_path_str).resolve()
+            restricted_paths = {
+                'C:\\Windows\\System32', 'C:\\Windows\\SysWOW64', 
+                'C:\\$Recycle.Bin', 'C:\\System Volume Information'
+            }
+        else:
+            current_path = pathlib.PosixPath(current_path_str).resolve()
+            restricted_paths = {
+                '/proc', '/sys', '/dev', '/run', '/tmp/.X11-unix'
+            }
+        
+        # Check if current path is in restricted areas
+        path_str = str(current_path)
+        is_restricted = any(path_str.startswith(restricted) for restricted in restricted_paths)
+        
+        if is_restricted:
+            # If trying to access restricted path, default to home directory
+            current_path = pathlib.Path.home()
+        
+        # Ensure the path exists and is a directory
+        if not current_path.exists():
+            # If path doesn't exist, try going to parent or default to home
+            while current_path != current_path.parent and not current_path.exists():
+                current_path = current_path.parent
+            if not current_path.exists():
+                current_path = pathlib.Path.home()
+                
+        if not current_path.is_dir():
+            current_path = current_path.parent
+        
+        directories = []
+        
+        # Add parent directory (..) if not at root
+        if current_path != current_path.parent:
+            directories.append({
+                "name": "..",
+                "path": str(current_path.parent),
+                "type": "parent",
+                "accessible": True,
+                "image_count": 0
+            })
+        
+        # Get subdirectories
+        try:
+            for item in sorted(current_path.iterdir(), key=lambda p: p.name.lower()):
+                if item.is_dir():
+                    try:
+                        # Check if we can access the directory
+                        accessible = True
+                        image_count = 0
+                        
+                        try:
+                            # Quick count of image files
+                            image_extensions = {
+                                '.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.svg',
+                                '.tiff', '.tif', '.ico', '.heic', '.heif', '.avif'
+                            }
+                            
+                            for file_item in item.iterdir():
+                                if file_item.is_file() and file_item.suffix.lower() in image_extensions:
+                                    image_count += 1
+                                    if image_count >= 10:  # Stop counting at 10 for performance
+                                        break
+                                        
+                        except (PermissionError, OSError):
+                            accessible = False
+                            image_count = -1
+                        
+                        directories.append({
+                            "name": item.name,
+                            "path": str(item),
+                            "type": "directory",
+                            "accessible": accessible,
+                            "image_count": image_count if image_count >= 0 else "Unknown"
+                        })
+                        
+                    except (OSError, PermissionError):
+                        # Skip directories we can't access
+                        continue
+                        
+        except PermissionError:
+            # If we can't read the current directory, go up one level
+            return web.json_response({
+                "success": False,
+                "error": f"Permission denied accessing directory: {current_path}",
+                "suggested_path": str(current_path.parent)
+            })
+        
+        return web.json_response({
+            "success": True,
+            "current_path": str(current_path),
+            "directories": directories,
+            "total_directories": len([d for d in directories if d["type"] == "directory"])
+        })
+
+    @routes_instance.post('/sage_utils/copy_image')
+    @route_error_handler
+    async def copy_image_to_clipboard(request):
+        """
+        Copy full-resolution image to system clipboard.
+        Body: { "image_path": "/path/to/image.jpg" }
+        """
+        import pathlib
+        import subprocess
+        import platform
+        import tempfile
+        import os
+        from PIL import Image
+        from aiohttp import web
+        
+        data = await request.json()
+        image_path_str = data.get('image_path', '')
+        
+        if not image_path_str:
+            return web.json_response(
+                {"success": False, "error": "Image path is required"}, 
+                status=400
+            )
+        
+        image_path = pathlib.Path(image_path_str)
+        
+        # Security check: ensure the file exists
+        if not image_path.exists() or not image_path.is_file():
+            return web.json_response(
+                {"success": False, "error": "Image not found"}, 
+                status=404
+            )
+        
+        system = platform.system().lower()
+        
+        if system == "windows":
+            # Windows implementation using PowerShell
+            try:
+                powershell_script = f'''
+                Add-Type -AssemblyName System.Windows.Forms
+                Add-Type -AssemblyName System.Drawing
+                $image = [System.Drawing.Image]::FromFile("{image_path}")
+                [System.Windows.Forms.Clipboard]::SetImage($image)
+                $image.Dispose()
+                '''
+                
+                result = subprocess.run(
+                    ["powershell", "-Command", powershell_script],
+                    capture_output=True,
+                    text=True,
+                    timeout=10
+                )
+                
+                if result.returncode == 0:
+                    return web.json_response({"success": True, "message": "Image copied to clipboard"})
+                else:
+                    return web.json_response(
+                        {"success": False, "error": f"PowerShell error: {result.stderr}"}, 
+                        status=500
+                    )
+            except subprocess.TimeoutExpired:
+                return web.json_response(
+                    {"success": False, "error": "Clipboard operation timed out"}, 
+                    status=500
+                )
+        
+        elif system == "darwin":  # macOS
+            try:
+                # Convert image to PNG for clipboard
+                with tempfile.NamedTemporaryFile(suffix='.png', delete=False) as temp_file:
+                    temp_path = temp_file.name
+                    
+                # Convert image to PNG
+                with Image.open(image_path) as img:
+                    img.save(temp_path, 'PNG')
+                
+                # Copy to clipboard using osascript
+                result = subprocess.run([
+                    "osascript", "-e",
+                    f'set the clipboard to (read file POSIX file "{temp_path}" as «class PNGf»)'
+                ], capture_output=True, text=True, timeout=10)
+                
+                # Clean up temp file
+                os.unlink(temp_path)
+                
+                if result.returncode == 0:
+                    return web.json_response({"success": True, "message": "Image copied to clipboard"})
+                else:
+                    return web.json_response(
+                        {"success": False, "error": f"macOS clipboard error: {result.stderr}"}, 
+                        status=500
+                    )
+            except subprocess.TimeoutExpired:
+                return web.json_response(
+                    {"success": False, "error": "Clipboard operation timed out"}, 
+                    status=500
+                )
+        
+        elif system == "linux":
+            try:
+                # Try xclip first
+                result = subprocess.run(["which", "xclip"], capture_output=True, timeout=5)
+                if result.returncode == 0:
+                    with open(image_path, 'rb') as img_file:
+                        subprocess.run([
+                            "xclip", "-selection", "clipboard", "-t", "image/png"
+                        ], input=img_file.read(), timeout=10)
+                    return web.json_response({"success": True, "message": "Image copied to clipboard"})
+                
+                # Try xsel as fallback
+                result = subprocess.run(["which", "xsel"], capture_output=True, timeout=5)
+                if result.returncode == 0:
+                    with open(image_path, 'rb') as img_file:
+                        subprocess.run([
+                            "xsel", "--clipboard", "--input"
+                        ], input=img_file.read(), timeout=10)
+                    return web.json_response({"success": True, "message": "Image copied to clipboard"})
+                
+                return web.json_response(
+                    {"success": False, "error": "No clipboard utility found (xclip or xsel required)"}, 
+                    status=500
+                )
+            except subprocess.TimeoutExpired:
+                return web.json_response(
+                    {"success": False, "error": "Clipboard operation timed out"}, 
+                    status=500
+                )
+        
+        else:
+            return web.json_response(
+                {"success": False, "error": f"Clipboard operations not supported on {system}"}, 
+                status=500
+            )
+
+    @routes_instance.post('/sage_utils/image')
+    @route_error_handler
+    async def get_full_image(request):
+        """
+        Serve full resolution image.
+        Body: { "image_path": "/full/path/to/image" }
+        """
+        import pathlib
+        import os
+        from aiohttp import web
+        
+        # Get path from request body
+        data = await request.json()
+        image_path = data.get('image_path', '')
+        
+        # Validate path security
+        if not image_path or '..' in image_path:
+            return web.Response(text="Invalid path", status=400)
+        
+        # Check if file exists and is an image
+        if not os.path.exists(image_path):
+            return web.Response(text="Image not found", status=404)
+        
+        if not image_path.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.bmp', '.webp', '.tiff', '.tif')):
+            return web.Response(text="Not an image file", status=400)
+        
+        # Determine content type
+        ext = pathlib.Path(image_path).suffix.lower()
+        content_type_map = {
+            '.jpg': 'image/jpeg',
+            '.jpeg': 'image/jpeg', 
+            '.png': 'image/png',
+            '.gif': 'image/gif',
+            '.bmp': 'image/bmp',
+            '.webp': 'image/webp',
+            '.tiff': 'image/tiff',
+            '.tif': 'image/tiff'
+        }
+        content_type = content_type_map.get(ext, 'application/octet-stream')
+        
+        # Read and serve the image
+        with open(image_path, 'rb') as f:
+            image_data = f.read()
+        
+        return web.Response(
+            body=image_data,
+            content_type=content_type,
+            headers={
+                'Cache-Control': 'public, max-age=3600',  # Cache for 1 hour
+                'Content-Length': str(len(image_data))
+            }
+        )
     
     # Track registered routes
     _route_list.extend([
@@ -678,7 +1056,11 @@ def register_routes(routes_instance):
         "POST /sage_utils/image_metadata",
         "POST /sage_utils/check_dataset_text",
         "POST /sage_utils/read_dataset_text",
-        "POST /sage_utils/save_dataset_text"
+        "POST /sage_utils/save_dataset_text",
+        "POST /sage_utils/browse_folder",
+        "POST /sage_utils/browse_directory_tree",
+        "POST /sage_utils/copy_image",
+        "POST /sage_utils/image"
     ])
     
     logging.info("Gallery routes registered successfully")
