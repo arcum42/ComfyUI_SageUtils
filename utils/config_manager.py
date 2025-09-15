@@ -44,6 +44,10 @@ llm_prompts = prompts_manager.load()
 metadata_template_manager = ConfigManager("metadata_templates")
 metadata_templates = metadata_template_manager.load()
 
+# Tag library management for prompt builder
+tag_library_manager = ConfigManager("default_tag_library")
+default_tag_library = tag_library_manager.load()
+
 # Enhanced settings management using the new settings system
 # This maintains backwards compatibility while providing enhanced functionality
 try:

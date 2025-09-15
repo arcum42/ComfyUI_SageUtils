@@ -35,6 +35,7 @@ def register_routes(routes_instance):
         from . import notes_routes
         from . import gallery_routes
         from . import wildcard_routes
+        from . import tag_routes
         from . import utility_routes
         
         # Track successful registrations
@@ -48,6 +49,7 @@ def register_routes(routes_instance):
             ("Notes", notes_routes),
             ("Gallery", gallery_routes),
             ("Wildcard", wildcard_routes),
+            ("Tag", tag_routes),
             ("Utility", utility_routes)
         ]
         
@@ -157,6 +159,11 @@ ROUTE_GROUPS = {
         'description': 'Wildcard system and prompt generation',
         'endpoints': 5,
         'module': 'wildcard_routes'
+    },
+    'tag': {
+        'description': 'Tag library management and prompt tagging',
+        'endpoints': 5,
+        'module': 'tag_routes'
     },
     'utility': {
         'description': 'Utility functions and miscellaneous endpoints',

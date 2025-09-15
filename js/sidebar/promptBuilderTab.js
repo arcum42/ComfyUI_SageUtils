@@ -3,6 +3,7 @@
  */
 
 import { promptGenerationComponent } from '../components/promptBuilder/promptGeneration.js';
+import { tagLibraryComponent } from '../components/promptBuilder/tagLibrary.js';
 
 /**
  * Creates the main Prompt Builder tab content
@@ -30,6 +31,14 @@ export function createPromptBuilderTab(container) {
     const generationSection = createGenerationSection();
     contentArea.appendChild(generationSection);
 
+    // Add tag library section (collapsible)
+    const tagLibrarySection = createTagLibrarySection();
+    contentArea.appendChild(tagLibrarySection);
+
+    // TODO: Add saved prompts section
+    // const savedPromptsSection = createSavedPromptsSection();
+    // contentArea.appendChild(savedPromptsSection);
+
     wrapper.appendChild(contentArea);
     container.appendChild(wrapper);
 
@@ -40,6 +49,7 @@ export function createPromptBuilderTab(container) {
     return {
         wrapper,
         generationSection,
+        tagLibrarySection,
         destroy: () => {
             destroyPromptBuilderTab(container);
         }
@@ -106,6 +116,219 @@ function createGenerationSection() {
     }
 
     return section;
+}
+
+/**
+ * Creates the tag library section
+ * @returns {HTMLElement} - The tag library section element
+ */
+function createTagLibrarySection() {
+    const section = document.createElement('div');
+    section.className = 'prompt-builder-section tag-library-section';
+
+    const sectionHeader = document.createElement('div');
+    sectionHeader.className = 'section-header collapsible-header';
+    
+    const sectionTitle = document.createElement('h3');
+    sectionTitle.textContent = '🏷️ Tag Library';
+    sectionTitle.className = 'section-title';
+    
+    const collapseBtn = document.createElement('button');
+    collapseBtn.className = 'collapse-btn';
+    collapseBtn.textContent = '▼';
+    collapseBtn.title = 'Toggle tag library';
+    
+    sectionHeader.appendChild(sectionTitle);
+    sectionHeader.appendChild(collapseBtn);
+    section.appendChild(sectionHeader);
+
+    const sectionContent = document.createElement('div');
+    sectionContent.className = 'section-content';
+    
+    // Add collapsible functionality
+    let isCollapsed = false; // Default: expanded
+    
+    const toggleCollapse = () => {
+        isCollapsed = !isCollapsed;
+        sectionContent.style.display = isCollapsed ? 'none' : 'block';
+        collapseBtn.textContent = isCollapsed ? '▶' : '▼';
+        section.classList.toggle('collapsed', isCollapsed);
+    };
+    
+    sectionHeader.addEventListener('click', toggleCollapse);
+
+    try {
+        // Create tag library component with tag insertion callbacks
+        const tagLibraryOptions = {
+            allowEdit: true,
+            showSearch: true,
+            compactMode: false,
+            onTagInsert: (tag) => {
+                insertTagIntoActivePrompt(tag);
+            },
+            onTagSetInsert: (tagSet, tagsText) => {
+                insertTagIntoActivePrompt(tagsText);
+            }
+        };
+        
+        // Show loading state while component loads
+        sectionContent.innerHTML = '<div class="loading-state">Loading tag library...</div>';
+        
+        // Create the component asynchronously
+        tagLibraryComponent.create(sectionContent, tagLibraryOptions).then(() => {
+            // Component loaded successfully
+            console.log('Tag library component loaded successfully');
+        }).catch((error) => {
+            console.error('Failed to load tag library component:', error);
+            // Show error fallback
+            sectionContent.innerHTML = `
+                <div class="tag-library-fallback">
+                    <div style="padding: 16px;">
+                        <h4>Tag Library</h4>
+                        <p>Error loading tag library: ${error.message}</p>
+                        <p>Please check the console for more details.</p>
+                    </div>
+                </div>
+            `;
+        });
+    } catch (error) {
+        console.error('Error creating tag library component:', error);
+        // Fallback content
+        const fallbackContent = document.createElement('div');
+        fallbackContent.className = 'tag-library-fallback';
+        fallbackContent.innerHTML = `
+            <div style="padding: 16px;">
+                <h4>Tag Library</h4>
+                <p>Error loading tag library: ${error.message}</p>
+                <p>Please check the console for more details.</p>
+            </div>
+        `;
+        sectionContent.appendChild(fallbackContent);
+    }
+    
+    section.appendChild(sectionContent);
+    return section;
+}
+
+/**
+ * Insert a tag into the active prompt field
+ * @param {string} tag - The tag text to insert
+ */
+function insertTagIntoActivePrompt(tag) {
+    try {
+        // Find the currently focused prompt input
+        const activeInput = document.querySelector('.prompt-generation-section .positive-prompt:focus, .prompt-generation-section .negative-prompt:focus');
+        
+        if (activeInput) {
+            // Insert at cursor position
+            const start = activeInput.selectionStart;
+            const end = activeInput.selectionEnd;
+            const currentValue = activeInput.value;
+            
+            // Add comma and space if there's existing text and it doesn't end with a comma or space
+            let insertText = tag;
+            if (start > 0 && !currentValue.slice(start - 1, start).match(/[,\s]/)) {
+                insertText = ', ' + tag;
+            }
+            
+            // Insert the tag
+            const newValue = currentValue.slice(0, start) + insertText + currentValue.slice(end);
+            activeInput.value = newValue;
+            
+            // Update cursor position
+            const newCursorPos = start + insertText.length;
+            activeInput.setSelectionRange(newCursorPos, newCursorPos);
+            
+            // Trigger input event to update any bound data
+            activeInput.dispatchEvent(new Event('input', { bubbles: true }));
+            
+            // Keep focus on the input
+            activeInput.focus();
+            
+            // Show feedback
+            showTagInsertionFeedback(tag);
+        } else {
+            // No active input, copy to clipboard instead
+            copyToClipboard(tag);
+            showTagInsertionFeedback(tag, 'clipboard');
+        }
+    } catch (error) {
+        console.error('Error inserting tag:', error);
+        // Fallback to clipboard
+        copyToClipboard(tag);
+        showTagInsertionFeedback(tag, 'clipboard');
+    }
+}
+
+/**
+ * Copy text to clipboard
+ * @param {string} text - Text to copy
+ */
+async function copyToClipboard(text) {
+    try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            await navigator.clipboard.writeText(text);
+            return true;
+        } else {
+            // Fallback for older browsers
+            const textArea = document.createElement('textarea');
+            textArea.value = text;
+            textArea.style.position = 'fixed';
+            textArea.style.left = '-9999px';
+            document.body.appendChild(textArea);
+            textArea.select();
+            const success = document.execCommand('copy');
+            document.body.removeChild(textArea);
+            return success;
+        }
+    } catch (error) {
+        console.error('Failed to copy to clipboard:', error);
+        return false;
+    }
+}
+
+/**
+ * Show feedback for tag insertion
+ * @param {string} tag - The inserted tag
+ * @param {string} method - 'insert' or 'clipboard'
+ */
+function showTagInsertionFeedback(tag, method = 'insert') {
+    const message = method === 'clipboard' 
+        ? `Copied "${tag}" to clipboard`
+        : `Inserted "${tag}" into prompt`;
+    
+    // Find or create feedback element
+    let feedback = document.querySelector('.tag-insertion-feedback');
+    if (!feedback) {
+        feedback = document.createElement('div');
+        feedback.className = 'tag-insertion-feedback';
+        document.body.appendChild(feedback);
+    }
+    
+    feedback.textContent = message;
+    feedback.style.cssText = `
+        position: fixed;
+        top: 50px;
+        right: 20px;
+        padding: 8px 12px;
+        background: var(--primary-color, #4a9eff);
+        color: white;
+        border-radius: 4px;
+        font-size: 12px;
+        z-index: 10000;
+        opacity: 1;
+        transition: opacity 0.3s ease;
+    `;
+    
+    // Auto-hide after 2 seconds
+    setTimeout(() => {
+        feedback.style.opacity = '0';
+        setTimeout(() => {
+            if (feedback.parentNode) {
+                feedback.parentNode.removeChild(feedback);
+            }
+        }, 300);
+    }, 2000);
 }
 
 /**
@@ -198,20 +421,92 @@ function addPromptBuilderStyles() {
             color: white;
         }
 
-        .prompt-builder-fallback {
+        .tag-library-section {
+            border-color: var(--success-color, #6bcf7f);
+        }
+
+        .tag-library-section .section-header {
+            background: linear-gradient(135deg, var(--success-color, #6bcf7f) 0%, var(--success-dark, #4a9a5a) 100%);
+            cursor: pointer;
+        }
+
+        .tag-library-section .section-title {
+            color: white;
+        }
+
+        .collapsible-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            user-select: none;
+        }
+
+        .collapse-btn {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 12px;
+            cursor: pointer;
+            padding: 4px;
+            border-radius: 3px;
+            transition: background-color 0.2s ease;
+        }
+
+        .collapse-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .section-content {
+            padding: 16px;
+        }
+
+        .tag-library-section.collapsed .section-content {
+            display: none;
+        }
+
+        .tag-library-fallback {
             padding: 16px;
             text-align: center;
             color: var(--text-secondary, #cccccc);
         }
 
-        .prompt-builder-fallback h4 {
+        .tag-library-fallback h4 {
             color: var(--error-color, #ff6b6b);
             margin: 0 0 12px 0;
         }
 
-        .prompt-builder-fallback p {
+        .tag-library-fallback p {
             margin: 8px 0;
             font-size: 14px;
+        }
+
+        .loading-state {
+            padding: 32px 16px;
+            text-align: center;
+            color: var(--text-secondary, #cccccc);
+            font-size: 14px;
+        }
+
+        .loading-state::before {
+            content: '';
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid var(--border-color, #444);
+            border-radius: 50%;
+            border-top-color: var(--primary-color, #4a9eff);
+            animation: spin 1s linear infinite;
+            margin-right: 8px;
+            vertical-align: middle;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .tag-insertion-feedback {
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+            font-weight: 500;
         }
 
         /* Responsive design */

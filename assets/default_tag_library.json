@@ -1,0 +1,323 @@
+{
+  "version": "1.0",
+  "description": "Default tag library for SageUtils Prompt Builder",
+  "categories": [
+    {
+      "id": "quality",
+      "name": "Quality Tags",
+      "description": "Tags for image quality and detail",
+      "color": "#4a9eff",
+      "order": 0,
+      "tags": [
+        "masterpiece",
+        "best quality",
+        "high quality",
+        "absurdres",
+        "detailed",
+        "extremely detailed",
+        "intricate details",
+        "sharp focus",
+        "crisp",
+        "clear",
+        "perfect",
+        "flawless",
+        "stunning",
+        "beautiful",
+        "gorgeous"
+      ],
+      "sets": [
+        {
+          "id": "pony_quality",
+          "name": "Pony Quality",
+          "description": "Standard quality tags for Pony models",
+          "tags": ["score_9", "score_8_up", "score_7_up", "score_6_up", "score_5_up", "score_4_up"]
+        },
+        {
+          "id": "anime_quality",
+          "name": "Anime Quality",
+          "description": "Quality tags for anime/manga style",
+          "tags": ["masterpiece", "best quality", "high quality", "absurdres"]
+        },
+        {
+          "id": "realistic_quality",
+          "name": "Realistic Quality",
+          "description": "Quality tags for realistic/photographic style",
+          "tags": ["photorealistic", "hyperrealistic", "sharp focus", "detailed"]
+        }
+      ]
+    },
+    {
+      "id": "pony_source",
+      "name": "Pony Source",
+      "description": "Source Tags for Pony v6",
+      "tags": [
+        "source_pony",
+        "source_furry", 
+        "source_anime", 
+        "source_cartoon", 
+        "source_3d", 
+        "source_western", 
+        "source_comic", 
+        "source_monster"
+      ]
+    },
+    {
+        "id": "pony_rating",
+        "name": "Pony Rating",
+        "description": "Rating Tags for Pony v6",
+        "tags": [
+          "rating_safe",
+          "rating_questionable",
+          "rating_explicit"
+        ]
+    },
+    {
+      "id": "style",
+      "name": "Art Style",
+      "description": "Artistic styles and mediums",
+      "color": "#ff6b6b",
+      "order": 1,
+      "tags": [
+        "anime",
+        "manga",
+        "realistic",
+        "semi-realistic",
+        "cartoon",
+        "digital art",
+        "oil painting",
+        "watercolor",
+        "pencil drawing",
+        "concept art",
+        "illustration",
+        "photorealistic",
+        "3d render",
+        "pixel art",
+        "vector art",
+        "sketch",
+        "painting",
+        "photography"
+      ],
+      "sets": [
+        {
+          "id": "anime_styles",
+          "name": "Anime Styles",
+          "description": "Common anime and manga styles",
+          "tags": ["anime", "manga", "cel shading", "flat colors"]
+        },
+        {
+          "id": "realistic_styles",
+          "name": "Realistic Styles",
+          "description": "Photographic and realistic rendering styles",
+          "tags": ["photorealistic", "hyperrealistic", "photography", "cinematic"]
+        },
+        {
+          "id": "artistic_mediums",
+          "name": "Artistic Mediums",
+          "description": "Traditional and digital art mediums",
+          "tags": ["oil painting", "watercolor", "digital art", "pencil drawing"]
+        }
+      ]
+    },
+    {
+      "id": "lighting",
+      "name": "Lighting",
+      "description": "Lighting and atmosphere tags",
+      "color": "#ffd93d",
+      "order": 2,
+      "tags": [
+        "soft lighting",
+        "dramatic lighting",
+        "natural lighting",
+        "golden hour",
+        "blue hour",
+        "sunset",
+        "sunrise",
+        "rim lighting",
+        "backlighting",
+        "studio lighting",
+        "neon lighting",
+        "ambient lighting",
+        "moody lighting",
+        "cinematic lighting",
+        "volumetric lighting"
+      ],
+      "sets": [
+        {
+          "id": "time_of_day",
+          "name": "Time of Day",
+          "description": "Time-based lighting conditions",
+          "tags": ["golden hour", "blue hour", "sunset", "sunrise", "midday", "twilight"]
+        },
+        {
+          "id": "studio_lighting",
+          "name": "Studio Lighting",
+          "description": "Professional photography lighting setups",
+          "tags": ["studio lighting", "soft lighting", "rim lighting", "key lighting"]
+        }
+      ]
+    },
+    {
+      "id": "composition",
+      "name": "Composition",
+      "description": "Camera angles and framing",
+      "color": "#6bcf7f",
+      "order": 3,
+      "tags": [
+        "close-up",
+        "medium shot",
+        "full body",
+        "portrait",
+        "landscape",
+        "wide shot",
+        "overhead view",
+        "low angle",
+        "high angle",
+        "dutch angle",
+        "rule of thirds",
+        "centered",
+        "dynamic angle",
+        "from behind",
+        "from side",
+        "front view"
+      ],
+      "sets": [
+        {
+          "id": "portrait_shots",
+          "name": "Portrait Shots",
+          "description": "Character and portrait framing",
+          "tags": ["close-up", "portrait", "headshot", "upper body"]
+        },
+        {
+          "id": "camera_angles",
+          "name": "Camera Angles",
+          "description": "Various camera angle perspectives",
+          "tags": ["low angle", "high angle", "dutch angle", "overhead view"]
+        }
+      ]
+    },
+    {
+      "id": "character",
+      "name": "Character",
+      "description": "Character-related tags",
+      "color": "#ff9ff3",
+      "order": 4,
+      "tags": [
+        "1girl",
+        "1boy",
+        "solo",
+        "multiple girls",
+        "multiple boys",
+        "young",
+        "adult",
+        "elderly",
+        "child",
+        "teenager",
+        "mature",
+        "cute",
+        "beautiful",
+        "handsome",
+        "elegant"
+      ],
+      "sets": [
+        {
+          "id": "character_count",
+          "name": "Character Count",
+          "description": "Number and gender of characters",
+          "tags": ["1girl", "1boy", "solo", "multiple girls", "multiple boys"]
+        },
+        {
+          "id": "age_groups",
+          "name": "Age Groups",
+          "description": "Character age descriptions",
+          "tags": ["young", "adult", "mature", "elderly", "child", "teenager"]
+        }
+      ]
+    },
+    {
+      "id": "colors",
+      "name": "Colors",
+      "description": "Color-related tags",
+      "color": "#9c88ff",
+      "order": 5,
+      "tags": [
+        "red",
+        "blue",
+        "green",
+        "yellow",
+        "purple",
+        "orange",
+        "pink",
+        "black",
+        "white",
+        "gray",
+        "brown",
+        "colorful",
+        "monochrome",
+        "sepia",
+        "vibrant colors",
+        "pastel colors"
+      ],
+      "sets": [
+        {
+          "id": "primary_colors",
+          "name": "Primary Colors",
+          "description": "Basic color palette",
+          "tags": ["red", "blue", "yellow", "green", "purple", "orange"]
+        },
+        {
+          "id": "color_styles",
+          "name": "Color Styles",
+          "description": "Color treatment and mood",
+          "tags": ["colorful", "monochrome", "vibrant colors", "pastel colors", "sepia"]
+        }
+      ]
+    },
+    {
+      "id": "mood",
+      "name": "Mood & Atmosphere",
+      "description": "Emotional and atmospheric tags",
+      "color": "#ff6b9d",
+      "order": 6,
+      "tags": [
+        "peaceful",
+        "serene",
+        "dramatic",
+        "mysterious",
+        "romantic",
+        "melancholic",
+        "joyful",
+        "energetic",
+        "calm",
+        "intense",
+        "dreamy",
+        "ethereal",
+        "dark",
+        "bright",
+        "cozy",
+        "epic"
+      ],
+      "sets": [
+        {
+          "id": "positive_moods",
+          "name": "Positive Moods",
+          "description": "Uplifting and positive atmospheres",
+          "tags": ["joyful", "peaceful", "bright", "cozy", "romantic"]
+        },
+        {
+          "id": "dramatic_moods",
+          "name": "Dramatic Moods",
+          "description": "Intense and dramatic atmospheres",
+          "tags": ["dramatic", "mysterious", "intense", "epic", "dark"]
+        }
+      ]
+    }
+  ],
+  "metadata": {
+    "created": "2025-09-15",
+    "version": "1.0",
+    "total_categories": 7,
+    "total_tags": 0,
+    "total_sets": 0,
+    "description": "Comprehensive default tag library for AI image generation prompt building"
+  }
+}
