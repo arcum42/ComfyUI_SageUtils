@@ -1,7 +1,7 @@
 [project]
 name = "comfyui_sageutils"
 description = "Sage Utils offers quality-of-life enhancements for ComfyUI through custom nodes that simplify metadata creation, model and lora management, and other frequent tasks. It supports A1111/Civitai metadata formats and includes various utility nodes to improve workflow convenience. It also has nodes for giving ollama (0.5.1+)models descriptions and images to generate a prompt."
-version = "0.9.0"
+version = "0.9.1"
 license = {file = "LICENSE"}
 
 [project.urls]
