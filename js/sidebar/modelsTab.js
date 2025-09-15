@@ -79,81 +79,253 @@ function createModelsHeader() {
  */
 function createModelsFilterControls() {
     // Create individual filter elements
-    const { container: filterContainer, select: filterSelector } = createFilterSection('Filter by Folder:', FILTER_OPTIONS.folderType);
-    const { container: searchContainer, input: searchInput } = createSearchSection();
-    const { container: lastUsedContainer, select: lastUsedSelector } = createFilterSection('Filter by Last Used:', FILTER_OPTIONS.lastUsed);
-    const { container: updateContainer, select: updateSelector } = createFilterSection('Filter by Updates:', FILTER_OPTIONS.updates);
-    const { container: sortContainer, select: sortSelector } = createFilterSection('Sort by:', FILTER_OPTIONS.sort);
+    const { container: filterContainer, select: filterSelector } = createFilterSection('Folder:', FILTER_OPTIONS.folderType);
+    const { container: searchContainer, input: searchInput } = createSearchSection('', 'Type to search models...');
+    const { container: lastUsedContainer, select: lastUsedSelector } = createFilterSection('Last Used:', FILTER_OPTIONS.lastUsed);
+    const { container: updateContainer, select: updateSelector } = createFilterSection('Updates:', FILTER_OPTIONS.updates);
     const { container: nsfwContainer, checkbox: nsfwCheckbox } = createToggleSection('Show NSFW Images', 'nsfw-toggle');
+
+    // Update filter dropdown styling to match gallery
+    [filterSelector, lastUsedSelector, updateSelector].forEach(select => {
+        select.style.cssText = `
+            width: 100%;
+            padding: 4px 8px;
+            background: #333;
+            color: #fff;
+            border: 1px solid #555;
+            border-radius: 4px;
+            font-size: 11px;
+            cursor: pointer;
+            margin-bottom: 0;
+        `;
+    });
+
+    // Update filter labels to match gallery styling with middle alignment
+    [filterContainer, lastUsedContainer, updateContainer].forEach(container => {
+        const label = container.querySelector('label');
+        if (label) {
+            label.style.cssText = `
+                display: block;
+                color: #ccc;
+                font-size: 11px;
+                margin-bottom: 4px;
+                font-weight: normal;
+            `;
+        }
+        container.style.cssText = `
+            margin-bottom: 0;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        `;
+    });
+
+    // Create sort dropdown (without direction options)
+    const sortContainer = document.createElement('div');
+    sortContainer.style.cssText = `
+        display: flex;
+        gap: 8px;
+        align-items: center;
+    `;
+
+    const sortLabel = document.createElement('label');
+    sortLabel.textContent = 'Sort:';
+    sortLabel.style.cssText = `
+        color: #ccc;
+        font-size: 12px;
+        min-width: 35px;
+    `;
+
+    const sortSelector = document.createElement('select');
+    sortSelector.style.cssText = `
+        flex: 1;
+        padding: 4px 8px;
+        background: #333;
+        border: 1px solid #555;
+        border-radius: 4px;
+        color: white;
+        font-size: 11px;
+        cursor: pointer;
+    `;
+
+    // Add sort options without direction suffixes
+    const baseSortOptions = [
+        { value: 'name', text: 'Name' },
+        { value: 'lastused', text: 'Last Used' },
+        { value: 'size', text: 'File Size' },
+        { value: 'type', text: 'Folder Type' }
+    ];
+
+    baseSortOptions.forEach(option => {
+        const optionElement = document.createElement('option');
+        optionElement.value = option.value;
+        optionElement.textContent = option.text;
+        sortSelector.appendChild(optionElement);
+    });
+
+    // Create sort order button
+    const sortOrderButton = document.createElement('button');
+    sortOrderButton.textContent = '↑';
+    sortOrderButton.title = 'Toggle sort direction (Ascending/Descending)';
+    sortOrderButton.style.cssText = `
+        background: #444;
+        color: white;
+        border: none;
+        padding: 4px 8px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 12px;
+        min-width: 30px;
+        transition: background-color 0.2s;
+    `;
+
+    sortOrderButton.addEventListener('mouseenter', () => {
+        sortOrderButton.style.backgroundColor = '#555';
+    });
+
+    sortOrderButton.addEventListener('mouseleave', () => {
+        sortOrderButton.style.backgroundColor = '#444';
+    });
+
+    sortContainer.appendChild(sortLabel);
+    sortContainer.appendChild(sortSelector);
+    sortContainer.appendChild(sortOrderButton);
+
+    // Update NSFW checkbox styling to match gallery
+    nsfwContainer.style.cssText = `
+        margin-bottom: 0;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    `;
+    
+    const nsfwLabel = nsfwContainer.querySelector('label');
+    if (nsfwLabel) {
+        nsfwLabel.style.cssText = `
+            color: #ccc;
+            font-size: 11px;
+            cursor: pointer;
+            user-select: none;
+            font-weight: normal;
+        `;
+    }
+    
+    nsfwCheckbox.style.cssText = `
+        margin: 0;
+        transform: scale(1.1);
+    `;
 
     // Create main filters container with visual grouping
     const filtersMainContainer = document.createElement('div');
     filtersMainContainer.style.cssText = `
-        background: #2d2d2d;
-        border: 1px solid #3e3e42;
-        border-radius: 8px;
+        background: #2a2a2a;
+        border: 1px solid #444;
+        border-radius: 6px;
         padding: 15px;
-        margin-bottom: 20px;
+        margin-bottom: 15px;
     `;
 
     // Create filters header
-    const filtersHeader = document.createElement('div');
+    const filtersHeader = document.createElement('h4');
     filtersHeader.style.cssText = `
-        font-weight: bold;
-        color: #569cd6;
-        margin-bottom: 15px;
+        margin: 0 0 10px 0;
+        color: #4CAF50;
         font-size: 14px;
-        border-bottom: 1px solid #3e3e42;
-        padding-bottom: 5px;
     `;
-    filtersHeader.textContent = '🔍 Filter & Search Options';
+    filtersHeader.textContent = 'Folder & Search Options';
 
-    // Search gets full width
-    searchContainer.style.marginBottom = '15px';
+    // Search gets full width and moved to bottom
+    searchContainer.style.cssText = `
+        margin-top: 15px;
+        display: flex;
+        gap: 8px;
+        align-items: center;
+    `;
+    
+    // Clear any existing content and rebuild search container
+    searchContainer.innerHTML = '';
+    
+    // Update search input styling to match gallery
+    searchInput.style.cssText = `
+        flex: 1;
+        padding: 6px 10px;
+        background: #333;
+        border: 1px solid #555;
+        border-radius: 4px;
+        color: white;
+        font-size: 12px;
+    `;
 
-    // Create primary filters row (most commonly used)
-    const primaryFiltersContainer = document.createElement('div');
-    primaryFiltersContainer.style.cssText = `
+    // Add search label for better UX
+    const searchLabel = document.createElement('label');
+    searchLabel.textContent = 'Search:';
+    searchLabel.style.cssText = `
+        color: #ccc;
+        font-size: 12px;
+        min-width: 50px;
+        white-space: nowrap;
+    `;
+    
+    // Build search container with label and input
+    searchContainer.appendChild(searchLabel);
+    searchContainer.appendChild(searchInput);
+
+    // Create filters section (without sorting)
+    const filtersContainer = document.createElement('div');
+    filtersContainer.style.cssText = `
         display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 15px;
-        margin-bottom: 15px;
-        align-items: end;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 8px;
+        margin-bottom: 10px;
+        align-items: center;
     `;
 
-    // Create secondary filters row
-    const secondaryFiltersContainer = document.createElement('div');
-    secondaryFiltersContainer.style.cssText = `
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 15px;
-        align-items: end;
+    // Create filters subsection header
+    const filtersSubHeader = document.createElement('label');
+    filtersSubHeader.style.cssText = `
+        color: #ccc;
+        margin-bottom: 8px;
+        font-size: 12px;
+        font-weight: bold;
+        display: block;
+    `;
+    filtersSubHeader.textContent = 'Filters';
+
+    // Create sorting section
+    const sortingContainer = document.createElement('div');
+    sortingContainer.style.cssText = `
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        margin-bottom: 10px;
     `;
 
-    // Assemble the filters container
+    // Assemble the filters container (filters first, then sorting, then search at bottom)
     filtersMainContainer.appendChild(filtersHeader);
+    filtersMainContainer.appendChild(filtersSubHeader);
+    filtersMainContainer.appendChild(filtersContainer);
+    filtersMainContainer.appendChild(sortingContainer);
     filtersMainContainer.appendChild(searchContainer);
-    filtersMainContainer.appendChild(primaryFiltersContainer);
-    filtersMainContainer.appendChild(secondaryFiltersContainer);
 
-    // Group primary filters (Type and Sort are most commonly used)
-    primaryFiltersContainer.appendChild(filterContainer);
-    primaryFiltersContainer.appendChild(sortContainer);
+    // Add filters to the filters row
+    filtersContainer.appendChild(filterContainer);
+    filtersContainer.appendChild(lastUsedContainer);
+    filtersContainer.appendChild(updateContainer);
 
-    // Group secondary filters
-    secondaryFiltersContainer.appendChild(lastUsedContainer);
-    secondaryFiltersContainer.appendChild(updateContainer);
+    // Add sorting to the sorting row
+    sortingContainer.appendChild(sortContainer);
 
     return {
         filtersMainContainer,
         searchContainer, 
         searchInput,
-        primaryFiltersContainer,
+        filtersContainer,
+        sortingContainer,
         filterContainer,
         filterSelector,
         sortContainer,
         sortSelector,
-        secondaryFiltersContainer,
+        sortOrderButton,
         lastUsedContainer,
         lastUsedSelector,
         updateContainer,
@@ -564,6 +736,7 @@ function setupModelsEventHandlers(filterControls, fileSelector, actionButtons, i
             
             // Get current filter selections from the models tab
             const currentSort = filterControls.sortSelector.value;
+            const isDescending = filterControls.sortOrderButton.textContent === '↓';
             const currentFolderFilter = filterControls.filterSelector.value;
             
             // Build filter description for the report
@@ -580,7 +753,7 @@ function setupModelsEventHandlers(filterControls, fileSelector, actionButtons, i
                 sortBy: currentSort,
                 folderFilter: currentFolderFilter,
                 filterDescription: filterDescription,
-                sortDescription: ` • Sorted by: ${filterControls.sortSelector.options[filterControls.sortSelector.selectedIndex].text}`,
+                sortDescription: ` • Sorted by: ${filterControls.sortSelector.options[filterControls.sortSelector.selectedIndex].text} (${isDescending ? 'Descending' : 'Ascending'})`,
                 progressCallback: (progress, message) => {
                     // Map the HTML generation progress to the 40-95% range
                     const adjustedProgress = 40 + (progress * 0.55);
@@ -614,6 +787,19 @@ function setupModelsEventHandlers(filterControls, fileSelector, actionButtons, i
     filterControls.lastUsedSelector.addEventListener('change', updateFileList);
     filterControls.updateSelector.addEventListener('change', updateFileList);
     filterControls.sortSelector.addEventListener('change', updateFileList);
+    
+    // Add sort order button handler
+    filterControls.sortOrderButton.addEventListener('click', () => {
+        // Toggle the sort order button
+        const isDescending = filterControls.sortOrderButton.textContent === '↓';
+        filterControls.sortOrderButton.textContent = isDescending ? '↑' : '↓';
+        filterControls.sortOrderButton.title = isDescending ? 
+            'Toggle sort direction (Ascending/Descending)' : 
+            'Toggle sort direction (Descending/Ascending)';
+        
+        // Trigger re-sort
+        updateFileList();
+    });
     
     // NSFW checkbox should only affect the info display, not the file list
     filterControls.nsfwCheckbox.addEventListener('change', async () => {
@@ -842,7 +1028,8 @@ function setupModelsEventHandlers(filterControls, fileSelector, actionButtons, i
             });
 
             // Sort files
-            const sortedFiles = sortFiles(filteredFiles, sortBy, allFiles);
+            const isDescending = filterControls.sortOrderButton.textContent === '↓';
+            const sortedFiles = sortFiles(filteredFiles, sortBy, allFiles, isDescending);
             
             if (sortedFiles.length === 0) {
                 const filterText = filterType === 'all' ? 'model files' : `files from ${filterType} folder`;
@@ -873,37 +1060,30 @@ function setupModelsEventHandlers(filterControls, fileSelector, actionButtons, i
 }
 
 // Helper function to sort files based on selected criteria
-function sortFiles(files, sortBy, allFiles) {
+function sortFiles(files, sortBy, allFiles, isDescending = false) {
     return files.sort((a, b) => {
         const fileDataA = allFiles[a];
         const fileDataB = allFiles[b];
         const infoA = fileDataA ? fileDataA.info : {};
         const infoB = fileDataB ? fileDataB.info : {};
         
+        let result = 0;
+        
         switch (sortBy) {
             case 'name':
-                return a.localeCompare(b);
-            case 'name-desc':
-                return b.localeCompare(a);
+                result = a.localeCompare(b);
+                break;
             case 'lastused': {
                 const lastUsedA = (infoA && (infoA.lastUsed || infoA.last_accessed)) ? new Date(infoA.lastUsed || infoA.last_accessed) : new Date(0);
                 const lastUsedB = (infoB && (infoB.lastUsed || infoB.last_accessed)) ? new Date(infoB.lastUsed || infoB.last_accessed) : new Date(0);
-                return lastUsedB - lastUsedA; // Recent first
-            }
-            case 'lastused-desc': {
-                const lastUsedA = (infoA && (infoA.lastUsed || infoA.last_accessed)) ? new Date(infoA.lastUsed || infoA.last_accessed) : new Date(0);
-                const lastUsedB = (infoB && (infoB.lastUsed || infoB.last_accessed)) ? new Date(infoB.lastUsed || infoB.last_accessed) : new Date(0);
-                return lastUsedA - lastUsedB; // Oldest first
+                result = lastUsedB - lastUsedA; // Most recent first by default
+                break;
             }
             case 'size': {
                 const sizeA = (infoA && infoA.file_size) ? infoA.file_size : 0;
                 const sizeB = (infoB && infoB.file_size) ? infoB.file_size : 0;
-                return sizeA - sizeB; // Small to large
-            }
-            case 'size-desc': {
-                const sizeA = (infoA && infoA.file_size) ? infoA.file_size : 0;
-                const sizeB = (infoB && infoB.file_size) ? infoB.file_size : 0;
-                return sizeB - sizeA; // Large to small
+                result = sizeB - sizeA; // Largest first by default
+                break;
             }
             case 'type': {
                 // Sort by folder type instead of Civitai model type
@@ -920,13 +1100,18 @@ function sortFiles(files, sortBy, allFiles) {
                 const typeB = getFolderType(b);
                 
                 if (typeA !== typeB) {
-                    return typeA.localeCompare(typeB);
+                    result = typeA.localeCompare(typeB);
+                } else {
+                    result = a.localeCompare(b); // Secondary sort by name
                 }
-                return a.localeCompare(b); // Secondary sort by name
+                break;
             }
             default:
-                return a.localeCompare(b);
+                result = a.localeCompare(b);
         }
+        
+        // Apply descending order if requested
+        return isDescending ? -result : result;
     });
 }
 
@@ -1012,6 +1197,18 @@ function organizeFolderStructure(sortedFiles, allFiles) {
 function createDropdownItems(folderStructure, sortBy, hashData, infoData, fileSelector, actionButtons, infoDisplay, filterControls) {
     const { dropdownMenu, dropdownButton } = fileSelector;
     
+    // Get sort direction from button
+    const isDescending = filterControls.sortOrderButton.textContent === '↓';
+    
+    // Create a combined data structure for sortFiles
+    const allFiles = {};
+    Object.values(folderStructure).flat().forEach(file => {
+        allFiles[file.fullPath] = {
+            info: file.info,
+            isCached: file.isCached
+        };
+    });
+    
     // Sort folders and create dropdown items
     const sortedFolders = Object.keys(folderStructure).sort((a, b) => {
         // Empty folder (root files) should come first
@@ -1024,7 +1221,7 @@ function createDropdownItems(folderStructure, sortBy, hashData, infoData, fileSe
     if (folderStructure['']) {
         const rootFiles = folderStructure[''];
         const rootFilePaths = rootFiles.map(file => file.fullPath);
-        const sortedRootFilePaths = sortFiles(rootFilePaths, sortBy, hashData, infoData);
+        const sortedRootFilePaths = sortFiles(rootFilePaths, sortBy, allFiles, isDescending);
         
         // Create a map for quick lookup
         const rootFileMap = new Map();
@@ -1136,9 +1333,21 @@ function createSubmenu(files, sortBy, hashData, infoData, fileSelector, actionBu
     const submenu = document.createElement('div');
     submenu.className = 'cache-dropdown-submenu';
     
+    // Get sort direction from button
+    const isDescending = filterControls.sortOrderButton.textContent === '↓';
+    
+    // Create a combined data structure for sortFiles
+    const allFiles = {};
+    files.forEach(file => {
+        allFiles[file.fullPath] = {
+            info: file.info,
+            isCached: file.isCached
+        };
+    });
+    
     // Sort files within the submenu using the same criteria
     const sortedSubFiles = files.map(file => file.fullPath);
-    const sortedSubFilePaths = sortFiles(sortedSubFiles, sortBy, hashData, infoData);
+    const sortedSubFilePaths = sortFiles(sortedSubFiles, sortBy, allFiles, isDescending);
     
     // Create a map for quick lookup
     const fileMap = new Map();
@@ -1297,14 +1506,21 @@ function assembleModelsTabLayout(container, components) {
     // Clear container
     container.innerHTML = '';
 
-    // Add header
+    // Create main content container with gallery-style padding
+    const contentContainer = document.createElement('div');
+    contentContainer.style.cssText = `
+        padding: 15px;
+    `;
+
+    // Add header with reduced padding to match gallery
+    header.style.padding = '10px 15px';
     container.appendChild(header);
 
     // Add organized filters section
-    container.appendChild(filterControls.filtersMainContainer);
+    contentContainer.appendChild(filterControls.filtersMainContainer);
 
     // Add file selector
-    container.appendChild(fileSelector.selectorContainer);
+    contentContainer.appendChild(fileSelector.selectorContainer);
     fileSelector.selectorContainer.appendChild(fileSelector.selectorLabelContainer);
     fileSelector.selectorContainer.appendChild(fileSelector.selector);
 
@@ -1312,7 +1528,7 @@ function assembleModelsTabLayout(container, components) {
     const buttonContainer = document.createElement('div');
     buttonContainer.style.cssText = `
         display: flex;
-        gap: 10px;
+        gap: 8px;
         margin-bottom: 15px;
         flex-wrap: wrap;
     `;
@@ -1320,20 +1536,23 @@ function assembleModelsTabLayout(container, components) {
     Object.values(actionButtons).forEach(button => {
         buttonContainer.appendChild(button);
     });
-    container.appendChild(buttonContainer);
+    contentContainer.appendChild(buttonContainer);
 
     // Add progress bar (initially hidden)
     const progressBar = createInlineProgressBar({
         title: 'Operation Progress',
         initialMessage: 'Ready...'
     });
-    container.appendChild(progressBar.container);
+    contentContainer.appendChild(progressBar.container);
 
     // Add NSFW checkbox right above model information
-    container.appendChild(filterControls.nsfwContainer);
+    contentContainer.appendChild(filterControls.nsfwContainer);
 
     // Add info display
-    container.appendChild(infoDisplay);
+    contentContainer.appendChild(infoDisplay);
+    
+    // Add content container to main container
+    container.appendChild(contentContainer);
     
     // Store progress bar reference for use in event handlers
     container._progressBar = progressBar;

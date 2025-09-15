@@ -106,48 +106,10 @@ export function createFolderSelectorAndControls() {
     folderSection.appendChild(browseButton);
 
     // Add controls to the same section
-    // Search bar
-    const searchContainer = document.createElement('div');
-    searchContainer.style.cssText = `
-        margin-top: 15px;
-        margin-bottom: 10px;
-        display: flex;
-        gap: 8px;
-    `;
-    
-    const searchInput = document.createElement('input');
-    searchInput.type = 'text';
-    searchInput.id = 'gallery-search';
-    searchInput.placeholder = 'Search images...';
-    searchInput.style.cssText = `
-        flex: 1;
-        padding: 6px 10px;
-        background: #333;
-        color: #fff;
-        border: 1px solid #555;
-        border-radius: 4px;
-        font-size: 12px;
-    `;
-    
-    const clearButton = document.createElement('button');
-    clearButton.textContent = '✕';
-    clearButton.title = 'Clear search';
-    clearButton.style.cssText = `
-        background: #666;
-        color: white;
-        border: none;
-        padding: 6px 10px;
-        border-radius: 4px;
-        cursor: pointer;
-        font-size: 12px;
-    `;
-    
-    searchContainer.appendChild(searchInput);
-    searchContainer.appendChild(clearButton);
-
     // Sort controls
     const sortContainer = document.createElement('div');
     sortContainer.style.cssText = `
+        margin-top: 15px;
         margin-bottom: 10px;
         display: flex;
         gap: 8px;
@@ -210,6 +172,7 @@ export function createFolderSelectorAndControls() {
     // Thumbnail size and control buttons
     const buttonsContainer = document.createElement('div');
     buttonsContainer.style.cssText = `
+        margin-bottom: 10px;
         display: flex;
         gap: 8px;
         flex-wrap: wrap;
@@ -272,9 +235,59 @@ export function createFolderSelectorAndControls() {
     buttonsContainer.appendChild(refreshButton);
     buttonsContainer.appendChild(viewModeButton);
 
-    folderSection.appendChild(searchContainer);
+    // Search bar - moved to bottom to match Models tab
+    const searchContainer = document.createElement('div');
+    searchContainer.style.cssText = `
+        margin-top: 15px;
+        display: flex;
+        gap: 8px;
+        align-items: center;
+    `;
+    
+    // Add search label for better UX (matching Models tab)
+    const searchLabel = document.createElement('label');
+    searchLabel.textContent = 'Search:';
+    searchLabel.style.cssText = `
+        color: #ccc;
+        font-size: 12px;
+        min-width: 50px;
+        white-space: nowrap;
+    `;
+    
+    const searchInput = document.createElement('input');
+    searchInput.type = 'text';
+    searchInput.id = 'gallery-search';
+    searchInput.placeholder = 'Search images...';
+    searchInput.style.cssText = `
+        flex: 1;
+        padding: 6px 10px;
+        background: #333;
+        color: #fff;
+        border: 1px solid #555;
+        border-radius: 4px;
+        font-size: 12px;
+    `;
+    
+    const clearButton = document.createElement('button');
+    clearButton.textContent = '✕';
+    clearButton.title = 'Clear search';
+    clearButton.style.cssText = `
+        background: #666;
+        color: white;
+        border: none;
+        padding: 6px 10px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 12px;
+    `;
+    
+    searchContainer.appendChild(searchLabel);
+    searchContainer.appendChild(searchInput);
+    searchContainer.appendChild(clearButton);
+
     folderSection.appendChild(sortContainer);
     folderSection.appendChild(buttonsContainer);
+    folderSection.appendChild(searchContainer);
 
     return {
         folderSection,
