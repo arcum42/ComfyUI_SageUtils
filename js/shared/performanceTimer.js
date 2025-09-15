@@ -34,7 +34,11 @@ class PerformanceTimer {
         if (!this.enabled) return 0.0;
         
         if (!this.startTimes.has(operation)) {
-            console.warn(`[TIMING] Timer '${operation}' was never started`);
+            // Only warn if explicitly enabled for debugging
+            if (localStorage.getItem('sageutils_perf_monitoring') === 'true' || 
+                new URLSearchParams(window.location.search).get('sageutils_perf') === '1') {
+                console.warn(`[TIMING] Timer '${operation}' was never started`);
+            }
             return 0.0;
         }
         
@@ -76,7 +80,11 @@ class PerformanceTimer {
         const durationFromStart = currentTime - this.initStartTime;
         this.initializationTimes.set(milestone, durationFromStart);
         
-        console.log(`[TIMING] Initialization milestone '${milestone}': ${durationFromStart.toFixed(4)}ms from start`);
+        // Only log if explicitly enabled
+        if (this.enabled && (localStorage.getItem('sageutils_perf_monitoring') === 'true' || 
+            new URLSearchParams(window.location.search).get('sageutils_perf') === '1')) {
+            console.log(`[TIMING] Initialization milestone '${milestone}': ${durationFromStart.toFixed(4)}ms from start`);
+        }
     }
     
     completeInitialization() {
@@ -90,7 +98,11 @@ class PerformanceTimer {
         this.initializationTimes.set('__complete__', totalTime);
         this.initializationComplete = true;
         
-        console.log(`[TIMING] Total initialization time: ${totalTime.toFixed(4)}ms`);
+        // Only log if explicitly enabled
+        if (this.enabled && (localStorage.getItem('sageutils_perf_monitoring') === 'true' || 
+            new URLSearchParams(window.location.search).get('sageutils_perf') === '1')) {
+            console.log(`[TIMING] Total initialization time: ${totalTime.toFixed(4)}ms`);
+        }
         return totalTime;
     }
     
@@ -234,18 +246,29 @@ class PerformanceTimer {
                 })
             });
             
-            if (!response.ok) {
+            if (!response.ok && (localStorage.getItem('sageutils_perf_monitoring') === 'true' || 
+                new URLSearchParams(window.location.search).get('sageutils_perf') === '1')) {
                 console.warn('[TIMING] Failed to send timing data to server:', response.statusText);
             }
         } catch (error) {
-            console.warn('[TIMING] Error sending timing data to server:', error);
+            if (localStorage.getItem('sageutils_perf_monitoring') === 'true' || 
+                new URLSearchParams(window.location.search).get('sageutils_perf') === '1') {
+                console.warn('[TIMING] Error sending timing data to server:', error);
+            }
         }
     }
 }
 
-// Global timer instances
+// Global timer instances - disabled by default unless explicitly enabled
 const javascriptTimer = new PerformanceTimer("JavaScript");
 const uiTimer = new PerformanceTimer("UI");
+
+// Disable timers by default unless explicitly enabled
+if (!(localStorage.getItem('sageutils_perf_monitoring') === 'true' || 
+      new URLSearchParams(window.location.search).get('sageutils_perf') === '1')) {
+    javascriptTimer.disable();
+    uiTimer.disable();
+}
 
 // Convenience functions
 function startTimer(operation, timer = javascriptTimer) {

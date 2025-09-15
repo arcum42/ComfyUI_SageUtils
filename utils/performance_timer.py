@@ -6,6 +6,7 @@ Provides comprehensive timing functionality to measure initialization and runtim
 import time
 import functools
 import logging
+import os
 from typing import Dict, List, Optional, Any, Callable
 from contextlib import contextmanager
 from datetime import datetime
@@ -288,8 +289,11 @@ def log_timing_report(timer: PerformanceTimer = python_timer, level: int = loggi
 # Enable detailed logging for timing if debug mode is enabled
 def setup_timing_logging():
     """Setup logging for performance timing."""
+    # Check if timing logging is explicitly enabled
+    timing_enabled = os.environ.get('SAGEUTILS_ENABLE_TIMING_LOGS', '').lower() in ('1', 'true', 'yes')
+    
     logger = logging.getLogger("sageutils.timing")
-    if not logger.handlers:
+    if timing_enabled and not logger.handlers:
         handler = logging.StreamHandler()
         formatter = logging.Formatter(
             '[TIMING] %(asctime)s - %(name)s - %(levelname)s - %(message)s'
@@ -297,6 +301,9 @@ def setup_timing_logging():
         handler.setFormatter(formatter)
         logger.addHandler(handler)
         logger.setLevel(logging.INFO)
+    elif not timing_enabled:
+        # Disable timing logging by setting level to CRITICAL+1
+        logger.setLevel(logging.CRITICAL + 1)
 
 # Initialize logging
 setup_timing_logging()

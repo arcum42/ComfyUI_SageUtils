@@ -191,10 +191,15 @@ window.SageUtilsPerformanceMonitor = {
     init: initPerformanceMonitoring
 };
 
-// Auto-initialize if performance monitoring is enabled
+// Auto-initialize if performance monitoring is explicitly enabled
+// Note: Changed to be more conservative - only enable if explicitly requested
 if (localStorage.getItem('sageutils_perf_monitoring') === 'true' || 
-    new URLSearchParams(window.location.search).get('sageutils_perf') === '1') {
+    new URLSearchParams(window.location.search).get('sageutils_perf') === '1' ||
+    new URLSearchParams(window.location.search).get('sageutils_gap_analysis') === '1') {
+    console.log('[PERF] Performance monitoring explicitly enabled');
     initPerformanceMonitoring();
+} else {
+    console.log('[PERF] Performance monitoring disabled (set localStorage.setItem("sageutils_perf_monitoring", "true") or add ?sageutils_perf=1 to URL to enable)');
 }
 
 export {
