@@ -339,7 +339,7 @@ class Sage_LoraStack(ComfyNodeABC):
                 "clip_weight": (IO.FLOAT, {"default": 1.0, "min": -100.0, "max": 100.0, "step": 0.01, "tooltip": "How strongly to modify the CLIP model. This value can be negative."}),
                 },
             "optional": {
-                "lora_stack": ("LORA_STACK", {"defaultInput": True}),
+                "lora_stack": ("LORA_STACK", {"forceInput": True}),
             }
         }
 
@@ -374,7 +374,7 @@ class Sage_QuickLoraStack(Sage_LoraStack):
                 "model_weight": (IO.FLOAT, {"default": 1.0, "min": -100.0, "max": 100.0, "step": 0.01, "tooltip": "How strongly to modify the diffusion model. This value can be negative."}),
                 },
             "optional": {
-                "lora_stack": ("LORA_STACK", {"defaultInput": True}),
+                "lora_stack": ("LORA_STACK", {"forceInput": True}),
             }
         }
     
@@ -408,7 +408,7 @@ class Sage_TripleLoraStack(ComfyNodeABC):
         return {
             "required": required_list,
             "optional": {
-                "lora_stack": ("LORA_STACK", {"defaultInput": True})
+                "lora_stack": ("LORA_STACK", {"forceInput": True})
             }
         }
 
@@ -458,7 +458,7 @@ class Sage_TripleQuickLoraStack(ComfyNodeABC):
         return {
             "required": required_list,
             "optional": {
-                "lora_stack": ("LORA_STACK", {"defaultInput": True})
+                "lora_stack": ("LORA_STACK", {"forceInput": True})
             }
         }
 

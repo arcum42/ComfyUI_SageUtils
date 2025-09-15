@@ -141,8 +141,8 @@ class Sage_SaveImageWithMetadata(ComfyNodeABC):
                 "save_text": (IO.COMBO, {"default": "Image Only", "options": ["Image Only", "Param to Text", "Extra to Text", "All to Text"], "tooltip": "Optionally allow you to save a text file alongside the image with the contents of param, extra, or all the metadata. Useful, if, for example, you are generating images to be used for training."}),
             },
             "optional": {
-                "param_metadata": (IO.STRING, {"defaultInput": True}),
-                "extra_metadata": (IO.STRING, {"defaultInput": True}),
+                "param_metadata": (IO.STRING, {"forceInput": True}),
+                "extra_metadata": (IO.STRING, {"forceInput": True}),
             },
             "hidden": {"prompt": "PROMPT", "extra_pnginfo": "EXTRA_PNGINFO"},
         }

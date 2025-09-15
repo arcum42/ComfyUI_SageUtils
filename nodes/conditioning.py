@@ -50,8 +50,8 @@ class Sage_DualCLIPTextEncode(ComfyNodeABC):
                 "clean": (IO.BOOLEAN, {"tooltip": "Clean up the text, getting rid of extra spaces, commas, etc."})
             },
             "optional": {
-                "pos": (IO.STRING, {"defaultInput": True, "multiline": True, "dynamicPrompts": True, "tooltip": "The positive prompt's text."}),
-                "neg": (IO.STRING, {"defaultInput": True, "multiline": True, "dynamicPrompts": True, "tooltip": "The negative prompt's text."})
+                "pos": (IO.STRING, {"forceInput": True, "multiline": True, "dynamicPrompts": True, "tooltip": "The positive prompt's text."}),
+                "neg": (IO.STRING, {"forceInput": True, "multiline": True, "dynamicPrompts": True, "tooltip": "The negative prompt's text."})
             }
         }
     RETURN_TYPES = (IO.CONDITIONING, IO.CONDITIONING, IO.STRING, IO.STRING)
@@ -105,8 +105,8 @@ class Sage_DualCLIPTextEncodeLumina2(ComfyNodeABC):
                 "clean": (IO.BOOLEAN, {"tooltip": "Clean up the text, getting rid of extra spaces, commas, etc."}),
             },
             "optional": {
-                "pos": (IO.STRING, {"defaultInput": True, "multiline": True, "dynamicPrompts": True, "tooltip": "The positive prompt's text."}),
-                "neg": (IO.STRING, {"defaultInput": True, "multiline": True, "dynamicPrompts": True, "tooltip": "The negative prompt's text."}),
+                "pos": (IO.STRING, {"forceInput": True, "multiline": True, "dynamicPrompts": True, "tooltip": "The positive prompt's text."}),
+                "neg": (IO.STRING, {"forceInput": True, "multiline": True, "dynamicPrompts": True, "tooltip": "The negative prompt's text."}),
             }
         }
     RETURN_TYPES = (IO.CONDITIONING, IO.CONDITIONING, IO.STRING, IO.STRING)
@@ -145,11 +145,11 @@ class Sage_DualCLIPTextEncodeQwen(ComfyNodeABC):
                 "clean": (IO.BOOLEAN, {"tooltip": "Clean up the text, getting rid of extra spaces, commas, etc."})
             },
             "optional": {
-                "vae": (IO.VAE, {"defaultInput": True, "tooltip": "The VAE model used for encoding the reference image."}),
-                "pos": (IO.STRING, {"defaultInput": True, "multiline": True, "dynamicPrompts": True, "tooltip": "The positive prompt's text."}),
-                "pos_image": (IO.IMAGE, {"defaultInput": True, "tooltip": "The reference image used for encoding."}),
-                "neg": (IO.STRING, {"defaultInput": True, "multiline": True, "dynamicPrompts": True, "tooltip": "The negative prompt's text."}),
-                "neg_image": (IO.IMAGE, {"defaultInput": True, "tooltip": "The reference image used for encoding."}),
+                "vae": (IO.VAE, {"forceInput": True, "tooltip": "The VAE model used for encoding the reference image."}),
+                "pos": (IO.STRING, {"forceInput": True, "multiline": True, "dynamicPrompts": True, "tooltip": "The positive prompt's text."}),
+                "pos_image": (IO.IMAGE, {"forceInput": True, "tooltip": "The reference image used for encoding."}),
+                "neg": (IO.STRING, {"forceInput": True, "multiline": True, "dynamicPrompts": True, "tooltip": "The negative prompt's text."}),
+                "neg_image": (IO.IMAGE, {"forceInput": True, "tooltip": "The reference image used for encoding."}),
             }
         }
     RETURN_TYPES = (IO.CONDITIONING, IO.CONDITIONING, IO.STRING, IO.STRING)

@@ -64,8 +64,8 @@ class SageSetWildcardText(ComfyNodeABC):
     def INPUT_TYPES(cls) -> InputTypeDict:
         return {
             "optional": {
-                "prefix": (IO.STRING, {"defaultInput": True, "multiline": True}),
-                "suffix": (IO.STRING, {"defaultInput": True, "multiline": True})
+                "prefix": (IO.STRING, {"forceInput": True, "multiline": True}),
+                "suffix": (IO.STRING, {"forceInput": True, "multiline": True})
             },
             "required": {
                 "str": (IO.STRING, {"forceInput": False, "dynamicPrompts": True, "multiline": True}),
@@ -113,8 +113,8 @@ class Sage_SetText(ComfyNodeABC):
     def INPUT_TYPES(cls) -> InputTypeDict:
         return {
             "optional": {
-                "prefix": (IO.STRING, {"defaultInput": True, "multiline": True}),
-                "suffix": (IO.STRING, {"defaultInput": True, "multiline": True})
+                "prefix": (IO.STRING, {"forceInput": True, "multiline": True}),
+                "suffix": (IO.STRING, {"forceInput": True, "multiline": True})
             },
             "required": {
                 "str": (IO.STRING, {"forceInput": False, "dynamicPrompts": False, "multiline": True})
@@ -137,8 +137,8 @@ class Sage_SetTextWithInt(ComfyNodeABC):
     def INPUT_TYPES(cls) -> InputTypeDict:
         return {
             "optional": {
-                "prefix": (IO.STRING, {"defaultInput": True, "multiline": True}),
-                "suffix": (IO.STRING, {"defaultInput": True, "multiline": True})
+                "prefix": (IO.STRING, {"forceInput": True, "multiline": True}),
+                "suffix": (IO.STRING, {"forceInput": True, "multiline": True})
             },
             "required": {
                 "str": (IO.STRING, {"forceInput": False, "dynamicPrompts": False, "multiline": False}),
@@ -388,8 +388,8 @@ class Sage_TextSubstitution(ComfyNodeABC):
                 "delimiter": (IO.STRING, {"default": "$"})
             },
             "optional": {
-                "prefix": (IO.STRING, {"defaultInput": True, "multiline": True}),
-                "suffix": (IO.STRING, {"defaultInput": True, "multiline": True}),
+                "prefix": (IO.STRING, {"forceInput": True, "multiline": True}),
+                "suffix": (IO.STRING, {"forceInput": True, "multiline": True}),
             }
         }
 

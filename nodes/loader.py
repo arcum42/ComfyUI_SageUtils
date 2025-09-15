@@ -190,8 +190,8 @@ class Sage_LoraStackLoader(ComfyNodeABC):
                 "clip": (IO.CLIP, {"tooltip": "The CLIP model the LoRA will be applied to."})
             },
             "optional": {
-                "lora_stack": ("LORA_STACK", {"defaultInput": True}),
-                "model_shifts": ("MODEL_SHIFTS", {"defaultInput": True, "tooltip": "The model shifts & free_u2 settings to apply to the model."})
+                "lora_stack": ("LORA_STACK", {"forceInput": True}),
+                "model_shifts": ("MODEL_SHIFTS", {"forceInput": True, "tooltip": "The model shifts & free_u2 settings to apply to the model."})
             }
         }
 
@@ -375,7 +375,7 @@ class Sage_ModelLoraStackLoader(Sage_LoadModelFromInfo):
                 }),
             },
             "optional": {
-                "lora_stack": ("LORA_STACK", {"defaultInput": True, "tooltip": "The stack of loras to apply to the model."}),
+                "lora_stack": ("LORA_STACK", {"forceInput": True, "tooltip": "The stack of loras to apply to the model."}),
                 "model_shifts": ("MODEL_SHIFTS", { "tooltip": "The model shifts to apply." })
             }
         }
@@ -434,8 +434,8 @@ class Sage_UNETLoRALoader(ComfyNodeABC):
                 
             },
             "optional": {
-                "lora_stack": ("LORA_STACK", {"defaultInput": True}),
-                "model_shifts": ("MODEL_SHIFTS", {"defaultInput": True, "tooltip": "The model shifts & free_u2 settings to apply to the model."})
+                "lora_stack": ("LORA_STACK", {"forceInput": True}),
+                "model_shifts": ("MODEL_SHIFTS", {"forceInput": True, "tooltip": "The model shifts & free_u2 settings to apply to the model."})
             }
         }
 

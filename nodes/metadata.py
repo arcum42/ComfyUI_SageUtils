@@ -41,7 +41,7 @@ class Sage_ConstructMetadataFlexible(ComfyNodeABC):
                 "metadata_style": (list(metadata_templates.keys()), {"default": "A1111 Full", "tooltip": "Select the metadata style to use."}),
             },
             "optional": {
-                "lora_stack": ('LORA_STACK', {"defaultInput": True})
+                "lora_stack": ('LORA_STACK', {"forceInput": True})
             },
         }
 

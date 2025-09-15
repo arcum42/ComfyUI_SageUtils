@@ -23,7 +23,7 @@ class Sage_ConstructMetadata(Sage_ConstructMetadataFlexible):
                 "height": (IO.INT, {"default": 1024})
             },
             "optional": {
-                "lora_stack": ('LORA_STACK', {"defaultInput": True})
+                "lora_stack": ('LORA_STACK', {"forceInput": True})
             },
         }
 
@@ -54,7 +54,7 @@ class Sage_ConstructMetadataLite(Sage_ConstructMetadataFlexible):
                 "height": (IO.INT, {"default": 1024})
             },
             "optional": {
-                "lora_stack": ('LORA_STACK', {"defaultInput": True})
+                "lora_stack": ('LORA_STACK', {"forceInput": True})
             },
         }
 
@@ -84,7 +84,7 @@ class Sage_KSamplerDecoder(ComfyNodeABC):
                 "denoise": (IO.FLOAT, {"default": 1.0, "min": 0.0, "max": 1.0, "step": 0.01, "tooltip": "The amount of denoising applied, lower values will maintain the structure of the initial image allowing for image to image sampling."})
             },
             "optional": {
-                "advanced_info": ('ADV_SAMPLER_INFO', {"defaultInput": True, "tooltip": "Optional. Adds in the options an advanced KSampler would have."})
+                "advanced_info": ('ADV_SAMPLER_INFO', {"forceInput": True, "tooltip": "Optional. Adds in the options an advanced KSampler would have."})
             }
         }
 

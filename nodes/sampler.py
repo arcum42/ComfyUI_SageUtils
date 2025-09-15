@@ -154,7 +154,7 @@ class Sage_KSampler(ComfyNodeABC):
                 "denoise": (IO.FLOAT, {"default": 1.0, "min": 0.0, "max": 1.0, "step": 0.01, "tooltip": "The amount of denoising applied, lower values will maintain the structure of the initial image allowing for image to image sampling."})
             },
             "optional": {
-                "advanced_info": ('ADV_SAMPLER_INFO', {"defaultInput": True, "tooltip": "Optional. Adds in the options an advanced KSampler would have."})
+                "advanced_info": ('ADV_SAMPLER_INFO', {"forceInput": True, "tooltip": "Optional. Adds in the options an advanced KSampler would have."})
             }
         }
 
@@ -192,8 +192,8 @@ class Sage_KSamplerTiledDecoder(ComfyNodeABC):
                 "denoise": (IO.FLOAT, {"default": 1.0, "min": 0.0, "max": 1.0, "step": 0.01, "tooltip": "The amount of denoising applied, lower values will maintain the structure of the initial image allowing for image to image sampling."})
             },
             "optional": {
-                "tiling_info": ('TILING_INFO', { "defaultInput": True, "tooltip": "Adds in the tiling options."}),
-                "advanced_info": ('ADV_SAMPLER_INFO', {"defaultInput": True, "tooltip": "Optional. Adds in the options an advanced KSampler would have."})
+                "tiling_info": ('TILING_INFO', { "forceInput": True, "tooltip": "Adds in the tiling options."}),
+                "advanced_info": ('ADV_SAMPLER_INFO', {"forceInput": True, "tooltip": "Optional. Adds in the options an advanced KSampler would have."})
             }
         }
 
@@ -271,7 +271,7 @@ class Sage_KSamplerAudioDecoder(ComfyNodeABC):
                 "denoise": (IO.FLOAT, {"default": 1.0, "min": 0.0, "max": 1.0, "step": 0.01, "tooltip": "The amount of denoising applied, lower values will maintain the structure of the initial image allowing for image to image sampling."})
             },
             "optional": {
-                "advanced_info": ('ADV_SAMPLER_INFO', {"defaultInput": True, "tooltip": "Optional. Adds in the options an advanced KSampler would have."})
+                "advanced_info": ('ADV_SAMPLER_INFO', {"forceInput": True, "tooltip": "Optional. Adds in the options an advanced KSampler would have."})
             }
         }
 
