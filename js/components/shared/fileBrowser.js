@@ -20,7 +20,7 @@ export const FILE_BROWSER_CONFIGS = {
         defaultIcon: '📄',
         emptyMessage: 'No notes files found',
         showHierarchy: false,
-        fileItemHeight: '44px'
+        fileItemHeight: '32px'
     },
     wildcards: {
         apiEndpoint: '/sage_utils/wildcard_files',
@@ -32,7 +32,7 @@ export const FILE_BROWSER_CONFIGS = {
         defaultIcon: '🎲',
         emptyMessage: 'No wildcard files found',
         showHierarchy: true,
-        fileItemHeight: '44px'
+        fileItemHeight: '32px'
     }
 };
 
@@ -394,7 +394,7 @@ export class GenericFileBrowser {
         const pathForSelection = fullPath || filename;
         fileItem.dataset.filename = pathForSelection;
         fileItem.style.cssText = `
-            padding: 8px 12px;
+            padding: 6px 12px;
             cursor: pointer;
             border-bottom: 1px solid #333;
             transition: background-color 0.2s;
@@ -462,7 +462,7 @@ export class GenericFileBrowser {
         folderItem.className = 'folder-item';
         folderItem.dataset.foldername = folderName;
         folderItem.style.cssText = `
-            padding: 8px 12px;
+            padding: 6px 12px;
             cursor: pointer;
             border-bottom: 1px solid #333;
             transition: background-color 0.2s;
@@ -517,7 +517,7 @@ export class GenericFileBrowser {
         const backItem = document.createElement('div');
         backItem.className = 'back-item';
         backItem.style.cssText = `
-            padding: 8px 12px;
+            padding: 6px 12px;
             cursor: pointer;
             border-bottom: 1px solid #333;
             transition: background-color 0.2s;
