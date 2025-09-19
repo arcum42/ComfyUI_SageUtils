@@ -336,9 +336,68 @@ export class GenericFileManager {
     handleFileCreate() {
         const filename = prompt('Enter filename:');
         if (filename) {
+            console.log('FileManager: Creating new file:', filename);
+            
+            // Determine the current path from the file browser
+            let currentPath = '';
+            if (this.fileBrowser && typeof this.fileBrowser.getCurrentPath === 'function') {
+                currentPath = this.fileBrowser.getCurrentPath();
+                console.log('FileManager: Current path from browser:', currentPath);
+            }
+            
+            // Handle path differently based on configuration
+            let fullPath = filename;
+            if (this.configKey === 'wildcards') {
+                // Wildcards support subdirectories - use full path
+                if (currentPath && currentPath !== '' && currentPath !== '/') {
+                    // Ensure no double slashes
+                    if (currentPath.endsWith('/')) {
+                        fullPath = currentPath + filename;
+                    } else {
+                        fullPath = currentPath + '/' + filename;
+                    }
+                    console.log('FileManager: Wildcards - Full path after combining:', fullPath);
+                } else {
+                    console.log('FileManager: Wildcards - Using filename as-is (no current path):', fullPath);
+                }
+            } else {
+                // Notes only support flat files - ignore current path
+                console.log('FileManager: Notes - Using filename only (ignoring path):', fullPath);
+            }
+            
+            // Check if file already exists
+            if (this.fileBrowser && this.fileBrowser.files) {
+                console.log('FileManager: Checking against existing files:', this.fileBrowser.files);
+                const fileExists = this.fileBrowser.files.some(file => {
+                    // Handle both string filenames and file objects
+                    const existingFilename = typeof file === 'string' ? file : file.name;
+                    return existingFilename === fullPath || existingFilename === filename;
+                });
+                
+                if (fileExists) {
+                    console.log('FileManager: File already exists, aborting creation');
+                    alert(`File "${filename}" already exists. Please choose a different name.`);
+                    return;
+                }
+            }
+            
+            console.log('FileManager: Creating new file in editor with path:', fullPath);
+            
             // Create new file in editor
             if (this.fileEditor) {
-                this.fileEditor.createNewFile(filename);
+                this.fileEditor.createNewFile(fullPath);
+                console.log('FileManager: File created in editor, current file is:', this.fileEditor.getCurrentFile());
+                
+                // Auto-save the new empty file to actually create it on the server
+                console.log('FileManager: Auto-saving new file to create it on server');
+                setTimeout(async () => {
+                    try {
+                        await this.fileEditor.saveFile();
+                        console.log('FileManager: New file auto-saved successfully');
+                    } catch (error) {
+                        console.error('FileManager: Failed to auto-save new file:', error);
+                    }
+                }, 100); // Small delay to ensure editor is fully set up
             }
 
             // Clear preview
@@ -348,7 +407,8 @@ export class GenericFileManager {
 
             // Trigger callback
             if (this.callbacks.onFileCreate) {
-                this.callbacks.onFileCreate(filename);
+                console.log('FileManager: Triggering onFileCreate callback with:', fullPath);
+                this.callbacks.onFileCreate(fullPath);
             }
         }
     }
@@ -372,21 +432,27 @@ export class GenericFileManager {
      * @param {string|null} content - File content (null for deletion)
      */
     handleFileSave(filename, content) {
+        console.log('FileManager: Handling file save for:', filename, 'content length:', content ? content.length : 'null');
+        
         // Refresh browser to show changes
         if (this.fileBrowser) {
+            console.log('FileManager: Refreshing file browser after save');
             this.fileBrowser.refresh();
         }
 
         // Update preview if content exists
         if (this.filePreview && content !== null) {
+            console.log('FileManager: Updating preview after save');
             this.filePreview.updatePreview(filename, content);
         } else if (this.filePreview && content === null) {
             // File was deleted, clear preview
+            console.log('FileManager: Clearing preview after deletion');
             this.filePreview.clear();
         }
 
         // Trigger callback
         if (this.callbacks.onFileSave) {
+            console.log('FileManager: Triggering onFileSave callback');
             this.callbacks.onFileSave(filename, content);
         }
     }

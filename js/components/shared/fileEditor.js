@@ -378,29 +378,52 @@ export class GenericFileEditor {
      */
     async saveFile() {
         if (!this.currentFile) {
+            console.error('FileEditor: No file selected to save');
             this.callbacks.onError(new Error('No file selected to save'));
             return;
         }
 
+        console.log('FileEditor: Saving file:', this.currentFile);
+        console.log('FileEditor: File content length:', this.textEditor.value.length);
+
         try {
             const endpoint = this.getSaveEndpoint();
+            console.log('FileEditor: Using save endpoint:', endpoint);
+            
+            const payload = {
+                filename: this.currentFile,
+                content: this.textEditor.value
+            };
+            console.log('FileEditor: Save payload:', payload);
             
             const response = await api.fetchApi(endpoint, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    filename: this.currentFile,
-                    content: this.textEditor.value
-                })
+                body: JSON.stringify(payload)
             });
 
+            console.log('FileEditor: Save response status:', response.status);
+
             if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
+                // Try to get more details about the error from the response
+                let errorDetails = `HTTP error! status: ${response.status}`;
+                try {
+                    const errorText = await response.text();
+                    console.log('FileEditor: Server error response:', errorText);
+                    if (errorText) {
+                        errorDetails += ` - ${errorText}`;
+                    }
+                } catch (parseError) {
+                    console.log('FileEditor: Could not parse error response');
+                }
+                throw new Error(errorDetails);
             }
 
             const result = await response.json();
+            console.log('FileEditor: Save result:', result);
             
             if (result.success) {
+                console.log('FileEditor: File saved successfully');
                 this.setModified(false);
                 this.callbacks.onSave(this.currentFile, this.textEditor.value);
             } else {
@@ -408,6 +431,7 @@ export class GenericFileEditor {
             }
 
         } catch (error) {
+            console.error('FileEditor: Save error:', error);
             this.callbacks.onError(error);
         }
     }
@@ -417,17 +441,22 @@ export class GenericFileEditor {
      * @returns {string} - API endpoint
      */
     getSaveEndpoint() {
+        console.log('FileEditor: Getting save endpoint, config.apiEndpoint:', this.config.apiEndpoint);
+        
         // For notes, use the save_note endpoint
         if (this.config.apiEndpoint.includes('notes')) {
+            console.log('FileEditor: Using notes save endpoint');
             return '/sage_utils/save_note';
         }
         
         // For wildcards, use the wildcard save endpoint
         if (this.config.apiEndpoint.includes('wildcard')) {
+            console.log('FileEditor: Using wildcards save endpoint');
             return '/sage_utils/wildcard/file/save';
         }
         
         // Default fallback
+        console.log('FileEditor: Using default save endpoint');
         return '/sage_utils/save_file';
     }
 
@@ -508,12 +537,18 @@ export class GenericFileEditor {
      * @param {string} filename - Name of the new file
      */
     createNewFile(filename) {
+        console.log('FileEditor: Creating new file:', filename);
         this.currentFile = filename;
-        this.textEditor.value = '';
+        
+        // Set a minimal default content to avoid empty string validation issues
+        const defaultContent = `# ${filename}\n\nCreated: ${new Date().toISOString()}\n\n`;
+        this.textEditor.value = defaultContent;
+        
         this.textEditor.disabled = false;
         this.textEditor.focus();
         this.setModified(true);
         this.updateFileDisplay(filename);
+        console.log('FileEditor: New file setup complete, currentFile:', this.currentFile, 'isModified:', this.isModified);
     }
 
     /**
