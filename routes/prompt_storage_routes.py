@@ -42,11 +42,8 @@ async def save_prompt(request):
         except Exception as e:
             return error_response(f"Invalid JSON: {e}", 400)
         
-        # Try to get sage_users_path, fall back to a default location
-        sage_users_path = getattr(request.app, 'sage_users_path', None)
-        if not sage_users_path:
-            # Fallback to the custom_nodes directory
-            sage_users_path = Path(__file__).parent.parent / "user_data"
+        # Dynamic import to avoid ComfyUI dependency issues
+        from ..utils import sage_users_path
         
         prompts_file = _get_prompts_storage_path(sage_users_path)
         
@@ -98,11 +95,8 @@ async def save_prompt(request):
 async def list_prompts(request):
     """List all saved prompts with optional filtering."""
     try:
-        # Try to get sage_users_path, fall back to a default location
-        sage_users_path = getattr(request.app, 'sage_users_path', None)
-        if not sage_users_path:
-            # Fallback to the custom_nodes directory
-            sage_users_path = Path(__file__).parent.parent / "user_data"
+        # Dynamic import to avoid ComfyUI dependency issues
+        from ..utils import sage_users_path
         
         prompts_file = _get_prompts_storage_path(sage_users_path)
         
@@ -141,95 +135,107 @@ async def list_prompts(request):
 @route_error_handler
 async def get_prompt(request):
     """Get a specific prompt by ID."""
-    prompt_id = request.match_info['id']
-    sage_users_path = request.app.get('sage_users_path')
-    
-    if not sage_users_path:
-        return error_response("SageUtils user path not configured", 500)
-    
-    prompts_file = _get_prompts_storage_path(sage_users_path)
-    
-    if not prompts_file.exists():
-        return error_response("Prompt not found", 404)
-    
-    with open(prompts_file, 'r', encoding='utf-8') as f:
-        prompts_data = json.load(f)
-    
-    prompt = next((p for p in prompts_data['prompts'] if p['id'] == prompt_id), None)
-    
-    if not prompt:
-        return error_response("Prompt not found", 404)
-    
-    return success_response({"prompt": prompt})
+    try:
+        # Dynamic import to avoid ComfyUI dependency issues
+        from ..utils import sage_users_path
+        
+        prompt_id = request.match_info['id']
+        
+        prompts_file = _get_prompts_storage_path(sage_users_path)
+        
+        if not prompts_file.exists():
+            return error_response("Prompt not found", 404)
+        
+        with open(prompts_file, 'r', encoding='utf-8') as f:
+            prompts_data = json.load(f)
+        
+        prompt = next((p for p in prompts_data['prompts'] if p['id'] == prompt_id), None)
+        
+        if not prompt:
+            return error_response("Prompt not found", 404)
+        
+        return success_response({"prompt": prompt})
+        
+    except Exception as e:
+        logging.error(f"Error in get_prompt: {e}")
+        return error_response(f"Failed to get prompt: {str(e)}", 500)
 
 
 @route_error_handler
 async def delete_prompt(request):
     """Delete a specific prompt by ID."""
-    prompt_id = request.match_info['id']
-    sage_users_path = request.app.get('sage_users_path')
-    
-    if not sage_users_path:
-        return error_response("SageUtils user path not configured", 500)
-    
-    prompts_file = _get_prompts_storage_path(sage_users_path)
-    
-    if not prompts_file.exists():
-        return error_response("Prompt not found", 404)
-    
-    with open(prompts_file, 'r', encoding='utf-8') as f:
-        prompts_data = json.load(f)
-    
-    original_count = len(prompts_data['prompts'])
-    prompts_data['prompts'] = [p for p in prompts_data['prompts'] if p['id'] != prompt_id]
-    
-    if len(prompts_data['prompts']) == original_count:
-        return error_response("Prompt not found", 404)
-    
-    # Update metadata
-    prompts_data['metadata']['total_prompts'] = len(prompts_data['prompts'])
-    prompts_data['metadata']['updated'] = datetime.now().isoformat()
-    
-    # Save to file
-    with open(prompts_file, 'w', encoding='utf-8') as f:
-        json.dump(prompts_data, f, indent=2, ensure_ascii=False)
-    
-    return success_response({"deleted": prompt_id})
+    try:
+        # Dynamic import to avoid ComfyUI dependency issues
+        from ..utils import sage_users_path
+        
+        prompt_id = request.match_info['id']
+        
+        prompts_file = _get_prompts_storage_path(sage_users_path)
+        
+        if not prompts_file.exists():
+            return error_response("Prompt not found", 404)
+        
+        with open(prompts_file, 'r', encoding='utf-8') as f:
+            prompts_data = json.load(f)
+        
+        original_count = len(prompts_data['prompts'])
+        prompts_data['prompts'] = [p for p in prompts_data['prompts'] if p['id'] != prompt_id]
+        
+        if len(prompts_data['prompts']) == original_count:
+            return error_response("Prompt not found", 404)
+        
+        # Update metadata
+        prompts_data['metadata']['total_prompts'] = len(prompts_data['prompts'])
+        prompts_data['metadata']['updated'] = datetime.now().isoformat()
+        
+        # Save to file
+        with open(prompts_file, 'w', encoding='utf-8') as f:
+            json.dump(prompts_data, f, indent=2, ensure_ascii=False)
+        
+        return success_response({"deleted": prompt_id})
+        
+    except Exception as e:
+        logging.error(f"Error in delete_prompt: {e}")
+        return error_response(f"Failed to delete prompt: {str(e)}", 500)
 
 
 @route_error_handler
 async def update_prompt_usage(request):
     """Update prompt usage count."""
-    prompt_id = request.match_info['id']
-    sage_users_path = request.app.get('sage_users_path')
-    
-    if not sage_users_path:
-        return error_response("SageUtils user path not configured", 500)
-    
-    prompts_file = _get_prompts_storage_path(sage_users_path)
-    
-    if not prompts_file.exists():
-        return error_response("Prompt not found", 404)
-    
-    with open(prompts_file, 'r', encoding='utf-8') as f:
-        prompts_data = json.load(f)
-    
-    prompt = next((p for p in prompts_data['prompts'] if p['id'] == prompt_id), None)
-    
-    if not prompt:
-        return error_response("Prompt not found", 404)
-    
-    prompt['used_count'] = prompt.get('used_count', 0) + 1
-    prompt['updated'] = datetime.now().isoformat()
-    
-    # Update metadata
-    prompts_data['metadata']['updated'] = datetime.now().isoformat()
-    
-    # Save to file
-    with open(prompts_file, 'w', encoding='utf-8') as f:
-        json.dump(prompts_data, f, indent=2, ensure_ascii=False)
-    
-    return success_response({"prompt": prompt})
+    try:
+        # Dynamic import to avoid ComfyUI dependency issues
+        from ..utils import sage_users_path
+        
+        prompt_id = request.match_info['id']
+        
+        prompts_file = _get_prompts_storage_path(sage_users_path)
+        
+        if not prompts_file.exists():
+            return error_response("Prompt not found", 404)
+        
+        with open(prompts_file, 'r', encoding='utf-8') as f:
+            prompts_data = json.load(f)
+        
+        prompt = next((p for p in prompts_data['prompts'] if p['id'] == prompt_id), None)
+        
+        if not prompt:
+            return error_response("Prompt not found", 404)
+        
+        prompt['used_count'] = prompt.get('used_count', 0) + 1
+        prompt['updated'] = datetime.now().isoformat()
+        
+        # Update metadata
+        prompts_data['metadata']['updated'] = datetime.now().isoformat()
+        
+        # Save to file
+        with open(prompts_file, 'w', encoding='utf-8') as f:
+            json.dump(prompts_data, f, indent=2, ensure_ascii=False)
+        
+        return success_response({"prompt": prompt})
+        
+    except Exception as e:
+        logging.error(f"Error in update_prompt_usage: {e}")
+        return error_response(f"Failed to update prompt usage: {str(e)}", 500)
 
 
 def register_routes(routes_instance):
