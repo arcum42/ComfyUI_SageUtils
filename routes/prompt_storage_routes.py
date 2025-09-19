@@ -238,6 +238,65 @@ async def update_prompt_usage(request):
         return error_response(f"Failed to update prompt usage: {str(e)}", 500)
 
 
+@route_error_handler
+async def add_category(request):
+    """Add a new prompt category."""
+    try:
+        try:
+            data = await request.json()
+        except Exception as e:
+            return error_response(f"Invalid JSON: {e}", 400)
+        
+        # Dynamic import to avoid ComfyUI dependency issues
+        from ..utils import sage_users_path
+        
+        prompts_file = _get_prompts_storage_path(sage_users_path)
+        
+        # Load existing data or create new
+        if prompts_file.exists():
+            with open(prompts_file, 'r', encoding='utf-8') as f:
+                prompts_data = json.load(f)
+        else:
+            prompts_data = _get_default_prompts_structure()
+        
+        category_name = data.get('name', '').strip().lower()
+        
+        if not category_name:
+            return error_response("Category name is required", 400)
+        
+        # Validate category name (alphanumeric and underscores only)
+        if not category_name.replace('_', '').isalnum():
+            return error_response("Category name can only contain letters, numbers, and underscores", 400)
+        
+        # Check if category already exists
+        if category_name in prompts_data.get('categories', []):
+            return error_response("Category already exists", 400)
+        
+        # Add new category
+        if 'categories' not in prompts_data:
+            prompts_data['categories'] = []
+        
+        prompts_data['categories'].append(category_name)
+        prompts_data['categories'].sort()  # Keep categories sorted
+        
+        # Update metadata
+        prompts_data['metadata']['updated'] = datetime.now().isoformat()
+        
+        # Save to file
+        prompts_file.parent.mkdir(parents=True, exist_ok=True)
+        with open(prompts_file, 'w', encoding='utf-8') as f:
+            json.dump(prompts_data, f, indent=2, ensure_ascii=False)
+        
+        return success_response({
+            "category": category_name,
+            "categories": prompts_data['categories']
+        })
+        
+    except Exception as e:
+        logging.error(f"Error in add_category: {e}")
+        return error_response(f"Failed to add category: {str(e)}", 500)
+
+
 def register_routes(routes_instance):
     """
     Register prompt storage routes.
@@ -271,6 +330,10 @@ def register_routes(routes_instance):
     async def update_prompt_usage_handler(request):
         return await update_prompt_usage(request)
 
+    @routes_instance.post('/sage_utils/prompts/categories/add')
+    async def add_category_handler(request):
+        return await add_category(request)
+
     # Update route list for documentation
     _route_list.extend([
         ('POST', '/sage_utils/prompts/save', 'Save or update a prompt'),
@@ -278,6 +341,7 @@ def register_routes(routes_instance):
         ('GET', '/sage_utils/prompts/{id}', 'Get specific prompt'),
         ('DELETE', '/sage_utils/prompts/{id}', 'Delete specific prompt'),
         ('POST', '/sage_utils/prompts/{id}/use', 'Update prompt usage count'),
+        ('POST', '/sage_utils/prompts/categories/add', 'Add a new prompt category'),
     ])
 
     return len(_route_list)

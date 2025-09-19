@@ -535,6 +535,12 @@ function addPromptBuilderStyles() {
             flex-wrap: wrap;
         }
 
+        .category-container {
+            display: flex;
+            gap: 4px;
+            align-items: center;
+        }
+
         .search-input, .category-filter {
             flex: 1;
             min-width: 120px;
@@ -543,6 +549,26 @@ function addPromptBuilderStyles() {
             border-radius: 4px;
             background: var(--bg-color, #1a1a1a);
             color: var(--fg-color, #ffffff);
+        }
+
+        .add-category-btn {
+            width: 32px;
+            height: 32px;
+            padding: 0;
+            background: var(--success-color, #6bcf7f);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .add-category-btn:hover {
+            background: var(--success-dark, #4a9a5a);
         }
 
         .save-prompt-btn {
@@ -681,6 +707,14 @@ function addPromptBuilderStyles() {
             overflow-y: auto;
         }
 
+        .add-category-dialog {
+            background: var(--bg-color, #1a1a1a);
+            border: 1px solid var(--border-color, #444);
+            border-radius: 8px;
+            width: 90%;
+            max-width: 400px;
+        }
+
         .dialog-header {
             display: flex;
             justify-content: space-between;
@@ -733,6 +767,14 @@ function addPromptBuilderStyles() {
         .form-group textarea {
             resize: vertical;
             min-height: 60px;
+        }
+
+        .help-text {
+            display: block;
+            margin-top: 4px;
+            font-size: 11px;
+            color: var(--text-tertiary, #888);
+            font-style: italic;
         }
 
         .dialog-actions {

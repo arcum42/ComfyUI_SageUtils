@@ -57,6 +57,18 @@ const savedPromptsApi = {
             method: 'POST'
         });
         return await response.json();
+    },
+
+    /**
+     * Add a new category
+     */
+    async addCategory(categoryName) {
+        const response = await fetch('/sage_utils/prompts/categories/add', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: categoryName })
+        });
+        return await response.json();
     }
 };
 
@@ -123,6 +135,10 @@ export const savedPromptsComponent = {
             this.filterPrompts();
         });
 
+        // Category filter container
+        const categoryContainer = document.createElement('div');
+        categoryContainer.className = 'category-container';
+
         // Category filter
         this.elements.categoryFilter = document.createElement('select');
         this.elements.categoryFilter.className = 'category-filter';
@@ -131,6 +147,16 @@ export const savedPromptsComponent = {
             this.filterPrompts();
         });
 
+        // Add category button
+        const addCategoryBtn = document.createElement('button');
+        addCategoryBtn.textContent = '+';
+        addCategoryBtn.className = 'add-category-btn';
+        addCategoryBtn.title = 'Add new category';
+        addCategoryBtn.addEventListener('click', () => this.showAddCategoryDialog());
+
+        categoryContainer.appendChild(this.elements.categoryFilter);
+        categoryContainer.appendChild(addCategoryBtn);
+
         // Save current prompt button
         const saveButton = document.createElement('button');
         saveButton.textContent = 'Save Current Prompt';
@@ -138,7 +164,7 @@ export const savedPromptsComponent = {
         saveButton.addEventListener('click', () => this.showSaveDialog());
 
         header.appendChild(this.elements.searchInput);
-        header.appendChild(this.elements.categoryFilter);
+        header.appendChild(categoryContainer);
         header.appendChild(saveButton);
 
         return header;
@@ -275,6 +301,112 @@ export const savedPromptsComponent = {
         card.addEventListener('click', () => this.viewPrompt(prompt));
 
         return card;
+    },
+
+    /**
+     * Show add category dialog
+     */
+    showAddCategoryDialog() {
+        const dialog = this.createAddCategoryDialog();
+        document.body.appendChild(dialog);
+    },
+
+    /**
+     * Create add category dialog
+     */
+    createAddCategoryDialog() {
+        const overlay = document.createElement('div');
+        overlay.className = 'dialog-overlay';
+
+        const dialog = document.createElement('div');
+        dialog.className = 'add-category-dialog';
+
+        dialog.innerHTML = `
+            <div class="dialog-header">
+                <h3>Add New Category</h3>
+                <button class="close-btn">×</button>
+            </div>
+            <div class="dialog-content">
+                <div class="form-group">
+                    <label>Category Name:</label>
+                    <input type="text" class="category-name-input" placeholder="Enter category name..." required>
+                    <small class="help-text">Use lowercase letters, numbers, and underscores only.</small>
+                </div>
+            </div>
+            <div class="dialog-actions">
+                <button class="cancel-btn">Cancel</button>
+                <button class="add-btn primary-btn">Add Category</button>
+            </div>
+        `;
+
+        overlay.appendChild(dialog);
+
+        // Event listeners
+        const closeDialog = () => document.body.removeChild(overlay);
+        
+        dialog.querySelector('.close-btn').addEventListener('click', closeDialog);
+        dialog.querySelector('.cancel-btn').addEventListener('click', closeDialog);
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) closeDialog();
+        });
+
+        const categoryInput = dialog.querySelector('.category-name-input');
+        
+        // Focus the input
+        setTimeout(() => categoryInput.focus(), 100);
+
+        // Handle form submission
+        const handleSubmit = async () => {
+            const categoryName = categoryInput.value.trim().toLowerCase();
+
+            if (!categoryName) {
+                alert('Please enter a category name.');
+                return;
+            }
+
+            // Validate category name
+            if (!categoryName.replace('_', '').match(/^[a-zA-Z0-9]+$/)) {
+                alert('Category name can only contain letters, numbers, and underscores.');
+                return;
+            }
+
+            // Check if category already exists
+            if (this.state.categories.includes(categoryName)) {
+                alert('This category already exists.');
+                return;
+            }
+
+            try {
+                const result = await savedPromptsApi.addCategory(categoryName);
+                if (result.success) {
+                    closeDialog();
+                    // Update categories and refresh UI
+                    this.state.categories = result.data.categories;
+                    this.updateCategoryFilter();
+                    // Auto-select the new category
+                    this.state.activeCategory = categoryName;
+                    this.elements.categoryFilter.value = categoryName;
+                    this.filterPrompts();
+                    this.showSuccess(`Category "${categoryName}" added successfully!`);
+                } else {
+                    alert('Failed to add category: ' + result.error);
+                }
+            } catch (error) {
+                alert('Error adding category: ' + error.message);
+            }
+        };
+
+        dialog.querySelector('.add-btn').addEventListener('click', handleSubmit);
+        
+        // Handle Enter key
+        categoryInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                handleSubmit();
+            }
+        });
+
+        return overlay;
     },
 
     /**
