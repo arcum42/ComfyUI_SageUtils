@@ -3,7 +3,6 @@
 
 import { api } from "../../../../scripts/api.js";
 import { createTextOutputWidget, setupMarkdownDisplay, setupImageDisplay, setupVideoDisplay } from "../components/display.js";
-import { renderMarkdown } from "../shared/markdown.js";
 
 /**
  * Sets up the ViewNotes node with file selection and preview functionality.

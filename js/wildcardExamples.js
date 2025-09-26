@@ -4,13 +4,11 @@
  * This file demonstrates how to use the wildcard API in your JavaScript code.
  */
 
-import { 
-    getWildcardPath, 
+import {
     listWildcardFiles, 
     generateWildcardPrompt, 
     getWildcardFileContent,
-    WildcardManager,
-    wildcardManager 
+    WildcardManager
 } from './shared/wildcardApi.js';
 
 import { createWildcardTester } from './components/wildcardTester.js';

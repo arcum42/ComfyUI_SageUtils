@@ -7,11 +7,6 @@ import {
     BUTTON_CONFIGS
 } from "../shared/config.js";
 
-import {
-    MODEL_FILE_EXTENSIONS,
-    hasModelExtension
-} from "../shared/constants.js";
-
 import { notifications } from "../shared/notifications.js";
 
 import { 
@@ -19,15 +14,8 @@ import {
 } from "../shared/errorHandler.js";
 
 import { 
-    actions, 
     selectors 
 } from "../shared/stateManager.js";
-
-import { 
-    fetchCacheHash, 
-    fetchCacheInfo,
-    scanModelFolders
-} from "../shared/cacheApi.js";
 
 import { 
     createDetailedInfoDisplay 
@@ -35,7 +23,6 @@ import {
 
 import { 
     escapeHtml,
-    formatFileSize,
     generateHtmlContent,
     openHtmlReport
 } from "../reports/reportGenerator.js";

@@ -2,8 +2,6 @@
  * Image Gallery Tab - Handles image browsing, viewing, and management for multiple folders
  */
 
-import { api } from "../../../scripts/api.js";
-
 import { 
     handleError
 } from "../shared/errorHandler.js";
@@ -45,14 +43,6 @@ import {
     batchFindReplaceAllTextFiles,
     refreshCurrentTextDisplay
 } from "../shared/datasetTextManager.js";
-
-// Import navigation components
-import { createDatasetNavigationControls } from "../components/navigation.js";
-
-// Import gallery components
-import {
-    createThumbnailGrid
-} from "../components/gallery/gallery.js";
 
 // Import gallery layout components
 import {

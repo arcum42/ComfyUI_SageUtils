@@ -13,17 +13,10 @@ import {
 import { notifications } from '../shared/notifications.js';
 
 import {
-    MODEL_FILE_EXTENSIONS,
-    COMMON_MODEL_EXTENSIONS,
-    MODEL_TYPES,
     DEFAULT_THUMBNAIL_WIDTH,
     DEFAULT_THUMBNAIL_HEIGHT,
     DEFAULT_BATCH_SIZE,
     REPORT_COLUMN_CONFIG,
-    hasModelExtension,
-    hasCommonModelExtension,
-    isLikelyCheckpoint,
-    isLikelyLora,
     getThumbnailStyle
 } from '../shared/constants.js';
 
@@ -35,12 +28,10 @@ import {
 } from './modelFormatters.js';
 
 import {
-    deduplicateModels,
-    normalizePath
+    deduplicateModels
 } from './modelDeduplication.js';
 
 import {
-    sortModels,
     groupModelsByCivitaiId,
     generateGroupInfo
 } from './modelSorting.js';
@@ -48,13 +39,10 @@ import {
 import {
     generateHtmlDocumentStart,
     generateHtmlDocumentEnd,
-    generateSectionHeader,
-    generateTableWrapper,
     generateCssStyles,
     generateClientSideJs,
     generateModelStatsSection,
-    generateTableSection,
-    generateTableHeaders
+    generateTableSection
 } from './htmlTemplates.js';
 
 /**

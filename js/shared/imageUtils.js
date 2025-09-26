@@ -4,7 +4,7 @@
  */
 
 import { API_ENDPOINTS } from "./config.js";
-import { selectors, actions } from "./stateManager.js";
+import { actions } from "./stateManager.js";
 
 /**
  * Load images from a specified folder

@@ -2,17 +2,9 @@
  * File Selector Component - Handles file list dropdown functionality
  */
 
-import { 
-    FILTER_OPTIONS, 
-    BUTTON_CONFIGS
-} from "../shared/config.js";
-
 import {
-    MODEL_FILE_EXTENSIONS,
     hasModelExtension
 } from "../shared/constants.js";
-
-import { notifications } from "../shared/notifications.js";
 
 import { 
     handleError
@@ -33,23 +25,8 @@ import {
     createDetailedInfoDisplay 
 } from "./infoDisplay.js";
 
-import { 
-    escapeHtml,
-    formatFileSize,
-    generateHtmlContent,
-    openHtmlReport
-} from "../reports/reportGenerator.js";
-
 import {
-    confirmDialog,
-    alertDialog,
-    createDialog,
-    createInlineProgressBar
-} from "./dialogManager.js";
-
-import {
-    pullMetadata,
-    updateCacheInfo
+    pullMetadata
 } from "../shared/cacheApi.js";
 
 import {
