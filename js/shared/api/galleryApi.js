@@ -4,10 +4,10 @@
  * Extracted from imageGalleryTab.js for better organization and maintainability
  */
 
-import { api } from "../../../scripts/api.js";
-import { actions } from "./stateManager.js";
-import { handleError } from "./errorHandler.js";
-import { formatFileSize } from "../reports/reportGenerator.js";
+import { api } from "../../../../scripts/api.js";
+import { actions } from "../stateManager.js";
+import { handleError } from "../errorHandler.js";
+import { formatFileSize } from "../../reports/reportGenerator.js";
 
 /**
  * Load images and folders from a specified folder type

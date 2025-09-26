@@ -28,7 +28,7 @@ import { createPromptBuilderTab } from "./promptBuilderTab.js";
 import { 
     fetchCacheHash, 
     fetchCacheInfo 
-} from "../shared/cacheApi.js";
+} from "../shared/api/cacheApi.js";
 
 // Import shared UI components
 import {

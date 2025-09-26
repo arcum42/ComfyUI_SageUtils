@@ -37,7 +37,7 @@ import {
 import {
     pullMetadata,
     updateCacheInfo
-} from "../shared/cacheApi.js";
+} from "../shared/api/cacheApi.js";
 
 // Import shared UI components - will be created next
 import {

@@ -9,7 +9,7 @@ import {
     generateWildcardPrompt, 
     getWildcardFileContent,
     WildcardManager
-} from './shared/wildcardApi.js';
+} from './shared/api/wildcardApi.js';
 
 import { createWildcardTester } from './components/wildcardTester.js';
 

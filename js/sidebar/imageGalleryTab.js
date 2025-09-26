@@ -17,7 +17,7 @@ import {
     loadImageMetadata,
     formatMetadataForDisplay,
     generateFallbackMetadata
-} from "../shared/galleryApi.js";
+} from "../shared/api/galleryApi.js";
 
 // Import gallery event handlers
 import { showFullImage, showImageContextMenu, browseCustomFolder, toggleViewMode } from '../components/gallery/galleryEvents.js';

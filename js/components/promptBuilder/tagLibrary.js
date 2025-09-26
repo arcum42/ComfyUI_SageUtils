@@ -3,7 +3,7 @@
  * Provides UI for managing and using tag collections for prompt building
  */
 
-import { tagApi } from '../../shared/tagApi.js';
+import { tagApi } from '../../shared/api/tagApi.js';
 
 /**
  * Tag Library class for managing the tag system UI

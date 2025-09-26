@@ -8,7 +8,7 @@
  * Handles all server communication and cache data management
  */
 
-import { api } from "../../../scripts/api.js";
+import { api } from "../../../../scripts/api.js";
 
 // Global cache data store
 export let cacheData = {

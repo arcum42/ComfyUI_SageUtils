@@ -3,7 +3,7 @@
  * Provides JavaScript interface to the wildcard system functionality
  */
 
-import { api } from "../../../scripts/api.js";
+import { api } from "../../../../scripts/api.js";
 
 /**
  * Gets the wildcard directory path

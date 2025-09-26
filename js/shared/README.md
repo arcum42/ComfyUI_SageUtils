@@ -319,7 +319,7 @@ shared/
 ├── utils.js (foundation - no dependencies)
 ├── errorHandler.js (depends on config.js)
 ├── stateManager.js (depends on config.js, errorHandler.js)
-├── cacheApi.js (depends on utils.js, errorHandler.js)
+├── api/cacheApi.js (depends on utils.js, errorHandler.js)
 ├── civitai.js (depends on config.js)
 ├── markdown.js (depends on config.js)
 ├── cacheUI.js (depends on config.js, stateManager.js)

@@ -3,7 +3,7 @@
  * Handles communication with the server for tag library functionality
  */
 
-import { api } from "../../../scripts/api.js";
+import { api } from "../../../../scripts/api.js";
 
 /**
  * Tag API class for managing tag library operations

@@ -3,7 +3,7 @@
  * A simple UI component to test wildcard functionality
  */
 
-import { wildcardManager, generateWildcardPrompt } from '../shared/wildcardApi.js';
+import { wildcardManager, generateWildcardPrompt } from '../shared/api/wildcardApi.js';
 
 /**
  * Creates a wildcard tester interface

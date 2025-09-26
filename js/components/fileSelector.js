@@ -18,16 +18,13 @@ import {
 import { 
     fetchCacheHash, 
     fetchCacheInfo,
-    scanModelFolders
-} from "../shared/cacheApi.js";
+    scanModelFolders,
+    pullMetadata
+} from "../shared/api/cacheApi.js";
 
 import { 
     createDetailedInfoDisplay 
 } from "./infoDisplay.js";
-
-import {
-    pullMetadata
-} from "../shared/cacheApi.js";
 
 import {
     createLabeledContainer,
