@@ -46,13 +46,13 @@ import {
     refreshCurrentTextDisplay
 } from "../shared/datasetTextManager.js";
 
+// Import navigation components
+import { createDatasetNavigationControls } from "../components/navigation.js";
+
 // Import gallery components
 import {
     createThumbnailGrid
-} from "../components/gallery.js";
-
-// Import navigation components
-import { createDatasetNavigationControls } from "../components/navigation.js";
+} from "../components/gallery/gallery.js";
 
 // Import gallery layout components
 import {
@@ -61,7 +61,7 @@ import {
     createWrappedThumbnailGrid,
     createMetadataPanel,
     assembleGalleryTabLayout
-} from "../components/galleryLayout.js";
+} from "../components/gallery/galleryLayout.js";
 
 /**
  * Sets up event handlers for Gallery tab interactions

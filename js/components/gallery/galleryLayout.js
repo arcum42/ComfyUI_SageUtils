@@ -5,7 +5,7 @@
  */
 
 // Import required dependencies
-import { createHeader } from "./cacheUI.js";
+import { createHeader } from "../cacheUI.js";
 import { createThumbnailGrid } from "./gallery.js";
 
 /**
