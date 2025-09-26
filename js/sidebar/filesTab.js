@@ -3,7 +3,7 @@
  * Handles file editing, viewing, and management using generic components with folder navigation
  */
 
-import { GenericFileManager } from "../components/shared/fileManager.js";
+import { GenericFileManager } from "../components/file/fileManager.js";
 
 /**
  * Creates a folder selector for the Files tab
