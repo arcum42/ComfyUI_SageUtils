@@ -4,7 +4,7 @@
  */
 
 // Import API for ComfyUI integration
-import { api } from "../../../../../scripts/api.js";
+import { api } from "../../../../scripts/api.js";
 
 /**
  * Configuration object for file browser instances

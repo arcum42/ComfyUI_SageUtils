@@ -2,9 +2,9 @@
  * Prompt Builder Tab - Main tab component for prompt generation and management
  */
 
-import { promptGenerationComponent } from '../components/promptBuilder/promptGeneration.js';
-import { tagLibraryComponent } from '../components/promptBuilder/tagLibrary.js';
-import { savedPromptsComponent } from '../components/promptBuilder/savedPrompts.js';
+import { promptGenerationComponent } from '../promptBuilder/promptGeneration.js';
+import { tagLibraryComponent } from '../promptBuilder/tagLibrary.js';
+import { savedPromptsComponent } from '../promptBuilder/savedPrompts.js';
 
 /**
  * Creates the main Prompt Builder tab content

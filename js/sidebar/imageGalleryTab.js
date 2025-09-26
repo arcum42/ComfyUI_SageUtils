@@ -20,7 +20,7 @@ import {
 } from "../shared/api/galleryApi.js";
 
 // Import gallery event handlers
-import { showFullImage, showImageContextMenu, browseCustomFolder, toggleViewMode } from '../components/gallery/galleryEvents.js';
+import { showFullImage, showImageContextMenu, browseCustomFolder, toggleViewMode } from '../gallery/galleryEvents.js';
 
 // Import configuration utilities
 import { getThumbnailSize } from "../shared/config.js";
@@ -31,6 +31,15 @@ import {
     createFolderItem,
     createBackNavigationItem
 } from "../shared/galleryGrid.js";
+
+// Import gallery layout components
+import {
+    createGalleryHeader,
+    createFolderSelectorAndControls,
+    createWrappedThumbnailGrid,
+    createMetadataPanel,
+    assembleGalleryTabLayout
+} from "../gallery/galleryLayout.js";
 
 // Import dataset text management
 import {
@@ -43,15 +52,6 @@ import {
     batchFindReplaceAllTextFiles,
     refreshCurrentTextDisplay
 } from "../shared/datasetTextManager.js";
-
-// Import gallery layout components
-import {
-    createGalleryHeader,
-    createFolderSelectorAndControls,
-    createWrappedThumbnailGrid,
-    createMetadataPanel,
-    assembleGalleryTabLayout
-} from "../components/gallery/galleryLayout.js";
 
 /**
  * Sets up event handlers for Gallery tab interactions

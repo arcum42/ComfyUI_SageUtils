@@ -4,7 +4,7 @@
  */
 
 import { api } from "../../../../scripts/api.js";
-import { generateWildcardPrompt } from "../../shared/api/wildcardApi.js";
+import { generateWildcardPrompt } from "../shared/api/wildcardApi.js";
 
 /**
  * Prompt Builder API class for managing server communication

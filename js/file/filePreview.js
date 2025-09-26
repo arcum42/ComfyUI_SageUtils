@@ -3,9 +3,9 @@
  * Provides reusable file preview functionality for different file types
  */
 
-import { api } from "../../../../../scripts/api.js";
+import { api } from "../../../../scripts/api.js";
 import { FILE_BROWSER_CONFIGS } from './fileBrowser.js';
-import { renderMarkdown, ensureMarkdownStyles } from "../../shared/markdown.js";
+import { renderMarkdown, ensureMarkdownStyles } from "../shared/markdown.js";
 
 /**
  * Generic File Preview Class

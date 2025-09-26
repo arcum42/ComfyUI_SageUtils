@@ -6,8 +6,8 @@
 
 import { getThumbnailSize } from "./config.js";
 import { formatFileSize } from "../reports/reportGenerator.js";
-import { copyImageToClipboard } from "./imageUtils.js";
 import { actions, selectors } from "./stateManager.js";
+import { copyImageToClipboard } from "./imageUtils.js";
 import { loadThumbnail } from "./imageLoader.js";
 
 /**

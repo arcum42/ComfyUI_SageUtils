@@ -4,14 +4,14 @@
  * Extracted from imageGalleryTab.js for better organization
  */
 
-import { api } from "../../../../../scripts/api.js";
-import { actions, selectors } from '../../shared/stateManager.js';
-import { copyImageToClipboard } from '../../shared/imageUtils.js';
-import { handleDatasetText } from '../../shared/datasetTextManager.js';
-import { loadImageMetadata, formatMetadataForDisplay } from '../../shared/api/galleryApi.js';
-import { loadFullImage, openImageInNewTab as openImageInNewTabUtil } from '../../shared/imageLoader.js';
-import { CONTEXT_MENU_WIDTH, CONTEXT_MENU_ITEM_HEIGHT } from '../../shared/constants.js';
-import { notifications } from '../../shared/notifications.js';
+import { api } from "../../../../scripts/api.js";
+import { actions, selectors } from '../shared/stateManager.js';
+import { copyImageToClipboard } from '../shared/imageUtils.js';
+import { handleDatasetText } from '../shared/datasetTextManager.js';
+import { loadImageMetadata, formatMetadataForDisplay } from '../shared/api/galleryApi.js';
+import { loadFullImage, openImageInNewTab as openImageInNewTabUtil } from '../shared/imageLoader.js';
+import { CONTEXT_MENU_WIDTH, CONTEXT_MENU_ITEM_HEIGHT } from '../shared/constants.js';
+import { notifications } from '../shared/notifications.js';
 
 /**
  * Shows a native OS folder picker dialog

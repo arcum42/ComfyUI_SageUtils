@@ -3,10 +3,10 @@
  * Reusable UI components specifically for the image gallery
  */
 
-import { selectors, actions } from "../../shared/stateManager.js";
-import { GALLERY_CONFIG, getThumbnailSize } from "../../shared/config.js";
-import { generateThumbnail, loadFullImage, copyImageToClipboard } from "../../shared/imageUtils.js";
-import { handleDatasetText } from "../../shared/datasetTextManager.js";
+import { selectors, actions } from "../shared/stateManager.js";
+import { GALLERY_CONFIG, getThumbnailSize } from "../shared/config.js";
+import { generateThumbnail, loadFullImage, copyImageToClipboard } from "../shared/imageUtils.js";
+import { handleDatasetText } from "../shared/datasetTextManager.js";
 
 /**
  * Create a thumbnail grid component

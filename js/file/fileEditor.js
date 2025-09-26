@@ -3,7 +3,7 @@
  * Provides reusable file editing functionality with syntax highlighting support
  */
 
-import { api } from "../../../../../scripts/api.js";
+import { api } from "../../../../scripts/api.js";
 import { FILE_BROWSER_CONFIGS } from './fileBrowser.js';
 
 /**
