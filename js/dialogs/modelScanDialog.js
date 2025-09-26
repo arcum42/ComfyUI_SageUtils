@@ -522,7 +522,7 @@ class ModelScanDialog {
      */
     async loadAvailableFolders() {
         try {
-            const response = await fetch('/sage_cache/available_folders');
+            const response = await fetch('/sage_cache/scan_model_folders');
             if (!response.ok) {
                 throw new Error(`Failed to load folders: ${response.status}`);
             }
