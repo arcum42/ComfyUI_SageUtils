@@ -20,7 +20,7 @@ import {
 } from "../shared/galleryApi.js";
 
 // Import gallery event handlers
-import { showFullImage, showImageContextMenu, browseCustomFolder, toggleViewMode } from './galleryEvents.js';
+import { showFullImage, showImageContextMenu, browseCustomFolder, toggleViewMode } from '../components/gallery/galleryEvents.js';
 
 // Import configuration utilities
 import { getThumbnailSize } from "../shared/config.js";
