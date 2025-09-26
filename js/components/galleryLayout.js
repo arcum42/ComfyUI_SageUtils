@@ -5,8 +5,8 @@
  */
 
 // Import required dependencies
-import { createHeader } from "./cacheUIComponents.js";
-import { createThumbnailGrid } from "./galleryComponents.js";
+import { createHeader } from "./cacheUI.js";
+import { createThumbnailGrid } from "./gallery.js";
 
 /**
  * Creates the Gallery tab header section with status display

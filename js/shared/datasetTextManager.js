@@ -4,7 +4,7 @@
  * associated with images in the gallery.
  */
 
-import { createDatasetNavigationControls } from '../components/navigationComponents.js';
+import { createDatasetNavigationControls } from '../components/navigation.js';
 import { selectors } from "./stateManager.js";
 import { loadThumbnail } from "./imageLoader.js";
 import { notifications } from './notifications.js';

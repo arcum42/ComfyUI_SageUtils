@@ -60,7 +60,7 @@ import {
     createToggleSection,
     createStyledButton,
     createInfoDisplay
-} from "../components/cacheUIComponents.js";
+} from "../components/cacheUI.js";
 
 // Import file selector components
 import {

@@ -34,7 +34,7 @@ import {
 import {
     createMainContainer,
     createTabButton
-} from "../components/cacheUIComponents.js";
+} from "../components/cacheUI.js";
 
 /**
  * Creates the tab header with Models, Files, Search, Gallery, and Prompt Builder tabs

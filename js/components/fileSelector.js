@@ -56,7 +56,7 @@ import {
     createLabeledContainer,
     createCustomDropdown as createCacheDropdown,
     addDropdownStyles as addCacheDropdownStyles,
-} from "./cacheUIComponents.js";
+} from "./cacheUI.js";
 
 /**
  * Creates the file selector dropdown section

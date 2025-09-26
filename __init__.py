@@ -1,70 +1,71 @@
 import os
 
 # Initialize performance timing as early as possible
-from .utils.performance_timer import python_timer, record_initialization_milestone
-record_initialization_milestone("IMPORTS_START")
+from .utils.performance_timer import python_timer, log_init
+log_init("IMPORTS_START")
 
 # Import all node classes
 from .nodes import *
-record_initialization_milestone("NODES_IMPORTED")
+log_init("NODES_IMPORTED")
 
 # Import utility functions and objects
 from .utils import cache, config_manager
-record_initialization_milestone("UTILS_IMPORTED")
+log_init("UTILS_IMPORTED")
 
 from .utils.llm_wrapper import init_llm
-record_initialization_milestone("LLM_WRAPPER_IMPORTED")
+log_init("LLM_WRAPPER_IMPORTED")
 
 ENABLE_TRAINING_NODES = True
 
 # Initialize components
 cache.load()
-record_initialization_milestone("CACHE_LOADED")
+log_init("CACHE_LOADED")
 
 # Initialize settings using the enhanced settings system
 try:
     from .utils.settings import get_settings, get_sage_config
     settings = get_settings()  # This will load, validate, and set defaults
     sage_config = get_sage_config()  # Backwards compatibility
-    record_initialization_milestone("SETTINGS_LOADED")
+    log_init("SETTINGS_LOADED")
 except ImportError as e:
     sage_config = config_manager.settings_manager.data
-    record_initialization_milestone("SETTINGS_FALLBACK")
+    log_init("SETTINGS_FALLBACK")
 
 # Load other configuration data
 sage_styles = config_manager.styles_manager.data
 llm_prompts = config_manager.prompts_manager.data
 metadata_templates = config_manager.metadata_template_manager.data
-record_initialization_milestone("CONFIG_DATA_LOADED")
+log_init("CONFIG_DATA_LOADED")
 
 # Initialize LLM functionality
 init_llm()
-record_initialization_milestone("LLM_INITIALIZED")
+log_init("LLM_INITIALIZED")
 
 # Import LLM availability flags for conditional node registration
 from .utils import llm_wrapper as llm
-record_initialization_milestone("LLM_FLAGS_IMPORTED")
+log_init("LLM_FLAGS_IMPORTED")
 
 # Import server routes to register custom HTTP endpoints
 try:
     from . import server_routes
-    record_initialization_milestone("SERVER_ROUTES_LOADED")
+    log_init("SERVER_ROUTES_LOADED")
 except Exception as e:
     print(f"Warning: Failed to load SageUtils custom routes: {e}")
-    record_initialization_milestone("SERVER_ROUTES_FAILED")
+    log_init("SERVER_ROUTES_FAILED")
 
 WEB_DIRECTORY = "./js"
 
 # Currently, we have to have two mappings: one for the class names and one for the display names.
 # I've broken them up into sections to make it easier to manage.
-# 
-# When the new node api is released, this information will be in the individual classes, and
-# this will be obsolete.
 #
 # See: https://github.com/comfyanonymous/ComfyUI/tree/v3-definition
 # and: https://github.com/comfyanonymous/ComfyUI/tree/v3-definition-wip
 #
-# v3 will require reimplementation of all nodes.
+# v3 will require reimplementation of all nodes, and has you register a ComfyExtension instead.
+# If you use the mappings below, it skips the check for ComfyExtension, and you can't use ComfyExtension
+# to register non-v3 nodes.
+# This makes converting to v3 all or nothing, and with the number of nodes here, it's easier to wait on v3.
+# See load_custom_node in comfyui/nodes.py for how nodes are loaded.
 
 SELECTOR_CLASS_MAPPINGS = {
     "Sage_TilingInfo": Sage_TilingInfo,
@@ -365,7 +366,7 @@ NODE_DISPLAY_NAME_MAPPINGS = UTILITY_NAME_MAPPINGS | SELECTOR_NAME_MAPPINGS | TE
 if ENABLE_TRAINING_NODES:
     NODE_DISPLAY_NAME_MAPPINGS = NODE_DISPLAY_NAME_MAPPINGS | TRAINING_NAME_MAPPINGS
 
-record_initialization_milestone("NODE_MAPPINGS_CREATED")
+log_init("NODE_MAPPINGS_CREATED")
 
 # Complete initialization timing
 from .utils.performance_timer import complete_initialization, print_timing_report

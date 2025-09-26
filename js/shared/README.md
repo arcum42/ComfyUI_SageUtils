@@ -144,7 +144,7 @@ All modules are designed to be independently testable while maintaining tight in
 
 ## UI Infrastructure Files
 
-### 6. cacheUIComponents.js
+### 6. cacheUI.js
 
 **Purpose**: Reusable UI component factory functions  
 **Lines**: 478  
@@ -322,7 +322,7 @@ shared/
 ├── cacheApi.js (depends on utils.js, errorHandler.js)
 ├── civitai.js (depends on config.js)
 ├── markdown.js (depends on config.js)
-├── cacheUIComponents.js (depends on config.js, stateManager.js)
+├── cacheUI.js (depends on config.js, stateManager.js)
 ├── dialogManager.js (depends on config.js)
 └── infoDisplay.js (depends on stateManager.js, civitai.js)
 
@@ -383,6 +383,6 @@ When adding new shared functionality:
 - **State Evolution**: Use migration patterns when changing state structure
 - **API Changes**: Update cacheApi.js for server-side changes
 - **Error Categories**: Add new error types to errorHandler.js as needed
-- **UI Consistency**: Use cacheUIComponents.js for new interface elements
+- **UI Consistency**: Use cacheUI.js for new interface elements
 
 This shared directory represents the foundation of the SageUtils extension, providing robust, reusable infrastructure that ensures consistent behavior, error handling, and user experience across all components of the system.

@@ -49,10 +49,10 @@ import {
 // Import gallery components
 import {
     createThumbnailGrid
-} from "../components/galleryComponents.js";
+} from "../components/gallery.js";
 
 // Import navigation components
-import { createDatasetNavigationControls } from "../components/navigationComponents.js";
+import { createDatasetNavigationControls } from "../components/navigation.js";
 
 // Import gallery layout components
 import {

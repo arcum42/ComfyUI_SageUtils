@@ -28,7 +28,7 @@ The widgets are designed to work as overlays on top of standard ComfyUI text wid
 - `ComfyWidgets` from ComfyUI core for base widget functionality
 - `renderMarkdown, ensureMarkdownStyles` from `shared/markdown.js` for markdown processing
 
-### galleryComponents.js
+### gallery.js
 
 **Purpose**: Reusable UI components for image gallery and media display  
 **Complexity**: High  
@@ -38,7 +38,7 @@ The widgets are designed to work as overlays on top of standard ComfyUI text wid
 - `stateManager.js`, `config.js`, `imageUtils.js`, `datasetTextManager.js` from shared modules
 - Complex image gallery functionality with thumbnail grids and metadata
 
-### cacheUIComponents.js
+### cacheUI.js
 
 **Purpose**: Cache sidebar UI component factory functions  
 **Complexity**: Medium  
@@ -48,7 +48,7 @@ The widgets are designed to work as overlays on top of standard ComfyUI text wid
 - Standalone component creation utilities
 - Provides labeled containers, buttons, dropdowns, and styled elements
 
-### navigationComponents.js
+### navigation.js
 
 **Purpose**: Navigation controls for image galleries and editors  
 **Complexity**: Medium  

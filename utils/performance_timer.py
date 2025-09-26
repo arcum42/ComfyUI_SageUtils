@@ -97,7 +97,7 @@ class PerformanceTimer:
             return wrapper
         return decorator
     
-    def record_initialization_milestone(self, milestone: str) -> None:
+    def log_init(self, milestone: str) -> None:
         """Record an initialization milestone."""
         if not self.enabled:
             return
@@ -266,9 +266,9 @@ def time_function(operation_name: Optional[str] = None, timer: PerformanceTimer 
     """Decorator for timing function calls."""
     return timer.time_function(operation_name)
 
-def record_initialization_milestone(milestone: str, timer: PerformanceTimer = python_timer):
+def log_init(milestone: str, timer: PerformanceTimer = python_timer):
     """Record an initialization milestone."""
-    timer.record_initialization_milestone(milestone)
+    timer.log_init(milestone)
 
 def complete_initialization(timer: PerformanceTimer = python_timer) -> float:
     """Mark initialization as complete."""
