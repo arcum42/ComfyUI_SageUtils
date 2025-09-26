@@ -13,9 +13,12 @@ from ..utils import condition_text, clean_text
 
 import torch
 
+def _get_conditioning_baseline(clip, text=None):
+    return condition_text(clip, text)
+
 def _get_conditioning(pbar, clip, text=None):
     pbar.update(1)
-    return condition_text(clip, text)
+    return _get_conditioning_baseline(clip, text)
 
 def _clean_if_needed(text, clean):
     return clean_text(text) if clean and text is not None else text
@@ -40,6 +43,30 @@ class Sage_ConditioningZeroOut(ComfyNodeABC):
         output["pooled_output"] = torch.zeros_like(output.get("pooled_output", torch.tensor([])))
         conditioning = torch.zeros_like(output.pop("cond"))
         return ([conditioning, output],)
+
+class Sage_SingleCLIPTextEncode(ComfyNodeABC):
+    @classmethod
+    def INPUT_TYPES(cls) -> InputTypeDict:
+        return {
+            "required": {
+                "clip": (IO.CLIP, {"tooltip": "The CLIP model used for encoding the text."}),
+                "text": (IO.STRING, {"forceInput": True, "multiline": True, "dynamicPrompts": True, "tooltip": "The positive prompt's text."}),
+            }
+        }
+    RETURN_TYPES = (IO.CONDITIONING, IO.STRING)
+    RETURN_NAMES = ("conditioning", "text")
+    OUTPUT_TOOLTIPS = ("A conditioning containing the embedded text used to guide the diffusion model.",)
+    FUNCTION = "encode"
+    CATEGORY = "Sage Utils/clip"
+    DESCRIPTION = (
+        "Turns text into conditioning, and passes through the prompt. "
+        "Zeros any input not hooked up."
+    )
+
+    def encode(self, clip, text=None) -> tuple:
+        if isinstance(clip, tuple):
+            clip = clip[0]
+        return (_get_conditioning_baseline(clip, text), text or "")
 
 class Sage_DualCLIPTextEncode(ComfyNodeABC):
     @classmethod

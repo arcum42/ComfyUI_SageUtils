@@ -137,6 +137,7 @@ LORA_CLASS_MAPPINGS = {
 }
 
 CLIP_CLASS_MAPPINGS = {
+    "Sage_SingleCLIPTextEncode": Sage_SingleCLIPTextEncode,
     "Sage_DualCLIPTextEncode": Sage_DualCLIPTextEncode,
     "Sage_DualCLIPTextEncodeLumina2": Sage_DualCLIPTextEncodeLumina2,
     "Sage_DualCLIPTextEncodeQwen": Sage_DualCLIPTextEncodeQwen,
@@ -286,6 +287,7 @@ LORA_NAME_MAPPINGS = {
 }
 
 CLIP_NAME_MAPPINGS = {
+    "Sage_SingleCLIPTextEncode": "Text Encode",
     "Sage_DualCLIPTextEncode": "Dual Prompt Encode",
     "Sage_DualCLIPTextEncodeLumina2": "Dual Prompt Encode (Lumina 2)",
     "Sage_DualCLIPTextEncodeQwen": "Dual Prompt Encode (Qwen Image Edit)",
