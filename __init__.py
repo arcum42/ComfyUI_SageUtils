@@ -1,11 +1,21 @@
 import os
 
+SAGEUTILS_PRINT_TIMING = False  # Set to True to enable timing report
+# Print timing report if enabled via environment variable
+if os.environ.get('SAGEUTILS_PRINT_TIMING', '').lower() in ('1', 'true', 'yes'):
+    SAGEUTILS_PRINT_TIMING = True
+
 # Initialize performance timing as early as possible
 from .utils.performance_timer import python_timer, log_init
 log_init("IMPORTS_START")
 
+# Set to 1 for v1 nodes, 3 for v3 nodes.
+# Right now, v3 nodes aren't ready for use.
+NODE_VERSION = os.environ.get('SAGEUTILS_NODE_VERSION', '1')
+
 # Import all node classes
-from .nodes_v1 import *
+if NODE_VERSION == '1':
+    from .nodes_v1 import *
 
 # Import utility functions and objects
 from .utils import cache, config_manager
@@ -54,32 +64,33 @@ except Exception as e:
 
 WEB_DIRECTORY = "./js"
 
-if llm.OLLAMA_AVAILABLE:
-    LLM_CLASS_MAPPINGS = LLM_CLASS_MAPPINGS | OLLAMA_CLASS_MAPPINGS
+if NODE_VERSION == '1':
+    if llm.OLLAMA_AVAILABLE:
+        LLM_CLASS_MAPPINGS = LLM_CLASS_MAPPINGS | OLLAMA_CLASS_MAPPINGS
 
-if llm.LMSTUDIO_AVAILABLE:
-     LLM_CLASS_MAPPINGS = LLM_CLASS_MAPPINGS | LMSTUDIO_CLASS_MAPPINGS
+    if llm.LMSTUDIO_AVAILABLE:
+        LLM_CLASS_MAPPINGS = LLM_CLASS_MAPPINGS | LMSTUDIO_CLASS_MAPPINGS
 
-# A dictionary that contains all nodes you want to export with their names
-# NOTE: names should be globally unique
-NODE_CLASS_MAPPINGS |= NODE_CLASS_MAPPINGS | LLM_CLASS_MAPPINGS
+    # A dictionary that contains all nodes you want to export with their names
+    # NOTE: names should be globally unique
+    NODE_CLASS_MAPPINGS |= NODE_CLASS_MAPPINGS | LLM_CLASS_MAPPINGS
 
-if ENABLE_TRAINING_NODES:
-    NODE_CLASS_MAPPINGS = NODE_CLASS_MAPPINGS | TRAINING_CLASS_MAPPINGS
+    if ENABLE_TRAINING_NODES:
+        NODE_CLASS_MAPPINGS = NODE_CLASS_MAPPINGS | TRAINING_CLASS_MAPPINGS
 
-if llm.OLLAMA_AVAILABLE:
-    LLM_NAME_MAPPINGS = LLM_NAME_MAPPINGS | OLLAMA_NAME_MAPPINGS
+    if llm.OLLAMA_AVAILABLE:
+        LLM_NAME_MAPPINGS = LLM_NAME_MAPPINGS | OLLAMA_NAME_MAPPINGS
 
-if llm.LMSTUDIO_AVAILABLE:
-    LLM_NAME_MAPPINGS = LLM_NAME_MAPPINGS | LMSTUDIO_NAME_MAPPINGS
+    if llm.LMSTUDIO_AVAILABLE:
+        LLM_NAME_MAPPINGS = LLM_NAME_MAPPINGS | LMSTUDIO_NAME_MAPPINGS
 
-# A dictionary that contains the friendly/human readable titles for the nodes
-NODE_DISPLAY_NAME_MAPPINGS = NODE_DISPLAY_NAME_MAPPINGS | LLM_NAME_MAPPINGS
+    # A dictionary that contains the friendly/human readable titles for the nodes
+    NODE_DISPLAY_NAME_MAPPINGS = NODE_DISPLAY_NAME_MAPPINGS | LLM_NAME_MAPPINGS
 
-if ENABLE_TRAINING_NODES:
-    NODE_DISPLAY_NAME_MAPPINGS = NODE_DISPLAY_NAME_MAPPINGS | TRAINING_NAME_MAPPINGS
+    if ENABLE_TRAINING_NODES:
+        NODE_DISPLAY_NAME_MAPPINGS = NODE_DISPLAY_NAME_MAPPINGS | TRAINING_NAME_MAPPINGS
 
-log_init("NODE_MAPPINGS_CREATED")
+    log_init("NODE_MAPPINGS_CREATED")
 
 # Complete initialization timing
 from .utils.performance_timer import complete_initialization, print_timing_report
@@ -92,8 +103,12 @@ try:
 except Exception as e:
     print(f"Warning: Failed to start background LLM cache population: {e}")
 
-# Print timing report if enabled via environment variable
-if os.environ.get('SAGEUTILS_PRINT_TIMING', '').lower() in ('1', 'true', 'yes'):
+# Print timing report if enabled.
+if SAGEUTILS_PRINT_TIMING:
     print_timing_report()
 
-__all__ = ['NODE_CLASS_MAPPINGS', 'NODE_DISPLAY_NAME_MAPPINGS', 'WEB_DIRECTORY']
+if NODE_VERSION == '1':
+    __all__ = ['NODE_CLASS_MAPPINGS', 'NODE_DISPLAY_NAME_MAPPINGS', 'WEB_DIRECTORY']
+else:
+    from .nodes_v3 import *
+    __all__ = ['SageExtension', 'WEB_DIRECTORY']

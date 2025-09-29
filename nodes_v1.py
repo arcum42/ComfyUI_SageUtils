@@ -1,9 +1,9 @@
-# Initialize performance timing as early as possible
+
 from .utils.performance_timer import log_init
 
 # Import all node classes
 from .nodes import *
-log_init("NODES_IMPORTED")
+log_init("V1_NODES_IMPORTED")
 
 
 # Currently, we have to have two mappings: one for the class names and one for the display names.
