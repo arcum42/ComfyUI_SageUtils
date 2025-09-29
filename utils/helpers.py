@@ -433,6 +433,54 @@ def model_scan(the_path, force = False):
     pbar = comfy.utils.ProgressBar(len(model_list))
     pull_metadata(model_list, force_all=force, pbar=pbar)
 
+
+# Module-level cache for get_model_list
+_model_list_cache = {}
+
+def get_model_list(model_type: str) -> list[str]:
+    """Get a list of model names based on the model type, with in-memory cache (1 min)."""
+    import time
+    global _model_list_cache
+    now = time.time()
+    cache_entry = _model_list_cache.get(model_type)
+    if cache_entry:
+        cached_time, cached_list = cache_entry
+        if now - cached_time < 60:
+            return cached_list
+
+    # Not cached or cache expired, fetch fresh
+    if model_type == "checkpoints":
+        result = folder_paths.get_filename_list("checkpoints")
+    elif model_type == "unet":
+        unet_names = []
+        try:
+            unet_names = [x for x in folder_paths.get_filename_list("unet_gguf")]
+        except Exception as e:
+            unet_names = []
+        unet_names += folder_paths.get_filename_list("diffusion_models")
+        unet_names = list(set(unet_names))
+        unet_names.sort()  # Remove duplicates
+        result = unet_names
+    elif model_type == "vae":
+        result = folder_paths.get_filename_list("vae")
+    elif model_type == "clip":
+        model_list = []
+        try:
+            model_list = [x for x in folder_paths.get_filename_list("clip_gguf")]
+        except Exception as e:
+            model_list = []
+        model_list += folder_paths.get_filename_list("text_encoders")
+        model_list = list(set(model_list))
+        model_list.sort()  # Remove duplicates
+        result = model_list
+    elif model_type == "loras":
+        result = folder_paths.get_filename_list("loras")
+    else:
+        result = []
+
+    _model_list_cache[model_type] = (now, result)
+    return result
+
 def get_recently_used_models(model_type):
     model_list = list()
     full_model_list = folder_paths.get_filename_list(model_type)

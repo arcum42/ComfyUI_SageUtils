@@ -8,6 +8,7 @@ import folder_paths
 from ..utils import model_info as mi
 from comfy_execution.graph_utils import GraphBuilder
 from ..utils import add_lora_to_stack
+from ..utils import get_model_list
 from ..utils.helpers_graph import (
     add_lora_stack_node
 )
@@ -16,7 +17,7 @@ from ..utils.helpers_graph import (
 class Sage_CheckpointSelector(ComfyNodeABC):
     @classmethod
     def INPUT_TYPES(cls) -> InputTypeDict:
-        model_list = folder_paths.get_filename_list("checkpoints")
+        model_list = get_model_list("checkpoints")
         return {
                 "required": {
                     "ckpt_name": (model_list, {"tooltip": "The name of the checkpoint (model) to load."})
@@ -39,14 +40,7 @@ class Sage_CheckpointSelector(ComfyNodeABC):
 class Sage_UNETSelector(ComfyNodeABC):
     @classmethod
     def INPUT_TYPES(cls) -> InputTypeDict:
-        unet_names = []
-        try:
-            unet_names = [x for x in folder_paths.get_filename_list("unet_gguf")]
-        except Exception as e:
-            unet_names = []
-        unet_names += folder_paths.get_filename_list("diffusion_models")
-        unet_names = list(set(unet_names))
-        unet_names.sort()  # Remove duplicates
+        unet_names = get_model_list("unet")
         return {
                 "required": {
                     "unet_name": (unet_names, {"tooltip": "The name of the UNET model to load."}),
@@ -57,7 +51,7 @@ class Sage_UNETSelector(ComfyNodeABC):
     RETURN_TYPES = ("UNET_INFO",)
     RETURN_NAMES = ("unet_info",)
 
-    OUTPUT_TOOLTIPS = ("The model path and hash, all in one output.")
+    OUTPUT_TOOLTIPS = ("The model path and hash, all in one output.",)
     FUNCTION = "get_unet_info"
 
     CATEGORY  =  "Sage Utils/selectors"
@@ -69,7 +63,7 @@ class Sage_UNETSelector(ComfyNodeABC):
 class Sage_VAESelector(ComfyNodeABC):
     @classmethod
     def INPUT_TYPES(cls) -> InputTypeDict:
-        vae_list = folder_paths.get_filename_list("vae")
+        vae_list = get_model_list("vae")
         return {
                 "required": {
                     "vae_name": (vae_list, {"tooltip": "The name of the VAE model to load."})
@@ -91,14 +85,7 @@ class Sage_VAESelector(ComfyNodeABC):
 class Sage_CLIPSelector(ComfyNodeABC):
     @classmethod
     def INPUT_TYPES(cls) -> InputTypeDict:
-        model_list = []
-        try:
-            model_list = [x for x in folder_paths.get_filename_list("clip_gguf")]
-        except Exception as e:
-            model_list = []
-        model_list += folder_paths.get_filename_list("text_encoders")
-        model_list = list(set(model_list))
-        model_list.sort()  # Remove duplicates
+        model_list = get_model_list("clip")
         return {
                 "required": {
                     "clip_name": (model_list, {"tooltip": "The name of the CLIP model to load."}),
@@ -121,14 +108,7 @@ class Sage_CLIPSelector(ComfyNodeABC):
 class Sage_DualCLIPSelector(ComfyNodeABC):
     @classmethod
     def INPUT_TYPES(cls) -> InputTypeDict:
-        model_list = []
-        try:
-            model_list = [x for x in folder_paths.get_filename_list("clip_gguf")]
-        except Exception as e:
-            model_list = []
-        model_list += folder_paths.get_filename_list("text_encoders")
-        model_list = list(set(model_list))
-        model_list.sort()  # Remove duplicates
+        model_list = get_model_list("clip")
         return {
                 "required": {
                     "clip_name_1": (model_list, {"tooltip": "The name of the first CLIP model to load."}),
@@ -152,14 +132,7 @@ class Sage_DualCLIPSelector(ComfyNodeABC):
 class Sage_TripleCLIPSelector(ComfyNodeABC):
     @classmethod
     def INPUT_TYPES(cls) -> InputTypeDict:
-        model_list = []
-        try:
-            model_list = [x for x in folder_paths.get_filename_list("clip_gguf")]
-        except Exception as e:
-            model_list = []
-        model_list += folder_paths.get_filename_list("text_encoders")
-        model_list = list(set(model_list))
-        model_list.sort()  # Remove duplicates
+        model_list = get_model_list("clip")
         return {
                 "required": {
                     "clip_name_1": (model_list, {"tooltip": "The name of the first CLIP model to load."}),
@@ -182,14 +155,7 @@ class Sage_TripleCLIPSelector(ComfyNodeABC):
 class Sage_QuadCLIPSelector(ComfyNodeABC):
     @classmethod
     def INPUT_TYPES(cls) -> InputTypeDict:
-        model_list = []
-        try:
-            model_list = [x for x in folder_paths.get_filename_list("clip_gguf")]
-        except Exception as e:
-            model_list = []
-        model_list += folder_paths.get_filename_list("text_encoders")
-        model_list = list(set(model_list))
-        model_list.sort()  # Remove duplicates
+        model_list = get_model_list("clip")
         return {
                 "required": {
                     "clip_name_1": (model_list, {"tooltip": "The name of the first CLIP model to load."}),
@@ -330,7 +296,7 @@ class Sage_LoraStack(ComfyNodeABC):
 
     @classmethod
     def INPUT_TYPES(cls) -> InputTypeDict:
-        lora_list = folder_paths.get_filename_list("loras")
+        lora_list = get_model_list("loras")
         return {
             "required": {
                 "enabled": (IO.BOOLEAN, {"default": False, "tooltip": "Whether to enable this LoRA."}),
@@ -366,7 +332,7 @@ class Sage_QuickLoraStack(Sage_LoraStack):
     
     @classmethod
     def INPUT_TYPES(cls) -> InputTypeDict:
-        lora_list = folder_paths.get_filename_list("loras")
+        lora_list = get_model_list("loras")
         return {
             "required": {
                 "enabled": (IO.BOOLEAN, {"default": True}),
@@ -397,7 +363,7 @@ class Sage_TripleLoraStack(ComfyNodeABC):
 
     @classmethod
     def INPUT_TYPES(cls) -> InputTypeDict:
-        lora_list = folder_paths.get_filename_list("loras")
+        lora_list = get_model_list("loras")
         required_list = {}
         for i in range(1, cls.NUM_OF_ENTRIES + 1):
             required_list[f"enabled_{i}"] = (IO.BOOLEAN, {"default": True})
@@ -448,7 +414,7 @@ class Sage_TripleQuickLoraStack(ComfyNodeABC):
 
     @classmethod
     def INPUT_TYPES(cls) -> InputTypeDict:
-        lora_list = folder_paths.get_filename_list("loras")
+        lora_list = get_model_list("loras")
         required_list = {}
         for i in range(1, cls.NUM_OF_ENTRIES + 1):
             required_list[f"enabled_{i}"] = (IO.BOOLEAN, {"default": True})
