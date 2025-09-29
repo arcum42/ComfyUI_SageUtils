@@ -155,7 +155,26 @@ def get_ollama_models() -> list[str]:
     return cache.get_ollama_models(_fetch_ollama_models)
 
 
-def ollama_generate_vision(model: str, prompt: str, keep_alive: float = 0.0, images=None, options=None) -> str:
+def build_response_parameters(model: str, prompt: str, keep_alive: float, options: dict, system_prompt: str, images: None) -> dict:
+    """Build the response parameters for Ollama generate call."""
+    response_parameters = {
+        "model": model,
+        "prompt": prompt,
+        "stream": False,
+        "keep_alive": keep_alive
+    }
+    if system_prompt and isinstance(system_prompt, str) and system_prompt != "":
+        response_parameters["system"] = system_prompt
+    
+    if options and isinstance(options, dict):
+        response_parameters["options"] = options
+
+    if images is not None:
+        response_parameters["images"] = tensor_to_base64(images)
+
+    return response_parameters
+
+def ollama_generate_vision(model: str, prompt: str, keep_alive: float = 0.0, images=None, options=None, system_prompt: str = "") -> str:
     """Generate a response from an Ollama vision model."""
     # Ensure Ollama is initialized before use
     ensure_ollama_initialized()
@@ -167,27 +186,11 @@ def ollama_generate_vision(model: str, prompt: str, keep_alive: float = 0.0, ima
         raise ValueError(f"Model '{model}' is not available. Available models: {vision_models}")
     if images is None:
         raise ValueError("No images provided for vision model.")
-    input_images = tensor_to_base64(images)
-    if not input_images:
-        raise ValueError("No images provided for vision model.")
     try:
-        if options and isinstance(options, dict):
-            response = ollama_client.generate(
-                model=model,
-                prompt=prompt,
-                images=input_images,
-                stream=False,
-                keep_alive=keep_alive,
-                options=options
-            )
-        else:
-            response = ollama_client.generate(
-                model=model,
-                prompt=prompt,
-                images=input_images,
-                keep_alive=keep_alive,
-                stream=False
-            )
+        options = options or {}
+        options['seed'] = options.get('seed', 0)
+        response_parameters = build_response_parameters(model, prompt, keep_alive, options, system_prompt, images)
+        response = ollama_client.generate(**response_parameters)
         if not response or 'response' not in response:
             raise ValueError("No valid response received from the model.")
         return clean_response(response['response'])
@@ -195,8 +198,7 @@ def ollama_generate_vision(model: str, prompt: str, keep_alive: float = 0.0, ima
         logging.error(f"Error generating response from Ollama vision model: {e}")
         return ""
 
-
-def ollama_generate(model: str, prompt: str, keep_alive: float = 0.0, options=None) -> str:
+def ollama_generate(model: str, prompt: str, keep_alive: float = 0.0, options=None, system_prompt: str = "") -> str:
     """Generate a response from an Ollama model."""
     # Ensure Ollama is initialized before use
     ensure_ollama_initialized()
@@ -207,21 +209,10 @@ def ollama_generate(model: str, prompt: str, keep_alive: float = 0.0, options=No
     if model not in models:
         raise ValueError(f"Model '{model}' is not available. Available models: {models}")
     try:
-        if options and isinstance(options, dict):
-            response = ollama_client.generate(
-                model=model,
-                prompt=prompt,
-                stream=False,
-                keep_alive=keep_alive,
-                options=options
-            )
-        else:
-            response = ollama_client.generate(
-                model=model,
-                prompt=prompt,
-                stream=False,
-                keep_alive=keep_alive
-            )
+        if options is None:
+            options = {}
+        response_parameters = build_response_parameters(model, prompt, keep_alive, options, system_prompt, None)
+        response = ollama_client.generate(**response_parameters)
         if not response or 'response' not in response:
             raise ValueError("No valid response received from the model.")
         return clean_response(response['response'])
@@ -238,10 +229,7 @@ def ollama_generate_vision_refine( model: str, prompt: str, images=None, options
         raise ValueError(f"Model '{model}' is not available. Available models: {vision_models}")
     if images is None:
         raise ValueError("No images provided for vision model.")
-    input_images = tensor_to_base64(images)
-    if not input_images:
-        raise ValueError("No images provided for vision model.")
-    
+
     try:
         options = options or {}
         options['seed'] = options.get('seed', 0)
@@ -251,26 +239,19 @@ def ollama_generate_vision_refine( model: str, prompt: str, images=None, options
             refine_model = model
         if refine_prompt == "":
             refine_prompt = prompt
-
-        response = ollama_client.generate(
-            model=model,
-            prompt=prompt,
-            images=input_images,
-            options=options,
-            stream=False
-        )
+        
+        response_parameters = build_response_parameters(model, prompt, 0, options, "", images)
+        response = ollama_client.generate(**response_parameters)
         if not response or 'response' not in response:
             raise ValueError("No valid response received from the vision model.")
         
         initial_response = clean_response(response['response'])
         refine_prompt = f"{refine_prompt}\n{initial_response}"
-        
-        refined_response = ollama_client.generate(
-            model=refine_model,
-            prompt=refine_prompt,
-            options=refine_options,
-            stream=False
-        )
+        refine_options = refine_options or {}
+        refine_options['seed'] = options.get('seed', 0)
+        refined_response_parameters = build_response_parameters(refine_model, refine_prompt, 0, refine_options, "", None)
+
+        refined_response = ollama_client.generate(**refined_response_parameters)
         if not refined_response or 'response' not in refined_response:
             raise ValueError("No valid response received from the refining model.")
         refined_response = clean_response(refined_response['response'])
