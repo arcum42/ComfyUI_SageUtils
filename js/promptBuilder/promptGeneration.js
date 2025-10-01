@@ -4,19 +4,15 @@
  */
 
 import { promptBuilderApi } from './promptBuilderApi.js';
+import { actions, selectors } from '../shared/stateManager.js';
 
 /**
  * Prompt Generation Component
  */
 export const promptGenerationComponent = {
-    // Component state
+    // Component state (UI-only, non-persisted)
     state: {
-        isGenerating: false,
-        results: [],
-        positivePrompt: '',
-        negativePrompt: '',
-        seed: 0,
-        count: 1
+        isGenerating: false
     },
 
     // Component elements
@@ -56,10 +52,47 @@ export const promptGenerationComponent = {
         // Add component styles
         this.addStyles();
 
-        // Initialize with random seed
-        this.generateRandomSeed();
+        // Restore persisted state values
+        this.restoreState();
+
+        // Initialize with random seed only if no seed is persisted
+        if (!selectors.promptSeed()) {
+            this.generateRandomSeed();
+        }
 
         return this.elements.container;
+    },
+
+    /**
+     * Restore state from global state manager
+     */
+    restoreState() {
+        const positivePrompt = selectors.positivePrompt();
+        const negativePrompt = selectors.negativePrompt();
+        const seed = selectors.promptSeed();
+        const count = selectors.promptCount();
+
+        if (positivePrompt) {
+            this.elements.positiveTextarea.value = positivePrompt;
+        }
+        if (negativePrompt) {
+            this.elements.negativeTextarea.value = negativePrompt;
+        }
+        if (seed !== undefined && seed !== null) {
+            this.elements.seedInput.value = seed;
+        }
+        if (count) {
+            this.elements.countInput.value = count;
+        }
+
+        // Render any persisted results
+        const results = selectors.promptResults();
+        if (results && results.length > 0) {
+            this.renderResults();
+            console.debug('[PromptBuilder] Restored', results.length, 'generated prompts');
+        }
+
+        console.debug('[PromptBuilder] Restored state:', { positivePrompt, negativePrompt, seed, count, resultsCount: results?.length || 0 });
     },
 
     /**
@@ -111,12 +144,12 @@ export const promptGenerationComponent = {
 
         // Add event listeners
         this.elements.positiveTextarea.addEventListener('input', () => {
-            this.state.positivePrompt = this.elements.positiveTextarea.value;
+            actions.setPositivePrompt(this.elements.positiveTextarea.value);
             this.updateWildcardHighlighting(this.elements.positiveTextarea);
         });
 
         this.elements.negativeTextarea.addEventListener('input', () => {
-            this.state.negativePrompt = this.elements.negativeTextarea.value;
+            actions.setNegativePrompt(this.elements.negativeTextarea.value);
             this.updateWildcardHighlighting(this.elements.negativeTextarea);
         });
 
@@ -199,12 +232,14 @@ export const promptGenerationComponent = {
 
         // Add event listeners
         this.elements.seedInput.addEventListener('input', () => {
-            this.state.seed = parseInt(this.elements.seedInput.value) || 0;
+            const seed = parseInt(this.elements.seedInput.value) || 0;
+            actions.setPromptSeed(seed);
         });
 
         this.elements.countInput.addEventListener('input', () => {
-            this.state.count = Math.max(1, Math.min(10, parseInt(this.elements.countInput.value) || 1));
-            this.elements.countInput.value = this.state.count;
+            const count = Math.max(1, Math.min(10, parseInt(this.elements.countInput.value) || 1));
+            this.elements.countInput.value = count;
+            actions.setPromptCount(count);
         });
 
         this.elements.randomSeedButton.addEventListener('click', () => {
@@ -258,7 +293,7 @@ export const promptGenerationComponent = {
      */
     generateRandomSeed() {
         const randomSeed = promptBuilderApi.generateRandomSeed();
-        this.state.seed = randomSeed;
+        actions.setPromptSeed(randomSeed);
         this.elements.seedInput.value = randomSeed;
     },
 
@@ -282,11 +317,11 @@ export const promptGenerationComponent = {
             const results = await promptBuilderApi.generateMultiplePrompts(
                 positivePrompt,
                 negativePrompt,
-                this.state.seed,
-                this.state.count
+                selectors.promptSeed(),
+                selectors.promptCount()
             );
 
-            this.state.results = [...this.state.results, ...results];
+            actions.addPromptResults(results);
             this.renderResults();
             this.showMessage(`Generated ${results.length} prompt(s) successfully!`, 'success');
 
@@ -318,7 +353,7 @@ export const promptGenerationComponent = {
      * Clear all results
      */
     clearResults() {
-        this.state.results = [];
+        actions.clearPromptResults();
         this.renderResults();
         this.showMessage('Results cleared', 'info');
     },
@@ -329,7 +364,8 @@ export const promptGenerationComponent = {
     renderResults() {
         this.elements.resultsContainer.innerHTML = '';
 
-        if (this.state.results.length === 0) {
+        const results = selectors.promptResults();
+        if (!results || results.length === 0) {
             const emptyState = document.createElement('div');
             emptyState.className = 'empty-state';
             emptyState.textContent = 'No prompts generated yet. Enter prompts above and click Generate!';
@@ -337,7 +373,7 @@ export const promptGenerationComponent = {
             return;
         }
 
-        this.state.results.forEach((result, index) => {
+        results.forEach((result, index) => {
             const resultItem = this.createResultItem(result, index);
             this.elements.resultsContainer.appendChild(resultItem);
         });
@@ -451,15 +487,15 @@ export const promptGenerationComponent = {
     loadResult(result) {
         if (result.positive) {
             this.elements.positiveTextarea.value = result.originalPositive || result.positive;
-            this.state.positivePrompt = this.elements.positiveTextarea.value;
+            actions.setPositivePrompt(this.elements.positiveTextarea.value);
         }
         if (result.negative) {
             this.elements.negativeTextarea.value = result.originalNegative || result.negative;
-            this.state.negativePrompt = this.elements.negativeTextarea.value;
+            actions.setNegativePrompt(this.elements.negativeTextarea.value);
         }
         if (result.seed) {
             this.elements.seedInput.value = result.seed;
-            this.state.seed = result.seed;
+            actions.setPromptSeed(result.seed);
         }
         this.showMessage('Prompt loaded into fields', 'success');
     },

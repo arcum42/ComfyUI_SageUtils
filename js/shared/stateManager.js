@@ -1,7 +1,15 @@
 /**
  * Centralized State Management for Sidebar
  * Provides a single source of truth for sidebar state with debugging and change tracking
+ * Includes localStorage persistence to maintain state across sidebar close/reopen
  */
+
+// LocalStorage key for persisting state
+const PERSISTENCE_KEY = 'sageutils_sidebar_state';
+
+// Debounce timer for saving state
+let saveDebounceTimer = null;
+const SAVE_DEBOUNCE_MS = 500;
 
 /**
  * @typedef {Object} ModelFilters
@@ -47,11 +55,21 @@
  */
 
 /**
+ * @typedef {Object} PromptBuilderTabState
+ * @property {string} positivePrompt - Positive prompt text
+ * @property {string} negativePrompt - Negative prompt text
+ * @property {number} seed - Random seed for generation
+ * @property {number} count - Number of prompts to generate
+ * @property {Array<Object>} results - Array of generated prompt results
+ */
+
+/**
  * @typedef {Object} SidebarState
- * @property {string} activeTab - Currently active tab ('models', 'notes', 'civitai', 'gallery')
+ * @property {string} activeTab - Currently active tab ('models', 'notes', 'civitai', 'gallery', 'promptBuilder')
  * @property {ModelsTabState} models - Models tab state
  * @property {NotesTabState} notes - Notes tab state
  * @property {GalleryTabState} gallery - Gallery tab state
+ * @property {PromptBuilderTabState} promptBuilder - Prompt Builder tab state
  */
 
 // Initial state
@@ -99,11 +117,118 @@ const initialState = {
             currentImage: null,
             showMetadata: false
         }
+    },
+    promptBuilder: {
+        positivePrompt: '',
+        negativePrompt: '',
+        seed: 0,
+        count: 1,
+        results: []
     }
 };
 
+/**
+ * Load persisted state from localStorage
+ * @returns {Object|null} Persisted state or null if none exists
+ */
+function loadPersistedState() {
+    try {
+        const stored = localStorage.getItem(PERSISTENCE_KEY);
+        if (stored) {
+            const parsed = JSON.parse(stored);
+            console.debug('[StateManager] Loaded persisted state from localStorage:', parsed);
+            return parsed;
+        } else {
+            console.debug('[StateManager] No persisted state found in localStorage');
+        }
+    } catch (error) {
+        console.error('[StateManager] Error loading persisted state:', error);
+    }
+    return null;
+}
+
+/**
+ * Save current state to localStorage (debounced)
+ */
+function savePersistedState() {
+    // Clear any pending save
+    if (saveDebounceTimer) {
+        clearTimeout(saveDebounceTimer);
+    }
+    
+    // Debounce the save operation
+    saveDebounceTimer = setTimeout(() => {
+        try {
+            // Don't persist temporary data like loading states and cache data
+            const stateToPersist = {
+                activeTab: currentState.activeTab,
+                models: {
+                    selectedHash: currentState.models.selectedHash,
+                    filters: currentState.models.filters
+                },
+                notes: {
+                    currentFile: currentState.notes.currentFile,
+                    showPreview: currentState.notes.showPreview
+                },
+                gallery: {
+                    selectedFolder: currentState.gallery.selectedFolder,
+                    customFolders: currentState.gallery.customFolders,
+                    selectedImage: currentState.gallery.selectedImage,
+                    currentPath: currentState.gallery.currentPath,
+                    sortBy: currentState.gallery.sortBy,
+                    searchQuery: currentState.gallery.searchQuery,
+                    viewMode: currentState.gallery.viewMode,
+                    thumbnailSize: currentState.gallery.thumbnailSize,
+                    showMetadata: currentState.gallery.showMetadata
+                },
+                promptBuilder: {
+                    positivePrompt: currentState.promptBuilder.positivePrompt,
+                    negativePrompt: currentState.promptBuilder.negativePrompt,
+                    seed: currentState.promptBuilder.seed,
+                    count: currentState.promptBuilder.count,
+                    results: currentState.promptBuilder.results
+                }
+            };
+            
+            localStorage.setItem(PERSISTENCE_KEY, JSON.stringify(stateToPersist));
+            console.debug('[StateManager] State persisted to localStorage');
+        } catch (error) {
+            console.error('[StateManager] Error saving persisted state:', error);
+        }
+    }, SAVE_DEBOUNCE_MS);
+}
+
+/**
+ * Deep merge two objects, with source overwriting target
+ * @param {Object} target - Target object
+ * @param {Object} source - Source object
+ * @returns {Object} Merged object
+ */
+function deepMerge(target, source) {
+    const output = { ...target };
+    
+    for (const key in source) {
+        if (source[key] && typeof source[key] === 'object' && !Array.isArray(source[key])) {
+            output[key] = deepMerge(target[key] || {}, source[key]);
+        } else {
+            output[key] = source[key];
+        }
+    }
+    
+    return output;
+}
+
 // Create a deep copy of initial state
 let currentState = JSON.parse(JSON.stringify(initialState));
+
+// Try to load persisted state and merge with initial state
+const persistedState = loadPersistedState();
+if (persistedState) {
+    currentState = deepMerge(currentState, persistedState);
+    console.debug('[StateManager] Initialized with persisted state:', currentState);
+} else {
+    console.debug('[StateManager] Initialized with default state:', currentState);
+}
 
 // State change listeners
 const listeners = new Set();
@@ -205,7 +330,7 @@ export function subscribe(listener) {
 }
 
 /**
- * Notify all listeners of state changes
+ * Notify all listeners of state changes and trigger persistence
  * @param {Object} changeInfo - Information about the change
  */
 function notifyListeners(changeInfo) {
@@ -216,6 +341,9 @@ function notifyListeners(changeInfo) {
             console.error('[StateManager] Error in listener:', error);
         }
     });
+    
+    // Trigger persistence after state changes
+    savePersistedState();
 }
 
 /**
@@ -226,7 +354,7 @@ function notifyListeners(changeInfo) {
 function validateState(state) {
     try {
         // Check required top-level keys
-        const requiredKeys = ['activeTab', 'models', 'notes', 'gallery'];
+        const requiredKeys = ['activeTab', 'models', 'notes', 'gallery', 'promptBuilder'];
         for (const key of requiredKeys) {
             if (!(key in state)) {
                 console.error(`[StateManager] Missing required key: ${key}`);
@@ -235,7 +363,7 @@ function validateState(state) {
         }
         
         // Validate activeTab
-        if (!['models', 'notes', 'civitai', 'gallery'].includes(state.activeTab)) {
+        if (!['models', 'notes', 'civitai', 'gallery', 'promptBuilder'].includes(state.activeTab)) {
             console.error(`[StateManager] Invalid activeTab: ${state.activeTab}`);
             return false;
         }
@@ -298,6 +426,13 @@ export const selectors = {
     isGalleryLoading: () => getStateValue('gallery.isLoading'),
     fullImageView: () => getStateValue('gallery.fullImageView'),
     
+    // Prompt Builder tab selectors
+    positivePrompt: () => getStateValue('promptBuilder.positivePrompt'),
+    negativePrompt: () => getStateValue('promptBuilder.negativePrompt'),
+    promptSeed: () => getStateValue('promptBuilder.seed'),
+    promptCount: () => getStateValue('promptBuilder.count'),
+    promptResults: () => getStateValue('promptBuilder.results'),
+    
     // General selectors
     activeTab: () => getStateValue('activeTab')
 };
@@ -337,6 +472,40 @@ export const actions = {
     closeFullImage: () => updateState('gallery.fullImageView', { isOpen: false, currentImage: null, showMetadata: false }, 'closeFullImage'),
     toggleFullImageMetadata: (show) => updateState('gallery.fullImageView.showMetadata', show, 'toggleFullImageMetadata'),
     
+    // Prompt Builder tab actions
+    setPositivePrompt: (text) => updateState('promptBuilder.positivePrompt', text, 'setPositivePrompt'),
+    setNegativePrompt: (text) => updateState('promptBuilder.negativePrompt', text, 'setNegativePrompt'),
+    setPromptSeed: (seed) => updateState('promptBuilder.seed', seed, 'setPromptSeed'),
+    setPromptCount: (count) => updateState('promptBuilder.count', count, 'setPromptCount'),
+    setPromptResults: (results) => updateState('promptBuilder.results', results, 'setPromptResults'),
+    addPromptResults: (newResults) => updateState('promptBuilder.results', [...selectors.promptResults(), ...newResults], 'addPromptResults'),
+    clearPromptResults: () => updateState('promptBuilder.results', [], 'clearPromptResults'),
+    
     // General actions
     switchTab: (tab) => updateState('activeTab', tab, 'switchTab')
 };
+
+/**
+ * Reset state to initial values and clear localStorage
+ */
+export function resetState() {
+    try {
+        // Clear localStorage
+        localStorage.removeItem(PERSISTENCE_KEY);
+        
+        // Reset to initial state
+        const previousState = currentState;
+        currentState = JSON.parse(JSON.stringify(initialState));
+        
+        // Notify listeners
+        notifyListeners({
+            type: 'stateReset',
+            previousState: JSON.parse(JSON.stringify(previousState)),
+            currentState: getState()
+        });
+        
+        console.debug('[StateManager] State reset to initial values');
+    } catch (error) {
+        console.error('[StateManager] Error resetting state:', error);
+    }
+}

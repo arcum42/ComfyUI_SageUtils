@@ -7,6 +7,7 @@
 // Import required dependencies
 import { createHeader } from "../components/cacheUI.js";
 import { createThumbnailGrid } from "./gallery.js";
+import { selectors } from "../shared/stateManager.js";
 
 /**
  * Creates the Gallery tab header section with status display
@@ -288,6 +289,47 @@ export function createFolderSelectorAndControls() {
     folderSection.appendChild(sortContainer);
     folderSection.appendChild(buttonsContainer);
     folderSection.appendChild(searchContainer);
+
+    // Restore persisted gallery values from state
+    const savedFolder = selectors.selectedFolder();
+    const savedSort = selectors.gallerySortBy();
+    const savedSearch = selectors.gallerySearchQuery();
+    const savedViewMode = selectors.galleryViewMode();
+    const savedThumbnailSize = selectors.thumbnailSize();
+    
+    if (savedFolder) {
+        folderDropdown.value = savedFolder;
+    }
+    
+    if (savedSort) {
+        const sortValue = savedSort.replace(/-desc$/, '');
+        const isDescending = savedSort.endsWith('-desc');
+        
+        sortSelect.value = sortValue;
+        orderButton.textContent = isDescending ? '↓' : '↑';
+        orderButton.dataset.descending = isDescending ? 'true' : 'false';
+    }
+    
+    if (savedSearch) {
+        searchInput.value = savedSearch;
+    }
+    
+    if (savedViewMode) {
+        viewModeButton.textContent = savedViewMode === 'grid' ? '⊞ Grid View' : '≡ List View';
+        viewModeButton.dataset.mode = savedViewMode;
+    }
+    
+    if (savedThumbnailSize) {
+        thumbnailSizeSelect.value = savedThumbnailSize;
+    }
+    
+    console.debug('[GalleryTab] Restored gallery values from state:', {
+        folder: savedFolder,
+        sort: savedSort,
+        search: savedSearch,
+        viewMode: savedViewMode,
+        thumbnailSize: savedThumbnailSize
+    });
 
     return {
         folderSection,

@@ -14,7 +14,8 @@ import {
 } from "../shared/errorHandler.js";
 
 import { 
-    selectors 
+    selectors,
+    actions
 } from "../shared/stateManager.js";
 
 import { 
@@ -305,6 +306,47 @@ function createModelsFilterControls() {
 
     // Add sorting to the sorting row
     sortingContainer.appendChild(sortContainer);
+
+    // Restore persisted filter values from state
+    const savedFilters = selectors.modelFilters();
+    if (savedFilters) {
+        // Restore folder type filter
+        if (savedFilters.type) {
+            filterSelector.value = savedFilters.type;
+        }
+        
+        // Restore search input
+        if (savedFilters.search) {
+            searchInput.value = savedFilters.search;
+        }
+        
+        // Restore last used filter
+        if (savedFilters.lastUsed) {
+            lastUsedSelector.value = savedFilters.lastUsed;
+        }
+        
+        // Restore updates filter
+        if (savedFilters.updates) {
+            updateSelector.value = savedFilters.updates;
+        }
+        
+        // Restore sort - extract base sort value (before any -desc suffix)
+        if (savedFilters.sort) {
+            const sortValue = savedFilters.sort.replace(/-desc$/, '');
+            const isDescending = savedFilters.sort.endsWith('-desc');
+            
+            sortSelector.value = sortValue;
+            sortOrderButton.textContent = isDescending ? '↓' : '↑';
+            sortOrderButton.dataset.descending = isDescending ? 'true' : 'false';
+        }
+        
+        // Restore NSFW checkbox
+        if (savedFilters.showNsfw !== undefined) {
+            nsfwCheckbox.checked = savedFilters.showNsfw;
+        }
+        
+        console.debug('[ModelsTab] Restored filter values from state:', savedFilters);
+    }
 
     return {
         filtersMainContainer,
@@ -718,11 +760,28 @@ function setupModelsEventHandlers(filterControls, fileSelector, actionButtons, i
     });
     
     // Add filter change handlers
-    filterControls.filterSelector.addEventListener('change', updateFileListWrapper);
-    filterControls.searchInput.addEventListener('input', updateFileListWrapper);
-    filterControls.lastUsedSelector.addEventListener('change', updateFileListWrapper);
-    filterControls.updateSelector.addEventListener('change', updateFileListWrapper);
-    filterControls.sortSelector.addEventListener('change', updateFileListWrapper);
+    filterControls.filterSelector.addEventListener('change', () => {
+        actions.updateFilters({ type: filterControls.filterSelector.value });
+        updateFileListWrapper();
+    });
+    filterControls.searchInput.addEventListener('input', () => {
+        actions.updateFilters({ search: filterControls.searchInput.value });
+        updateFileListWrapper();
+    });
+    filterControls.lastUsedSelector.addEventListener('change', () => {
+        actions.updateFilters({ lastUsed: filterControls.lastUsedSelector.value });
+        updateFileListWrapper();
+    });
+    filterControls.updateSelector.addEventListener('change', () => {
+        actions.updateFilters({ updates: filterControls.updateSelector.value });
+        updateFileListWrapper();
+    });
+    filterControls.sortSelector.addEventListener('change', () => {
+        const sortValue = filterControls.sortSelector.value;
+        const isDescending = filterControls.sortOrderButton.textContent === '↓';
+        actions.updateFilters({ sort: isDescending ? `${sortValue}-desc` : sortValue });
+        updateFileListWrapper();
+    });
     
     // Add sort order button handler
     filterControls.sortOrderButton.addEventListener('click', () => {
@@ -733,12 +792,19 @@ function setupModelsEventHandlers(filterControls, fileSelector, actionButtons, i
             'Toggle sort direction (Ascending/Descending)' : 
             'Toggle sort direction (Descending/Ascending)';
         
+        // Update state with new sort direction
+        const sortValue = filterControls.sortSelector.value;
+        actions.updateFilters({ sort: isDescending ? sortValue : `${sortValue}-desc` });
+        
         // Trigger re-sort
         updateFileListWrapper();
     });
     
     // NSFW checkbox should only affect the info display, not the file list
     filterControls.nsfwCheckbox.addEventListener('change', async () => {
+        // Update state with NSFW preference
+        actions.updateFilters({ showNsfw: filterControls.nsfwCheckbox.checked });
+        
         // Only update the info display if a model is currently selected
         const selectedHash = selectors.selectedHash();
         if (selectedHash) {
