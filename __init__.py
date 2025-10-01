@@ -11,7 +11,8 @@ log_init("IMPORTS_START")
 
 # Set to 1 for v1 nodes, 3 for v3 nodes.
 # Right now, v3 nodes aren't ready for use.
-NODE_VERSION = os.environ.get('SAGEUTILS_NODE_VERSION', '1')
+CURRENT_NODE_VERSION = '1'
+NODE_VERSION = os.environ.get('SAGEUTILS_NODE_VERSION', CURRENT_NODE_VERSION)
 
 # Import all node classes
 if NODE_VERSION == '1':

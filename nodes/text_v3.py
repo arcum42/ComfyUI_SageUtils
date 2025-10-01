@@ -19,26 +19,11 @@ from dynamicprompts.generators import RandomPromptGenerator
 from dynamicprompts.wildcards.wildcard_manager import WildcardManager
 
 # To implement:
-# Sage_IntToStr
-# Sage_FloatToStr
-# SageSetWildcardText
-# Sage_SaveText
-# Sage_JoinText
-# Sage_TripleJoinText
 # Sage_ViewAnything
-# Sage_TextRandomLine
-# Sage_TextSelectLine
 # Sage_TextSubstitution
-# Sage_TextWeight
-# Sage_HiDreamE1_Instruction
 # Sage_ViewNotes
 
-# - Sage_SetText 
-# - Sage_SetTextWithInt
-# - Sage_TextSwitch
-# - Sage_CleanText
-# - Sage_PonyStyle
-# - Sage_PonyPrefix
+# I need to figure out how to do dynamic prompts properly, as well as show the text in the node.
 
 class Sage_SetText(io.ComfyNode):
     @classmethod
@@ -205,4 +190,235 @@ class Sage_PonyStyle(io.ComfyNode):
         style = kwargs.get("style", [])
         return io.NodeOutput(", ".join(style))
 
-TEXT_NODES = [Sage_SetText, Sage_SetTextWithInt, Sage_TextSwitch, Sage_CleanText, Sage_PonyStyle, Sage_PonyPrefix]
+class Sage_SaveText(io.ComfyNode):
+    @classmethod
+    def define_schema(cls):
+        return io.Schema(
+            node_id="Sage_SaveText",
+            display_name="Save Text",
+            description="Saves text to a file.",
+            category="Sage Utils/text",
+            inputs=[
+                io.String.Input("text", multiline=True),
+                io.String.Input("filename", default="output.txt"),
+                io.Boolean.Input("append", default=False)
+            ],
+            outputs=[
+                io.String.Output("filepath")
+            ]
+        )
+    
+    @classmethod
+    def execute(cls, **kwargs):
+        text = kwargs.get("text", "")
+        filename = kwargs.get("filename", "output.txt")
+        append = kwargs.get("append", False)
+        
+        filepath = get_save_file_path(filename)
+        mode = 'a' if append else 'w'
+        
+        with open(filepath, mode, encoding='utf-8') as f:
+            f.write(text)
+        
+        return io.NodeOutput(str(filepath))
+
+class Sage_JoinText(io.ComfyNode):
+    @classmethod
+    def define_schema(cls):
+        return io.Schema(
+            node_id="Sage_JoinText",
+            display_name="Join Text",
+            description="Joins two text strings with a separator.",
+            category="Sage Utils/text",
+            inputs=[
+                io.String.Input("text1", multiline=True),
+                io.String.Input("text2", multiline=True),
+                io.String.Input("separator", default=", ")
+            ],
+            outputs=[
+                io.String.Output("joined_text")
+            ]
+        )
+    
+    @classmethod
+    def execute(cls, **kwargs):
+        text1 = kwargs.get("text1", "")
+        text2 = kwargs.get("text2", "")
+        separator = kwargs.get("separator", ", ")
+        
+        return io.NodeOutput(f"{text1}{separator}{text2}")
+
+class Sage_TripleJoinText(io.ComfyNode):
+    @classmethod
+    def define_schema(cls):
+        return io.Schema(
+            node_id="Sage_TripleJoinText",
+            display_name="Triple Join Text",
+            description="Joins three text strings with separators.",
+            category="Sage Utils/text",
+            inputs=[
+                io.String.Input("text1", multiline=True),
+                io.String.Input("text2", multiline=True),
+                io.String.Input("text3", multiline=True),
+                io.String.Input("separator", default=", ")
+            ],
+            outputs=[
+                io.String.Output("joined_text")
+            ]
+        )
+    
+    @classmethod
+    def execute(cls, **kwargs):
+        text1 = kwargs.get("text1", "")
+        text2 = kwargs.get("text2", "")
+        text3 = kwargs.get("text3", "")
+        separator = kwargs.get("separator", ", ")
+        
+        return io.NodeOutput(f"{text1}{separator}{text2}{separator}{text3}")
+
+class Sage_TextRandomLine(io.ComfyNode):
+    @classmethod
+    def define_schema(cls):
+        return io.Schema(
+            node_id="Sage_TextRandomLine",
+            display_name="Text Random Line",
+            description="Returns a random line from the given text.",
+            category="Sage Utils/text",
+            inputs=[
+                io.String.Input("text", multiline=True),
+                io.Int.Input("seed", default=0)
+            ],
+            outputs=[
+                io.String.Output("random_line")
+            ]
+        )
+    
+    @classmethod
+    def execute(cls, **kwargs):
+        text = kwargs.get("text", "")
+        seed = kwargs.get("seed", 0)
+        
+        lines = [line.strip() for line in text.split('\n') if line.strip()]
+        
+        if not lines:
+            return io.NodeOutput("")
+        
+        random.seed(seed)
+        selected_line = random.choice(lines)
+        
+        return io.NodeOutput(selected_line)
+
+class Sage_TextSelectLine(io.ComfyNode):
+    @classmethod
+    def define_schema(cls):
+        return io.Schema(
+            node_id="Sage_TextSelectLine",
+            display_name="Text Select Line",
+            description="Selects a specific line from the given text based on the line number. Line numbers start from 0.",
+            category="Sage Utils/text",
+            inputs=[
+                io.String.Input("text", multiline=True),
+                io.Int.Input("line_number", default=0, min=0)
+            ],
+            outputs=[
+                io.String.Output("selected_line")
+            ]
+        )
+    
+    @classmethod
+    def execute(cls, **kwargs):
+        str = kwargs.get("text", "")
+        line_number = kwargs.get("line_number", 0)
+        
+        lines = [line.strip() for line in str.split('\n') if line.strip()]
+        
+        if not lines:
+            return io.NodeOutput("")
+        
+        # Clamp line_number to valid range
+        line_number = max(0, min(line_number, len(lines) - 1))
+        
+        return io.NodeOutput(lines[line_number])
+
+class Sage_TextWeight(io.ComfyNode):
+    @classmethod
+    def define_schema(cls):
+        return io.Schema(
+            node_id="Sage_TextWeight",
+            display_name="Text Weight",
+            description="Applies a weight to a text string.",
+            category="Sage Utils/text",
+            inputs=[
+                io.String.Input("text", multiline=True),
+                io.Float.Input("weight", default=1.0, min=-10.0, max=10.0, step=0.05),
+                io.String.Input("separator", default=", ")
+            ],
+            outputs=[
+                io.String.Output("weighted_text")
+            ]
+        )
+    
+    @classmethod
+    def execute(cls, **kwargs):
+        text = kwargs.get("text", "")
+        weight = kwargs.get("weight", 1.0)
+        separator = kwargs.get("separator", ", ")
+        
+        return io.NodeOutput(f"({text}:{weight:.2g}){separator}")
+
+class Sage_HiDreamE1_Instruction(io.ComfyNode):
+    @classmethod
+    def define_schema(cls):
+        return io.Schema(
+            node_id="Sage_HiDreamE1_Instruction",
+            display_name="HiDream E1 Instruction",
+            description="Generates a prompt for HiDream E1 based on the given instruction and description.",
+            category="Sage Utils/text",
+            inputs=[
+                io.String.Input("instruction", multiline=True),
+                io.String.Input("description", multiline=True)
+            ],
+            outputs=[
+                io.String.Output("prompt")
+            ]
+        )
+    
+    @classmethod
+    def execute(cls, **kwargs):
+        instruction = kwargs.get("instruction", "")
+        description = kwargs.get("description", "")
+        
+        cleaned_instruction = clean_text(instruction)
+        cleaned_description = clean_text(description)
+        
+        if not cleaned_instruction:
+            raise ValueError("Instruction cannot be empty.")
+        if not cleaned_description:
+            raise ValueError("Description cannot be empty.")
+        
+        if cleaned_instruction and cleaned_instruction[-1] != ".":
+            cleaned_instruction += "."
+        
+        prompt = f"Instruction: {cleaned_instruction}\nDescription: {cleaned_description}"
+        
+        return io.NodeOutput(prompt)
+
+# Update TEXT_NODES list
+TEXT_NODES = [
+    Sage_SetText, 
+    Sage_SetTextWithInt, 
+    Sage_TextSwitch, 
+    Sage_CleanText, 
+    Sage_PonyStyle, 
+    Sage_PonyPrefix,
+    Sage_SaveText,
+    Sage_JoinText,
+    Sage_TripleJoinText,
+    #Sage_ViewAnything,
+    Sage_TextRandomLine,
+    Sage_TextSelectLine,
+    #Sage_TextSubstitution,
+    Sage_TextWeight,
+    Sage_HiDreamE1_Instruction
+    #Sage_ViewNotes
+]
