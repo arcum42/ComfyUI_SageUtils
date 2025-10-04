@@ -514,6 +514,9 @@ def clean_text(text):
     ret = ')'.join(part.strip() for part in ret.split(')'))
     return ret
 
+def clean_if_needed(text, clean):
+    return clean_text(text) if clean and text is not None else text
+
 def condition_text(clip, text = None):
     zero_text = text is None
     text = text or ""

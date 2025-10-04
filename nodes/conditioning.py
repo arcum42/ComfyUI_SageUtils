@@ -9,19 +9,11 @@ from comfy_execution.graph_utils import GraphBuilder
 
 
 # Import specific utilities instead of wildcard import
-from ..utils import condition_text, clean_text
+from ..utils import condition_text, clean_text, clean_if_needed
 
 import torch
 
-def _get_conditioning_baseline(clip, text=None):
-    return condition_text(clip, text)
-
-def _get_conditioning(pbar, clip, text=None):
-    pbar.update(1)
-    return _get_conditioning_baseline(clip, text)
-
-def _clean_if_needed(text, clean):
-    return clean_text(text) if clean and text is not None else text
+from comfy.utils import ProgressBar
 
 class Sage_ConditioningZeroOut(ComfyNodeABC):
     @classmethod
@@ -66,7 +58,7 @@ class Sage_SingleCLIPTextEncode(ComfyNodeABC):
     def encode(self, clip, text=None) -> tuple:
         if isinstance(clip, tuple):
             clip = clip[0]
-        return (_get_conditioning_baseline(clip, text), text or "")
+        return (condition_text(clip, text), text or "")
 
 class Sage_DualCLIPTextEncode(ComfyNodeABC):
     @classmethod
@@ -94,12 +86,19 @@ class Sage_DualCLIPTextEncode(ComfyNodeABC):
     def encode(self, clip, clean, pos=None, neg=None) -> tuple:
         if isinstance(clip, tuple):
             clip = clip[0]
-        pbar = comfy.utils.ProgressBar(2)
-        pos = _clean_if_needed(pos, clean)
-        neg = _clean_if_needed(neg, clean)
+        pbar = ProgressBar(2)
+        pos = clean_if_needed(pos, clean)
+        neg = clean_if_needed(neg, clean)
+
+        pbar.update(1)
+        pos_cond = condition_text(clip, pos)
+
+        pbar.update(1)
+        neg_cond = condition_text(clip, neg)
+
         return (
-            _get_conditioning(pbar, clip, pos),
-            _get_conditioning(pbar, clip, neg),
+            pos_cond,
+            neg_cond,
             pos or "",
             neg or ""
         )
@@ -147,22 +146,29 @@ class Sage_DualCLIPTextEncodeLumina2(ComfyNodeABC):
     )
 
     def encode(self, clip, system_prompt, clean, pos=None, neg=None) -> tuple:
-        pbar = comfy.utils.ProgressBar(2)
+        pbar = ProgressBar(2)
         sys_prompt = self.SYSTEM_PROMPT[system_prompt]
         pos = f'{sys_prompt} <Prompt Start> {pos}' if pos is not None else None
         neg = f'{sys_prompt} <Prompt Start> {neg}' if neg is not None else None
-        pos = _clean_if_needed(pos, clean)
-        neg = _clean_if_needed(neg, clean)
+        pos = clean_if_needed(pos, clean)
+        neg = clean_if_needed(neg, clean)
+        if isinstance(clip, tuple):
+            clip = clip[0]
+    
+        pbar.update(1)
+        pos_cond = condition_text(clip, pos)
+
+        pbar.update(1)
+        neg_cond = condition_text(clip, neg)
+
         return (
-            _get_conditioning(pbar, clip, pos),
-            _get_conditioning(pbar, clip, neg),
+            pos_cond,
+            neg_cond,
             pos or "",
             neg or ""
         )
 
 # Use graph-based conditioning with reference image support, based on the TextEncodeQwenImageEdit node in nodes_qwen.py.
-
-
 class Sage_DualCLIPTextEncodeQwen(ComfyNodeABC):
     @classmethod
     def INPUT_TYPES(cls) -> InputTypeDict:
@@ -193,8 +199,8 @@ class Sage_DualCLIPTextEncodeQwen(ComfyNodeABC):
         if isinstance(clip, tuple):
             clip = clip[0]
 
-        pos = _clean_if_needed(pos, clean)
-        neg = _clean_if_needed(neg, clean)
+        pos = clean_if_needed(pos, clean)
+        neg = clean_if_needed(neg, clean)
 
         graph = GraphBuilder()
 

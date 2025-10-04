@@ -5,10 +5,11 @@ from comfy_api.latest import io, ComfyExtension
 from typing_extensions import override
 from .utils.performance_timer import log_init
 
+from .nodes.conditioning_v3 import *
 from .nodes.text_v3 import *
 
 NODE_LIST = []
-NODE_LIST = NODE_LIST + TEXT_NODES
+NODE_LIST = NODE_LIST + TEXT_NODES + CONDITIONING_NODES
 class SageExtension(ComfyExtension):
     @override
     async def get_node_list(self) -> list[type[io.ComfyNode]]:
