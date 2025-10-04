@@ -367,7 +367,7 @@ class Sage_LoadModelFromInfo(ComfyNodeABC):
 
 class Sage_ModelLoraStackLoader(Sage_LoadModelFromInfo):
     @classmethod
-    def INPUT_TYPES(cls) -> InputTypeDict:
+    def INPUT_TYPES(cls):
         return {
             "required": {
                 "model_info": ("MODEL_INFO", {

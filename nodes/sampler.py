@@ -166,6 +166,7 @@ class Sage_KSampler(ComfyNodeABC):
     DESCRIPTION = "Uses the provided model, positive and negative conditioning to denoise the latent image. Designed to work with the Sampler info node."
 
     def sample(self, model, sampler_info, positive, negative, latent_image, denoise=1.0, advanced_info = None) -> tuple:
+        print(f"KSampler called.")
         if advanced_info is None:
             return nodes.common_ksampler(model, sampler_info["seed"], sampler_info["steps"], sampler_info["cfg"], sampler_info["sampler"], sampler_info["scheduler"], positive, negative, latent_image, denoise=denoise)
         

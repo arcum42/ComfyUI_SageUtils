@@ -99,7 +99,7 @@ class Sage_CLIPSelector(ComfyNodeABC):
     OUTPUT_TOOLTIPS = ("The model path and hash, all in one output.")
     FUNCTION = "get_clip_info"
 
-    CATEGORY  =  "Sage Utils/selectors"
+    CATEGORY  =  "Sage Utils/selectors/clip"
     DESCRIPTION = "Returns a model_info output to pass to the construct metadata node or a model info node. (And hashes and pulls civitai info for the file.)"
     def get_clip_info(self, clip_name, clip_type) -> tuple:
         info = mi.get_model_info_clips([clip_name], clip_type)
@@ -123,7 +123,7 @@ class Sage_DualCLIPSelector(ComfyNodeABC):
     OUTPUT_TOOLTIPS = ("The model path and hash, all in one output.")
     FUNCTION = "get_clip_info"
 
-    CATEGORY  =  "Sage Utils/selectors"
+    CATEGORY  =  "Sage Utils/selectors/clip"
     DESCRIPTION = "Returns a model_info output to pass to the construct metadata node or a model info node. (And hashes and pulls civitai info for the file.)"
     def get_clip_info(self, clip_name_1, clip_name_2, clip_type) -> tuple:
         info = mi.get_model_info_clips([clip_name_1, clip_name_2], clip_type)
@@ -146,7 +146,7 @@ class Sage_TripleCLIPSelector(ComfyNodeABC):
     OUTPUT_TOOLTIPS = ("The model path and hash, all in one output.")
     FUNCTION = "get_clip_info"
 
-    CATEGORY  =  "Sage Utils/selectors"
+    CATEGORY  =  "Sage Utils/selectors/clip"
     DESCRIPTION = "Returns a model_info output to pass to the construct metadata node or a model info node. (And hashes and pulls civitai info for the file.)"
     def get_clip_info(self, clip_name_1, clip_name_2, clip_name_3) -> tuple:
         info = mi.get_model_info_clips([clip_name_1, clip_name_2, clip_name_3])
@@ -171,11 +171,143 @@ class Sage_QuadCLIPSelector(ComfyNodeABC):
     OUTPUT_TOOLTIPS = ("The model path and hash, all in one output.")
     FUNCTION = "get_clip_info"
 
-    CATEGORY  =  "Sage Utils/selectors"
+    CATEGORY  =  "Sage Utils/selectors/clip"
     DESCRIPTION = "Returns a model_info output to pass to the construct metadata node or a model info node. (And hashes and pulls civitai info for the file.)"
     def get_clip_info(self, clip_name_1, clip_name_2, clip_name_3, clip_name_4) -> tuple:
         info = mi.get_model_info_clips([clip_name_1, clip_name_2, clip_name_3, clip_name_4])
         return info
+
+class Sage_MultiSelectorSingleClip(ComfyNodeABC):
+    @classmethod
+    def INPUT_TYPES(cls):
+        model_list = get_model_list("clip")
+        unet_names = get_model_list("unet")
+        vae_list = get_model_list("vae")
+        return {
+                "required": {
+                    "unet_name": (unet_names, {"tooltip": "The name of the UNET model to load."}),
+                    "weight_dtype": (mi.weight_dtype_options, {"default": "default", "tooltip": "The weight dtype to use for the UNET model."}),
+                    "clip_name": (model_list, {"tooltip": "The name of the CLIP model to load."}),
+                    "clip_type": (mi.single_clip_loader_options, {"default": "chroma", "tooltip": "The type of CLIP model. If empty, will use the default type."}),
+                    "vae_name": (vae_list, {"tooltip": "The name of the VAE model to load."}),
+                }
+            }
+
+    RETURN_TYPES = ("MODEL_INFO",)
+    RETURN_NAMES = ("model_info",)
+    OUTPUT_IS_LIST = (True,)
+
+    OUTPUT_TOOLTIPS = ("The model path and hash, all in one output.")
+    FUNCTION = "get_model_info"
+
+    CATEGORY  =  "Sage Utils/selectors/multi"
+    DESCRIPTION = "Returns a model_info output to pass to the construct metadata node or a model info node. (And hashes and pulls civitai info for the file.)"
+    def get_model_info(self, unet_name, weight_dtype, clip_name, clip_type, vae_name) -> tuple:
+        unet_info = mi.get_model_info_unet(unet_name, weight_dtype)
+        clip_info = mi.get_model_info_clips([clip_name], clip_type)
+        vae_info = mi.get_model_info_vae(vae_name)
+
+        return ((unet_info, clip_info, vae_info),)
+
+class Sage_MultiSelectorDoubleClip(ComfyNodeABC):
+    @classmethod
+    def INPUT_TYPES(cls):
+        model_list = get_model_list("clip")
+        unet_names = get_model_list("unet")
+        vae_list = get_model_list("vae")
+        return {
+                "required": {
+                    "unet_name": (unet_names, {"tooltip": "The name of the UNET model to load."}),
+                    "weight_dtype": (mi.weight_dtype_options, {"default": "default", "tooltip": "The weight dtype to use for the UNET model."}),
+                    "clip_name_1": (model_list, {"tooltip": "The name of the first CLIP model to load."}),
+                    "clip_name_2": (model_list, {"tooltip": "The name of the second CLIP model to load."}),
+                    "clip_type": (mi.single_clip_loader_options, {"default": "chroma", "tooltip": "The type of the second CLIP model. If empty, will use the default type."}),
+                    "vae_name": (vae_list, {"tooltip": "The name of the VAE model to load."}),
+                }
+            }
+
+    RETURN_TYPES = ("MODEL_INFO",)
+    RETURN_NAMES = ("model_info",)
+    OUTPUT_IS_LIST = (True,)
+
+    OUTPUT_TOOLTIPS = ("The model path and hash, all in one output.")
+    FUNCTION = "get_model_info"
+
+    CATEGORY  =  "Sage Utils/selectors/multi"
+    DESCRIPTION = "Returns a model_info output to pass to the construct metadata node or a model info node. (And hashes and pulls civitai info for the file.)"
+    def get_model_info(self, unet_name, weight_dtype, clip_name_1, clip_name_2, clip_type, vae_name) -> tuple:
+        unet_info = mi.get_model_info_unet(unet_name, weight_dtype)
+        clip_info = mi.get_model_info_clips([clip_name_1, clip_name_2], clip_type)
+        vae_info = mi.get_model_info_vae(vae_name)
+
+        return ((unet_info, clip_info, vae_info),)
+
+class Sage_MultiSelectorTripleClip(ComfyNodeABC):
+    @classmethod
+    def INPUT_TYPES(cls):
+        model_list = get_model_list("clip")
+        unet_names = get_model_list("unet")
+        vae_list = get_model_list("vae")
+        return {
+                "required": {
+                    "unet_name": (unet_names, {"tooltip": "The name of the UNET model to load."}),
+                    "weight_dtype": (mi.weight_dtype_options, {"default": "default", "tooltip": "The weight dtype to use for the UNET model."}),
+                    "clip_name_1": (model_list, {"tooltip": "The name of the first CLIP model to load."}),
+                    "clip_name_2": (model_list, {"tooltip": "The name of the second CLIP model to load."}),
+                    "clip_name_3": (model_list, {"tooltip": "The name of the third CLIP model to load."}),
+                    "vae_name": (vae_list, {"tooltip": "The name of the VAE model to load."}),
+                }
+            }
+
+    RETURN_TYPES = ("MODEL_INFO",)
+    RETURN_NAMES = ("model_info",)
+    OUTPUT_IS_LIST = (True,)
+
+    OUTPUT_TOOLTIPS = ("The model path and hash, all in one output.")
+    FUNCTION = "get_model_info"
+
+    CATEGORY  =  "Sage Utils/selectors/multi"
+    DESCRIPTION = "Returns a model_info output to pass to the construct metadata node or a model info node. (And hashes and pulls civitai info for the file.)"
+    def get_model_info(self, unet_name, weight_dtype, vae_name, clip_name_1, clip_name_2, clip_name_3) -> tuple:
+        unet_info = mi.get_model_info_unet(unet_name, weight_dtype)
+        clip_info = mi.get_model_info_clips([clip_name_1, clip_name_2, clip_name_3])
+        vae_info = mi.get_model_info_vae(vae_name)
+
+        return ((unet_info, clip_info, vae_info),)
+    
+class Sage_MultiSelectorQuadClip(ComfyNodeABC):
+    @classmethod
+    def INPUT_TYPES(cls):
+        model_list = get_model_list("clip")
+        unet_names = get_model_list("unet")
+        vae_list = get_model_list("vae")
+        return {
+                "required": {
+                    "unet_name": (unet_names, {"tooltip": "The name of the UNET model to load."}),
+                    "weight_dtype": (mi.weight_dtype_options, {"default": "default", "tooltip": "The weight dtype to use for the UNET model."}),
+                    "clip_name_1": (model_list, {"tooltip": "The name of the first CLIP model to load."}),
+                    "clip_name_2": (model_list, {"tooltip": "The name of the second CLIP model to load."}),
+                    "clip_name_3": (model_list, {"tooltip": "The name of the third CLIP model to load."}),
+                    "clip_name_4": (model_list, {"tooltip": "The name of the fourth CLIP model to load."}),
+                    "vae_name": (vae_list, {"tooltip": "The name of the VAE model to load."}),
+                }
+            }
+
+    RETURN_TYPES = ("MODEL_INFO",)
+    RETURN_NAMES = ("model_info",)
+    OUTPUT_IS_LIST = (True,)
+
+    OUTPUT_TOOLTIPS = ("The model path and hash, all in one output.")
+    FUNCTION = "get_model_info"
+
+    CATEGORY  =  "Sage Utils/selectors/multi"
+    DESCRIPTION = "Returns a model_info output to pass to the construct metadata node or a model info node. (And hashes and pulls civitai info for the file.)"
+    def get_model_info(self, unet_name, weight_dtype, vae_name, clip_name_1, clip_name_2, clip_name_3, clip_name_4) -> tuple:
+        unet_info = mi.get_model_info_unet(unet_name, weight_dtype)
+        clip_info = mi.get_model_info_clips([clip_name_1, clip_name_2, clip_name_3, clip_name_4])
+        vae_info = mi.get_model_info_vae(vae_name)
+
+        return ((unet_info, clip_info, vae_info),)
 
 # Model Shifts and FreeU2 Settings
 class Sage_ModelShifts(ComfyNodeABC):

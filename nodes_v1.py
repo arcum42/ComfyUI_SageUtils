@@ -30,7 +30,11 @@ SELECTOR_CLASS_MAPPINGS = {
     "Sage_TripleCLIPSelector": Sage_TripleCLIPSelector,
     "Sage_QuadCLIPSelector": Sage_QuadCLIPSelector,
     "Sage_VAESelector": Sage_VAESelector,
-    "Sage_UnetClipVaeToModelInfo": Sage_UnetClipVaeToModelInfo
+    "Sage_UnetClipVaeToModelInfo": Sage_UnetClipVaeToModelInfo,
+    "Sage_MultiSelectorSingleClip": Sage_MultiSelectorSingleClip,
+    "Sage_MultiSelectorDoubleClip": Sage_MultiSelectorDoubleClip,
+    "Sage_MultiSelectorTripleClip": Sage_MultiSelectorTripleClip,
+    "Sage_MultiSelectorQuadClip": Sage_MultiSelectorQuadClip
 }
 
 TEXT_CLASS_MAPPINGS = {
@@ -172,7 +176,11 @@ SELECTOR_NAME_MAPPINGS = {
     "Sage_TripleCLIPSelector": "Triple CLIP Selector",
     "Sage_QuadCLIPSelector": "Quad CLIP Selector",
     "Sage_VAESelector": "VAE Selector",
-    "Sage_UnetClipVaeToModelInfo": "UNET + CLIP + VAE"
+    "Sage_UnetClipVaeToModelInfo": "UNET + CLIP + VAE",
+    "Sage_MultiSelectorSingleClip": "Multi Selector (Single CLIP)",
+    "Sage_MultiSelectorDoubleClip": "Multi Selector (Dual CLIP)",
+    "Sage_MultiSelectorTripleClip": "Multi Selector (Triple CLIP)",
+    "Sage_MultiSelectorQuadClip": "Multi Selector (Quad CLIP)"
 }
 
 TEXT_NAME_MAPPINGS = {
