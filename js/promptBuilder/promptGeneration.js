@@ -12,7 +12,8 @@ import { actions, selectors } from '../shared/stateManager.js';
 export const promptGenerationComponent = {
     // Component state (UI-only, non-persisted)
     state: {
-        isGenerating: false
+        isGenerating: false,
+        unsubscribers: [] // Store unsubscribe functions for cleanup
     },
 
     // Component elements
@@ -26,6 +27,7 @@ export const promptGenerationComponent = {
         randomSeedButton: null,
         resultsContainer: null,
         clearButton: null,
+        sendToLLMButton: null,
         loadingIndicator: null
     },
 
@@ -60,7 +62,74 @@ export const promptGenerationComponent = {
             this.generateRandomSeed();
         }
 
+        // Subscribe to cross-tab messages
+        this.setupCrossTabMessaging();
+
         return this.elements.container;
+    },
+
+    /**
+     * Cleanup component resources
+     */
+    destroy() {
+        // Unsubscribe from all cross-tab messages
+        if (this.state.unsubscribers) {
+            this.state.unsubscribers.forEach(unsub => {
+                try {
+                    unsub();
+                } catch (err) {
+                    console.warn('[PromptBuilder] Error unsubscribing:', err);
+                }
+            });
+            this.state.unsubscribers = [];
+        }
+        
+        // Reset state
+        this.state.isGenerating = false;
+        
+        console.debug('[PromptBuilder] Component cleaned up');
+    },
+
+    /**
+     * Setup cross-tab messaging subscriptions
+     */
+    setupCrossTabMessaging() {
+        import('../shared/crossTabMessaging.js').then(({ getEventBus, MessageTypes, requestTabSwitch }) => {
+            const bus = getEventBus();
+            
+            // Handle text transfers to Prompt Builder
+            const unsubscribe = bus.subscribe(MessageTypes.TEXT_TO_PROMPT_BUILDER, (message) => {
+                const { text, source, autoSwitch, append } = message.data;
+                
+                if (!this.elements.positiveTextarea) {
+                    console.warn('[PromptBuilder] Positive textarea not initialized');
+                    return;
+                }
+                
+                // Set or append text to positive prompt textarea
+                if (append && this.elements.positiveTextarea.value) {
+                    this.elements.positiveTextarea.value += '\n' + text;
+                } else {
+                    this.elements.positiveTextarea.value = text;
+                }
+                
+                // Trigger input event to update state
+                this.elements.positiveTextarea.dispatchEvent(new Event('input', { bubbles: true }));
+                
+                // Show success message
+                this.showMessage(`Text received from ${source}`, 'success');
+                
+                // Auto-switch to Prompt Builder tab if requested
+                if (autoSwitch) {
+                    requestTabSwitch('prompts', { source: 'text-transfer' });
+                }
+            });
+            
+            // Store unsubscribe function for cleanup
+            this.state.unsubscribers.push(unsubscribe);
+        }).catch(err => {
+            console.warn('[PromptBuilder] Failed to load cross-tab messaging:', err);
+        });
     },
 
     /**
@@ -117,6 +186,8 @@ export const promptGenerationComponent = {
         this.elements.positiveTextarea.className = 'prompt-textarea positive-prompt';
         this.elements.positiveTextarea.placeholder = 'Enter positive prompt with __wildcards__...\n\nExample: __character__ in a __location__, __art_style__';
         this.elements.positiveTextarea.rows = 4;
+        this.elements.positiveTextarea.setAttribute('aria-label', 'Positive prompt input with wildcard support');
+        this.elements.positiveTextarea.setAttribute('aria-describedby', 'positive-prompt-label');
 
         positiveGroup.appendChild(positiveLabel);
         positiveGroup.appendChild(this.elements.positiveTextarea);
@@ -135,6 +206,8 @@ export const promptGenerationComponent = {
         this.elements.negativeTextarea.className = 'prompt-textarea negative-prompt';
         this.elements.negativeTextarea.placeholder = 'Enter negative prompt...';
         this.elements.negativeTextarea.rows = 3;
+        this.elements.negativeTextarea.setAttribute('aria-label', 'Negative prompt input');
+        this.elements.negativeTextarea.setAttribute('aria-describedby', 'negative-prompt-label');
 
         negativeGroup.appendChild(negativeLabel);
         negativeGroup.appendChild(this.elements.negativeTextarea);
@@ -142,15 +215,73 @@ export const promptGenerationComponent = {
         section.appendChild(positiveGroup);
         section.appendChild(negativeGroup);
 
+        // Create debounced handlers for performance
+        import('../shared/performanceUtils.js').then(({ debounce }) => {
+            // Debounce state updates (300ms) but keep highlighting responsive
+            const debouncedPositiveUpdate = debounce((value) => {
+                actions.setPositivePrompt(value);
+            }, 300);
+            
+            const debouncedNegativeUpdate = debounce((value) => {
+                actions.setNegativePrompt(value);
+            }, 300);
+            
+            // Store on component for later use
+            this._debouncedPositiveUpdate = debouncedPositiveUpdate;
+            this._debouncedNegativeUpdate = debouncedNegativeUpdate;
+        });
+
         // Add event listeners
         this.elements.positiveTextarea.addEventListener('input', () => {
-            actions.setPositivePrompt(this.elements.positiveTextarea.value);
+            // Update state with debouncing if available, otherwise immediately
+            if (this._debouncedPositiveUpdate) {
+                this._debouncedPositiveUpdate(this.elements.positiveTextarea.value);
+            } else {
+                actions.setPositivePrompt(this.elements.positiveTextarea.value);
+            }
+            // Keep highlighting responsive
             this.updateWildcardHighlighting(this.elements.positiveTextarea);
+        });
+        
+        // Keyboard shortcuts for positive textarea
+        this.elements.positiveTextarea.addEventListener('keydown', (e) => {
+            // Ctrl+Enter to generate
+            if (e.ctrlKey && e.key === 'Enter') {
+                e.preventDefault();
+                if (this.elements.generateButton && !this.elements.generateButton.disabled) {
+                    this.elements.generateButton.click();
+                }
+            }
+            // Escape to blur
+            if (e.key === 'Escape') {
+                this.elements.positiveTextarea.blur();
+            }
         });
 
         this.elements.negativeTextarea.addEventListener('input', () => {
-            actions.setNegativePrompt(this.elements.negativeTextarea.value);
+            // Update state with debouncing if available, otherwise immediately
+            if (this._debouncedNegativeUpdate) {
+                this._debouncedNegativeUpdate(this.elements.negativeTextarea.value);
+            } else {
+                actions.setNegativePrompt(this.elements.negativeTextarea.value);
+            }
+            // Keep highlighting responsive
             this.updateWildcardHighlighting(this.elements.negativeTextarea);
+        });
+        
+        // Keyboard shortcuts for negative textarea
+        this.elements.negativeTextarea.addEventListener('keydown', (e) => {
+            // Ctrl+Enter to generate
+            if (e.ctrlKey && e.key === 'Enter') {
+                e.preventDefault();
+                if (this.elements.generateButton && !this.elements.generateButton.disabled) {
+                    this.elements.generateButton.click();
+                }
+            }
+            // Escape to blur
+            if (e.key === 'Escape') {
+                this.elements.negativeTextarea.blur();
+            }
         });
 
         return section;
@@ -181,11 +312,13 @@ export const promptGenerationComponent = {
         this.elements.seedInput.min = '0';
         this.elements.seedInput.max = '2147483647';
         this.elements.seedInput.value = '0';
+        this.elements.seedInput.setAttribute('aria-label', 'Random seed for generation');
 
         this.elements.randomSeedButton = document.createElement('button');
         this.elements.randomSeedButton.textContent = '🎲';
         this.elements.randomSeedButton.className = 'random-seed-button';
         this.elements.randomSeedButton.title = 'Generate random seed';
+        this.elements.randomSeedButton.setAttribute('aria-label', 'Generate random seed');
 
         seedContainer.appendChild(this.elements.seedInput);
         seedContainer.appendChild(this.elements.randomSeedButton);
@@ -207,6 +340,7 @@ export const promptGenerationComponent = {
         this.elements.countInput.min = '1';
         this.elements.countInput.max = '10';
         this.elements.countInput.value = '1';
+        this.elements.countInput.setAttribute('aria-label', 'Number of prompts to generate');
 
         countGroup.appendChild(countLabel);
         countGroup.appendChild(this.elements.countInput);
@@ -218,13 +352,23 @@ export const promptGenerationComponent = {
         this.elements.generateButton = document.createElement('button');
         this.elements.generateButton.textContent = '✨ Generate Prompts';
         this.elements.generateButton.className = 'generate-button primary-button';
+        this.elements.generateButton.title = 'Generate prompts (Ctrl+Enter)';
+        this.elements.generateButton.setAttribute('aria-label', 'Generate prompts with wildcards');
 
         this.elements.clearButton = document.createElement('button');
         this.elements.clearButton.textContent = '🗑️ Clear Results';
         this.elements.clearButton.className = 'clear-button secondary-button';
+        this.elements.clearButton.setAttribute('aria-label', 'Clear generated results');
+
+        this.elements.sendToLLMButton = document.createElement('button');
+        this.elements.sendToLLMButton.textContent = '🤖 Send to LLM';
+        this.elements.sendToLLMButton.className = 'send-to-llm-button secondary-button';
+        this.elements.sendToLLMButton.title = 'Send positive prompt to LLM Chat';
+        this.elements.sendToLLMButton.setAttribute('aria-label', 'Send positive prompt to LLM Chat tab');
 
         actionGroup.appendChild(this.elements.generateButton);
         actionGroup.appendChild(this.elements.clearButton);
+        actionGroup.appendChild(this.elements.sendToLLMButton);
 
         section.appendChild(seedGroup);
         section.appendChild(countGroup);
@@ -254,6 +398,10 @@ export const promptGenerationComponent = {
             this.clearResults();
         });
 
+        this.elements.sendToLLMButton.addEventListener('click', () => {
+            this.sendToLLM();
+        });
+
         return section;
     },
 
@@ -281,6 +429,9 @@ export const promptGenerationComponent = {
 
         this.elements.resultsContainer = document.createElement('div');
         this.elements.resultsContainer.className = 'results-container';
+        this.elements.resultsContainer.setAttribute('role', 'region');
+        this.elements.resultsContainer.setAttribute('aria-labelledby', 'results-title');
+        this.elements.resultsContainer.setAttribute('aria-live', 'polite');
 
         section.appendChild(header);
         section.appendChild(this.elements.resultsContainer);
@@ -356,6 +507,52 @@ export const promptGenerationComponent = {
         actions.clearPromptResults();
         this.renderResults();
         this.showMessage('Results cleared', 'info');
+    },
+
+    /**
+     * Send positive prompt to LLM tab
+     */
+    sendToLLM() {
+        const promptText = this.elements.positiveTextarea.value.trim();
+        
+        if (!promptText) {
+            this.showMessage('Please enter a prompt first', 'error');
+            return;
+        }
+        
+        // Visual feedback - show sending state
+        const btn = this.elements.sendToLLMButton;
+        const originalText = btn.textContent;
+        btn.disabled = true;
+        btn.textContent = '📤 Sending...';
+        
+        // Use cross-tab messaging to send text to LLM
+        import('../shared/crossTabMessaging.js').then(({ sendTextToLLM, showNotification }) => {
+            sendTextToLLM(promptText, {
+                target: 'main',  // Send to main prompt textarea
+                source: 'prompt-builder',
+                autoSwitch: true
+            });
+            showNotification('Prompt sent to LLM Chat', 'success');
+            this.showMessage('Sent to LLM tab', 'success');
+            
+            // Visual feedback - show success
+            btn.textContent = '✓ Sent!';
+            btn.style.background = 'var(--success-color, #4caf50)';
+            
+            setTimeout(() => {
+                btn.textContent = originalText;
+                btn.style.background = '';
+                btn.disabled = false;
+            }, 1500);
+        }).catch(err => {
+            console.error('[PromptBuilder] Failed to send to LLM:', err);
+            this.showMessage('Failed to send to LLM', 'error');
+            
+            // Reset button on error
+            btn.textContent = originalText;
+            btn.disabled = false;
+        });
     },
 
     /**
@@ -668,6 +865,12 @@ export const promptGenerationComponent = {
                 font-weight: 500;
                 cursor: pointer;
                 transition: all 0.2s ease;
+                box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+            }
+
+            .primary-button:focus, .secondary-button:focus {
+                outline: 2px solid var(--primary-color, #4a9eff);
+                outline-offset: 2px;
             }
 
             .primary-button {
@@ -678,6 +881,12 @@ export const promptGenerationComponent = {
             .primary-button:hover:not(:disabled) {
                 background: var(--primary-dark, #357abd);
                 transform: translateY(-1px);
+                box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+            }
+
+            .primary-button:active:not(:disabled) {
+                transform: translateY(0);
+                box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
             }
 
             .primary-button:disabled {
@@ -692,8 +901,20 @@ export const promptGenerationComponent = {
                 border: 1px solid var(--border-color, #444);
             }
 
-            .secondary-button:hover {
+            .secondary-button:hover:not(:disabled) {
                 background: var(--hover-color, #3a3a3a);
+                transform: translateY(-1px);
+                box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+            }
+
+            .secondary-button:active:not(:disabled) {
+                transform: translateY(0);
+                box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+            }
+
+            .secondary-button:disabled {
+                opacity: 0.6;
+                cursor: not-allowed;
             }
 
             .results-section {

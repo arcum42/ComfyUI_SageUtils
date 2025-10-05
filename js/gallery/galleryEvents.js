@@ -1307,23 +1307,130 @@ export function showImageContextMenu(event, image) {
         font-size: 13px;
     `;
     
-    // Menu items
-    const menuItems = [
-        { text: '👁️ View Full Size', action: () => showFullImage(image) },
-        { text: '📋 Copy to Clipboard', action: () => {
-            const imagePath = image.path || image.relative_path || image.name;
-            copyImageToClipboard(imagePath);
-        }},
-        { text: '🔍 Show Details', action: () => showImageMetadata(image) },
-        { text: '📝 Dataset Text...', action: () => handleDatasetText(image) },
-        { text: '---', action: null }, // Separator
-        { text: 'Copy Path', action: () => {
-            const imagePath = image.path || image.relative_path || image.name;
-            navigator.clipboard.writeText(imagePath);
-        }},
-        { text: 'Open in New Tab', action: () => openImageInNewTab(image) }
-    ];
+    // Import cross-tab messaging dynamically
+    import('../shared/crossTabMessaging.js').then(({ sendImagesToLLM, showNotification }) => {
+        // Import performance utils for rate limiting
+        import('../shared/performanceUtils.js').then(({ RateLimiter }) => {
+            // Create rate limiter: max 5 image transfers per 2 seconds
+            if (!window._galleryImageTransferLimiter) {
+                window._galleryImageTransferLimiter = new RateLimiter(5, 2000);
+            }
+            
+            const rateLimiter = window._galleryImageTransferLimiter;
+            
+            // Menu items
+            const menuItems = [
+                { text: '👁️ View Full Size', action: () => showFullImage(image) },
+                { text: '🤖 Send to LLM Chat', action: async () => {
+                    // Check rate limit
+                    if (!rateLimiter.allowCall()) {
+                        const waitTime = Math.ceil(rateLimiter.getWaitTime() / 1000);
+                        showNotification(`Please wait ${waitTime}s before sending more images`, 'warning');
+                        return;
+                    }
+                    
+                    try {
+                        // Convert image to base64 (returns data URL like "data:image/jpeg;base64,...")
+                        const base64DataUrl = await imageToBase64(imagePath);
+                        sendImagesToLLM([{
+                            file: null,
+                            preview: base64DataUrl,  // Use base64 data URL for preview
+                            base64: base64DataUrl,   // Full data URL
+                            name: image.name || imagePath.split('/').pop()
+                        }], {
+                            source: 'gallery',
+                            autoSwitch: true
+                        });
+                        showNotification('Image sent to LLM tab', 'success');
+                    } catch (error) {
+                        console.error('Failed to send image to LLM:', error);
+                        showNotification('Failed to send image to LLM', 'error');
+                    }
+                }},
+                { text: '📋 Copy to Clipboard', action: () => {
+                    const imagePath = image.path || image.relative_path || image.name;
+                    copyImageToClipboard(imagePath);
+                }},
+                { text: '🔍 Show Details', action: () => showImageMetadata(image) },
+                { text: '📝 Dataset Text...', action: () => handleDatasetText(image) },
+                { text: '---', action: null }, // Separator
+                { text: 'Copy Path', action: () => {
+                    const imagePath = image.path || image.relative_path || image.name;
+                    navigator.clipboard.writeText(imagePath);
+                }},
+                { text: 'Open in New Tab', action: () => openImageInNewTab(image) }
+            ];
+
+            // Render menu items (implementation continues below)
+            renderContextMenuItems(contextMenu, menuItems);
+        }).catch(err => {
+            console.warn('[Gallery] Failed to load performance utils:', err);
+            // Fallback without rate limiting
+            const menuItems = [
+                { text: '👁️ View Full Size', action: () => showFullImage(image) },
+                { text: '🤖 Send to LLM Chat', action: async () => {
+                    try {
+                        const base64DataUrl = await imageToBase64(imagePath);
+                        sendImagesToLLM([{
+                            file: null,
+                            preview: base64DataUrl,
+                            base64: base64DataUrl,
+                            name: image.name || imagePath.split('/').pop()
+                        }], {
+                            source: 'gallery',
+                            autoSwitch: true
+                        });
+                        showNotification('Image sent to LLM tab', 'success');
+                    } catch (error) {
+                        console.error('Failed to send image to LLM:', error);
+                        showNotification('Failed to send image to LLM', 'error');
+                    }
+                }},
+                { text: '📋 Copy to Clipboard', action: () => {
+                    const imagePath = image.path || image.relative_path || image.name;
+                    copyImageToClipboard(imagePath);
+                }},
+                { text: '🔍 Show Details', action: () => showImageMetadata(image) },
+                { text: '📝 Dataset Text...', action: () => handleDatasetText(image) },
+                { text: '---', action: null },
+                { text: 'Copy Path', action: () => {
+                    const imagePath = image.path || image.relative_path || image.name;
+                    navigator.clipboard.writeText(imagePath);
+                }},
+                { text: 'Open in New Tab', action: () => openImageInNewTab(image) }
+            ];
+            renderContextMenuItems(contextMenu, menuItems);
+        });
+    });
     
+    // Position context menu
+    const x = Math.min(event.clientX, window.innerWidth - CONTEXT_MENU_WIDTH);
+    const y = Math.min(event.clientY, window.innerHeight - 8 * CONTEXT_MENU_ITEM_HEIGHT); // 8 items now
+    
+    contextMenu.style.left = `${x}px`;
+    contextMenu.style.top = `${y}px`;
+    
+    document.body.appendChild(contextMenu);
+    
+    // Close context menu when clicking elsewhere
+    const closeContextMenu = (e) => {
+        if (!contextMenu.contains(e.target)) {
+            contextMenu.remove();
+            document.removeEventListener('click', closeContextMenu);
+            document.removeEventListener('contextmenu', closeContextMenu);
+        }
+    };
+    
+    setTimeout(() => {
+        document.addEventListener('click', closeContextMenu);
+        document.addEventListener('contextmenu', closeContextMenu);
+    }, 0);
+}
+
+/**
+ * Helper function to render context menu items
+ */
+function renderContextMenuItems(contextMenu, menuItems) {
     menuItems.forEach(item => {
         if (item.text === '---') {
             const separator = document.createElement('div');
@@ -1361,29 +1468,41 @@ export function showImageContextMenu(event, image) {
             contextMenu.appendChild(menuItem);
         }
     });
-    
-    // Position context menu
-    const x = Math.min(event.clientX, window.innerWidth - CONTEXT_MENU_WIDTH);
-    const y = Math.min(event.clientY, window.innerHeight - menuItems.length * CONTEXT_MENU_ITEM_HEIGHT);
-    
-    contextMenu.style.left = `${x}px`;
-    contextMenu.style.top = `${y}px`;
-    
-    document.body.appendChild(contextMenu);
-    
-    // Close context menu when clicking elsewhere
-    const closeContextMenu = (e) => {
-        if (!contextMenu.contains(e.target)) {
-            contextMenu.remove();
-            document.removeEventListener('click', closeContextMenu);
-            document.removeEventListener('contextmenu', closeContextMenu);
+}
+
+/**
+ * Convert image path to base64
+ */
+/**
+ * Convert image path to base64 data URL
+ * @param {string} imagePath - Full path to the image file
+ * @returns {Promise<string>} - Base64 data URL
+ */
+async function imageToBase64(imagePath) {
+    try {
+        // Use the correct API endpoint (POST with JSON body)
+        const response = await fetch('/sage_utils/image', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ image_path: imagePath })
+        });
+        
+        if (!response.ok) {
+            throw new Error(`Failed to fetch image: ${response.statusText}`);
         }
-    };
-    
-    setTimeout(() => {
-        document.addEventListener('click', closeContextMenu);
-        document.addEventListener('contextmenu', closeContextMenu);
-    }, 0);
+        
+        const blob = await response.blob();
+        
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result);
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+        });
+    } catch (error) {
+        console.error('Error converting image to base64:', error);
+        throw error;
+    }
 }
 
 /**

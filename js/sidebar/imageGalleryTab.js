@@ -674,10 +674,30 @@ export function createImageGalleryTab(container) {
     setTimeout(() => {
         try {
             const savedFolder = selectors.selectedFolder() || 'notes';
-            if (eventHandlers && eventHandlers.loadImagesFromFolder) {
-                eventHandlers.loadImagesFromFolder(savedFolder);
+            
+            // Don't auto-load custom folders without a path
+            if (savedFolder === 'custom') {
+                const savedPath = selectors.currentPath();
+                if (!savedPath || savedPath.trim() === '') {
+                    console.log('Gallery: Skipping auto-load of custom folder without path. Defaulting to notes.');
+                    actions.setSelectedFolder('notes');
+                    folderAndControls.folderDropdown.value = 'notes';
+                    if (eventHandlers && eventHandlers.loadImagesFromFolder) {
+                        eventHandlers.loadImagesFromFolder('notes');
+                    }
+                    return;
+                }
+                // If we have a valid path, proceed with custom folder
+                if (eventHandlers && eventHandlers.loadImagesFromFolder) {
+                    eventHandlers.loadImagesFromFolder(savedFolder, savedPath);
+                }
             } else {
-                console.warn('Gallery event handlers not available for auto-initialization');
+                // Standard folder (notes, input, output)
+                if (eventHandlers && eventHandlers.loadImagesFromFolder) {
+                    eventHandlers.loadImagesFromFolder(savedFolder);
+                } else {
+                    console.warn('Gallery event handlers not available for auto-initialization');
+                }
             }
         } catch (error) {
             console.error('Error during gallery auto-initialization:', error);

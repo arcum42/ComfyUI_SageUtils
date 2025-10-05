@@ -38,6 +38,7 @@ def register_routes(routes_instance):
         from . import tag_routes
         from . import prompt_storage_routes
         from . import utility_routes
+        from . import llm_routes
         
         # Track successful registrations
         route_count = 0
@@ -52,7 +53,8 @@ def register_routes(routes_instance):
             ("Wildcard", wildcard_routes),
             ("Tag", tag_routes),
             ("Prompt Storage", prompt_storage_routes),
-            ("Utility", utility_routes)
+            ("Utility", utility_routes),
+            ("LLM", llm_routes)
         ]
         
         for group_name, route_module in route_groups:
@@ -176,6 +178,11 @@ ROUTE_GROUPS = {
         'description': 'Utility functions and miscellaneous endpoints',
         'endpoints': 3,
         'module': 'utility_routes'
+    },
+    'llm': {
+        'description': 'LLM chat and generation endpoints',
+        'endpoints': 5,
+        'module': 'llm_routes'
     }
 }
 

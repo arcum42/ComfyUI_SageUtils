@@ -174,6 +174,45 @@ def build_response_parameters(model: str, prompt: str, keep_alive: float, option
 
     return response_parameters
 
+def build_lmstudio_config(options: dict) -> dict:
+    """
+    Build LM Studio configuration from options dictionary.
+    Maps frontend options to LM Studio API parameters.
+    
+    Args:
+        options: Dictionary of generation options
+        
+    Returns:
+        Configuration dict for LM Studio's respond() method
+    """
+    config = {}
+    
+    if not options:
+        return config
+    
+    # Map common options
+    if 'temperature' in options:
+        config['temperature'] = options['temperature']
+    
+    if 'max_tokens' in options:
+        config['maxTokens'] = options['max_tokens']
+    
+    # Map LM Studio-specific options
+    if 'topKSampling' in options:
+        config['topKSampling'] = options['topKSampling']
+    
+    if 'topPSampling' in options:
+        config['topPSampling'] = options['topPSampling']
+    
+    if 'repeatPenalty' in options:
+        config['repeatPenalty'] = options['repeatPenalty']
+    
+    if 'minPSampling' in options:
+        config['minPSampling'] = options['minPSampling']
+    
+    return config
+
+
 def ollama_generate_vision(model: str, prompt: str, keep_alive: float = 0.0, images=None, options=None, system_prompt: str = "") -> str:
     """Generate a response from an Ollama vision model."""
     # Ensure Ollama is initialized before use
@@ -467,6 +506,314 @@ def lmstudio_generate_vision_refine(model: str, prompt: str, images=None, option
         if lms_model is not None:
             lms_model.unload()
         return ("", "")
+
+# ============================================================================
+# STREAMING FUNCTIONS (Phase 2)
+# ============================================================================
+
+def ollama_generate_stream(model: str, prompt: str, keep_alive: float = 0.0, options=None, system_prompt: str = ""):
+    """
+    Generate a streaming response from an Ollama model.
+    Yields chunks of text as they are generated.
+    
+    Args:
+        model: Model name
+        prompt: Input prompt
+        keep_alive: How long to keep model loaded (0 = unload immediately)
+        options: Generation options (temperature, seed, etc.)
+        system_prompt: System prompt for context
+        
+    Yields:
+        dict: {"chunk": str, "done": bool}
+    """
+    ensure_ollama_initialized()
+    
+    if not OLLAMA_AVAILABLE or ollama_client is None:
+        raise ImportError("Ollama is not available. Please install it to use this function.")
+    
+    models = get_ollama_models()
+    if model not in models:
+        raise ValueError(f"Model '{model}' is not available. Available models: {models}")
+    
+    try:
+        if options is None:
+            options = {}
+        
+        response_parameters = build_response_parameters(model, prompt, keep_alive, options, system_prompt, None)
+        response_parameters["stream"] = True  # Enable streaming
+        
+        full_response = ""
+        
+        # Stream the response
+        for chunk in ollama_client.generate(**response_parameters):
+            if 'response' in chunk:
+                chunk_text = chunk['response']
+                full_response += chunk_text
+                
+                yield {
+                    "chunk": chunk_text,
+                    "done": chunk.get('done', False)
+                }
+                
+                if chunk.get('done', False):
+                    break
+        
+        # Send final message with full response
+        yield {
+            "chunk": "",
+            "done": True,
+            "full_response": clean_response(full_response)
+        }
+        
+    except Exception as e:
+        logging.error(f"Error streaming response from Ollama: {e}")
+        yield {
+            "chunk": "",
+            "done": True,
+            "error": str(e)
+        }
+
+
+def ollama_generate_vision_stream(model: str, prompt: str, keep_alive: float = 0.0, images=None, options=None, system_prompt: str = ""):
+    """
+    Generate a streaming response from an Ollama vision model.
+    Yields chunks of text as they are generated.
+    
+    Args:
+        model: Vision model name
+        prompt: Input prompt
+        keep_alive: How long to keep model loaded
+        images: Image tensor(s) to analyze
+        options: Generation options
+        system_prompt: System prompt for context
+        
+    Yields:
+        dict: {"chunk": str, "done": bool}
+    """
+    ensure_ollama_initialized()
+    
+    if not OLLAMA_AVAILABLE or ollama_client is None:
+        raise ImportError("Ollama is not available. Please install it to use this function.")
+    
+    vision_models = get_ollama_vision_models()
+    if model not in vision_models:
+        raise ValueError(f"Model '{model}' is not available. Available models: {vision_models}")
+    
+    if images is None:
+        raise ValueError("No images provided for vision model.")
+    
+    try:
+        options = options or {}
+        options['seed'] = options.get('seed', 0)
+        
+        response_parameters = build_response_parameters(model, prompt, keep_alive, options, system_prompt, images)
+        response_parameters["stream"] = True  # Enable streaming
+        
+        full_response = ""
+        
+        # Stream the response
+        for chunk in ollama_client.generate(**response_parameters):
+            if 'response' in chunk:
+                chunk_text = chunk['response']
+                full_response += chunk_text
+                
+                yield {
+                    "chunk": chunk_text,
+                    "done": chunk.get('done', False)
+                }
+                
+                if chunk.get('done', False):
+                    break
+        
+        # Send final message with full response
+        yield {
+            "chunk": "",
+            "done": True,
+            "full_response": clean_response(full_response)
+        }
+        
+    except Exception as e:
+        logging.error(f"Error streaming response from Ollama vision model: {e}")
+        yield {
+            "chunk": "",
+            "done": True,
+            "error": str(e)
+        }
+
+
+def lmstudio_generate_stream(model: str, prompt: str, keep_alive: int = 0, options=None):
+    """
+    Generate a streaming response from an LM Studio model.
+    Note: LM Studio's Python SDK may not support streaming natively,
+    so this implements a simple polling approach.
+    
+    Args:
+        model: Model name
+        prompt: Input prompt
+        keep_alive: How long to keep model loaded (seconds)
+        options: Generation options
+        
+    Yields:
+        dict: {"chunk": str, "done": bool}
+    """
+    ensure_lmstudio_initialized()
+    
+    if not LMSTUDIO_AVAILABLE or lms is None:
+        raise ImportError("LM Studio is not available. Please install it to use this function.")
+    
+    model_list = get_lmstudio_models()
+    if model not in model_list:
+        raise ValueError(f"Model '{model}' is not available. Available models: {model_list}")
+    
+    seed = (options or {}).get('seed', 0)  # Note: LM Studio doesn't use seed parameter
+    lms_model = None
+    
+    try:
+        if keep_alive >= 1:
+            lms_model = lms.llm(model, ttl=keep_alive)
+        else:
+            lms_model = lms.llm(model)
+        
+        if lms_model is None:
+            raise ValueError(f"Failed to load model: {model}")
+        
+        # Build config from options
+        config = build_lmstudio_config(options or {})
+        
+        chat = lms.Chat()
+        chat.add_user_message(prompt)
+        
+        # Generate response with config
+        if config:
+            response = lms_model.respond(chat, config=config)
+        else:
+            response = lms_model.respond(chat)
+        
+        if keep_alive < 1:
+            lms_model.unload()
+        
+        if not response:
+            raise ValueError("No valid response received from the model.")
+        
+        response_text = clean_response(response.content)
+        
+        # Simulate streaming by yielding in chunks
+        # This provides a consistent interface even if backend doesn't stream
+        chunk_size = 5  # Characters per chunk
+        for i in range(0, len(response_text), chunk_size):
+            chunk = response_text[i:i + chunk_size]
+            yield {
+                "chunk": chunk,
+                "done": False
+            }
+        
+        # Final message
+        yield {
+            "chunk": "",
+            "done": True,
+            "full_response": response_text
+        }
+        
+    except Exception as e:
+        logging.error(f"Error streaming response from LM Studio: {e}")
+        if lms_model is not None and keep_alive < 1:
+            lms_model.unload()
+        yield {
+            "chunk": "",
+            "done": True,
+            "error": str(e)
+        }
+
+
+def lmstudio_generate_vision_stream(model: str, prompt: str, keep_alive: int = 0, images=None, options=None):
+    """
+    Generate a streaming response from an LM Studio vision model.
+    Simulates streaming for consistency with Ollama.
+    
+    Args:
+        model: Vision model name
+        prompt: Input prompt
+        keep_alive: How long to keep model loaded (seconds)
+        images: Image tensor(s) to analyze
+        options: Generation options
+        
+    Yields:
+        dict: {"chunk": str, "done": bool}
+    """
+    ensure_lmstudio_initialized()
+    
+    if not LMSTUDIO_AVAILABLE or lms is None:
+        raise ImportError("LM Studio is not available. Please install it to use this function.")
+    
+    model_list = get_lmstudio_vision_models()
+    if model not in model_list:
+        raise ValueError(f"Model '{model}' is not available. Available models: {model_list}")
+    
+    seed = (options or {}).get('seed', 0)  # Note: LM Studio doesn't use seed parameter
+    input_images = tensor_to_temp_image(images) if images is not None else []
+    lms_model = None
+    
+    try:
+        if keep_alive >= 1:
+            lms_model = lms.llm(model, ttl=keep_alive)
+        else:
+            lms_model = lms.llm(model)
+        
+        # Build config from options
+        config = build_lmstudio_config(options or {})
+        
+        chat = lms.Chat()
+        if not input_images:
+            raise ValueError("No images provided for vision model.")
+        else:
+            # Prepare image handles
+            image_handles = [lms.prepare_image(img_path) for img_path in input_images]
+            chat.add_user_message(prompt, images=image_handles)
+        
+        # Generate response with config
+        if config:
+            response = lms_model.respond(chat, config=config)
+        else:
+            response = lms_model.respond(chat)
+        
+        if keep_alive < 1:
+            lms_model.unload()
+        
+        if not response:
+            raise ValueError("No valid response received from the model.")
+        
+        response_text = clean_response(response.content)
+        
+        # Simulate streaming by yielding in chunks
+        chunk_size = 5  # Characters per chunk
+        for i in range(0, len(response_text), chunk_size):
+            chunk = response_text[i:i + chunk_size]
+            yield {
+                "chunk": chunk,
+                "done": False
+            }
+        
+        # Final message
+        yield {
+            "chunk": "",
+            "done": True,
+            "full_response": response_text
+        }
+        
+    except Exception as e:
+        logging.error(f"Error streaming response from LM Studio vision model: {e}")
+        if lms_model is not None and keep_alive < 1:
+            lms_model.unload()
+        yield {
+            "chunk": "",
+            "done": True,
+            "error": str(e)
+        }
+
+
+# ============================================================================
+# INITIALIZATION FUNCTIONS
+# ============================================================================
 
 def init_ollama():
     """Initialize Ollama client"""

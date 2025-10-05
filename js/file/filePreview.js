@@ -20,12 +20,16 @@ export class GenericFilePreview {
         
         this.callbacks = {
             onError: callbacks.onError || ((error) => console.error('File preview error:', error)),
+            onCopyToLLM: callbacks.onCopyToLLM || null,
             ...callbacks
         };
         
         this.currentFile = null;
+        this.currentContent = null; // Store current content for copying
         this.container = null;
         this.previewContainer = null;
+        this.copyToLLMPromptBtn = null; // Button for main prompt
+        this.copyToLLMSystemBtn = null; // Button for system prompt
     }
 
     /**
@@ -83,22 +87,186 @@ export class GenericFilePreview {
      * @returns {HTMLElement} - Header element
      */
     createHeader() {
+        const headerContainer = document.createElement('div');
+        headerContainer.style.cssText = `
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        `;
+        
         const header = document.createElement('h4');
         header.className = 'file-preview-header';
         header.style.cssText = `
-            margin: 0 0 10px 0;
+            margin: 0;
             color: #4CAF50;
             font-size: 14px;
         `;
         header.textContent = 'Preview';
+        
+        // Create button container
+        const buttonContainer = document.createElement('div');
+        buttonContainer.style.cssText = `
+            display: flex;
+            gap: 8px;
+        `;
+        
+        // Create copy to LLM prompt button
+        this.copyToLLMPromptBtn = document.createElement('button');
+        this.copyToLLMPromptBtn.className = 'copy-to-llm-prompt-btn';
+        this.copyToLLMPromptBtn.innerHTML = '💬 To Prompt';
+        this.copyToLLMPromptBtn.style.cssText = `
+            padding: 6px 12px;
+            background: #4a9eff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: background-color 0.2s, opacity 0.2s;
+            opacity: 0.5;
+            pointer-events: none;
+        `;
+        this.copyToLLMPromptBtn.title = 'Copy file content to LLM tab main prompt';
+        
+        this.copyToLLMPromptBtn.addEventListener('click', () => {
+            this.copyToLLMPromptFallback();
+        });
+        
+        // Create copy to LLM system prompt button
+        this.copyToLLMSystemBtn = document.createElement('button');
+        this.copyToLLMSystemBtn.className = 'copy-to-llm-system-btn';
+        this.copyToLLMSystemBtn.innerHTML = '🤖 To System';
+        this.copyToLLMSystemBtn.style.cssText = `
+            padding: 6px 12px;
+            background: #6bcf7f;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: background-color 0.2s, opacity 0.2s;
+            opacity: 0.5;
+            pointer-events: none;
+        `;
+        this.copyToLLMSystemBtn.title = 'Copy file content to LLM tab system prompt';
+        
+        this.copyToLLMSystemBtn.addEventListener('click', () => {
+            if (this.currentContent && this.callbacks.onCopyToLLM) {
+                this.callbacks.onCopyToLLM(this.currentContent, this.currentFile);
+            } else {
+                this.copyToLLMSystemFallback();
+            }
+        });
+        
+        buttonContainer.appendChild(this.copyToLLMPromptBtn);
+        buttonContainer.appendChild(this.copyToLLMSystemBtn);
+        
+        headerContainer.appendChild(header);
+        headerContainer.appendChild(buttonContainer);
 
-        return header;
+        return headerContainer;
+    }
+    
+    /**
+     * Fallback method to copy to LLM prompt when callback isn't provided
+     * Directly accesses the LLM tab if available
+     */
+    copyToLLMPromptFallback() {
+        if (!this.currentContent) {
+            console.warn('No content to copy to LLM prompt');
+            return;
+        }
+        
+        // Try to find the LLM tab's main prompt textarea
+        const promptTextarea = document.querySelector('.llm-main-prompt');
+        if (promptTextarea) {
+            promptTextarea.value = this.currentContent;
+            promptTextarea.dispatchEvent(new Event('input', { bubbles: true }));
+            
+            // Show success feedback
+            this.showCopyFeedback('prompt', true);
+        } else {
+            console.warn('LLM tab main prompt not found');
+            this.showCopyFeedback('prompt', false);
+        }
+    }
+    
+    /**
+     * Fallback method to copy to LLM system prompt when callback isn't provided
+     * Directly accesses the LLM tab if available
+     */
+    copyToLLMSystemFallback() {
+        if (!this.currentContent) {
+            console.warn('No content to copy to LLM system prompt');
+            return;
+        }
+        
+        // Try to find the LLM tab's system prompt textarea
+        const systemPromptTextarea = document.querySelector('.llm-system-prompt');
+        if (systemPromptTextarea) {
+            systemPromptTextarea.value = this.currentContent;
+            systemPromptTextarea.dispatchEvent(new Event('input', { bubbles: true }));
+            
+            // Show success feedback
+            this.showCopyFeedback('system', true);
+        } else {
+            console.warn('LLM tab system prompt not found');
+            this.showCopyFeedback('system', false);
+        }
+    }
+    
+    /**
+     * Show visual feedback for copy action
+     * @param {string} target - 'prompt' or 'system'
+     * @param {boolean} success - Whether the copy was successful
+     */
+    showCopyFeedback(target, success) {
+        const button = target === 'prompt' ? this.copyToLLMPromptBtn : this.copyToLLMSystemBtn;
+        if (!button) return;
+        
+        const originalText = button.innerHTML;
+        const originalBg = button.style.background;
+        
+        if (success) {
+            button.innerHTML = '✓ Copied!';
+            button.style.background = '#4CAF50';
+        } else {
+            button.innerHTML = '✗ Failed';
+            button.style.background = '#f44336';
+        }
+        
+        setTimeout(() => {
+            button.innerHTML = originalText;
+            button.style.background = originalBg;
+        }, 2000);
+    }
+    
+    /**
+     * Updates the copy button states
+     * @param {boolean} enabled - Whether the buttons should be enabled
+     */
+    updateCopyButtonState(enabled) {
+        const buttons = [this.copyToLLMPromptBtn, this.copyToLLMSystemBtn];
+        buttons.forEach(button => {
+            if (button) {
+                if (enabled) {
+                    button.style.opacity = '1';
+                    button.style.pointerEvents = 'auto';
+                } else {
+                    button.style.opacity = '0.5';
+                    button.style.pointerEvents = 'none';
+                }
+            }
+        });
     }
 
     /**
      * Shows empty state in the preview
      */
     showEmptyState() {
+        this.currentContent = null;
+        this.updateCopyButtonState(false);
         this.previewContainer.innerHTML = '<em style="color: #999;">Select a file to preview...</em>';
         this.previewContainer.className = 'preview-container';
     }
@@ -110,11 +278,15 @@ export class GenericFilePreview {
      */
     updatePreview(filename, content = null) {
         this.currentFile = filename;
+        this.currentContent = content; // Store content for copying
         
         if (!filename) {
             this.showEmptyState();
             return;
         }
+        
+        // Enable copy button if we have text content
+        this.updateCopyButtonState(content !== null && typeof content === 'string');
 
         const isMarkdown = this.isMarkdownFile(filename);
         const isImage = this.isImageFile(filename);

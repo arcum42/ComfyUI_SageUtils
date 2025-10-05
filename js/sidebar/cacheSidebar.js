@@ -23,6 +23,7 @@ import { createFilesTab } from "./filesTab.js";
 import { createCivitaiSearchTab } from "./civitaiSearchTab.js";
 import { createImageGalleryTab } from "./imageGalleryTab.js";
 import { createPromptBuilderTab } from "./promptBuilderTab.js";
+import { createLLMTab } from "./llmTab.js";
 
 // Import cache API functions
 import { 
@@ -37,7 +38,7 @@ import {
 } from "../components/cacheUI.js";
 
 /**
- * Creates the tab header with Models, Files, Search, Gallery, and Prompt Builder tabs
+ * Creates the tab header with Models, Files, Search, Gallery, Prompt Builder, and LLM tabs
  * @returns {Object} Object containing tab button elements
  */
 function createTabHeader() {
@@ -56,6 +57,7 @@ function createTabHeader() {
     const civitaiTab = createTabButton('Search', false);
     const galleryTab = createTabButton('Gallery', false);
     const promptBuilderTab = createTabButton('Prompts', false);
+    const llmTab = createTabButton('LLM', false);
 
     // Ensure tabs are properly sized
     modelsTab.style.flexShrink = '0';
@@ -63,12 +65,14 @@ function createTabHeader() {
     civitaiTab.style.flexShrink = '0';
     galleryTab.style.flexShrink = '0';
     promptBuilderTab.style.flexShrink = '0';
+    llmTab.style.flexShrink = '0';
 
     tabHeader.appendChild(modelsTab);
     tabHeader.appendChild(notesTab);
     tabHeader.appendChild(civitaiTab);
     tabHeader.appendChild(galleryTab);
     tabHeader.appendChild(promptBuilderTab);
+    tabHeader.appendChild(llmTab);
 
     return {
         tabHeader,
@@ -76,7 +80,8 @@ function createTabHeader() {
         notesTab,
         civitaiTab,
         galleryTab,
-        promptBuilderTab
+        promptBuilderTab,
+        llmTab
     };
 }
 
@@ -135,12 +140,21 @@ function createTabContent() {
     `;
     promptBuilderContainer.setAttribute('data-tab', 'promptBuilder');
 
+    const llmContainer = document.createElement('div');
+    llmContainer.style.cssText = `
+        display: none;
+        width: 100%;
+        height: 100%;
+    `;
+    llmContainer.setAttribute('data-tab', 'llm');
+
     // Append all containers to main content
     tabContent.appendChild(modelsContainer);
     tabContent.appendChild(notesContainer);
     tabContent.appendChild(civitaiContainer);
     tabContent.appendChild(galleryContainer);
     tabContent.appendChild(promptBuilderContainer);
+    tabContent.appendChild(llmContainer);
 
     return {
         tabContent,
@@ -149,7 +163,8 @@ function createTabContent() {
             notes: notesContainer,
             civitai: civitaiContainer,
             gallery: galleryContainer,
-            promptBuilder: promptBuilderContainer
+            promptBuilder: promptBuilderContainer,
+            llm: llmContainer
         }
     };
 }
@@ -160,7 +175,7 @@ function createTabContent() {
  * @param {Object} tabContentData - Tab content data with containers
  */
 function setupTabSwitching(tabComponents, tabContentData) {
-    const { modelsTab, notesTab, civitaiTab, galleryTab, promptBuilderTab } = tabComponents;
+    const { modelsTab, notesTab, civitaiTab, galleryTab, promptBuilderTab, llmTab } = tabComponents;
     const { containers } = tabContentData;
     
     // Track which tabs have been initialized
@@ -169,7 +184,8 @@ function setupTabSwitching(tabComponents, tabContentData) {
         notes: false,
         civitai: false,
         gallery: false,
-        promptBuilder: false
+        promptBuilder: false,
+        llm: false
     };
     
     // Tab configuration mapping
@@ -198,6 +214,11 @@ function setupTabSwitching(tabComponents, tabContentData) {
             button: promptBuilderTab,
             container: containers.promptBuilder,
             createFunction: createPromptBuilderTab
+        },
+        llm: {
+            button: llmTab,
+            container: containers.llm,
+            createFunction: createLLMTab
         }
     };
 
@@ -297,6 +318,7 @@ function setupTabSwitching(tabComponents, tabContentData) {
     civitaiTab.addEventListener('click', () => switchTab('civitai'));
     galleryTab.addEventListener('click', () => switchTab('gallery'));
     promptBuilderTab.addEventListener('click', () => switchTab('promptBuilder'));
+    llmTab.addEventListener('click', () => switchTab('llm'));
 
     return { switchTab, initializedTabs };
 }
@@ -425,16 +447,79 @@ export function createCacheSidebar(el) {
     // Initialize sidebar data and state
     initializeSidebarData();
     
-    // Initialize with Models tab (this will lazy load it)
-    setTimeout(() => {
-        switchTab('models');
-    }, 0);
-    
     // Store references for potential external access
     el._sidebarData = {
         tabComponents,
         tabContentData,
         switchTab,
-        initializedTabs
+        initializedTabs,
+        cleanup: () => {
+            // Cleanup cross-tab subscription
+            if (crossTabUnsubscribe) {
+                try {
+                    crossTabUnsubscribe();
+                    crossTabUnsubscribe = null;
+                } catch (err) {
+                    console.warn('[Sidebar] Error unsubscribing from cross-tab messaging:', err);
+                }
+            }
+            // Cleanup individual tabs if they have destroy methods
+            Object.entries(initializedTabs).forEach(([key, tabObj]) => {
+                if (tabObj && typeof tabObj.destroy === 'function') {
+                    try {
+                        tabObj.destroy();
+                    } catch (err) {
+                        console.warn(`[Sidebar] Error destroying ${key} tab:`, err);
+                    }
+                }
+            });
+        }
     };
+    
+    // Subscribe to cross-tab messaging for tab switching
+    // Use a slight delay to ensure all components are fully initialized
+    let crossTabUnsubscribe = null;
+    setTimeout(() => {
+        import('../shared/crossTabMessaging.js').then(({ getEventBus, MessageTypes }) => {
+            const bus = getEventBus();
+            
+            crossTabUnsubscribe = bus.subscribe(MessageTypes.TAB_SWITCH_REQUEST, (message) => {
+                const { tabId, source } = message.data;
+                
+                // Map tab IDs to actual tab keys used in switchTab()
+                const tabKeyMap = {
+                    'llm': 'llm',
+                    'gallery': 'gallery',
+                    'prompts': 'promptBuilder',
+                    'prompt-builder': 'promptBuilder', // Alias
+                    'files': 'notes',
+                    'notes': 'notes',
+                    'models': 'models',
+                    'civitai': 'civitai'
+                };
+                
+                const tabKey = tabKeyMap[tabId] || tabId;
+                
+                // Validate that switchTab function exists
+                if (typeof switchTab !== 'function') {
+                    console.warn('[Sidebar] switchTab function not available');
+                    return;
+                }
+                
+                try {
+                    switchTab(tabKey);
+                    bus.publish(MessageTypes.TAB_SWITCHED, { tabId: tabKey, source: 'sidebar' });
+                } catch (error) {
+                    console.error(`[Sidebar] Error switching to tab '${tabKey}':`, error);
+                }
+            });
+        }).catch(err => {
+            console.warn('[Sidebar] Failed to load cross-tab messaging:', err);
+        });
+    }, 100);
+    
+    // Initialize with Models tab (this will lazy load it)
+    setTimeout(() => {
+        switchTab('models');
+    }, 0);
 }
