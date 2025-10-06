@@ -5,6 +5,9 @@
 
 import { promptBuilderApi } from './promptBuilderApi.js';
 import { actions, selectors } from '../shared/stateManager.js';
+import { copyTextToSelectedNode } from '../utils/textCopyUtils.js';
+import { copyTextFromSelectedNode } from '../utils/textCopyFromNode.js';
+import { app } from '../../../scripts/app.js';
 
 /**
  * Prompt Generation Component
@@ -366,9 +369,17 @@ export const promptGenerationComponent = {
         this.elements.sendToLLMButton.title = 'Send positive prompt to LLM Chat';
         this.elements.sendToLLMButton.setAttribute('aria-label', 'Send positive prompt to LLM Chat tab');
 
+        // Copy from node button
+        this.elements.copyFromNodeButton = document.createElement('button');
+        this.elements.copyFromNodeButton.textContent = '📥 From Node';
+        this.elements.copyFromNodeButton.className = 'copy-from-node-button secondary-button';
+        this.elements.copyFromNodeButton.title = 'Copy text from selected node to positive prompt';
+        this.elements.copyFromNodeButton.setAttribute('aria-label', 'Copy text from selected node');
+
         actionGroup.appendChild(this.elements.generateButton);
         actionGroup.appendChild(this.elements.clearButton);
         actionGroup.appendChild(this.elements.sendToLLMButton);
+        actionGroup.appendChild(this.elements.copyFromNodeButton);
 
         section.appendChild(seedGroup);
         section.appendChild(countGroup);
@@ -400,6 +411,10 @@ export const promptGenerationComponent = {
 
         this.elements.sendToLLMButton.addEventListener('click', () => {
             this.sendToLLM();
+        });
+        
+        this.elements.copyFromNodeButton.addEventListener('click', () => {
+            this.copyFromNode();
         });
 
         return section;
@@ -596,58 +611,108 @@ export const promptGenerationComponent = {
         title.className = 'result-title';
         title.textContent = `Prompt ${index + 1} (Seed: ${result.seed})`;
 
-        const actions = document.createElement('div');
-        actions.className = 'result-actions';
+        const headerActions = document.createElement('div');
+        headerActions.className = 'result-header-actions';
 
-        // Copy positive button
-        if (result.positive) {
-            const copyPositiveBtn = document.createElement('button');
-            copyPositiveBtn.textContent = '📋 Copy Positive';
-            copyPositiveBtn.className = 'copy-button';
-            copyPositiveBtn.addEventListener('click', () => {
-                this.copyResult(result.positive, 'Positive prompt copied!');
-            });
-            actions.appendChild(copyPositiveBtn);
-        }
-
-        // Copy negative button
-        if (result.negative) {
-            const copyNegativeBtn = document.createElement('button');
-            copyNegativeBtn.textContent = '📋 Copy Negative';
-            copyNegativeBtn.className = 'copy-button';
-            copyNegativeBtn.addEventListener('click', () => {
-                this.copyResult(result.negative, 'Negative prompt copied!');
-            });
-            actions.appendChild(copyNegativeBtn);
-        }
-
-        // Load button
+        // Load button (stays in header)
         const loadBtn = document.createElement('button');
         loadBtn.textContent = '⬆️ Load';
         loadBtn.className = 'load-button';
         loadBtn.addEventListener('click', () => {
             this.loadResult(result);
         });
-        actions.appendChild(loadBtn);
+        headerActions.appendChild(loadBtn);
 
         header.appendChild(title);
-        header.appendChild(actions);
+        header.appendChild(headerActions);
 
         const content = document.createElement('div');
         content.className = 'result-content';
 
+        // Positive prompt section
         if (result.positive) {
+            const positiveSection = document.createElement('div');
+            positiveSection.className = 'result-prompt-section';
+            
+            // Positive buttons above the prompt
+            const positiveActions = document.createElement('div');
+            positiveActions.className = 'result-prompt-actions';
+            
+            const positiveLabel = document.createElement('span');
+            positiveLabel.className = 'prompt-label';
+            positiveLabel.textContent = 'Positive:';
+            positiveActions.appendChild(positiveLabel);
+            
+            const copyPositiveBtn = document.createElement('button');
+            copyPositiveBtn.textContent = '📋 Copy';
+            copyPositiveBtn.className = 'copy-button';
+            copyPositiveBtn.title = 'Copy positive prompt to clipboard';
+            copyPositiveBtn.addEventListener('click', () => {
+                this.copyResult(result.positive, 'Positive prompt copied!');
+            });
+            positiveActions.appendChild(copyPositiveBtn);
+            
+            const copyToNodeBtn = document.createElement('button');
+            copyToNodeBtn.textContent = '📤 To Node';
+            copyToNodeBtn.className = 'copy-to-node-button';
+            copyToNodeBtn.title = 'Copy positive prompt to selected node';
+            copyToNodeBtn.addEventListener('click', () => {
+                this.copyToNode(result.positive, 'Positive');
+            });
+            positiveActions.appendChild(copyToNodeBtn);
+            
+            positiveSection.appendChild(positiveActions);
+            
+            // Positive text
             const positiveDiv = document.createElement('div');
             positiveDiv.className = 'result-text positive';
-            positiveDiv.innerHTML = `<strong>Positive:</strong> ${result.positive}`;
-            content.appendChild(positiveDiv);
+            positiveDiv.textContent = result.positive;
+            positiveSection.appendChild(positiveDiv);
+            
+            content.appendChild(positiveSection);
         }
 
+        // Negative prompt section
         if (result.negative) {
+            const negativeSection = document.createElement('div');
+            negativeSection.className = 'result-prompt-section';
+            
+            // Negative buttons above the prompt
+            const negativeActions = document.createElement('div');
+            negativeActions.className = 'result-prompt-actions';
+            
+            const negativeLabel = document.createElement('span');
+            negativeLabel.className = 'prompt-label';
+            negativeLabel.textContent = 'Negative:';
+            negativeActions.appendChild(negativeLabel);
+            
+            const copyNegativeBtn = document.createElement('button');
+            copyNegativeBtn.textContent = '� Copy';
+            copyNegativeBtn.className = 'copy-button';
+            copyNegativeBtn.title = 'Copy negative prompt to clipboard';
+            copyNegativeBtn.addEventListener('click', () => {
+                this.copyResult(result.negative, 'Negative prompt copied!');
+            });
+            negativeActions.appendChild(copyNegativeBtn);
+            
+            const copyToNodeBtn = document.createElement('button');
+            copyToNodeBtn.textContent = '📤 To Node';
+            copyToNodeBtn.className = 'copy-to-node-button';
+            copyToNodeBtn.title = 'Copy negative prompt to selected node';
+            copyToNodeBtn.addEventListener('click', () => {
+                this.copyToNode(result.negative, 'Negative');
+            });
+            negativeActions.appendChild(copyToNodeBtn);
+            
+            negativeSection.appendChild(negativeActions);
+            
+            // Negative text
             const negativeDiv = document.createElement('div');
             negativeDiv.className = 'result-text negative';
-            negativeDiv.innerHTML = `<strong>Negative:</strong> ${result.negative}`;
-            content.appendChild(negativeDiv);
+            negativeDiv.textContent = result.negative;
+            negativeSection.appendChild(negativeDiv);
+            
+            content.appendChild(negativeSection);
         }
 
         if (result.error) {
@@ -674,6 +739,40 @@ export const promptGenerationComponent = {
             this.showMessage(message, 'success');
         } else {
             this.showMessage('Failed to copy to clipboard', 'error');
+        }
+    },
+
+    /**
+     * Copy text to selected node
+     * @param {string} text - Text to copy
+     * @param {string} promptType - Type of prompt (Positive/Negative)
+     */
+    copyToNode(text, promptType) {
+        const success = copyTextToSelectedNode(app, text);
+        if (success) {
+            this.showMessage(`${promptType} prompt copied to selected node!`, 'success');
+        } else {
+            this.showMessage('Please select a CLIPTextEncode or Sage text node first', 'warning');
+        }
+    },
+
+    /**
+     * Copy text from selected node to positive prompt textarea
+     */
+    copyFromNode() {
+        const result = copyTextFromSelectedNode(app);
+        
+        if (result.success) {
+            // Set text in positive prompt textarea
+            this.elements.positiveTextarea.value = result.text;
+            // Update state
+            actions.setPositivePrompt(result.text);
+            // Trigger input event
+            this.elements.positiveTextarea.dispatchEvent(new Event('input', { bubbles: true }));
+            
+            this.showMessage(`Text copied from ${result.nodeType} node!`, 'success');
+        } else {
+            this.showMessage(result.error || 'Please select a CLIPTextEncode or Sage text node first', 'warning');
         }
     },
 
@@ -998,12 +1097,38 @@ export const promptGenerationComponent = {
                 color: var(--fg-color, #ffffff);
             }
 
+            .result-header-actions {
+                display: flex;
+                gap: 8px;
+            }
+
             .result-actions {
                 display: flex;
                 gap: 8px;
             }
 
-            .copy-button, .load-button {
+            .result-prompt-section {
+                margin-bottom: 12px;
+            }
+
+            .result-prompt-actions {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                margin-bottom: 8px;
+                padding: 4px 8px;
+                background: var(--bg-color-secondary, #2a2a2a);
+                border-radius: 4px;
+            }
+
+            .prompt-label {
+                font-weight: 600;
+                font-size: 12px;
+                color: var(--fg-color, #ffffff);
+                margin-right: auto;
+            }
+
+            .copy-button, .load-button, .copy-to-node-button {
                 padding: 4px 8px;
                 border: 1px solid var(--border-color, #444);
                 border-radius: 4px;
@@ -1013,7 +1138,7 @@ export const promptGenerationComponent = {
                 cursor: pointer;
             }
 
-            .copy-button:hover, .load-button:hover {
+            .copy-button:hover, .load-button:hover, .copy-to-node-button:hover {
                 background: var(--hover-color, #3a3a3a);
             }
 
@@ -1022,12 +1147,13 @@ export const promptGenerationComponent = {
             }
 
             .result-text {
-                margin-bottom: 12px;
-                padding: 8px;
+                padding: 12px;
                 border-radius: 4px;
                 font-family: monospace;
                 font-size: 13px;
-                line-height: 1.4;
+                line-height: 1.5;
+                white-space: pre-wrap;
+                word-wrap: break-word;
             }
 
             .result-text.positive {
@@ -1038,10 +1164,6 @@ export const promptGenerationComponent = {
             .result-text.negative {
                 background: rgba(244, 67, 54, 0.1);
                 border-left: 3px solid #f44336;
-            }
-
-            .result-text strong {
-                color: var(--fg-color, #ffffff);
             }
 
             .result-error {
@@ -1108,9 +1230,12 @@ export const promptGenerationComponent = {
                     gap: 8px;
                 }
 
-                .result-actions {
+                .result-header-actions {
                     align-self: stretch;
-                    justify-content: space-between;
+                }
+
+                .result-prompt-actions {
+                    flex-wrap: wrap;
                 }
             }
         `;

@@ -2,7 +2,9 @@
 // Handles file selection and preview functionality for notes with markdown, image, and video support
 
 import { api } from "../../../../scripts/api.js";
+import { app } from "../../../scripts/app.js";
 import { createTextOutputWidget, setupMarkdownDisplay, setupImageDisplay, setupVideoDisplay } from "../components/display.js";
+import { addCopyButton } from "../utils/addCopyButton.js";
 
 /**
  * Sets up the ViewNotes node with file selection and preview functionality.
@@ -140,6 +142,15 @@ export function setupViewNotesNode(nodeType, nodeData, app) {
     }
     if (onExecuted) onExecuted.apply(this, arguments);
     updateOutputWidget(this, message, this.widgets.find(w => w.name === 'filename')?.value);
+    
+    // Add copy-to-node button
+    addCopyButton(this, () => {
+      const content = Array.isArray(message.text) 
+        ? message.text.join("") 
+        : (typeof message.text === "string" ? message.text : String(message.text ?? ""));
+      return content;
+    }, app);
+    
     this.onResize?.(this.size);
   };
 }

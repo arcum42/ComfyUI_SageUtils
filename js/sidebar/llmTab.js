@@ -5,6 +5,9 @@
 
 import * as llmApi from '../llm/llmApi.js';
 import { showNotification } from '../shared/crossTabMessaging.js';
+import { copyTextToSelectedNode } from '../utils/textCopyUtils.js';
+import { copyTextFromSelectedNode } from '../utils/textCopyFromNode.js';
+import { app } from '../../../scripts/app.js';
 
 /**
  * Creates the main LLM tab content
@@ -666,8 +669,15 @@ function createInputSection() {
     toPromptsBtn.title = 'Send text to Prompt Builder tab (Phase 8)';
     toPromptsBtn.disabled = true; // Will be enabled in Phase 8
     
+    const fromNodeBtn = document.createElement('button');
+    fromNodeBtn.className = 'llm-btn llm-btn-secondary llm-btn-small llm-from-node-btn';
+    fromNodeBtn.innerHTML = '📥 From Node';
+    fromNodeBtn.title = 'Copy text from selected node to prompt';
+    fromNodeBtn.setAttribute('aria-label', 'Copy text from selected node');
+    
     actionButtons.appendChild(fromPromptsBtn);
     actionButtons.appendChild(toPromptsBtn);
+    actionButtons.appendChild(fromNodeBtn);
     
     // Send button
     const sendBtn = document.createElement('button');
@@ -1787,6 +1797,13 @@ function createResponseSection() {
     copyBtn.style.display = 'none'; // Hide until response generated
     copyBtn.setAttribute('aria-label', 'Copy response to clipboard');
     
+    const copyToNodeBtn = document.createElement('button');
+    copyToNodeBtn.className = 'llm-btn llm-btn-secondary llm-btn-small llm-copy-to-node-btn';
+    copyToNodeBtn.innerHTML = '📤 To Node';
+    copyToNodeBtn.title = 'Copy response to selected node';
+    copyToNodeBtn.style.display = 'none'; // Hide until response generated
+    copyToNodeBtn.setAttribute('aria-label', 'Copy response to selected node');
+    
     const sendToPromptBtn = document.createElement('button');
     sendToPromptBtn.className = 'llm-btn llm-btn-secondary llm-btn-small llm-send-to-prompt-btn';
     sendToPromptBtn.innerHTML = '📝 Send to Prompt Builder';
@@ -1802,6 +1819,7 @@ function createResponseSection() {
     stopBtn.setAttribute('aria-label', 'Stop generation');
     
     responseActions.appendChild(copyBtn);
+    responseActions.appendChild(copyToNodeBtn);
     responseActions.appendChild(sendToPromptBtn);
     responseActions.appendChild(stopBtn);
     
@@ -3532,6 +3550,7 @@ function setupEventHandlers(state, modelSelection, visionSection, inputSection, 
     const sendBtn = inputSection.querySelector('.llm-send-btn');
     const textarea = inputSection.querySelector('.llm-textarea');
     const copyBtn = responseSection.querySelector('.llm-copy-btn');
+    const copyToNodeBtn = responseSection.querySelector('.llm-copy-to-node-btn');
     const stopBtn = responseSection.querySelector('.llm-stop-btn');
     
     // Vision section controls
@@ -3850,6 +3869,14 @@ function setupEventHandlers(state, modelSelection, visionSection, inputSection, 
         handleSend(state, textarea, responseSection, sendBtn, stopBtn, historySection);
     });
     
+    // From node button
+    const fromNodeBtn = inputSection.querySelector('.llm-from-node-btn');
+    if (fromNodeBtn) {
+        fromNodeBtn.addEventListener('click', () => {
+            handleCopyFromNode(textarea);
+        });
+    }
+    
     // Stop button
     stopBtn.addEventListener('click', () => {
         handleStop(state, responseSection, sendBtn, stopBtn);
@@ -3921,6 +3948,11 @@ function setupEventHandlers(state, modelSelection, visionSection, inputSection, 
     // Copy button
     copyBtn.addEventListener('click', () => {
         handleCopy(responseSection, copyBtn);
+    });
+    
+    // Copy to node button
+    copyToNodeBtn.addEventListener('click', () => {
+        handleCopyToNode(responseSection, copyToNodeBtn);
     });
     
     // Send to Prompt Builder button
@@ -4112,6 +4144,7 @@ async function handleSend(state, textarea, responseSection, sendBtn, stopBtn, hi
     sendBtn.disabled = true;
     stopBtn.style.display = 'inline-block';
     responseSection.querySelector('.llm-copy-btn').style.display = 'none';
+    responseSection.querySelector('.llm-copy-to-node-btn').style.display = 'none';
     const sendToPromptBtn = responseSection.querySelector('.llm-send-to-prompt-btn');
     if (sendToPromptBtn) sendToPromptBtn.style.display = 'none';
     
@@ -4199,6 +4232,7 @@ async function handleSend(state, textarea, responseSection, sendBtn, stopBtn, hi
                         stopBtn.style.display = 'none';
                         responseDisplay.classList.remove('generating');
                         responseSection.querySelector('.llm-copy-btn').style.display = 'inline-block';
+                        responseSection.querySelector('.llm-copy-to-node-btn').style.display = 'inline-block';
                         const sendToPromptBtn = responseSection.querySelector('.llm-send-to-prompt-btn');
                         if (sendToPromptBtn) sendToPromptBtn.style.display = 'inline-block';
                         showStatus(responseSection, 'Generation complete', 'success');
@@ -4251,6 +4285,7 @@ async function handleSend(state, textarea, responseSection, sendBtn, stopBtn, hi
                         stopBtn.style.display = 'none';
                         responseDisplay.classList.remove('generating');
                         responseSection.querySelector('.llm-copy-btn').style.display = 'inline-block';
+                        responseSection.querySelector('.llm-copy-to-node-btn').style.display = 'inline-block';
                         const sendToPromptBtnText = responseSection.querySelector('.llm-send-to-prompt-btn');
                         if (sendToPromptBtnText) sendToPromptBtnText.style.display = 'inline-block';
                         showStatus(responseSection, 'Generation complete', 'success');
@@ -4320,6 +4355,46 @@ async function handleCopy(responseSection, copyBtn) {
     } catch (error) {
         console.error('Error copying to clipboard:', error);
         showStatus(responseSection, 'Failed to copy to clipboard', 'error');
+    }
+}
+
+/**
+ * Handle copy to node button click
+ * @param {HTMLElement} responseSection - Response section
+ * @param {HTMLButtonElement} copyToNodeBtn - Copy to node button
+ */
+function handleCopyToNode(responseSection, copyToNodeBtn) {
+    const responseDisplay = responseSection.querySelector('.llm-response-display');
+    const text = responseDisplay.textContent;
+    
+    const success = copyTextToSelectedNode(app, text);
+    
+    if (success) {
+        const originalText = copyToNodeBtn.innerHTML;
+        copyToNodeBtn.innerHTML = '✓ Copied!';
+        showStatus(responseSection, 'Response copied to selected node', 'success');
+        setTimeout(() => {
+            copyToNodeBtn.innerHTML = originalText;
+        }, 2000);
+    } else {
+        showStatus(responseSection, 'Please select a CLIPTextEncode or Sage text node first', 'error');
+    }
+}
+
+/**
+ * Handle copy from node button click
+ * @param {HTMLTextAreaElement} textarea - The prompt textarea element
+ */
+function handleCopyFromNode(textarea) {
+    const result = copyTextFromSelectedNode(app);
+    
+    if (result.success) {
+        textarea.value = result.text;
+        // Trigger input event to update character counter
+        textarea.dispatchEvent(new Event('input', { bubbles: true }));
+        showNotification(`Text copied from ${result.nodeType} node!`, 'success');
+    } else {
+        showNotification(result.error || 'Please select a CLIPTextEncode or Sage text node first', 'error');
     }
 }
 

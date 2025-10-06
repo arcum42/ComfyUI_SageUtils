@@ -7,9 +7,12 @@ import { api } from "../../../../scripts/api.js";
 import { FILE_BROWSER_CONFIGS } from './fileBrowser.js';
 
 /**
- * Generic File Editor Class
- * Handles file content loading, editing, and saving
+ * Generic File Editor component
+ * Provides a versatile text editor with auto-save, cancel, and delete functionality
  */
+
+import { copyTextFromSelectedNode } from '../utils/textCopyFromNode.js';
+import { app } from '../../../scripts/app.js';
 export class GenericFileEditor {
     constructor(configKey, callbacks = {}) {
         this.config = FILE_BROWSER_CONFIGS[configKey];
@@ -122,6 +125,12 @@ export class GenericFileEditor {
             gap: 8px;
         `;
 
+        // Copy from node button
+        this.copyFromNodeButton = this.createActionButton('📥 From Node', '#9c27b0', () => {
+            this.copyFromNode();
+        });
+        actions.appendChild(this.copyFromNodeButton);
+        
         // Save button
         this.saveButton = this.createActionButton('Save', '#4CAF50', () => {
             this.saveFile();
@@ -223,6 +232,37 @@ export class GenericFileEditor {
         const scrollHeight = textarea.scrollHeight;
         
         textarea.style.height = Math.min(Math.max(scrollHeight, minHeight), maxHeight) + 'px';
+    }
+
+    /**
+     * Copies text from selected node to editor
+     */
+    copyFromNode() {
+        const result = copyTextFromSelectedNode(app);
+        
+        if (result.success) {
+            this.textEditor.value = result.text;
+            this.setModified(true);
+            
+            // Visual feedback
+            const originalBg = this.textEditor.style.backgroundColor;
+            this.textEditor.style.backgroundColor = '#9c27b033';
+            setTimeout(() => {
+                this.textEditor.style.backgroundColor = originalBg;
+            }, 300);
+            
+            console.log(`[GenericFileEditor] Copied text from ${result.nodeType} node to editor`);
+        } else {
+            // Visual error feedback
+            const originalBg = this.textEditor.style.backgroundColor;
+            this.textEditor.style.backgroundColor = '#f4433633';
+            setTimeout(() => {
+                this.textEditor.style.backgroundColor = originalBg;
+            }, 300);
+            
+            console.error(`[GenericFileEditor] Copy from node failed: ${result.error}`);
+            alert(`Failed to copy from node: ${result.error}`);
+        }
     }
 
     /**

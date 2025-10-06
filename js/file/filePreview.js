@@ -6,11 +6,9 @@
 import { api } from "../../../../scripts/api.js";
 import { FILE_BROWSER_CONFIGS } from './fileBrowser.js';
 import { renderMarkdown, ensureMarkdownStyles } from "../shared/markdown.js";
+import { copyTextToSelectedNode } from '../utils/textCopyUtils.js';
+import { app } from '../../../scripts/app.js';
 
-/**
- * Generic File Preview Class
- * Handles file content preview for various file types
- */
 export class GenericFilePreview {
     constructor(configKey, callbacks = {}) {
         this.config = FILE_BROWSER_CONFIGS[configKey];
@@ -159,13 +157,68 @@ export class GenericFilePreview {
             }
         });
         
+        // Create copy to node button
+        this.copyToNodeBtn = document.createElement('button');
+        this.copyToNodeBtn.className = 'copy-to-node-btn';
+        this.copyToNodeBtn.innerHTML = '📤 To Node';
+        this.copyToNodeBtn.style.cssText = `
+            padding: 6px 12px;
+            background: #9c27b0;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: background-color 0.2s, opacity 0.2s;
+            opacity: 0.5;
+            pointer-events: none;
+        `;
+        this.copyToNodeBtn.title = 'Copy file content to selected node';
+        
+        this.copyToNodeBtn.addEventListener('click', () => {
+            this.copyToNode();
+        });
+        
         buttonContainer.appendChild(this.copyToLLMPromptBtn);
         buttonContainer.appendChild(this.copyToLLMSystemBtn);
+        buttonContainer.appendChild(this.copyToNodeBtn);
         
         headerContainer.appendChild(header);
         headerContainer.appendChild(buttonContainer);
 
         return headerContainer;
+    }
+    
+    /**
+     * Copy content to selected node
+     */
+    copyToNode() {
+        if (!this.currentContent) {
+            console.warn('No content to copy to node');
+            return;
+        }
+        
+        const success = copyTextToSelectedNode(app, this.currentContent);
+        
+        if (success) {
+            // Show success feedback
+            const originalText = this.copyToNodeBtn.innerHTML;
+            this.copyToNodeBtn.innerHTML = '✓ Copied!';
+            this.copyToNodeBtn.style.background = '#4caf50';
+            setTimeout(() => {
+                this.copyToNodeBtn.innerHTML = originalText;
+                this.copyToNodeBtn.style.background = '#9c27b0';
+            }, 2000);
+        } else {
+            // Show error feedback
+            const originalText = this.copyToNodeBtn.innerHTML;
+            this.copyToNodeBtn.innerHTML = '❌ Select Node';
+            this.copyToNodeBtn.style.background = '#f44336';
+            setTimeout(() => {
+                this.copyToNodeBtn.innerHTML = originalText;
+                this.copyToNodeBtn.style.background = '#9c27b0';
+            }, 2000);
+        }
     }
     
     /**
@@ -247,7 +300,7 @@ export class GenericFilePreview {
      * @param {boolean} enabled - Whether the buttons should be enabled
      */
     updateCopyButtonState(enabled) {
-        const buttons = [this.copyToLLMPromptBtn, this.copyToLLMSystemBtn];
+        const buttons = [this.copyToLLMPromptBtn, this.copyToLLMSystemBtn, this.copyToNodeBtn];
         buttons.forEach(button => {
             if (button) {
                 if (enabled) {

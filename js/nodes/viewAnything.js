@@ -2,6 +2,8 @@
 // Displays text or any output in a read-only widget
 
 import { createTextOutputWidget, updateTextWidget } from "../components/display.js";
+import { addCopyButton } from "../utils/addCopyButton.js";
+import { app } from "../../../scripts/app.js";
 
 /**
  * Sets up a node to view text or any output, updating a read-only widget.
@@ -30,6 +32,14 @@ export function setupViewTextOrAnythingNode(nodeType, nodeData, app) {
     // Create or get the output widget and update it
     const widget = createTextOutputWidget(this, app);
     updateTextWidget(widget, message);
+    
+    // Add copy-to-node button
+    addCopyButton(this, () => {
+      const content = Array.isArray(message["text"]) 
+        ? message["text"].join("") 
+        : String(message["text"]);
+      return content;
+    }, app);
     
     this.onResize?.(this.size);
   };
