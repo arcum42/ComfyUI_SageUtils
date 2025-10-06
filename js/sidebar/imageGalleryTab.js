@@ -2,6 +2,8 @@
  * Image Gallery Tab - Handles image browsing, viewing, and management for multiple folders
  */
 
+import { api } from "../../../../scripts/api.js";
+
 import { 
     handleError
 } from "../shared/errorHandler.js";
@@ -211,13 +213,14 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
         // Apply current filters and sorting to images only
         const searchQuery = selectors.gallerySearchQuery().toLowerCase();
         const sortBy = selectors.gallerySortBy();
+        const showMetadataOnly = selectors.showMetadataOnly();
         
         let filteredImages = images || [];
         let sortedFolders = [...folders];
         
         // Apply search filter to images
         if (searchQuery) {
-            filteredImages = images.filter(img => 
+            filteredImages = filteredImages.filter(img => 
                 img.filename.toLowerCase().includes(searchQuery) ||
                 img.relative_path.toLowerCase().includes(searchQuery)
             );
@@ -225,6 +228,11 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
             sortedFolders = folders.filter(folder =>
                 folder.name.toLowerCase().includes(searchQuery)
             );
+        }
+        
+        // Apply metadata filter if enabled (instant filtering using pre-calculated flag)
+        if (showMetadataOnly) {
+            filteredImages = filteredImages.filter(img => img.hasGenerationParams === true);
         }
         
         // Apply sorting to images
@@ -254,8 +262,14 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
         // Sort folders alphabetically
         sortedFolders.sort((a, b) => a.name.localeCompare(b.name));
         
-        // Update count display
-        grid.imageCountSpan.textContent = `(${filteredImages.length} images, ${sortedFolders.length} folders)`;
+        // Update count display with generation params info
+        const withParams = filteredImages.filter(img => img.hasGenerationParams).length;
+        let countText = `(${filteredImages.length} images`;
+        if (withParams > 0) {
+            countText += `, ${withParams} with gen params`;
+        }
+        countText += `, ${sortedFolders.length} folders)`;
+        grid.imageCountSpan.textContent = countText;
         
         // Render folders first
         sortedFolders.forEach(folder => {
@@ -523,6 +537,13 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
         updateSortUI(); // This will set both dropdown and button correctly
         filterAndSortImages();
         setStatus(`Sort order: ${newSort.endsWith('-desc') ? 'Descending' : 'Ascending'}`);
+    });
+
+    folderAndControls.metadataFilterCheckbox.addEventListener('change', (e) => {
+        const showMetadataOnly = e.target.checked;
+        actions.toggleMetadataOnly(showMetadataOnly);
+        filterAndSortImages();
+        setStatus(showMetadataOnly ? 'Showing only images with generation parameters' : 'Showing all images');
     });
 
     // Function to update grid layout based on current settings

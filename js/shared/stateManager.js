@@ -111,6 +111,7 @@ const initialState = {
         viewMode: 'grid',
         thumbnailSize: 'medium',
         showMetadata: false,
+        showMetadataOnly: false,
         isLoading: false,
         fullImageView: {
             isOpen: false,
@@ -179,7 +180,8 @@ function savePersistedState() {
                     searchQuery: currentState.gallery.searchQuery,
                     viewMode: currentState.gallery.viewMode,
                     thumbnailSize: currentState.gallery.thumbnailSize,
-                    showMetadata: currentState.gallery.showMetadata
+                    showMetadata: currentState.gallery.showMetadata,
+                    showMetadataOnly: currentState.gallery.showMetadataOnly
                 },
                 promptBuilder: {
                     positivePrompt: currentState.promptBuilder.positivePrompt,
@@ -423,6 +425,7 @@ export const selectors = {
     galleryViewMode: () => getStateValue('gallery.viewMode'),
     thumbnailSize: () => getStateValue('gallery.thumbnailSize'),
     showGalleryMetadata: () => getStateValue('gallery.showMetadata'),
+    showMetadataOnly: () => getStateValue('gallery.showMetadataOnly'),
     isGalleryLoading: () => getStateValue('gallery.isLoading'),
     fullImageView: () => getStateValue('gallery.fullImageView'),
     
@@ -467,6 +470,7 @@ export const actions = {
     setViewMode: (mode) => updateState('gallery.viewMode', mode, 'setViewMode'),
     setThumbnailSize: (size) => updateState('gallery.thumbnailSize', size, 'setThumbnailSize'),
     toggleMetadata: (show) => updateState('gallery.showMetadata', show, 'toggleMetadata'),
+    toggleMetadataOnly: (show) => updateState('gallery.showMetadataOnly', show, 'toggleMetadataOnly'),
     setGalleryLoading: (loading) => updateState('gallery.isLoading', loading, 'setGalleryLoading'),
     openFullImage: (image) => updateState('gallery.fullImageView', { isOpen: true, currentImage: image, showMetadata: false }, 'openFullImage'),
     closeFullImage: () => updateState('gallery.fullImageView', { isOpen: false, currentImage: null, showMetadata: false }, 'closeFullImage'),

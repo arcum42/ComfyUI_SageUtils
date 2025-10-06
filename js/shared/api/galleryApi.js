@@ -10,6 +10,101 @@ import { handleError } from "../errorHandler.js";
 import { formatFileSize } from "../../reports/reportGenerator.js";
 
 /**
+ * Check if an image has generation parameters in its metadata
+ * @param {Object} metadata - Metadata object from API
+ * @returns {boolean} True if image has generation parameters
+ */
+function hasGenerationParameters(metadata) {
+    if (!metadata) return false;
+    
+    // Check for generation_params field
+    if (metadata.generation_params && Object.keys(metadata.generation_params).length > 0) {
+        return true;
+    }
+    
+    // Check EXIF/PNG info for specific generation-related keywords
+    if (metadata.exif && typeof metadata.exif === 'object') {
+        const exifKeys = Object.keys(metadata.exif).map(k => k.toLowerCase());
+        const generationKeywords = ['parameters', 'prompt', 'extra_pnginfo', 'extra'];
+        
+        for (const keyword of generationKeywords) {
+            if (exifKeys.some(key => key.includes(keyword))) {
+                return true;
+            }
+        }
+    }
+    
+    // Check file_info for generation-specific metadata
+    if (metadata.file_info && metadata.file_info.generation_info) {
+        return true;
+    }
+    
+    return false;
+}
+
+/**
+ * Check metadata status for a batch of images
+ * @param {Array} images - Array of image objects
+ * @param {Function} setStatus - Status callback function
+ * @returns {Promise<Map>} Map of image paths to boolean indicating if they have generation params
+ */
+export async function checkImagesForGenerationParams(images, setStatus = null) {
+    const metadataMap = new Map();
+    
+    if (!images || images.length === 0) {
+        return metadataMap;
+    }
+    
+    const batchSize = 10;
+    const totalImages = images.length;
+    
+    for (let i = 0; i < images.length; i += batchSize) {
+        const batch = images.slice(i, i + batchSize);
+        
+        if (setStatus) {
+            const progress = Math.min(i + batchSize, totalImages);
+            setStatus(`Checking metadata ${progress}/${totalImages}...`);
+        }
+        
+        // Check each image in the batch concurrently
+        const results = await Promise.allSettled(
+            batch.map(async (image) => {
+                try {
+                    const response = await api.fetchApi('/sage_utils/image_metadata', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ image_path: image.path })
+                    });
+                    
+                    const result = await response.json();
+                    
+                    if (result.success && result.metadata) {
+                        return {
+                            path: image.path,
+                            hasParams: hasGenerationParameters(result.metadata)
+                        };
+                    }
+                    
+                    return { path: image.path, hasParams: false };
+                } catch (error) {
+                    console.warn(`Error checking metadata for ${image.filename}:`, error);
+                    return { path: image.path, hasParams: false };
+                }
+            })
+        );
+        
+        // Collect results
+        results.forEach(result => {
+            if (result.status === 'fulfilled' && result.value) {
+                metadataMap.set(result.value.path, result.value.hasParams);
+            }
+        });
+    }
+    
+    return metadataMap;
+}
+
+/**
  * Load images and folders from a specified folder type
  * @param {string} folderType - Type of folder ('notes', 'input', 'output', 'custom')
  * @param {string|null} customPath - Custom path for 'custom' folder type
@@ -46,8 +141,21 @@ export async function loadImagesFromFolder(folderType, customPath = null, setSta
         const images = result.images || [];
         const folders = result.folders || [];
         
+        // Pre-calculate metadata status for all images
+        if (setStatus) {
+            setStatus(`Checking metadata for ${images.length} images...`);
+        }
+        
+        const metadataMap = await checkImagesForGenerationParams(images, setStatus);
+        
+        // Add hasGenerationParams flag to each image
+        const imagesWithMetadata = images.map(img => ({
+            ...img,
+            hasGenerationParams: metadataMap.get(img.path) || false
+        }));
+        
         // Update state with loaded images and folders
-        actions.setImages(images);
+        actions.setImages(imagesWithMetadata);
         actions.setFolders(folders);
         
         // Manage current path based on folder type and custom path
@@ -59,13 +167,15 @@ export async function loadImagesFromFolder(folderType, customPath = null, setSta
             actions.setCurrentPath('');
         }
         
+        const imagesWithParams = imagesWithMetadata.filter(img => img.hasGenerationParams).length;
+        
         if (setStatus) {
-            setStatus(`Loaded ${images.length} images and ${folders.length} folders from ${folderType} folder`);
+            setStatus(`Loaded ${images.length} images (${imagesWithParams} with generation params), ${folders.length} folders`);
         }
         
         return {
             success: true,
-            images,
+            images: imagesWithMetadata,
             folders,
             totalItems: images.length + folders.length
         };

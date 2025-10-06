@@ -286,9 +286,40 @@ export function createFolderSelectorAndControls() {
     searchContainer.appendChild(searchInput);
     searchContainer.appendChild(clearButton);
 
+    // Metadata filter checkbox
+    const metadataFilterContainer = document.createElement('div');
+    metadataFilterContainer.style.cssText = `
+        margin-top: 10px;
+        display: flex;
+        gap: 8px;
+        align-items: center;
+    `;
+    
+    const metadataFilterCheckbox = document.createElement('input');
+    metadataFilterCheckbox.type = 'checkbox';
+    metadataFilterCheckbox.id = 'gallery-metadata-filter';
+    metadataFilterCheckbox.style.cssText = `
+        cursor: pointer;
+    `;
+    
+    const metadataFilterLabel = document.createElement('label');
+    metadataFilterLabel.htmlFor = 'gallery-metadata-filter';
+    metadataFilterLabel.textContent = 'Show only images with generation parameters';
+    metadataFilterLabel.title = 'Filter for images containing AI generation metadata (parameters, prompt, extra_pnginfo, etc.)';
+    metadataFilterLabel.style.cssText = `
+        color: #ccc;
+        font-size: 12px;
+        cursor: pointer;
+        user-select: none;
+    `;
+    
+    metadataFilterContainer.appendChild(metadataFilterCheckbox);
+    metadataFilterContainer.appendChild(metadataFilterLabel);
+
     folderSection.appendChild(sortContainer);
     folderSection.appendChild(buttonsContainer);
     folderSection.appendChild(searchContainer);
+    folderSection.appendChild(metadataFilterContainer);
 
     // Restore persisted gallery values from state
     const savedFolder = selectors.selectedFolder();
@@ -323,12 +354,18 @@ export function createFolderSelectorAndControls() {
         thumbnailSizeSelect.value = savedThumbnailSize;
     }
     
+    const savedMetadataOnly = selectors.showMetadataOnly();
+    if (savedMetadataOnly) {
+        metadataFilterCheckbox.checked = savedMetadataOnly;
+    }
+    
     console.debug('[GalleryTab] Restored gallery values from state:', {
         folder: savedFolder,
         sort: savedSort,
         search: savedSearch,
         viewMode: savedViewMode,
-        thumbnailSize: savedThumbnailSize
+        thumbnailSize: savedThumbnailSize,
+        metadataOnly: savedMetadataOnly
     });
 
     return {
@@ -346,7 +383,8 @@ export function createFolderSelectorAndControls() {
         buttonsContainer,
         thumbnailSizeSelect,
         refreshButton,
-        viewModeButton
+        viewModeButton,
+        metadataFilterCheckbox
     };
 }
 
