@@ -10,7 +10,8 @@
 import { 
     getState, 
     subscribe, 
-    actions
+    actions,
+    selectors
 } from "../shared/stateManager.js";
 
 import { 
@@ -30,6 +31,11 @@ import {
     fetchCacheHash, 
     fetchCacheInfo 
 } from "../shared/api/cacheApi.js";
+
+// Import gallery API for background preloading
+import { 
+    loadImagesFromFolder 
+} from "../shared/api/galleryApi.js";
 
 // Import shared UI components
 import {
@@ -446,6 +452,25 @@ export function createCacheSidebar(el) {
     
     // Initialize sidebar data and state
     initializeSidebarData();
+    
+    // Preload gallery images in the background for better UX
+    // This loads the default folder (usually 'notes') so data is ready when user clicks Gallery tab
+    setTimeout(() => {
+        const defaultFolder = actions ? (typeof actions.selectedFolder === 'function' ? actions.selectedFolder() : 'notes') : 'notes';
+        const savedFolder = selectors.selectedFolder ? selectors.selectedFolder() : defaultFolder;
+        const galleryFolder = savedFolder !== 'custom' ? savedFolder : 'notes'; // Don't auto-load custom folders
+        
+        console.debug(`[Sidebar] Preloading gallery images from '${galleryFolder}' folder in background...`);
+        
+        loadImagesFromFolder(galleryFolder, null, (msg) => {
+            // Silent background loading - don't show status messages
+            console.debug(`[Sidebar Gallery Preload] ${msg}`);
+        }).then(() => {
+            console.debug(`[Sidebar] Gallery preload complete for '${galleryFolder}' folder`);
+        }).catch(err => {
+            console.warn(`[Sidebar] Gallery preload failed (non-critical):`, err);
+        });
+    }, 500); // Small delay to avoid blocking initial sidebar render
     
     // Store references for potential external access
     el._sidebarData = {

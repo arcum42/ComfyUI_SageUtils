@@ -737,6 +737,17 @@ export function createImageGalleryTab(container) {
     setTimeout(() => {
         try {
             const savedFolder = selectors.selectedFolder() || 'notes';
+            const existingImages = selectors.galleryImages();
+            
+            // Check if we already have images loaded (from background preload)
+            if (existingImages && existingImages.length > 0) {
+                console.log('Gallery: Images already preloaded, rendering existing data');
+                const existingFolders = selectors.galleryFolders() || [];
+                if (eventHandlers && eventHandlers.renderImageGrid) {
+                    eventHandlers.renderImageGrid(existingImages, existingFolders);
+                }
+                return;
+            }
             
             // Don't auto-load custom folders without a path
             if (savedFolder === 'custom') {
