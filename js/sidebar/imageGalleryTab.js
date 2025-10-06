@@ -65,6 +65,9 @@ import {
  * @param {Object} galleryFunctions - Gallery function dependencies
  */
 function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, header, galleryFunctions) {
+    // Folder cache for back navigation - stores images and folders by path
+    const folderCache = new Map();
+    
     // Extract gallery functions from parameters instead of global window
     const { 
         showFullImage, 
@@ -96,8 +99,39 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
     }
 
     // Load images from selected folder - wrapper for imported API function
-    async function loadImagesWrapper(folderType, customPath = null) {
+    async function loadImagesWrapper(folderType, customPath = null, forceReload = false) {
         try {
+            // Create cache key
+            const cacheKey = customPath ? `custom:${customPath}` : folderType;
+            
+            // Check cache first (unless force reload)
+            if (!forceReload && folderCache.has(cacheKey)) {
+                console.log('Gallery: Loading from cache:', cacheKey);
+                const cached = folderCache.get(cacheKey);
+                
+                // Update UI immediately from cache
+                grid.imageCountSpan.textContent = `(${cached.images.length} images, ${cached.folders.length} folders)`;
+                await renderImageGrid(cached.images, cached.folders, loadImagesWrapper);
+                
+                // Auto-show metadata for the first image if available
+                if (cached.images && cached.images.length > 0) {
+                    showImageMetadata(cached.images[0]);
+                } else {
+                    metadata.metadataContent.innerHTML = `
+                        <div style="color: #888; text-align: center; padding: 20px;">
+                            <div style="font-size: 24px; margin-bottom: 10px;">📁</div>
+                            <div>No images in this folder</div>
+                            <div style="font-size: 12px; margin-top: 5px;">
+                                Select a folder with images to view details
+                            </div>
+                        </div>
+                    `;
+                }
+                
+                setStatus('Loaded from cache', false);
+                return;
+            }
+            
             // Show loading indicator in grid with immediate count update
             grid.imageCountSpan.textContent = '(Loading...)';
             
@@ -171,6 +205,10 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
             const result = await loadImagesFromFolder(folderType, customPath, customSetStatus);
             
             const { images, folders, totalItems } = result;
+            
+            // Store in cache
+            folderCache.set(cacheKey, { images, folders });
+            console.log('Gallery: Cached folder data:', cacheKey, `(${images.length} images, ${folders.length} folders)`);
             
             // Update UI immediately with actual counts
             grid.imageCountSpan.textContent = `(${images.length} images, ${folders.length} folders)`;
@@ -548,7 +586,7 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
         setStatus(`Sorted by: ${e.target.options[e.target.selectedIndex].text} (${isDescending ? 'Descending' : 'Ascending'})`);
     });
 
-    folderAndControls.refreshButton.addEventListener('click', refreshCurrentFolder);
+    grid.refreshButton.addEventListener('click', refreshCurrentFolder);
     folderAndControls.viewModeButton.addEventListener('click', () => {
         const renderGridWithCallback = (images, folders) => renderImageGrid(images, folders, loadImagesWrapper);
         toggleViewMode(renderGridWithCallback);
@@ -662,9 +700,22 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
     // Refresh current folder
     function refreshCurrentFolder() {
         const currentFolder = selectors.selectedFolder();
+        const currentPath = selectors.currentPath();
+        
         if (currentFolder) {
+            // Clear cache for this folder
+            const cacheKey = currentFolder === 'custom' && currentPath ? `custom:${currentPath}` : currentFolder;
+            folderCache.delete(cacheKey);
+            console.log('Gallery: Cleared cache for:', cacheKey);
+            
             setStatus('Refreshing folder...');
-            loadImagesWrapper(currentFolder);
+            
+            // Force reload with the third parameter
+            if (currentFolder === 'custom' && currentPath) {
+                loadImagesWrapper('custom', currentPath, true);
+            } else {
+                loadImagesWrapper(currentFolder, null, true);
+            }
         } else {
             setStatus('No folder selected to refresh', true);
         }

@@ -206,19 +206,6 @@ export function createFolderSelectorAndControls() {
         thumbnailSizeSelect.appendChild(optionElement);
     });
     
-    const refreshButton = document.createElement('button');
-    refreshButton.textContent = '🔄';
-    refreshButton.title = 'Refresh images';
-    refreshButton.style.cssText = `
-        background: #4CAF50;
-        color: white;
-        border: none;
-        padding: 4px 8px;
-        border-radius: 4px;
-        cursor: pointer;
-        font-size: 12px;
-    `;
-    
     const viewModeButton = document.createElement('button');
     viewModeButton.textContent = '⊞ Grid View';
     viewModeButton.title = 'Toggle view mode';
@@ -246,7 +233,6 @@ export function createFolderSelectorAndControls() {
     `;
     
     buttonsContainer.appendChild(thumbnailSizeSelect);
-    buttonsContainer.appendChild(refreshButton);
     buttonsContainer.appendChild(viewModeButton);
     buttonsContainer.appendChild(datasetTextButton);
 
@@ -396,7 +382,6 @@ export function createFolderSelectorAndControls() {
         orderButton,
         buttonsContainer,
         thumbnailSizeSelect,
-        refreshButton,
         viewModeButton,
         datasetTextButton,
         metadataFilterCheckbox
@@ -428,9 +413,36 @@ export function createWrappedThumbnailGrid() {
         justify-content: space-between;
         align-items: center;
     `;
-    gridHeader.innerHTML = `
-        <span>Images <span id="image-count" style="color: #999; font-weight: normal;"></span></span>
+    
+    // Create header content with count
+    const headerContent = document.createElement('span');
+    headerContent.innerHTML = 'Images <span id="image-count" style="color: #999; font-weight: normal;"></span>';
+    
+    // Create reload button (small icon)
+    const refreshButton = document.createElement('button');
+    refreshButton.textContent = '🔄';
+    refreshButton.title = 'Reload folder';
+    refreshButton.style.cssText = `
+        background: #4CAF50;
+        color: white;
+        border: none;
+        padding: 4px 8px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 14px;
+        margin-left: 10px;
     `;
+    
+    refreshButton.addEventListener('mouseenter', () => {
+        refreshButton.style.background = '#45a049';
+    });
+    
+    refreshButton.addEventListener('mouseleave', () => {
+        refreshButton.style.background = '#4CAF50';
+    });
+    
+    gridHeader.appendChild(headerContent);
+    gridHeader.appendChild(refreshButton);
     
     // Use imported thumbnail grid component
     const grid = createThumbnailGrid();
@@ -457,7 +469,7 @@ export function createWrappedThumbnailGrid() {
     gridSection.appendChild(gridHeader);
     gridSection.appendChild(grid.gridContainer);
 
-    // Replace the imageCountSpan with the one from header
+    // Get references from the header
     const imageCountSpan = gridHeader.querySelector('#image-count');
 
     return {
@@ -465,6 +477,7 @@ export function createWrappedThumbnailGrid() {
         gridHeader,
         gridContainer: grid.gridContainer,
         imageCountSpan,
+        refreshButton,
         updateGridLayout: grid.updateGridLayout,
         clear: grid.clear
     };
