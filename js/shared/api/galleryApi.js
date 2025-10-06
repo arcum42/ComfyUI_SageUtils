@@ -17,21 +17,41 @@ import { formatFileSize } from "../../reports/reportGenerator.js";
 function hasGenerationParameters(metadata) {
     if (!metadata) return false;
     
-    // Check for generation_params field
-    if (metadata.generation_params && Object.keys(metadata.generation_params).length > 0) {
-        return true;
+    // AI generation keywords that we're looking for
+    const generationKeywords = ['parameters', 'prompt', 'extra_pnginfo', 'extra'];
+    
+    // Check for generation_params field and verify it has generation keywords
+    if (metadata.generation_params && typeof metadata.generation_params === 'object') {
+        const genParamKeys = Object.keys(metadata.generation_params);
+        const hasGenerationKeyword = genParamKeys.some(key => {
+            const lowerKey = key.toLowerCase();
+            return generationKeywords.some(keyword => lowerKey === keyword || lowerKey.includes(keyword));
+        });
+        
+        if (hasGenerationKeyword) {
+            return true;
+        }
     }
     
-    // Check EXIF/PNG info for specific generation-related keywords
+    // Only check PNG/image metadata for AI generation keywords
+    // AI generators typically save to PNG with specific keywords
     if (metadata.exif && typeof metadata.exif === 'object') {
-        const exifKeys = Object.keys(metadata.exif).map(k => k.toLowerCase());
-        const generationKeywords = ['parameters', 'prompt', 'extra_pnginfo', 'extra'];
+        const exifKeys = Object.keys(metadata.exif);
         
-        for (const keyword of generationKeywords) {
-            if (exifKeys.some(key => key.includes(keyword))) {
-                return true;
-            }
+        // Check if ANY key contains one of our generation keywords (case-insensitive)
+        const hasGenerationKeyword = exifKeys.some(key => {
+            const lowerKey = key.toLowerCase();
+            return generationKeywords.some(keyword => lowerKey === keyword || lowerKey.includes(keyword));
+        });
+        
+        // Only return true if we found a generation keyword
+        if (hasGenerationKeyword) {
+            return true;
         }
+        
+        // If no generation keywords found, return false
+        // This will exclude JPEG/JFIF metadata and other non-AI metadata
+        return false;
     }
     
     // Check file_info for generation-specific metadata
@@ -39,6 +59,7 @@ function hasGenerationParameters(metadata) {
         return true;
     }
     
+    // Default to false - no generation parameters found
     return false;
 }
 
@@ -63,7 +84,7 @@ export async function checkImagesForGenerationParams(images, setStatus = null) {
         
         if (setStatus) {
             const progress = Math.min(i + batchSize, totalImages);
-            setStatus(`Checking metadata ${progress}/${totalImages}...`);
+            setStatus(`Loading images ${progress}/${totalImages}...`);
         }
         
         // Check each image in the batch concurrently
@@ -143,7 +164,7 @@ export async function loadImagesFromFolder(folderType, customPath = null, setSta
         
         // Pre-calculate metadata status for all images
         if (setStatus) {
-            setStatus(`Checking metadata for ${images.length} images...`);
+            setStatus(`Loading images 0/${images.length}...`);
         }
         
         const metadataMap = await checkImagesForGenerationParams(images, setStatus);

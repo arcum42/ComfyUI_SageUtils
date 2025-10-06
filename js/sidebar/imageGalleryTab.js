@@ -100,39 +100,75 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
         try {
             // Show loading indicator in grid with immediate count update
             grid.imageCountSpan.textContent = '(Loading...)';
-            grid.gridContainer.innerHTML = `
-                <div style="
-                    grid-column: 1 / -1;
-                    text-align: center;
-                    color: #4CAF50;
-                    padding: 60px 20px;
-                    font-size: 14px;
-                ">
-                    <div style="
-                        display: inline-block;
-                        width: 40px;
-                        height: 40px;
-                        border: 4px solid #333;
-                        border-top: 4px solid #4CAF50;
-                        border-radius: 50%;
-                        animation: spin 1s linear infinite;
-                        margin-bottom: 15px;
-                    "></div>
-                    <div>🔍 Loading from ${folderType} folder...</div>
-                    <div style="color: #888; font-size: 12px; margin-top: 10px;">
-                        Scanning for images and subfolders...
-                    </div>
-                </div>
-                <style>
-                    @keyframes spin {
-                        0% { transform: rotate(0deg); }
-                        100% { transform: rotate(360deg); }
-                    }
-                </style>
-            `;
             
-            // Call the imported API function
-            const result = await loadImagesFromFolder(folderType, customPath, setStatus);
+            // Create a progress update function
+            let progressContainer = null;
+            const updateProgress = (current, total, message = '') => {
+                if (!progressContainer) {
+                    grid.gridContainer.innerHTML = '';
+                    progressContainer = document.createElement('div');
+                    progressContainer.style.cssText = `
+                        grid-column: 1 / -1;
+                        text-align: center;
+                        color: #4CAF50;
+                        padding: 60px 20px;
+                        font-size: 14px;
+                    `;
+                    grid.gridContainer.appendChild(progressContainer);
+                }
+                
+                const percentage = total > 0 ? Math.round((current / total) * 100) : 0;
+                
+                progressContainer.innerHTML = `
+                    <div style="font-size: 24px; margin-bottom: 15px;">🔍</div>
+                    <div style="margin-bottom: 10px;">${message || `Loading from ${folderType} folder...`}</div>
+                    <div style="color: #ccc; font-size: 13px; margin-bottom: 15px;">
+                        ${current} / ${total} images loaded
+                    </div>
+                    <div style="
+                        width: 100%;
+                        max-width: 400px;
+                        height: 24px;
+                        background: #333;
+                        border-radius: 12px;
+                        overflow: hidden;
+                        margin: 0 auto;
+                        border: 1px solid #555;
+                    ">
+                        <div style="
+                            width: ${percentage}%;
+                            height: 100%;
+                            background: linear-gradient(90deg, #4CAF50, #66BB6A);
+                            transition: width 0.3s ease;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            color: white;
+                            font-weight: bold;
+                            font-size: 12px;
+                        ">${percentage}%</div>
+                    </div>
+                `;
+            };
+            
+            // Initial progress display
+            updateProgress(0, 0, `Loading from ${folderType} folder...`);
+            
+            // Create a custom setStatus that also updates the progress bar
+            const customSetStatus = (message) => {
+                // Parse progress messages like "Checking metadata 10/50..."
+                const progressMatch = message.match(/(\d+)\/(\d+)/);
+                if (progressMatch) {
+                    const current = parseInt(progressMatch[1]);
+                    const total = parseInt(progressMatch[2]);
+                    updateProgress(current, total, message);
+                } else {
+                    setStatus(message);
+                }
+            };
+            
+            // Call the imported API function with custom status handler
+            const result = await loadImagesFromFolder(folderType, customPath, customSetStatus);
             
             const { images, folders, totalItems } = result;
             
@@ -264,11 +300,17 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
         
         // Update count display with generation params info
         const withParams = filteredImages.filter(img => img.hasGenerationParams).length;
-        let countText = `(${filteredImages.length} images`;
-        if (withParams > 0) {
-            countText += `, ${withParams} with gen params`;
+        const totalImages = images ? images.length : 0;
+        
+        let countText = '';
+        if (showMetadataOnly) {
+            // Show filtered/total when filter is active
+            countText = `${filteredImages.length}/${totalImages} images / ${sortedFolders.length} folders`;
+        } else {
+            // Show just totals when filter is off
+            countText = `${filteredImages.length} images / ${sortedFolders.length} folders`;
         }
-        countText += `, ${sortedFolders.length} folders)`;
+        
         grid.imageCountSpan.textContent = countText;
         
         // Render folders first
