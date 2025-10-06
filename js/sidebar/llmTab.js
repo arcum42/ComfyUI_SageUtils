@@ -2129,7 +2129,7 @@ async function initializeTab(state, modelSelection, visionSection, inputSection,
  * @param {HTMLElement} modelSelection - Model selection section
  * @param {HTMLElement} visionSection - Vision section
  */
-async function loadModels(state, modelSelection, visionSection) {
+async function loadModels(state, modelSelection, visionSection, force = false) {
     const providerSelect = modelSelection.querySelector('.llm-provider-select');
     const modelSelect = modelSelection.querySelector('.llm-model-select');
     const statusIndicator = modelSelection.querySelector('.llm-status-indicator');
@@ -2141,13 +2141,13 @@ async function loadModels(state, modelSelection, visionSection) {
         modelSelect.innerHTML = '<option value="">Loading models...</option>';
         modelSelect.disabled = true;
         statusDot.className = 'status-dot status-loading';
-        statusText.textContent = 'Loading...';
+        statusText.textContent = force ? 'Re-initializing...' : 'Loading...';
         
-        // Fetch status, models, and vision models
+        // Fetch status, models, and vision models (with force flag if requested)
         const [status, modelsData, visionModelsData] = await Promise.all([
             llmApi.getStatus(),
-            llmApi.getModels(),
-            llmApi.getVisionModels()
+            llmApi.getModels(force),
+            llmApi.getVisionModels(force)
         ]);
         
         // Store models in state
@@ -3605,7 +3605,7 @@ function setupEventHandlers(state, modelSelection, visionSection, inputSection, 
     
     // Refresh button
     refreshBtn.addEventListener('click', () => {
-        loadModels(state, modelSelection, visionSection);
+        loadModels(state, modelSelection, visionSection, true); // Force re-initialization
     });
     
     // Preset selection change

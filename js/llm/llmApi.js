@@ -27,16 +27,18 @@ export async function getStatus() {
 }
 
 /**
- * Get list of available text models
- * @returns {Promise<Object>} - Models data with provider lists
+ * Get available models from all providers
+ * @param {boolean} force - Force re-initialization of providers
+ * @returns {Promise<Object>} Models grouped by provider
  */
-export async function getModels() {
+export async function getModels(force = false) {
     try {
-        const response = await fetch(`${BASE_URL}/models`);
+        const url = force ? `${BASE_URL}/models?force=true` : `${BASE_URL}/models`;
+        const response = await fetch(url);
         const data = await response.json();
         
         if (!data.success) {
-            throw new Error(data.error || 'Failed to get models');
+            throw new Error(data.error || 'Failed to fetch models');
         }
         
         return data.data;
@@ -48,11 +50,13 @@ export async function getModels() {
 
 /**
  * Get list of available vision models
+ * @param {boolean} force - Force re-initialization of providers
  * @returns {Promise<Object>} - Vision models data with provider lists
  */
-export async function getVisionModels() {
+export async function getVisionModels(force = false) {
     try {
-        const response = await fetch(`${BASE_URL}/vision_models`);
+        const url = force ? `${BASE_URL}/vision_models?force=true` : `${BASE_URL}/vision_models`;
+        const response = await fetch(url);
         const data = await response.json();
         
         if (!data.success) {

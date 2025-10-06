@@ -95,6 +95,9 @@ def register_routes(routes_instance):
         """
         Get available text models from Ollama and LM Studio.
         
+        Query params:
+            force: bool - Force re-initialization of LLM providers (default: False)
+        
         Returns:
             {
                 "success": true,
@@ -111,6 +114,15 @@ def register_routes(routes_instance):
         try:
             from ..utils import llm_wrapper as llm
             from ..utils.settings import get_setting
+            
+            # Check if force re-initialization is requested
+            force = request.rel_url.query.get('force', '').lower() == 'true'
+            
+            if force:
+                logging.info("Force re-initializing LLM providers...")
+                # Reset initialization flags to force re-init
+                llm._ollama_initialized = False
+                llm._lmstudio_initialized = False
             
             # Initialize LLM services if needed
             llm.ensure_llm_initialized()
@@ -167,6 +179,9 @@ def register_routes(routes_instance):
         """
         Get available vision models from Ollama and LM Studio.
         
+        Query params:
+            force: bool - Force re-initialization of LLM providers (default: False)
+        
         Returns:
             {
                 "success": true,
@@ -183,6 +198,15 @@ def register_routes(routes_instance):
         try:
             from ..utils import llm_wrapper as llm
             from ..utils.settings import get_setting
+            
+            # Check if force re-initialization is requested
+            force = request.rel_url.query.get('force', '').lower() == 'true'
+            
+            if force:
+                logging.info("Force re-initializing LLM providers for vision models...")
+                # Reset initialization flags to force re-init
+                llm._ollama_initialized = False
+                llm._lmstudio_initialized = False
             
             # Initialize LLM services if needed
             llm.ensure_llm_initialized()
@@ -597,7 +621,9 @@ def register_routes(routes_instance):
                     
                     lms_model = lms.llm(model, ttl=keep_alive) if keep_alive >= 1 else lms.llm(model)
                     
-                    chat = lms.Chat()
+                    # Create chat with system prompt (if provided)
+                    chat = lms.Chat(system_prompt) if system_prompt else lms.Chat()
+                    
                     # Prepare image handles
                     image_handles = [lms.prepare_image(img_path) for img_path in temp_files]
                     chat.add_user_message(prompt, images=image_handles)
@@ -769,7 +795,9 @@ def register_routes(routes_instance):
                         
                         lms_model = lms.llm(model, ttl=keep_alive) if keep_alive >= 1 else lms.llm(model)
                         
-                        chat = lms.Chat()
+                        # Create chat with system prompt (if provided)
+                        chat = lms.Chat(system_prompt) if system_prompt else lms.Chat()
+                        
                         # Prepare image handles
                         image_handles = [lms.prepare_image(img_path) for img_path in temp_files]
                         chat.add_user_message(prompt, images=image_handles)
@@ -1544,7 +1572,9 @@ def register_routes(routes_instance):
                     keep_alive = settings.get('keepAlive', 0)
                     lms_model = lms.llm(model, ttl=keep_alive) if keep_alive >= 1 else lms.llm(model)
                     
-                    chat = lms.Chat()
+                    # Create chat with system prompt (if provided)
+                    chat = lms.Chat(system_prompt_text) if system_prompt_text else lms.Chat()
+                    
                     image_handles = [lms.prepare_image(img_path) for img_path in temp_files]
                     chat.add_user_message(prompt_text, images=image_handles)
                     
