@@ -827,6 +827,386 @@ def register_routes(routes_instance):
         "description": "Generate streaming vision response from LLM (SSE)"
     })
     
+    @routes_instance.get('/sage_utils/system_prompts/{prompt_id}.md')
+    @route_error_handler
+    async def get_system_prompt(request):
+        """
+        Serve system prompt markdown files from assets (built-in) or user directory (custom).
+        
+        Args:
+            prompt_id: ID of the system prompt to retrieve
+            
+        Returns:
+            Markdown content of the system prompt
+        """
+        try:
+            from pathlib import Path
+            from ..utils import sage_users_path
+            
+            prompt_id = request.match_info['prompt_id']
+            
+            # Map built-in prompt IDs to files in assets
+            builtin_prompts = {
+                'e621_prompt_generator': 'system_prompt.md',
+            }
+            
+            # Check if it's a built-in prompt
+            if prompt_id in builtin_prompts:
+                current_dir = Path(__file__).parent.parent
+                assets_dir = current_dir / "assets"
+                prompt_file = assets_dir / builtin_prompts[prompt_id]
+            else:
+                # Check user directory for custom prompts
+                user_prompts_dir = Path(sage_users_path) / "llm_system_prompts"
+                prompt_file = user_prompts_dir / f"{prompt_id}.md"
+            
+            if not prompt_file.exists():
+                return error_response(f"System prompt '{prompt_id}' not found", status=404)
+            
+            # Read and return the file
+            with open(prompt_file, 'r', encoding='utf-8') as f:
+                content = f.read()
+            
+            return web.Response(text=content, content_type='text/markdown')
+            
+        except Exception as e:
+            logging.error(f"Error loading system prompt: {str(e)}")
+            return error_response(f"Failed to load system prompt: {str(e)}", status=500)
+    
+    _route_list.append({
+        "method": "GET",
+        "path": "/sage_utils/system_prompts/{prompt_id}.md",
+        "description": "Get system prompt markdown file"
+    })
+    
+    @routes_instance.post('/sage_llm/system_prompts/save')
+    @route_error_handler
+    async def save_system_prompt(request):
+        """
+        Save a custom system prompt to user directory.
+        
+        Body:
+            {
+                "id": str,
+                "name": str,
+                "content": str,
+                "description": str (optional)
+            }
+        """
+        try:
+            from pathlib import Path
+            from ..utils import sage_users_path
+            import json
+            
+            data = await request.json()
+            
+            prompt_id = data.get('id')
+            name = data.get('name')
+            content = data.get('content')
+            description = data.get('description', '')
+            
+            if not prompt_id or not name or not content:
+                return error_response("Missing required fields: id, name, content", status=400)
+            
+            # Create user directory for system prompts
+            user_prompts_dir = Path(sage_users_path) / "llm_system_prompts"
+            user_prompts_dir.mkdir(parents=True, exist_ok=True)
+            
+            # Save markdown file
+            prompt_file = user_prompts_dir / f"{prompt_id}.md"
+            with open(prompt_file, 'w', encoding='utf-8') as f:
+                f.write(content)
+            
+            # Save metadata
+            metadata_file = user_prompts_dir / "_metadata.json"
+            metadata = {}
+            if metadata_file.exists():
+                with open(metadata_file, 'r', encoding='utf-8') as f:
+                    metadata = json.load(f)
+            
+            from datetime import datetime
+            metadata[prompt_id] = {
+                "name": name,
+                "description": description,
+                "created": metadata.get(prompt_id, {}).get('created', datetime.now().isoformat()),
+                "updated": datetime.now().isoformat()
+            }
+            
+            with open(metadata_file, 'w', encoding='utf-8') as f:
+                json.dump(metadata, f, indent=2)
+            
+            return success_response({"id": prompt_id, "name": name})
+            
+        except Exception as e:
+            logging.error(f"Error saving system prompt: {str(e)}")
+            return error_response(f"Failed to save system prompt: {str(e)}", status=500)
+    
+    _route_list.append({
+        "method": "POST",
+        "path": "/sage_llm/system_prompts/save",
+        "description": "Save custom system prompt"
+    })
+    
+    @routes_instance.post('/sage_llm/system_prompts/delete')
+    @route_error_handler
+    async def delete_system_prompt(request):
+        """
+        Delete a custom system prompt.
+        
+        Body:
+            {"id": str}
+        """
+        try:
+            from pathlib import Path
+            from ..utils import sage_users_path
+            import json
+            
+            data = await request.json()
+            prompt_id = data.get('id')
+            
+            if not prompt_id:
+                return error_response("Missing prompt id", status=400)
+            
+            user_prompts_dir = Path(sage_users_path) / "llm_system_prompts"
+            prompt_file = user_prompts_dir / f"{prompt_id}.md"
+            
+            if not prompt_file.exists():
+                return error_response(f"System prompt '{prompt_id}' not found", status=404)
+            
+            # Delete file
+            prompt_file.unlink()
+            
+            # Update metadata
+            metadata_file = user_prompts_dir / "_metadata.json"
+            if metadata_file.exists():
+                with open(metadata_file, 'r', encoding='utf-8') as f:
+                    metadata = json.load(f)
+                
+                if prompt_id in metadata:
+                    del metadata[prompt_id]
+                    
+                with open(metadata_file, 'w', encoding='utf-8') as f:
+                    json.dump(metadata, f, indent=2)
+            
+            return success_response({"deleted": prompt_id})
+            
+        except Exception as e:
+            logging.error(f"Error deleting system prompt: {str(e)}")
+            return error_response(f"Failed to delete system prompt: {str(e)}", status=500)
+    
+    _route_list.append({
+        "method": "POST",
+        "path": "/sage_llm/system_prompts/delete",
+        "description": "Delete custom system prompt"
+    })
+    
+    @routes_instance.get('/sage_llm/system_prompts/list')
+    @route_error_handler
+    async def list_system_prompts(request):
+        """
+        List all available system prompts (built-in + custom).
+        
+        Returns:
+            {
+                "success": true,
+                "prompts": {
+                    "prompt_id": {"name": str, "description": str, "isBuiltin": bool}
+                }
+            }
+        """
+        try:
+            from pathlib import Path
+            from ..utils import sage_users_path
+            import json
+            
+            prompts = {}
+            
+            # Add built-in prompts
+            prompts['default'] = {
+                "name": "Default",
+                "description": "Basic helpful assistant",
+                "isBuiltin": True
+            }
+            prompts['e621_prompt_generator'] = {
+                "name": "E621 Prompt Generator",
+                "description": "Advanced image description for E621-style prompts",
+                "isBuiltin": True
+            }
+            
+            # Add custom prompts from user directory
+            user_prompts_dir = Path(sage_users_path) / "llm_system_prompts"
+            if user_prompts_dir.exists():
+                metadata_file = user_prompts_dir / "_metadata.json"
+                if metadata_file.exists():
+                    with open(metadata_file, 'r', encoding='utf-8') as f:
+                        metadata = json.load(f)
+                    
+                    for prompt_id, meta in metadata.items():
+                        prompts[prompt_id] = {
+                            "name": meta.get('name', prompt_id),
+                            "description": meta.get('description', ''),
+                            "isBuiltin": False
+                        }
+            
+            return success_response({"prompts": prompts})
+            
+        except Exception as e:
+            logging.error(f"Error listing system prompts: {str(e)}")
+            return error_response(f"Failed to list system prompts: {str(e)}", status=500)
+    
+    _route_list.append({
+        "method": "GET",
+        "path": "/sage_llm/system_prompts/list",
+        "description": "List all system prompts"
+    })
+    
+    @routes_instance.get('/sage_llm/presets/list')
+    @route_error_handler
+    async def list_presets(request):
+        """
+        List all available LLM presets (built-in + custom).
+        
+        Returns:
+            {
+                "success": true,
+                "presets": {
+                    "preset_id": {preset_data}
+                }
+            }
+        """
+        try:
+            from pathlib import Path
+            from ..utils import sage_users_path
+            import json
+            
+            # Load custom presets from user directory
+            user_presets_file = Path(sage_users_path) / "llm_presets.json"
+            custom_presets = {}
+            
+            if user_presets_file.exists():
+                with open(user_presets_file, 'r', encoding='utf-8') as f:
+                    custom_presets = json.load(f)
+            
+            return success_response({"presets": custom_presets})
+            
+        except Exception as e:
+            logging.error(f"Error listing presets: {str(e)}")
+            return error_response(f"Failed to list presets: {str(e)}", status=500)
+    
+    _route_list.append({
+        "method": "GET",
+        "path": "/sage_llm/presets/list",
+        "description": "List all LLM presets"
+    })
+    
+    @routes_instance.post('/sage_llm/presets/save')
+    @route_error_handler
+    async def save_preset(request):
+        """
+        Save an LLM preset to user directory.
+        
+        Body:
+            {
+                "id": str,
+                "preset": {preset_data}
+            }
+        """
+        try:
+            from pathlib import Path
+            from ..utils import sage_users_path
+            import json
+            from datetime import datetime
+            
+            data = await request.json()
+            preset_id = data.get('id')
+            preset_data = data.get('preset')
+            
+            if not preset_id or not preset_data:
+                return error_response("Missing required fields: id, preset", status=400)
+            
+            # Load existing presets
+            user_presets_file = Path(sage_users_path) / "llm_presets.json"
+            presets = {}
+            
+            if user_presets_file.exists():
+                with open(user_presets_file, 'r', encoding='utf-8') as f:
+                    presets = json.load(f)
+            
+            # Update preset with timestamps
+            preset_data['updatedAt'] = datetime.now().isoformat()
+            if preset_id not in presets:
+                preset_data['createdAt'] = datetime.now().isoformat()
+            
+            presets[preset_id] = preset_data
+            
+            # Save to file
+            user_presets_file.parent.mkdir(parents=True, exist_ok=True)
+            with open(user_presets_file, 'w', encoding='utf-8') as f:
+                json.dump(presets, f, indent=2)
+            
+            return success_response({"id": preset_id, "preset": preset_data})
+            
+        except Exception as e:
+            logging.error(f"Error saving preset: {str(e)}")
+            return error_response(f"Failed to save preset: {str(e)}", status=500)
+    
+    _route_list.append({
+        "method": "POST",
+        "path": "/sage_llm/presets/save",
+        "description": "Save LLM preset"
+    })
+    
+    @routes_instance.post('/sage_llm/presets/delete')
+    @route_error_handler
+    async def delete_preset(request):
+        """
+        Delete a custom preset.
+        
+        Body:
+            {"id": str}
+        """
+        try:
+            from pathlib import Path
+            from ..utils import sage_users_path
+            import json
+            
+            data = await request.json()
+            preset_id = data.get('id')
+            
+            if not preset_id:
+                return error_response("Missing preset id", status=400)
+            
+            # Load existing presets
+            user_presets_file = Path(sage_users_path) / "llm_presets.json"
+            
+            if not user_presets_file.exists():
+                return error_response(f"Preset '{preset_id}' not found", status=404)
+            
+            with open(user_presets_file, 'r', encoding='utf-8') as f:
+                presets = json.load(f)
+            
+            if preset_id not in presets:
+                return error_response(f"Preset '{preset_id}' not found", status=404)
+            
+            # Delete preset
+            del presets[preset_id]
+            
+            # Save updated presets
+            with open(user_presets_file, 'w', encoding='utf-8') as f:
+                json.dump(presets, f, indent=2)
+            
+            return success_response({"deleted": preset_id})
+            
+        except Exception as e:
+            logging.error(f"Error deleting preset: {str(e)}")
+            return error_response(f"Failed to delete preset: {str(e)}", status=500)
+    
+    _route_list.append({
+        "method": "POST",
+        "path": "/sage_llm/presets/delete",
+        "description": "Delete LLM preset"
+    })
+    
     logging.info(f"Registered {len(_route_list)} LLM routes")
     return len(_route_list)
 

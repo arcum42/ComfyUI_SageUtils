@@ -208,7 +208,10 @@ export const MessageTypes = {
     // LLM integration
     LLM_GENERATION_START: 'llm-generation-start',
     LLM_GENERATION_COMPLETE: 'llm-generation-complete',
-    LLM_GENERATION_ERROR: 'llm-generation-error'
+    LLM_GENERATION_ERROR: 'llm-generation-error',
+    LLM_STATE_REQUEST: 'llm-state-request',
+    LLM_STATE_RESPONSE: 'llm-state-response',
+    LLM_PRESET_APPLIED: 'llm-preset-applied'
 };
 
 /**
