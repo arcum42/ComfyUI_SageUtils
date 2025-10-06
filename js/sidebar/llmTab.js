@@ -43,6 +43,14 @@ export function createLLMTab(container) {
     const advancedOptions = createAdvancedOptions();
     wrapper.appendChild(advancedOptions);
     
+    // Create send button (positioned after advanced options)
+    const sendBtn = document.createElement('button');
+    sendBtn.className = 'llm-btn llm-btn-primary llm-send-btn';
+    sendBtn.innerHTML = '📤 Send';
+    sendBtn.title = 'Generate response (Ctrl+Enter)';
+    sendBtn.setAttribute('aria-label', 'Send message to LLM');
+    wrapper.appendChild(sendBtn);
+    
     // Create response section
     const responseSection = createResponseSection();
     wrapper.appendChild(responseSection);
@@ -84,7 +92,7 @@ export function createLLMTab(container) {
     }
     
     // Load initial data
-    initializeTab(state, modelSelection, visionSection, inputSection, advancedOptions, responseSection, historySection);
+    initializeTab(state, wrapper, modelSelection, visionSection, inputSection, advancedOptions, responseSection, historySection);
     
     // Update UI from loaded settings
     updateUIFromSettings(state.settings, advancedOptions);
@@ -642,7 +650,7 @@ function createInputSection() {
     textarea.addEventListener('keydown', (e) => {
         if (e.ctrlKey && e.key === 'Enter') {
             e.preventDefault();
-            const sendBtn = section.querySelector('.llm-send-btn');
+            const sendBtn = document.querySelector('.llm-send-btn');
             if (sendBtn && !sendBtn.disabled) {
                 sendBtn.click();
             }
@@ -679,17 +687,9 @@ function createInputSection() {
     actionButtons.appendChild(toPromptsBtn);
     actionButtons.appendChild(fromNodeBtn);
     
-    // Send button
-    const sendBtn = document.createElement('button');
-    sendBtn.className = 'llm-btn llm-btn-primary llm-send-btn';
-    sendBtn.innerHTML = '📤 Send';
-    sendBtn.title = 'Generate response (Ctrl+Enter)';
-    sendBtn.setAttribute('aria-label', 'Send message to LLM');
-    
     section.appendChild(inputHeader);
     section.appendChild(textarea);
     section.appendChild(actionButtons);
-    section.appendChild(sendBtn);
     
     return section;
 }
@@ -2127,7 +2127,7 @@ function loadAndDisplayConversation(state, conversationId, historySection, respo
  * @param {HTMLElement} advancedOptions - Advanced options section
  * @param {HTMLElement} responseSection - Response section
  */
-async function initializeTab(state, modelSelection, visionSection, inputSection, advancedOptions, responseSection, historySection) {
+async function initializeTab(state, wrapper, modelSelection, visionSection, inputSection, advancedOptions, responseSection, historySection) {
     // Load status and models
     await loadModels(state, modelSelection, visionSection);
     
@@ -2138,7 +2138,7 @@ async function initializeTab(state, modelSelection, visionSection, inputSection,
     await loadPresets(state, modelSelection);
     
     // Set up event handlers
-    setupEventHandlers(state, modelSelection, visionSection, inputSection, advancedOptions, responseSection, historySection);
+    setupEventHandlers(state, wrapper, modelSelection, visionSection, inputSection, advancedOptions, responseSection, historySection);
 }
 
 /**
@@ -3543,11 +3543,11 @@ async function showSystemPromptEditor(state, modelSelection, advancedOptions, in
  * @param {HTMLElement} advancedOptions - Advanced options section
  * @param {HTMLElement} responseSection - Response section
  */
-function setupEventHandlers(state, modelSelection, visionSection, inputSection, advancedOptions, responseSection, historySection) {
+function setupEventHandlers(state, wrapper, modelSelection, visionSection, inputSection, advancedOptions, responseSection, historySection) {
     const providerSelect = modelSelection.querySelector('.llm-provider-select');
     const modelSelect = modelSelection.querySelector('.llm-model-select');
     const refreshBtn = modelSelection.querySelector('.llm-refresh-btn');
-    const sendBtn = inputSection.querySelector('.llm-send-btn');
+    const sendBtn = wrapper.querySelector('.llm-send-btn');
     const textarea = inputSection.querySelector('.llm-textarea');
     const copyBtn = responseSection.querySelector('.llm-copy-btn');
     const copyToNodeBtn = responseSection.querySelector('.llm-copy-to-node-btn');
