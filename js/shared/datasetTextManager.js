@@ -283,6 +283,235 @@ export async function showCombinedImageTextEditor(image) {
     textAreaContainer.appendChild(textArea);
     textAreaContainer.appendChild(saveButton);
     
+    // LLM Generation Panel
+    const llmPanel = document.createElement('div');
+    llmPanel.style.cssText = `
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        margin-bottom: 15px;
+        background: #3a3a3a;
+        padding: 10px;
+        border-radius: 4px;
+        border: 1px solid #555;
+    `;
+    
+    const llmTitle = document.createElement('h4');
+    llmTitle.textContent = 'AI Generate Description';
+    llmTitle.style.cssText = `
+        color: #fff;
+        margin: 0 0 10px 0;
+        font-size: 14px;
+    `;
+    
+    // Preset selection row
+    const presetRow = document.createElement('div');
+    presetRow.style.cssText = `
+        display: flex;
+        gap: 10px;
+        align-items: center;
+    `;
+    
+    const presetLabel = document.createElement('label');
+    presetLabel.textContent = 'Preset:';
+    presetLabel.style.cssText = `
+        color: #fff;
+        font-size: 12px;
+        min-width: 50px;
+    `;
+    
+    const presetSelect = document.createElement('select');
+    presetSelect.className = 'llm-preset-select-dataset';
+    presetSelect.style.cssText = `
+        flex: 1;
+        background: #555;
+        color: white;
+        border: 1px solid #666;
+        padding: 6px;
+        border-radius: 4px;
+        font-size: 12px;
+    `;
+    presetSelect.innerHTML = '<option value="">Loading presets...</option>';
+    
+    // Load presets
+    (async () => {
+        try {
+            const response = await fetch('/sage_llm/presets/all');
+            const data = await response.json();
+            
+            if (data.success) {
+                const presets = data.data.presets;
+                presetSelect.innerHTML = '<option value="">Select a preset...</option>';
+                
+                // Add vision-capable presets
+                for (const [id, preset] of Object.entries(presets)) {
+                    // Only show presets that have a model (excluding casual_chat)
+                    if (preset.model) {
+                        const option = document.createElement('option');
+                        option.value = id;
+                        option.textContent = `${preset.name} (${preset.model})`;
+                        presetSelect.appendChild(option);
+                    }
+                }
+            } else {
+                presetSelect.innerHTML = '<option value="">Error loading presets</option>';
+            }
+        } catch (error) {
+            console.error('Error loading presets:', error);
+            presetSelect.innerHTML = '<option value="">Error loading presets</option>';
+        }
+    })();
+    
+    presetRow.appendChild(presetLabel);
+    presetRow.appendChild(presetSelect);
+    
+    // Mode selection (Append/Overwrite)
+    const modeRow = document.createElement('div');
+    modeRow.style.cssText = `
+        display: flex;
+        gap: 15px;
+        align-items: center;
+    `;
+    
+    const modeLabel = document.createElement('label');
+    modeLabel.textContent = 'Mode:';
+    modeLabel.style.cssText = `
+        color: #fff;
+        font-size: 12px;
+        min-width: 50px;
+    `;
+    
+    const radioGroup = document.createElement('div');
+    radioGroup.style.cssText = `
+        display: flex;
+        gap: 15px;
+    `;
+    
+    const appendRadio = document.createElement('input');
+    appendRadio.type = 'radio';
+    appendRadio.name = 'llm-mode';
+    appendRadio.value = 'append';
+    appendRadio.id = 'llm-append';
+    appendRadio.checked = true;
+    
+    const appendLabel = document.createElement('label');
+    appendLabel.htmlFor = 'llm-append';
+    appendLabel.textContent = 'Append';
+    appendLabel.style.cssText = `
+        color: #fff;
+        font-size: 12px;
+        cursor: pointer;
+    `;
+    
+    const overwriteRadio = document.createElement('input');
+    overwriteRadio.type = 'radio';
+    overwriteRadio.name = 'llm-mode';
+    overwriteRadio.value = 'overwrite';
+    overwriteRadio.id = 'llm-overwrite';
+    
+    const overwriteLabel = document.createElement('label');
+    overwriteLabel.htmlFor = 'llm-overwrite';
+    overwriteLabel.textContent = 'Overwrite';
+    overwriteLabel.style.cssText = `
+        color: #fff;
+        font-size: 12px;
+        cursor: pointer;
+    `;
+    
+    radioGroup.appendChild(appendRadio);
+    radioGroup.appendChild(appendLabel);
+    radioGroup.appendChild(overwriteRadio);
+    radioGroup.appendChild(overwriteLabel);
+    
+    modeRow.appendChild(modeLabel);
+    modeRow.appendChild(radioGroup);
+    
+    // Buttons row
+    const llmButtonsRow = document.createElement('div');
+    llmButtonsRow.style.cssText = `
+        display: flex;
+        gap: 8px;
+    `;
+    
+    const generateCurrentBtn = document.createElement('button');
+    generateCurrentBtn.textContent = '🤖 Generate for Current Image';
+    generateCurrentBtn.style.cssText = `
+        flex: 1;
+        background: #2196F3;
+        color: white;
+        border: none;
+        padding: 8px 12px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 12px;
+    `;
+    
+    const generateAllBtn = document.createElement('button');
+    generateAllBtn.textContent = '🤖 Generate for All Images';
+    generateAllBtn.style.cssText = `
+        flex: 1;
+        background: #FF9800;
+        color: white;
+        border: none;
+        padding: 8px 12px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 12px;
+    `;
+    
+    llmButtonsRow.appendChild(generateCurrentBtn);
+    llmButtonsRow.appendChild(generateAllBtn);
+    
+    llmPanel.appendChild(llmTitle);
+    llmPanel.appendChild(presetRow);
+    llmPanel.appendChild(modeRow);
+    llmPanel.appendChild(llmButtonsRow);
+    
+    // Generate for current image
+    generateCurrentBtn.addEventListener('click', async () => {
+        const presetId = presetSelect.value;
+        if (!presetId) {
+            notifications.warning('Please select a preset first.');
+            return;
+        }
+        
+        const isAppend = appendRadio.checked;
+        
+        generateCurrentBtn.disabled = true;
+        generateCurrentBtn.textContent = '⏳ Generating...';
+        
+        try {
+            await generateDescriptionForImage(currentImage, presetId, isAppend, textArea);
+            notifications.success('Description generated successfully!');
+        } catch (error) {
+            notifications.error(`Generation failed: ${error.message}`);
+        } finally {
+            generateCurrentBtn.disabled = false;
+            generateCurrentBtn.textContent = '🤖 Generate for Current Image';
+        }
+    });
+    
+    // Generate for all images
+    generateAllBtn.addEventListener('click', async () => {
+        const presetId = presetSelect.value;
+        if (!presetId) {
+            notifications.warning('Please select a preset first.');
+            return;
+        }
+        
+        const isAppend = appendRadio.checked;
+        
+        if (!confirm(`Generate descriptions for ${allImages.length} images using the selected preset? This may take a while.`)) {
+            return;
+        }
+        
+        await batchGenerateDescriptions(allImages, presetId, isAppend, async () => {
+            // Reload current image's text after batch is done
+            const { textContent: newTextContent } = await loadDatasetText();
+            textArea.value = newTextContent;
+        });
+    });
+    
     // Batch operations panel (always visible)
     const batchOpsPanel = document.createElement('div');
     batchOpsPanel.style.cssText = `
@@ -581,6 +810,7 @@ export async function showCombinedImageTextEditor(image) {
     closeButton.addEventListener('click', closeModal);
     
     textPanel.appendChild(textAreaContainer);
+    textPanel.appendChild(llmPanel);
     textPanel.appendChild(batchOpsPanel);
     
     contentArea.appendChild(imagePanel);
@@ -1132,4 +1362,413 @@ export async function batchFindReplaceAllTextFiles(findText, replaceText) {
  */
 export async function handleDatasetText(image) {
     showCombinedImageTextEditor(image);
+}
+
+/**
+ * Generate description for a single image using LLM preset
+ * @param {Object} image - The image object
+ * @param {string} presetId - ID of the preset to use
+ * @param {boolean} isAppend - Whether to append or overwrite
+ * @param {HTMLTextAreaElement} textArea - The textarea to update
+ */
+async function generateDescriptionForImage(image, presetId, isAppend, textArea) {
+    // Create progress dialog
+    const progressOverlay = createProgressDialog();
+    const { dialog, elements } = progressOverlay;
+    
+    elements.titleText.textContent = 'Generating Description';
+    elements.progressText.textContent = 'Processing image...';
+    elements.statusText.textContent = image.filename || image.name || image.path.split('/').pop();
+    elements.progressFill.style.width = '50%'; // Show some progress
+    elements.cancelBtn.style.display = 'none'; // No cancel for single image
+    
+    document.body.appendChild(dialog);
+    
+    try {
+        // Load image and convert to base64
+        const imageUrl = await loadThumbnail(image, 'large');
+        
+        // Show the image being processed
+        if (elements.imagePreview) {
+            elements.imagePreview.src = imageUrl;
+        }
+        
+        // Fetch the image as blob
+        const response = await fetch(imageUrl);
+        const blob = await response.blob();
+        
+        // Convert blob to base64
+        const base64 = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                const base64String = reader.result.split(',')[1];
+                resolve(base64String);
+            };
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+        });
+        
+        // Clean up blob URL
+        if (imageUrl.startsWith('blob:')) {
+            URL.revokeObjectURL(imageUrl);
+        }
+        
+        elements.progressFill.style.width = '75%';
+        elements.progressText.textContent = 'Generating with LLM...';
+        
+        // Generate description using preset
+        const genResponse = await fetch('/sage_llm/presets/generate_with_image', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                preset_id: presetId,
+                images: [base64]
+            })
+        });
+        
+        const genResult = await genResponse.json();
+        
+        if (!genResult.success) {
+            throw new Error(genResult.error || 'Failed to generate description');
+        }
+        
+        const generatedText = genResult.data.response;
+        
+        // Show the generated text in the preview
+        if (elements.textPreview) {
+            elements.textPreview.textContent = generatedText;
+        }
+        
+        elements.progressFill.style.width = '100%';
+        elements.progressText.textContent = 'Complete!';
+        
+        // Update textarea
+        if (isAppend) {
+            const currentText = textArea.value.trim();
+            textArea.value = currentText ? `${currentText}\n${generatedText}` : generatedText;
+        } else {
+            textArea.value = generatedText;
+        }
+        
+        // Keep dialog visible for a moment to show result
+        await new Promise(resolve => setTimeout(resolve, 1500));
+        
+        document.body.removeChild(dialog);
+        
+    } catch (error) {
+        document.body.removeChild(dialog);
+        console.error('Error generating description:', error);
+        notifications.error(`Error generating description: ${error.message}`);
+        throw error;
+    }
+}
+
+/**
+ * Create progress dialog for LLM generation
+ * @returns {Object} Dialog overlay and element references
+ */
+function createProgressDialog() {
+    const progressOverlay = document.createElement('div');
+    progressOverlay.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.8);
+        z-index: 10001;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    `;
+    
+    const progressDialog = document.createElement('div');
+    progressDialog.style.cssText = `
+        background: #2d2d2d;
+        border-radius: 8px;
+        padding: 20px;
+        min-width: 500px;
+        max-width: 700px;
+        border: 1px solid #555;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+    `;
+    
+    const progressTitle = document.createElement('h3');
+    progressTitle.textContent = 'Generating Descriptions';
+    progressTitle.style.cssText = `
+        color: #fff;
+        margin: 0 0 15px 0;
+        font-size: 16px;
+    `;
+    
+    const progressText = document.createElement('div');
+    progressText.style.cssText = `
+        color: #fff;
+        margin-bottom: 10px;
+        font-size: 14px;
+    `;
+    progressText.textContent = 'Processing...';
+    
+    const progressBar = document.createElement('div');
+    progressBar.style.cssText = `
+        width: 100%;
+        height: 20px;
+        background: #555;
+        border-radius: 10px;
+        overflow: hidden;
+        margin-bottom: 15px;
+    `;
+    
+    const progressFill = document.createElement('div');
+    progressFill.style.cssText = `
+        width: 0%;
+        height: 100%;
+        background: #4CAF50;
+        transition: width 0.3s;
+    `;
+    
+    progressBar.appendChild(progressFill);
+    
+    const statusText = document.createElement('div');
+    statusText.style.cssText = `
+        color: #aaa;
+        font-size: 12px;
+        margin-bottom: 15px;
+        font-family: monospace;
+    `;
+    
+    // Preview container for image and text
+    const previewContainer = document.createElement('div');
+    previewContainer.style.cssText = `
+        background: #1a1a1a;
+        border-radius: 4px;
+        padding: 10px;
+        margin-bottom: 15px;
+        max-height: 300px;
+        overflow-y: auto;
+    `;
+    
+    const previewLabel = document.createElement('div');
+    previewLabel.style.cssText = `
+        color: #888;
+        font-size: 11px;
+        margin-bottom: 8px;
+        text-transform: uppercase;
+    `;
+    previewLabel.textContent = 'Last Generated';
+    
+    const imagePreview = document.createElement('img');
+    imagePreview.style.cssText = `
+        max-width: 100%;
+        max-height: 150px;
+        object-fit: contain;
+        display: block;
+        margin-bottom: 10px;
+        border-radius: 4px;
+    `;
+    
+    const textPreview = document.createElement('div');
+    textPreview.style.cssText = `
+        color: #ddd;
+        font-size: 12px;
+        line-height: 1.5;
+        white-space: pre-wrap;
+        word-wrap: break-word;
+    `;
+    
+    previewContainer.appendChild(previewLabel);
+    previewContainer.appendChild(imagePreview);
+    previewContainer.appendChild(textPreview);
+    
+    const cancelBtn = document.createElement('button');
+    cancelBtn.textContent = 'Cancel';
+    cancelBtn.style.cssText = `
+        background: #f44336;
+        color: white;
+        border: none;
+        padding: 8px 16px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 13px;
+        width: 100%;
+    `;
+    
+    progressDialog.appendChild(progressTitle);
+    progressDialog.appendChild(progressText);
+    progressDialog.appendChild(progressBar);
+    progressDialog.appendChild(statusText);
+    progressDialog.appendChild(previewContainer);
+    progressDialog.appendChild(cancelBtn);
+    progressOverlay.appendChild(progressDialog);
+    
+    return {
+        dialog: progressOverlay,
+        elements: {
+            titleText: progressTitle,
+            progressText: progressText,
+            progressBar: progressBar,
+            progressFill: progressFill,
+            statusText: statusText,
+            imagePreview: imagePreview,
+            textPreview: textPreview,
+            cancelBtn: cancelBtn
+        }
+    };
+}
+
+/**
+ * Batch generate descriptions for all images
+ * @param {Array} images - Array of image objects
+ * @param {string} presetId - ID of the preset to use
+ * @param {boolean} isAppend - Whether to append or overwrite
+ * @param {Function} onComplete - Callback when complete
+ */
+async function batchGenerateDescriptions(images, presetId, isAppend, onComplete) {
+    // Create progress dialog
+    const progressOverlay = createProgressDialog();
+    const { dialog, elements } = progressOverlay;
+    
+    elements.titleText.textContent = 'Batch Generating Descriptions';
+    elements.progressText.textContent = 'Processing image 0 of ' + images.length + '...';
+    
+    document.body.appendChild(dialog);
+    
+    let cancelled = false;
+    elements.cancelBtn.addEventListener('click', () => {
+        cancelled = true;
+        elements.cancelBtn.textContent = 'Cancelling...';
+        elements.cancelBtn.disabled = true;
+    });
+    
+    let processed = 0;
+    let succeeded = 0;
+    let failed = 0;
+    const errors = [];
+    
+    try {
+        for (let i = 0; i < images.length && !cancelled; i++) {
+            const image = images[i];
+            elements.progressText.textContent = `Processing image ${i + 1} of ${images.length}...`;
+            elements.statusText.textContent = `Current: ${image.filename || image.name || image.path.split('/').pop()}`;
+            
+            try {
+                // Load image and convert to base64
+                const imageUrl = await loadThumbnail(image, 'large');
+                
+                const response = await fetch(imageUrl);
+                const blob = await response.blob();
+                
+                const base64 = await new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onloadend = () => {
+                        const base64String = reader.result.split(',')[1];
+                        resolve(base64String);
+                    };
+                    reader.onerror = reject;
+                    reader.readAsDataURL(blob);
+                });
+                
+                // Clean up blob URL
+                if (imageUrl.startsWith('blob:')) {
+                    URL.revokeObjectURL(imageUrl);
+                }
+                
+                // Generate description
+                const genResponse = await fetch('/sage_llm/presets/generate_with_image', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        preset_id: presetId,
+                        images: [base64]
+                    })
+                });
+                
+                const genResult = await genResponse.json();
+                
+                if (!genResult.success) {
+                    throw new Error(genResult.error || 'Failed to generate description');
+                }
+                
+                const generatedText = genResult.data.response;
+                
+                // Update the preview with the completed image and its generated text
+                if (elements.imagePreview && elements.textPreview) {
+                    // Re-load the image to show in preview (since we may have cleaned up the URL)
+                    const previewImageUrl = await loadThumbnail(image, 'large');
+                    elements.imagePreview.src = previewImageUrl;
+                    elements.textPreview.textContent = generatedText;
+                }
+                
+                // Load existing text if appending
+                let finalText = generatedText;
+                if (isAppend) {
+                    try {
+                        const readResponse = await fetch('/sage_utils/read_dataset_text', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ image_path: image.path })
+                        });
+                        
+                        const readResult = await readResponse.json();
+                        if (readResult.success && readResult.content.trim()) {
+                            finalText = `${readResult.content.trim()}\n${generatedText}`;
+                        }
+                    } catch (error) {
+                        console.warn('Could not read existing text, creating new:', error);
+                    }
+                }
+                
+                // Save the description
+                const saveResponse = await fetch('/sage_utils/save_dataset_text', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        image_path: image.path,
+                        content: finalText
+                    })
+                });
+                
+                const saveResult = await saveResponse.json();
+                if (!saveResult.success) {
+                    throw new Error(saveResult.error || 'Failed to save description');
+                }
+                
+                succeeded++;
+                
+            } catch (error) {
+                console.error(`Error processing ${image.filename}:`, error);
+                errors.push(`${image.filename || image.name}: ${error.message}`);
+                failed++;
+            }
+            
+            processed++;
+            const progress = (processed / images.length) * 100;
+            elements.progressFill.style.width = progress + '%';
+        }
+        
+        // Show completion summary
+        document.body.removeChild(dialog);
+        
+        let message = `Batch generation ${cancelled ? 'cancelled' : 'complete'}!\n`;
+        message += `Processed: ${processed} images\n`;
+        message += `Succeeded: ${succeeded}\n`;
+        message += `Failed: ${failed}`;
+        
+        if (errors.length > 0 && errors.length <= 10) {
+            message += `\n\nErrors:\n${errors.join('\n')}`;
+        } else if (errors.length > 10) {
+            message += `\n\nFirst 10 errors:\n${errors.slice(0, 10).join('\n')}\n... and ${errors.length - 10} more`;
+        }
+        
+        notifications.info(message, 10000);
+        
+        if (onComplete) {
+            await onComplete();
+        }
+        
+    } catch (error) {
+        document.body.removeChild(dialog);
+        console.error('Error in batch generation:', error);
+        notifications.error(`Error in batch generation: ${error.message}`);
+    }
 }

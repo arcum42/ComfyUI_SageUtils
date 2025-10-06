@@ -2834,7 +2834,7 @@ function createPresetsPanel(state, modelSelection, advancedOptions, inputSection
  */
 async function showPresetEditor(state, modelSelection, advancedOptions, inputSection, presetId = null, existingPreset = null) {
     const presetModule = await import('../llm/llmPresets.js');
-    const { api } = await import('../../scripts/api.js');
+    const { api } = await import('/scripts/api.js');
     
     // If editing a built-in, get the original for comparison
     const isEditingBuiltin = existingPreset && existingPreset.isBuiltin && !existingPreset.isUserOverride;

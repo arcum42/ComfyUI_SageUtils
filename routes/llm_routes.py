@@ -1207,6 +1207,386 @@ def register_routes(routes_instance):
         "description": "Delete LLM preset"
     })
     
+    @routes_instance.get('/sage_llm/presets/all')
+    @route_error_handler
+    async def get_all_presets(request):
+        """
+        Get all available LLM presets (built-in + custom) with full details.
+        This is useful for programmatic access from other parts of the code.
+        
+        Returns:
+            {
+                "success": true,
+                "presets": {
+                    "preset_id": {
+                        "name": str,
+                        "description": str,
+                        "provider": str,
+                        "model": str,
+                        "category": str,
+                        "isBuiltin": bool,
+                        "promptTemplate": str,
+                        "systemPrompt": str,
+                        "settings": {...}
+                    }
+                }
+            }
+        """
+        try:
+            from pathlib import Path
+            from ..utils import sage_users_path
+            import json
+            
+            # Built-in presets
+            builtin_presets = {
+                'descriptive_prompt': {
+                    'name': 'Descriptive Prompt',
+                    'description': 'Generate detailed image descriptions',
+                    'provider': 'ollama',
+                    'model': 'gemma3:12b',
+                    'promptTemplate': 'description/Descriptive Prompt',
+                    'systemPrompt': 'e621_prompt_generator',
+                    'settings': {
+                        'temperature': 0.7,
+                        'seed': -1,
+                        'maxTokens': 512,
+                        'keepAlive': 300,
+                        'includeHistory': False
+                    },
+                    'isBuiltin': True,
+                    'category': 'description'
+                },
+                'e621_description': {
+                    'name': 'E621 Image Description',
+                    'description': 'Generate E621-style detailed image descriptions',
+                    'provider': 'ollama',
+                    'model': 'gemma3:12b',
+                    'promptTemplate': 'description/Descriptive Prompt',
+                    'systemPrompt': 'e621_prompt_generator',
+                    'settings': {
+                        'temperature': 0.8,
+                        'seed': -1,
+                        'maxTokens': 1024,
+                        'keepAlive': 300,
+                        'includeHistory': False
+                    },
+                    'isBuiltin': True,
+                    'category': 'description'
+                },
+                'casual_chat': {
+                    'name': 'Casual Chat',
+                    'description': 'Friendly conversational assistant',
+                    'provider': 'ollama',
+                    'model': None,
+                    'promptTemplate': '',
+                    'systemPrompt': 'default',
+                    'settings': {
+                        'temperature': 0.9,
+                        'seed': -1,
+                        'maxTokens': 1024,
+                        'keepAlive': 300,
+                        'includeHistory': True,
+                        'maxHistoryMessages': 10
+                    },
+                    'isBuiltin': True,
+                    'category': 'chat'
+                }
+            }
+            
+            # Start with built-in presets
+            all_presets = builtin_presets.copy()
+            
+            # Load custom presets and overrides from user directory
+            user_presets_file = Path(sage_users_path) / "llm_presets.json"
+            if user_presets_file.exists():
+                with open(user_presets_file, 'r', encoding='utf-8') as f:
+                    custom_presets = json.load(f)
+                
+                # Override built-ins or add custom presets
+                for preset_id, preset_data in custom_presets.items():
+                    all_presets[preset_id] = preset_data
+            
+            return success_response({"presets": all_presets})
+            
+        except Exception as e:
+            logging.error(f"Error getting all presets: {str(e)}")
+            return error_response(f"Failed to get presets: {str(e)}", status=500)
+    
+    _route_list.append({
+        "method": "GET",
+        "path": "/sage_llm/presets/all",
+        "description": "Get all LLM presets with full details"
+    })
+    
+    @routes_instance.post('/sage_llm/presets/generate_with_image')
+    @route_error_handler
+    async def generate_with_preset_and_image(request):
+        """
+        Generate a response using a preset with an image.
+        This allows other parts of the code to use LLM presets programmatically.
+        
+        Request body:
+            {
+                "preset_id": str,              # ID of the preset to use
+                "images": [base64, ...],       # Array of base64-encoded images
+                "prompt_override": str,        # Optional: Override the preset's prompt template
+                "system_prompt_override": str, # Optional: Override the preset's system prompt
+                "settings_override": {...}     # Optional: Override specific settings
+            }
+        
+        Returns:
+            {
+                "success": true,
+                "response": str,
+                "preset_used": str,
+                "provider": str,
+                "model": str
+            }
+        """
+        try:
+            from pathlib import Path
+            from ..utils import sage_users_path
+            from ..utils import llm_wrapper as llm
+            from ..utils.config_manager import llm_prompts
+            import json
+            
+            data = await request.json()
+            
+            preset_id = data.get('preset_id')
+            images_data = data.get('images', [])
+            prompt_override = data.get('prompt_override')
+            system_prompt_override = data.get('system_prompt_override')
+            settings_override = data.get('settings_override', {})
+            
+            if not preset_id:
+                return error_response("Missing required field: preset_id", status=400)
+            
+            if not images_data or not isinstance(images_data, list):
+                return error_response("Images must be a non-empty array", status=400)
+            
+            # Get all presets
+            builtin_presets = {
+                'descriptive_prompt': {
+                    'provider': 'ollama',
+                    'model': 'gemma3:12b',
+                    'promptTemplate': 'description/Descriptive Prompt',
+                    'systemPrompt': 'e621_prompt_generator',
+                    'settings': {
+                        'temperature': 0.7,
+                        'seed': -1,
+                        'maxTokens': 512,
+                        'keepAlive': 300
+                    }
+                },
+                'e621_description': {
+                    'provider': 'ollama',
+                    'model': 'gemma3:12b',
+                    'promptTemplate': 'description/Descriptive Prompt',
+                    'systemPrompt': 'e621_prompt_generator',
+                    'settings': {
+                        'temperature': 0.8,
+                        'seed': -1,
+                        'maxTokens': 1024,
+                        'keepAlive': 300
+                    }
+                },
+                'casual_chat': {
+                    'provider': 'ollama',
+                    'model': None,
+                    'promptTemplate': '',
+                    'systemPrompt': 'default',
+                    'settings': {
+                        'temperature': 0.9,
+                        'seed': -1,
+                        'maxTokens': 1024,
+                        'keepAlive': 300
+                    }
+                }
+            }
+            
+            # Check for user override
+            preset = builtin_presets.get(preset_id)
+            user_presets_file = Path(sage_users_path) / "llm_presets.json"
+            if user_presets_file.exists():
+                with open(user_presets_file, 'r', encoding='utf-8') as f:
+                    custom_presets = json.load(f)
+                if preset_id in custom_presets:
+                    preset = custom_presets[preset_id]
+            
+            if not preset:
+                return error_response(f"Preset '{preset_id}' not found", status=404)
+            
+            # Get provider and model
+            provider = preset.get('provider', 'ollama')
+            model = preset.get('model')
+            
+            if not model:
+                return error_response(f"Preset '{preset_id}' does not specify a model", status=400)
+            
+            # Build prompt
+            prompt_text = prompt_override
+            
+            if not prompt_text and preset.get('promptTemplate'):
+                # Load prompt from template
+                template_path = preset['promptTemplate']  # e.g., "description/Descriptive Prompt"
+                if '/' in template_path:
+                    category, template_name = template_path.split('/', 1)
+                    
+                    # Find template in llm_prompts
+                    for key, template in llm_prompts.get('base', {}).items():
+                        if template.get('category') == category and template.get('name') == template_name:
+                            prompt_text = template.get('prompt', '')
+                            break
+            
+            if not prompt_text:
+                prompt_text = "Describe this image in detail."
+            
+            # Get system prompt
+            system_prompt_text = system_prompt_override
+            
+            if not system_prompt_text and preset.get('systemPrompt'):
+                system_prompt_id = preset['systemPrompt']
+                
+                # Map system prompts
+                if system_prompt_id == 'default':
+                    system_prompt_text = 'You are a helpful AI assistant.'
+                elif system_prompt_id == 'e621_prompt_generator':
+                    # Load from file
+                    current_dir = Path(__file__).parent.parent
+                    assets_dir = current_dir / "assets"
+                    prompt_file = assets_dir / "system_prompt.md"
+                    
+                    if prompt_file.exists():
+                        with open(prompt_file, 'r', encoding='utf-8') as f:
+                            system_prompt_text = f.read()
+                    else:
+                        system_prompt_text = 'You are an AI assistant specialized in generating detailed image descriptions.'
+                else:
+                    # Try to load from user directory
+                    user_prompts_dir = Path(sage_users_path) / "llm_system_prompts"
+                    prompt_file = user_prompts_dir / f"{system_prompt_id}.md"
+                    
+                    if prompt_file.exists():
+                        with open(prompt_file, 'r', encoding='utf-8') as f:
+                            system_prompt_text = f.read()
+            
+            # Merge settings
+            settings = preset.get('settings', {})
+            settings.update(settings_override)
+            
+            # Build options for LLM
+            options = {
+                'temperature': settings.get('temperature', 0.7),
+                'seed': settings.get('seed', -1)
+            }
+            
+            # Add provider-specific options
+            if provider == 'ollama':
+                if 'top_k' in settings:
+                    options['top_k'] = settings['top_k']
+                if 'top_p' in settings:
+                    options['top_p'] = settings['top_p']
+                if 'repeat_penalty' in settings:
+                    options['repeat_penalty'] = settings['repeat_penalty']
+            
+            # Initialize LLM services
+            llm.ensure_llm_initialized()
+            
+            # Generate response
+            response_text = ""
+            
+            if provider == "ollama":
+                if not llm.OLLAMA_AVAILABLE:
+                    return error_response("Ollama is not available", status=503)
+                
+                # Build parameters for Ollama vision generation
+                response_parameters = {
+                    "model": model,
+                    "prompt": prompt_text,
+                    "stream": False,
+                    "images": images_data,
+                    "keep_alive": settings.get('keepAlive', 300) / 60.0  # Convert seconds to minutes
+                }
+                
+                if system_prompt_text:
+                    response_parameters["system"] = system_prompt_text
+                
+                if options:
+                    response_parameters["options"] = options
+                
+                response = llm.ollama_client.generate(**response_parameters)
+                
+                if not response or 'response' not in response:
+                    return error_response("No valid response received from model", status=500)
+                
+                response_text = llm.clean_response(response['response'])
+            
+            elif provider == "lmstudio":
+                if not llm.LMSTUDIO_AVAILABLE:
+                    return error_response("LM Studio is not available", status=503)
+                
+                # Convert base64 to temp files for LM Studio
+                import base64
+                import tempfile
+                import os
+                import lmstudio as lms
+                
+                temp_files = []
+                try:
+                    for img_b64 in images_data:
+                        img_bytes = base64.b64decode(img_b64)
+                        temp_fd, temp_path = tempfile.mkstemp(suffix='.png')
+                        os.close(temp_fd)
+                        with open(temp_path, 'wb') as f:
+                            f.write(img_bytes)
+                        temp_files.append(temp_path)
+                    
+                    keep_alive = settings.get('keepAlive', 0)
+                    lms_model = lms.llm(model, ttl=keep_alive) if keep_alive >= 1 else lms.llm(model)
+                    
+                    chat = lms.Chat()
+                    image_handles = [lms.prepare_image(img_path) for img_path in temp_files]
+                    chat.add_user_message(prompt_text, images=image_handles)
+                    
+                    lms_response = lms_model.respond(chat)
+                    
+                    if keep_alive < 1:
+                        lms_model.unload()
+                    
+                    if not lms_response:
+                        return error_response("No valid response received from model", status=500)
+                    
+                    response_text = llm.clean_response(lms_response.content)
+                
+                finally:
+                    for temp_path in temp_files:
+                        try:
+                            os.unlink(temp_path)
+                        except:
+                            pass
+            
+            return success_response({
+                "response": response_text,
+                "preset_used": preset_id,
+                "provider": provider,
+                "model": model
+            })
+            
+        except ValueError as e:
+            logging.error(f"Validation error in preset generation: {str(e)}")
+            return error_response(str(e), status=400)
+        except Exception as e:
+            logging.error(f"Failed to generate with preset: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            return error_response(f"Failed to generate with preset: {str(e)}", status=500)
+    
+    _route_list.append({
+        "method": "POST",
+        "path": "/sage_llm/presets/generate_with_image",
+        "description": "Generate response using preset with image"
+    })
+    
     logging.info(f"Registered {len(_route_list)} LLM routes")
     return len(_route_list)
 
