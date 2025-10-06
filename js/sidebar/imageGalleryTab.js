@@ -588,6 +588,26 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
         setStatus(showMetadataOnly ? 'Showing only images with generation parameters' : 'Showing all images');
     });
 
+    folderAndControls.datasetTextButton.addEventListener('click', () => {
+        // Open dataset text manager without a specific image
+        // This allows batch operations on the current folder
+        const currentFolder = selectors.selectedFolder();
+        const images = selectors.galleryImages();
+        
+        if (!images || images.length === 0) {
+            setStatus('No images in current folder', true);
+            return;
+        }
+        
+        // Show the combined text editor with the first image as context
+        showCombinedImageTextEditor(images[0], null, () => {
+            // Refresh callback if needed
+            refreshCurrentTextDisplay && refreshCurrentTextDisplay();
+        });
+        
+        setStatus('Opening dataset text manager...');
+    });
+
     // Function to update grid layout based on current settings
     function updateGridLayout() {
         const currentMode = selectors.galleryViewMode();

@@ -1318,9 +1318,14 @@ export function showImageContextMenu(event, image) {
             
             const rateLimiter = window._galleryImageTransferLimiter;
             
-            // Menu items
+            // Menu items - organized by function
             const menuItems = [
+                // Viewing group
                 { text: '👁️ View Full Size', action: () => showFullImage(image) },
+                { text: '🔍 Show Details', action: () => showImageMetadata(image) },
+                { text: '---', action: null }, // Separator
+                
+                // Actions group
                 { text: '🤖 Send to LLM Chat', action: async () => {
                     // Check rate limit
                     if (!rateLimiter.allowCall()) {
@@ -1347,18 +1352,18 @@ export function showImageContextMenu(event, image) {
                         showNotification('Failed to send image to LLM', 'error');
                     }
                 }},
-                { text: '📋 Copy to Clipboard', action: () => {
+                { text: '� Open in New Tab', action: () => openImageInNewTab(image) },
+                { text: '---', action: null }, // Separator
+                
+                // Copy group
+                { text: '� Copy to Clipboard', action: () => {
                     const imagePath = image.path || image.relative_path || image.name;
                     copyImageToClipboard(imagePath);
                 }},
-                { text: '🔍 Show Details', action: () => showImageMetadata(image) },
-                { text: '📝 Dataset Text...', action: () => handleDatasetText(image) },
-                { text: '---', action: null }, // Separator
-                { text: 'Copy Path', action: () => {
+                { text: '📄 Copy Path', action: () => {
                     const imagePath = image.path || image.relative_path || image.name;
                     navigator.clipboard.writeText(imagePath);
-                }},
-                { text: 'Open in New Tab', action: () => openImageInNewTab(image) }
+                }}
             ];
 
             // Render menu items (implementation continues below)
@@ -1367,7 +1372,12 @@ export function showImageContextMenu(event, image) {
             console.warn('[Gallery] Failed to load performance utils:', err);
             // Fallback without rate limiting
             const menuItems = [
+                // Viewing group
                 { text: '👁️ View Full Size', action: () => showFullImage(image) },
+                { text: '🔍 Show Details', action: () => showImageMetadata(image) },
+                { text: '---', action: null },
+                
+                // Actions group
                 { text: '🤖 Send to LLM Chat', action: async () => {
                     try {
                         const base64DataUrl = await imageToBase64(imagePath);
@@ -1386,18 +1396,18 @@ export function showImageContextMenu(event, image) {
                         showNotification('Failed to send image to LLM', 'error');
                     }
                 }},
-                { text: '📋 Copy to Clipboard', action: () => {
+                { text: '� Open in New Tab', action: () => openImageInNewTab(image) },
+                { text: '---', action: null },
+                
+                // Copy group
+                { text: '� Copy to Clipboard', action: () => {
                     const imagePath = image.path || image.relative_path || image.name;
                     copyImageToClipboard(imagePath);
                 }},
-                { text: '🔍 Show Details', action: () => showImageMetadata(image) },
-                { text: '📝 Dataset Text...', action: () => handleDatasetText(image) },
-                { text: '---', action: null },
-                { text: 'Copy Path', action: () => {
+                { text: '📄 Copy Path', action: () => {
                     const imagePath = image.path || image.relative_path || image.name;
                     navigator.clipboard.writeText(imagePath);
-                }},
-                { text: 'Open in New Tab', action: () => openImageInNewTab(image) }
+                }}
             ];
             renderContextMenuItems(contextMenu, menuItems);
         });
@@ -1405,7 +1415,7 @@ export function showImageContextMenu(event, image) {
     
     // Position context menu
     const x = Math.min(event.clientX, window.innerWidth - CONTEXT_MENU_WIDTH);
-    const y = Math.min(event.clientY, window.innerHeight - 8 * CONTEXT_MENU_ITEM_HEIGHT); // 8 items now
+    const y = Math.min(event.clientY, window.innerHeight - 8 * CONTEXT_MENU_ITEM_HEIGHT); // 8 items (6 actions + 2 separators)
     
     contextMenu.style.left = `${x}px`;
     contextMenu.style.top = `${y}px`;

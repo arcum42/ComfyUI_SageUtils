@@ -232,9 +232,23 @@ export function createFolderSelectorAndControls() {
         font-size: 12px;
     `;
     
+    const datasetTextButton = document.createElement('button');
+    datasetTextButton.textContent = '📝 Dataset';
+    datasetTextButton.title = 'Manage dataset text files';
+    datasetTextButton.style.cssText = `
+        background: #FF9800;
+        color: white;
+        border: none;
+        padding: 4px 8px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 12px;
+    `;
+    
     buttonsContainer.appendChild(thumbnailSizeSelect);
     buttonsContainer.appendChild(refreshButton);
     buttonsContainer.appendChild(viewModeButton);
+    buttonsContainer.appendChild(datasetTextButton);
 
     // Search bar - moved to bottom to match Models tab
     const searchContainer = document.createElement('div');
@@ -384,6 +398,7 @@ export function createFolderSelectorAndControls() {
         thumbnailSizeSelect,
         refreshButton,
         viewModeButton,
+        datasetTextButton,
         metadataFilterCheckbox
     };
 }
