@@ -98,6 +98,42 @@ export async function showCombinedImageTextEditor(image) {
         border-radius: 8px 8px 0 0;
         border-bottom: 1px solid #555;
         display: flex;
+        flex-direction: column;
+        gap: 8px;
+    `;
+    
+    // Folder path display
+    const folderPath = image.path.substring(0, image.path.lastIndexOf('/'));
+    const folderDisplay = document.createElement('div');
+    folderDisplay.style.cssText = `
+        color: #aaa;
+        font-size: 12px;
+        font-family: monospace;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    `;
+    
+    const folderIcon = document.createElement('span');
+    folderIcon.textContent = '📁';
+    folderIcon.style.fontSize = '14px';
+    
+    const folderPathText = document.createElement('span');
+    folderPathText.textContent = folderPath;
+    folderPathText.style.cssText = `
+        color: #888;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    `;
+    
+    folderDisplay.appendChild(folderIcon);
+    folderDisplay.appendChild(folderPathText);
+    
+    // Title and navigation row
+    const titleNavRow = document.createElement('div');
+    titleNavRow.style.cssText = `
+        display: flex;
         justify-content: space-between;
         align-items: center;
     `;
@@ -143,8 +179,11 @@ export async function showCombinedImageTextEditor(image) {
     navControls.appendChild(lastButton);
     navControls.appendChild(closeButton);
     
-    header.appendChild(title);
-    header.appendChild(navControls);
+    titleNavRow.appendChild(title);
+    titleNavRow.appendChild(navControls);
+    
+    header.appendChild(folderDisplay);
+    header.appendChild(titleNavRow);
     
     // Content area with split layout
     const contentArea = document.createElement('div');
