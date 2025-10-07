@@ -39,8 +39,8 @@ class ModelScanDialog {
         this.dialog = this.createDialog();
         document.body.appendChild(this.dialog);
         
-        // Center the dialog
-        this.centerDialog();
+        // Center the dialog and wait for it to be ready
+        await this.centerDialog();
         
         // Load available folders
         await this.loadAvailableFolders();
@@ -504,15 +504,30 @@ class ModelScanDialog {
      * Center the dialog on screen
      */
     centerDialog() {
-        // Already centered with CSS flexbox, but we could add animation here
-        requestAnimationFrame(() => {
-            this.dialog.style.opacity = '0';
-            this.dialog.style.transform = 'scale(0.95)';
-            this.dialog.style.transition = 'opacity 0.2s, transform 0.2s';
-            
+        return new Promise((resolve) => {
+            // Already centered with CSS flexbox, but we add animation
             requestAnimationFrame(() => {
-                this.dialog.style.opacity = '1';
-                this.dialog.style.transform = 'scale(1)';
+                if (!this.dialog) {
+                    resolve();
+                    return;
+                }
+                
+                this.dialog.style.opacity = '0';
+                this.dialog.style.transform = 'scale(0.95)';
+                this.dialog.style.transition = 'opacity 0.2s, transform 0.2s';
+                
+                requestAnimationFrame(() => {
+                    if (!this.dialog) {
+                        resolve();
+                        return;
+                    }
+                    
+                    this.dialog.style.opacity = '1';
+                    this.dialog.style.transform = 'scale(1)';
+                    
+                    // Wait for animation to complete
+                    setTimeout(() => resolve(), 200);
+                });
             });
         });
     }
@@ -539,7 +554,16 @@ class ModelScanDialog {
      * Render the folder selection list
      */
     renderFolderList(folders, errorMessage = null) {
+        if (!this.dialog) {
+            console.error('Cannot render folder list: dialog not initialized');
+            return;
+        }
+        
         const folderList = this.dialog.querySelector('#folderList');
+        if (!folderList) {
+            console.error('Cannot render folder list: folderList element not found');
+            return;
+        }
         
         if (errorMessage) {
             folderList.innerHTML = `<div class="loading error">${errorMessage}</div>`;
@@ -575,6 +599,11 @@ class ModelScanDialog {
      * Update the folder selection summary
      */
     updateFolderSummary(allFolders) {
+        if (!this.dialog) {
+            console.error('Cannot update folder summary: dialog not initialized');
+            return;
+        }
+        
         const selectedFolders = Array.from(this.dialog.querySelectorAll('.folder-item input:checked'))
             .map(checkbox => {
                 try {
@@ -609,6 +638,16 @@ class ModelScanDialog {
      * Get selected scan options
      */
     getScanOptions() {
+        if (!this.dialog) {
+            console.error('Cannot get scan options: dialog not initialized');
+            return {
+                folders: [],
+                forceRefresh: false,
+                includeCached: true,
+                rateLimitDelay: 1000
+            };
+        }
+        
         const selectedFolders = Array.from(this.dialog.querySelectorAll('.folder-item input:checked'))
             .map(checkbox => {
                 try {
