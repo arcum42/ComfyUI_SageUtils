@@ -68,6 +68,9 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
     // Folder cache for back navigation - stores images and folders by path
     const folderCache = new Map();
     
+    // Track the current abort controller for folder loading operations
+    let currentAbortController = null;
+    
     // Extract gallery functions from parameters instead of global window
     const { 
         showFullImage, 
@@ -101,6 +104,17 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
     // Load images from selected folder - wrapper for imported API function
     async function loadImagesWrapper(folderType, customPath = null, forceReload = false) {
         try {
+            // Cancel any ongoing folder load operation
+            if (currentAbortController) {
+                console.log('Gallery: Aborting previous folder load operation');
+                currentAbortController.abort();
+                currentAbortController = null;
+            }
+            
+            // Create a new abort controller for this operation
+            currentAbortController = new AbortController();
+            const signal = currentAbortController.signal;
+            
             // Create cache key
             const cacheKey = customPath ? `custom:${customPath}` : folderType;
             
@@ -129,6 +143,13 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
                 }
                 
                 setStatus('Loaded from cache', false);
+                currentAbortController = null; // Clear controller since we're done
+                return;
+            }
+            
+            // Check if aborted after cache check
+            if (signal.aborted) {
+                console.log('Gallery: Load operation aborted before starting');
                 return;
             }
             
@@ -165,21 +186,32 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
                         height: 24px;
                         background: #333;
                         border-radius: 12px;
-                        overflow: hidden;
+                        overflow: visible;
                         margin: 0 auto;
                         border: 1px solid #555;
+                        position: relative;
                     ">
                         <div style="
                             width: ${percentage}%;
                             height: 100%;
                             background: linear-gradient(90deg, #4CAF50, #66BB6A);
                             transition: width 0.3s ease;
+                            border-radius: 12px;
+                        "></div>
+                        <div style="
+                            position: absolute;
+                            top: 0;
+                            left: 0;
+                            right: 0;
+                            bottom: 0;
                             display: flex;
                             align-items: center;
                             justify-content: center;
-                            color: white;
+                            color: ${percentage > 50 ? 'white' : '#4CAF50'};
                             font-weight: bold;
                             font-size: 12px;
+                            text-shadow: ${percentage > 50 ? '0 1px 2px rgba(0,0,0,0.5)' : '0 1px 2px rgba(0,0,0,0.8)'};
+                            pointer-events: none;
                         ">${percentage}%</div>
                     </div>
                 `;
@@ -201,8 +233,14 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
                 }
             };
             
-            // Call the imported API function with custom status handler
-            const result = await loadImagesFromFolder(folderType, customPath, customSetStatus);
+            // Call the imported API function with custom status handler and abort signal
+            const result = await loadImagesFromFolder(folderType, customPath, customSetStatus, signal);
+            
+            // Check if operation was aborted after loading
+            if (signal.aborted) {
+                console.log('Gallery: Load operation aborted after fetch');
+                return;
+            }
             
             const { images, folders, totalItems } = result;
             
@@ -241,9 +279,22 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
                 }
             }
             
+            // Clear abort controller after successful completion
+            currentAbortController = null;
+            
         } catch (error) {
+            // Check if this was an abort error (user switched folders)
+            if (error.name === 'AbortError') {
+                console.log('Gallery: Folder load was cancelled');
+                setStatus('Folder load cancelled', false);
+                return;
+            }
+            
             console.error('Error loading images:', error);
             setStatus(`Error loading images: ${error.message}`, true);
+            
+            // Clear abort controller on error
+            currentAbortController = null;
             
             grid.gridContainer.innerHTML = `
                 <div style="

@@ -184,6 +184,25 @@ export const promptGenerationComponent = {
         positiveLabel.className = 'input-label';
         positiveLabel.htmlFor = 'positive-prompt';
 
+        // Positive prompt actions (above textarea)
+        const positiveActions = document.createElement('div');
+        positiveActions.className = 'prompt-actions-bar';
+
+        this.elements.sendToLLMButton = document.createElement('button');
+        this.elements.sendToLLMButton.textContent = '🤖 Send to LLM';
+        this.elements.sendToLLMButton.className = 'send-to-llm-button secondary-button';
+        this.elements.sendToLLMButton.title = 'Send positive prompt to LLM Chat';
+        this.elements.sendToLLMButton.setAttribute('aria-label', 'Send positive prompt to LLM Chat tab');
+
+        this.elements.copyFromNodeButton = document.createElement('button');
+        this.elements.copyFromNodeButton.textContent = '📥 From Node';
+        this.elements.copyFromNodeButton.className = 'copy-from-node-button secondary-button';
+        this.elements.copyFromNodeButton.title = 'Copy text from selected node to positive prompt';
+        this.elements.copyFromNodeButton.setAttribute('aria-label', 'Copy text from selected node');
+
+        positiveActions.appendChild(this.elements.sendToLLMButton);
+        positiveActions.appendChild(this.elements.copyFromNodeButton);
+
         this.elements.positiveTextarea = document.createElement('textarea');
         this.elements.positiveTextarea.id = 'positive-prompt';
         this.elements.positiveTextarea.className = 'prompt-textarea positive-prompt';
@@ -193,6 +212,7 @@ export const promptGenerationComponent = {
         this.elements.positiveTextarea.setAttribute('aria-describedby', 'positive-prompt-label');
 
         positiveGroup.appendChild(positiveLabel);
+        positiveGroup.appendChild(positiveActions);
         positiveGroup.appendChild(this.elements.positiveTextarea);
 
         // Negative prompt
@@ -204,6 +224,25 @@ export const promptGenerationComponent = {
         negativeLabel.className = 'input-label';
         negativeLabel.htmlFor = 'negative-prompt';
 
+        // Negative prompt actions (above textarea)
+        const negativeActions = document.createElement('div');
+        negativeActions.className = 'prompt-actions-bar';
+
+        this.elements.sendToLLMButtonNegative = document.createElement('button');
+        this.elements.sendToLLMButtonNegative.textContent = '🤖 Send to LLM';
+        this.elements.sendToLLMButtonNegative.className = 'send-to-llm-button secondary-button';
+        this.elements.sendToLLMButtonNegative.title = 'Send negative prompt to LLM Chat';
+        this.elements.sendToLLMButtonNegative.setAttribute('aria-label', 'Send negative prompt to LLM Chat tab');
+
+        this.elements.copyFromNodeButtonNegative = document.createElement('button');
+        this.elements.copyFromNodeButtonNegative.textContent = '📥 From Node';
+        this.elements.copyFromNodeButtonNegative.className = 'copy-from-node-button secondary-button';
+        this.elements.copyFromNodeButtonNegative.title = 'Copy text from selected node to negative prompt';
+        this.elements.copyFromNodeButtonNegative.setAttribute('aria-label', 'Copy text from selected node to negative prompt');
+
+        negativeActions.appendChild(this.elements.sendToLLMButtonNegative);
+        negativeActions.appendChild(this.elements.copyFromNodeButtonNegative);
+
         this.elements.negativeTextarea = document.createElement('textarea');
         this.elements.negativeTextarea.id = 'negative-prompt';
         this.elements.negativeTextarea.className = 'prompt-textarea negative-prompt';
@@ -213,6 +252,7 @@ export const promptGenerationComponent = {
         this.elements.negativeTextarea.setAttribute('aria-describedby', 'negative-prompt-label');
 
         negativeGroup.appendChild(negativeLabel);
+        negativeGroup.appendChild(negativeActions);
         negativeGroup.appendChild(this.elements.negativeTextarea);
 
         section.appendChild(positiveGroup);
@@ -285,6 +325,24 @@ export const promptGenerationComponent = {
             if (e.key === 'Escape') {
                 this.elements.negativeTextarea.blur();
             }
+        });
+
+        // Add event listeners for positive prompt actions
+        this.elements.sendToLLMButton.addEventListener('click', () => {
+            this.sendToLLM('positive');
+        });
+        
+        this.elements.copyFromNodeButton.addEventListener('click', () => {
+            this.copyFromNode('positive');
+        });
+
+        // Add event listeners for negative prompt actions
+        this.elements.sendToLLMButtonNegative.addEventListener('click', () => {
+            this.sendToLLM('negative');
+        });
+        
+        this.elements.copyFromNodeButtonNegative.addEventListener('click', () => {
+            this.copyFromNode('negative');
         });
 
         return section;
@@ -363,23 +421,8 @@ export const promptGenerationComponent = {
         this.elements.clearButton.className = 'clear-button secondary-button';
         this.elements.clearButton.setAttribute('aria-label', 'Clear generated results');
 
-        this.elements.sendToLLMButton = document.createElement('button');
-        this.elements.sendToLLMButton.textContent = '🤖 Send to LLM';
-        this.elements.sendToLLMButton.className = 'send-to-llm-button secondary-button';
-        this.elements.sendToLLMButton.title = 'Send positive prompt to LLM Chat';
-        this.elements.sendToLLMButton.setAttribute('aria-label', 'Send positive prompt to LLM Chat tab');
-
-        // Copy from node button
-        this.elements.copyFromNodeButton = document.createElement('button');
-        this.elements.copyFromNodeButton.textContent = '📥 From Node';
-        this.elements.copyFromNodeButton.className = 'copy-from-node-button secondary-button';
-        this.elements.copyFromNodeButton.title = 'Copy text from selected node to positive prompt';
-        this.elements.copyFromNodeButton.setAttribute('aria-label', 'Copy text from selected node');
-
         actionGroup.appendChild(this.elements.generateButton);
         actionGroup.appendChild(this.elements.clearButton);
-        actionGroup.appendChild(this.elements.sendToLLMButton);
-        actionGroup.appendChild(this.elements.copyFromNodeButton);
 
         section.appendChild(seedGroup);
         section.appendChild(countGroup);
@@ -407,14 +450,6 @@ export const promptGenerationComponent = {
 
         this.elements.clearButton.addEventListener('click', () => {
             this.clearResults();
-        });
-
-        this.elements.sendToLLMButton.addEventListener('click', () => {
-            this.sendToLLM();
-        });
-        
-        this.elements.copyFromNodeButton.addEventListener('click', () => {
-            this.copyFromNode();
         });
 
         return section;
@@ -525,18 +560,20 @@ export const promptGenerationComponent = {
     },
 
     /**
-     * Send positive prompt to LLM tab
+     * Send prompt to LLM tab
+     * @param {string} promptType - 'positive' or 'negative'
      */
-    sendToLLM() {
-        const promptText = this.elements.positiveTextarea.value.trim();
+    sendToLLM(promptType = 'positive') {
+        const textarea = promptType === 'positive' ? this.elements.positiveTextarea : this.elements.negativeTextarea;
+        const promptText = textarea.value.trim();
         
         if (!promptText) {
-            this.showMessage('Please enter a prompt first', 'error');
+            this.showMessage(`Please enter a ${promptType} prompt first`, 'error');
             return;
         }
         
         // Visual feedback - show sending state
-        const btn = this.elements.sendToLLMButton;
+        const btn = promptType === 'positive' ? this.elements.sendToLLMButton : this.elements.sendToLLMButtonNegative;
         const originalText = btn.textContent;
         btn.disabled = true;
         btn.textContent = '📤 Sending...';
@@ -548,7 +585,7 @@ export const promptGenerationComponent = {
                 source: 'prompt-builder',
                 autoSwitch: true
             });
-            showNotification('Prompt sent to LLM Chat', 'success');
+            showNotification(`${promptType.charAt(0).toUpperCase() + promptType.slice(1)} prompt sent to LLM Chat`, 'success');
             this.showMessage('Sent to LLM tab', 'success');
             
             // Visual feedback - show success
@@ -757,20 +794,24 @@ export const promptGenerationComponent = {
     },
 
     /**
-     * Copy text from selected node to positive prompt textarea
+     * Copy text from selected node to prompt textarea
+     * @param {string} promptType - 'positive' or 'negative'
      */
-    copyFromNode() {
+    copyFromNode(promptType = 'positive') {
         const result = copyTextFromSelectedNode(app);
         
         if (result.success) {
-            // Set text in positive prompt textarea
-            this.elements.positiveTextarea.value = result.text;
-            // Update state
-            actions.setPositivePrompt(result.text);
-            // Trigger input event
-            this.elements.positiveTextarea.dispatchEvent(new Event('input', { bubbles: true }));
+            const textarea = promptType === 'positive' ? this.elements.positiveTextarea : this.elements.negativeTextarea;
+            const action = promptType === 'positive' ? actions.setPositivePrompt : actions.setNegativePrompt;
             
-            this.showMessage(`Text copied from ${result.nodeType} node!`, 'success');
+            // Set text in the appropriate textarea
+            textarea.value = result.text;
+            // Update state
+            action(result.text);
+            // Trigger input event
+            textarea.dispatchEvent(new Event('input', { bubbles: true }));
+            
+            this.showMessage(`Text copied from ${result.nodeType} node to ${promptType} prompt!`, 'success');
         } else {
             this.showMessage(result.error || 'Please select a CLIPTextEncode or Sage text node first', 'warning');
         }
@@ -870,6 +911,17 @@ export const promptGenerationComponent = {
                 margin-bottom: 6px;
                 font-weight: 500;
                 color: var(--fg-color, #ffffff);
+            }
+
+            .prompt-actions-bar {
+                display: flex;
+                gap: 8px;
+                margin-bottom: 8px;
+            }
+
+            .prompt-actions-bar .secondary-button {
+                padding: 6px 12px;
+                font-size: 12px;
             }
 
             .prompt-textarea {

@@ -67,9 +67,10 @@ function hasGenerationParameters(metadata) {
  * Check metadata status for a batch of images
  * @param {Array} images - Array of image objects
  * @param {Function} setStatus - Status callback function
+ * @param {AbortSignal} signal - Optional abort signal to cancel the operation
  * @returns {Promise<Map>} Map of image paths to boolean indicating if they have generation params
  */
-export async function checkImagesForGenerationParams(images, setStatus = null) {
+export async function checkImagesForGenerationParams(images, setStatus = null, signal = null) {
     const metadataMap = new Map();
     
     if (!images || images.length === 0) {
@@ -80,6 +81,11 @@ export async function checkImagesForGenerationParams(images, setStatus = null) {
     const totalImages = images.length;
     
     for (let i = 0; i < images.length; i += batchSize) {
+        // Check if operation was aborted
+        if (signal && signal.aborted) {
+            throw new DOMException('Operation aborted', 'AbortError');
+        }
+        
         const batch = images.slice(i, i + batchSize);
         
         if (setStatus) {
@@ -94,7 +100,8 @@ export async function checkImagesForGenerationParams(images, setStatus = null) {
                     const response = await api.fetchApi('/sage_utils/image_metadata', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ image_path: image.path })
+                        body: JSON.stringify({ image_path: image.path }),
+                        signal: signal // Pass abort signal to fetch
                     });
                     
                     const result = await response.json();
@@ -130,12 +137,18 @@ export async function checkImagesForGenerationParams(images, setStatus = null) {
  * @param {string} folderType - Type of folder ('notes', 'input', 'output', 'custom')
  * @param {string|null} customPath - Custom path for 'custom' folder type
  * @param {Function} setStatus - Status callback function
+ * @param {AbortSignal} signal - Optional abort signal to cancel the operation
  * @returns {Object} Result object with images, folders, and success status
  */
-export async function loadImagesFromFolder(folderType, customPath = null, setStatus = null) {
+export async function loadImagesFromFolder(folderType, customPath = null, setStatus = null, signal = null) {
     try {
         if (setStatus) setStatus(`Loading images from ${folderType} folder...`);
         actions.setGalleryLoading(true);
+        
+        // Check if operation was aborted before starting
+        if (signal && signal.aborted) {
+            throw new DOMException('Operation aborted', 'AbortError');
+        }
         
         // Prepare request body
         const requestBody = { folder: folderType };
@@ -146,7 +159,8 @@ export async function loadImagesFromFolder(folderType, customPath = null, setSta
         const response = await api.fetchApi('/sage_utils/list_images', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(requestBody)
+            body: JSON.stringify(requestBody),
+            signal: signal // Pass abort signal to fetch
         });
         
         if (!response.ok) {
@@ -162,12 +176,17 @@ export async function loadImagesFromFolder(folderType, customPath = null, setSta
         const images = result.images || [];
         const folders = result.folders || [];
         
+        // Check if operation was aborted after fetching image list
+        if (signal && signal.aborted) {
+            throw new DOMException('Operation aborted', 'AbortError');
+        }
+        
         // Pre-calculate metadata status for all images
         if (setStatus) {
             setStatus(`Loading images 0/${images.length}...`);
         }
         
-        const metadataMap = await checkImagesForGenerationParams(images, setStatus);
+        const metadataMap = await checkImagesForGenerationParams(images, setStatus, signal);
         
         // Add hasGenerationParams flag to each image
         const imagesWithMetadata = images.map(img => ({
