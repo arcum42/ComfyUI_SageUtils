@@ -233,8 +233,34 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
                 }
             };
             
-            // Call the imported API function with custom status handler and abort signal
-            const result = await loadImagesFromFolder(folderType, customPath, customSetStatus, signal);
+            // Create a progress callback for metadata loading
+            const onMetadataProgress = (progressData) => {
+                const { current, total, withParams } = progressData;
+                updateProgress(current, total, `Checking metadata ${current}/${total}... (${withParams} with params)`);
+                
+                // Update the grid count display as metadata is loaded
+                const currentImages = selectors.galleryImages();
+                const currentFolders = selectors.galleryFolders();
+                if (currentImages && currentFolders) {
+                    grid.imageCountSpan.textContent = `${currentImages.length} images / ${currentFolders.length} folders`;
+                }
+                
+                // Optionally re-render if metadata-only filter is active
+                const showMetadataOnly = selectors.showMetadataOnly();
+                if (showMetadataOnly) {
+                    filterAndSortImages();
+                }
+                
+                // Update cache with latest metadata
+                if (current === total) {
+                    // Metadata loading is complete
+                    folderCache.set(cacheKey, { images: currentImages, folders: currentFolders });
+                    console.log('Gallery: Updated cache with metadata:', cacheKey);
+                }
+            };
+            
+            // Call the imported API function with custom status handler, abort signal, and progress callback
+            const result = await loadImagesFromFolder(folderType, customPath, customSetStatus, signal, onMetadataProgress);
             
             // Check if operation was aborted after loading
             if (signal.aborted) {
@@ -244,14 +270,19 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
             
             const { images, folders, totalItems } = result;
             
-            // Store in cache
+            // Store in cache (will be updated as metadata loads)
             folderCache.set(cacheKey, { images, folders });
             console.log('Gallery: Cached folder data:', cacheKey, `(${images.length} images, ${folders.length} folders)`);
             
             // Update UI immediately with actual counts
-            grid.imageCountSpan.textContent = `(${images.length} images, ${folders.length} folders)`;
+            grid.imageCountSpan.textContent = `${images.length} images / ${folders.length} folders`;
             
-            // Render image grid with both images and folders
+            // Clear the progress container if it exists
+            if (progressContainer && progressContainer.parentNode) {
+                progressContainer.remove();
+            }
+            
+            // Render image grid with both images and folders immediately
             await renderImageGrid(images, folders, loadImagesWrapper);
             
             // Auto-show metadata for the first image if available

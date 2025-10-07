@@ -5,7 +5,7 @@
  */
 
 import { api } from "../../../../scripts/api.js";
-import { actions } from "../stateManager.js";
+import { actions, selectors } from "../stateManager.js";
 import { handleError } from "../errorHandler.js";
 import { formatFileSize } from "../../reports/reportGenerator.js";
 
@@ -133,14 +133,113 @@ export async function checkImagesForGenerationParams(images, setStatus = null, s
 }
 
 /**
- * Load images and folders from a specified folder type
+ * Load metadata in the background and update state progressively
+ * @param {Array} images - Array of image objects
+ * @param {AbortSignal} signal - Abort signal
+ * @param {Function} setStatus - Status callback
+ * @param {Function} onProgress - Progress callback
+ */
+async function loadMetadataInBackground(images, signal, setStatus, onProgress) {
+    if (!images || images.length === 0) {
+        return;
+    }
+    
+    const batchSize = 10;
+    const totalImages = images.length;
+    let processedCount = 0;
+    let imagesWithParams = 0;
+    
+    for (let i = 0; i < images.length; i += batchSize) {
+        // Check if aborted
+        if (signal && signal.aborted) {
+            throw new DOMException('Operation aborted', 'AbortError');
+        }
+        
+        const batch = images.slice(i, i + batchSize);
+        
+        // Check metadata for this batch
+        const results = await Promise.allSettled(
+            batch.map(async (image) => {
+                try {
+                    const response = await api.fetchApi('/sage_utils/image_metadata', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ image_path: image.path }),
+                        signal: signal
+                    });
+                    
+                    const result = await response.json();
+                    
+                    if (result.success && result.metadata) {
+                        return {
+                            path: image.path,
+                            hasParams: hasGenerationParameters(result.metadata)
+                        };
+                    }
+                    
+                    return { path: image.path, hasParams: false };
+                } catch (error) {
+                    return { path: image.path, hasParams: false };
+                }
+            })
+        );
+        
+        // Update state with new metadata info
+        const currentImages = selectors.galleryImages();
+        if (currentImages) {
+            const updatedImages = currentImages.map(img => {
+                const metadataResult = results.find(r => 
+                    r.status === 'fulfilled' && r.value.path === img.path
+                );
+                
+                if (metadataResult) {
+                    const hasParams = metadataResult.value.hasParams;
+                    if (hasParams) imagesWithParams++;
+                    return {
+                        ...img,
+                        hasGenerationParams: hasParams,
+                        metadataLoading: false
+                    };
+                }
+                return img;
+            });
+            
+            actions.setImages(updatedImages);
+        }
+        
+        processedCount += batch.length;
+        
+        // Update progress
+        if (setStatus) {
+            setStatus(`Checking metadata ${processedCount}/${totalImages}... (${imagesWithParams} with params)`);
+        }
+        
+        if (onProgress) {
+            onProgress({
+                current: processedCount,
+                total: totalImages,
+                withParams: imagesWithParams
+            });
+        }
+    }
+    
+    // Final update
+    if (setStatus) {
+        setStatus(`Loaded ${totalImages} images (${imagesWithParams} with generation params)`);
+    }
+}
+
+/**
+ * Load images and folders from a specified folder type (optimized version)
+ * Returns images immediately and loads metadata in background
  * @param {string} folderType - Type of folder ('notes', 'input', 'output', 'custom')
  * @param {string|null} customPath - Custom path for 'custom' folder type
  * @param {Function} setStatus - Status callback function
  * @param {AbortSignal} signal - Optional abort signal to cancel the operation
+ * @param {Function} onMetadataProgress - Optional callback for metadata loading progress
  * @returns {Object} Result object with images, folders, and success status
  */
-export async function loadImagesFromFolder(folderType, customPath = null, setStatus = null, signal = null) {
+export async function loadImagesFromFolder(folderType, customPath = null, setStatus = null, signal = null, onMetadataProgress = null) {
     try {
         if (setStatus) setStatus(`Loading images from ${folderType} folder...`);
         actions.setGalleryLoading(true);
@@ -181,44 +280,45 @@ export async function loadImagesFromFolder(folderType, customPath = null, setSta
             throw new DOMException('Operation aborted', 'AbortError');
         }
         
-        // Pre-calculate metadata status for all images
-        if (setStatus) {
-            setStatus(`Loading images 0/${images.length}...`);
-        }
-        
-        const metadataMap = await checkImagesForGenerationParams(images, setStatus, signal);
-        
-        // Add hasGenerationParams flag to each image
-        const imagesWithMetadata = images.map(img => ({
+        // Create images with pending metadata status
+        const imagesWithPendingMetadata = images.map(img => ({
             ...img,
-            hasGenerationParams: metadataMap.get(img.path) || false
+            hasGenerationParams: false, // Default to false, will update progressively
+            metadataLoading: true
         }));
         
-        // Update state with loaded images and folders
-        actions.setImages(imagesWithMetadata);
+        // Update state with loaded images and folders immediately
+        actions.setImages(imagesWithPendingMetadata);
         actions.setFolders(folders);
         
         // Manage current path based on folder type and custom path
         if (folderType === 'custom' && customPath) {
-            // We're in a custom subfolder, set the path
             actions.setCurrentPath(customPath);
         } else {
-            // We're in a standard folder (input, output, etc.) or no custom path
             actions.setCurrentPath('');
         }
         
-        const imagesWithParams = imagesWithMetadata.filter(img => img.hasGenerationParams).length;
-        
         if (setStatus) {
-            setStatus(`Loaded ${images.length} images (${imagesWithParams} with generation params), ${folders.length} folders`);
+            setStatus(`Loaded ${images.length} images, ${folders.length} folders`);
         }
         
-        return {
+        // Return immediately with images - metadata will load in background
+        const returnValue = {
             success: true,
-            images: imagesWithMetadata,
+            images: imagesWithPendingMetadata,
             folders,
-            totalItems: images.length + folders.length
+            totalItems: images.length + folders.length,
+            metadataLoading: true
         };
+        
+        // Start loading metadata in background (don't await)
+        loadMetadataInBackground(images, signal, setStatus, onMetadataProgress).catch(err => {
+            if (err.name !== 'AbortError') {
+                console.warn('Background metadata loading error:', err);
+            }
+        });
+        
+        return returnValue;
         
     } catch (error) {
         console.error('Error loading images:', error);
