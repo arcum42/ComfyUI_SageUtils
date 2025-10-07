@@ -232,23 +232,9 @@ export function createFolderSelectorAndControls() {
         font-size: 12px;
     `;
     
-    const findDuplicatesButton = document.createElement('button');
-    findDuplicatesButton.textContent = '🔍 Duplicates';
-    findDuplicatesButton.title = 'Find duplicate images by hash';
-    findDuplicatesButton.style.cssText = `
-        background: #9C27B0;
-        color: white;
-        border: none;
-        padding: 4px 8px;
-        border-radius: 4px;
-        cursor: pointer;
-        font-size: 12px;
-    `;
-    
     buttonsContainer.appendChild(thumbnailSizeSelect);
     buttonsContainer.appendChild(viewModeButton);
     buttonsContainer.appendChild(datasetTextButton);
-    buttonsContainer.appendChild(findDuplicatesButton);
 
     // Search bar - moved to bottom to match Models tab
     const searchContainer = document.createElement('div');
@@ -398,7 +384,6 @@ export function createFolderSelectorAndControls() {
         thumbnailSizeSelect,
         viewModeButton,
         datasetTextButton,
-        findDuplicatesButton,
         metadataFilterCheckbox
     };
 }

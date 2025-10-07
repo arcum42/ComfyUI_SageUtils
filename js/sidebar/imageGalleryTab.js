@@ -758,40 +758,6 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
         setStatus('Opening dataset text manager...');
     });
 
-    folderAndControls.findDuplicatesButton.addEventListener('click', async () => {
-        const currentFolder = selectors.selectedFolder();
-        const currentPath = selectors.currentPath();
-        
-        // Determine the folder path to scan
-        let folderPath = null;
-        if (currentFolder === 'custom' && currentPath) {
-            folderPath = currentPath;
-        } else if (currentFolder === 'notes') {
-            // We need to get the notes path - for now, show error
-            setStatus('Please use Browse Custom Folder to select a specific folder for duplicate detection', true);
-            return;
-        } else if (currentFolder === 'input' || currentFolder === 'output') {
-            // We need to get these paths - for now, show error
-            setStatus('Please use Browse Custom Folder to select a specific folder for duplicate detection', true);
-            return;
-        }
-        
-        if (!folderPath) {
-            setStatus('Please select a folder first', true);
-            return;
-        }
-        
-        // Import the duplicate finder dialog
-        const { showDuplicateFinderDialog } = await import('../dialogs/duplicateFinderDialog.js');
-        
-        // Show dialog with option for subfolders
-        // For now, default to not including subfolders
-        showDuplicateFinderDialog(folderPath, false, () => {
-            // Refresh the gallery after deletion
-            refreshCurrentFolder();
-        });
-    });
-
     // Function to update grid layout based on current settings
     function updateGridLayout() {
         const currentMode = selectors.galleryViewMode();
