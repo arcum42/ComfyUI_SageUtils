@@ -31,9 +31,10 @@ import {
 import {
     confirmDialog,
     alertDialog,
-    createDialog,
-    createInlineProgressBar
+    createDialog
 } from "../components/dialogManager.js";
+
+import { createInlineProgressBar } from "../components/progressBar.js";
 
 import {
     pullMetadata,

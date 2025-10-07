@@ -46,7 +46,27 @@ The widgets are designed to work as overlays on top of standard ComfyUI text wid
 **Dependencies:**
 
 - Standalone component creation utilities
+- Re-exports `createProgressBar` from `progressBar.js`
 - Provides labeled containers, buttons, dropdowns, and styled elements
+
+### progressBar.js
+
+**Purpose**: Centralized progress bar implementations for various UI contexts  
+**Complexity**: Medium  
+
+**Dependencies:**
+
+- `dialogManager.js` for dialog-based progress display
+- Standalone progress bar creation utilities
+
+**Key Functions:**
+
+- `createProgressBar(labelText)`: Basic progress bar with label and percentage display
+- `createProgressDialog(title, initialMessage)`: Modal dialog with progress tracking
+- `createInlineProgressBar(options)`: Embeddable progress bar for inline UI
+- `createDatasetProgressDialog(title)`: Specialized progress dialog with image preview
+- `createInlineProgressHTML(current, total, message)`: HTML string generator for quick inline use
+- `createBatchProgressIndicator(options)`: Simple progress container for batch operations
 
 ### navigation.js
 
@@ -66,6 +86,7 @@ The widgets are designed to work as overlays on top of standard ComfyUI text wid
 **Dependencies:**
 
 - Standalone dialog creation utilities
+- Re-exports `createProgressDialog` and `createInlineProgressBar` from `progressBar.js`
 - Confirmation dialogs, alerts, prompts, and custom dialogs with backdrop blur
 
 ### infoDisplay.js

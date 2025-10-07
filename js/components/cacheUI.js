@@ -202,67 +202,8 @@ export function createCustomDropdown(buttonText = 'Select a file...') {
     return { container, button, menu };
 }
 
-/**
- * Create a progress bar component
- */
-export function createProgressBar(labelText = 'Progress...') {
-    const container = document.createElement('div');
-    container.style.cssText = `
-        margin-top: 10px;
-        display: none;
-    `;
-
-    const label = document.createElement('div');
-    label.style.cssText = `
-        color: #fff;
-        font-size: 12px;
-        margin-bottom: 5px;
-    `;
-    label.textContent = labelText;
-
-    const barOuter = document.createElement('div');
-    barOuter.style.cssText = `
-        width: 100%;
-        height: 20px;
-        background: #333;
-        border: 1px solid #555;
-        border-radius: 4px;
-        overflow: hidden;
-    `;
-
-    const barInner = document.createElement('div');
-    barInner.style.cssText = `
-        height: 100%;
-        background: linear-gradient(90deg, #9C27B0, #E91E63);
-        width: 0%;
-        transition: width 0.3s ease;
-        position: relative;
-    `;
-
-    const text = document.createElement('div');
-    text.style.cssText = `
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: #fff;
-        font-size: 11px;
-        font-weight: bold;
-        text-shadow: 1px 1px 2px rgba(0,0,0,0.7);
-    `;
-    text.textContent = '0%';
-
-    barInner.appendChild(text);
-    barOuter.appendChild(barInner);
-    container.appendChild(label);
-    container.appendChild(barOuter);
-
-    return { container, label, barOuter, barInner, text };
-}
+// Progress bar functionality moved to progressBar.js
+export { createProgressBar } from './progressBar.js';
 
 /**
  * Create a button container for multiple buttons

@@ -463,8 +463,10 @@ export function createCacheSidebar(el) {
         console.debug(`[Sidebar] Preloading gallery images from '${galleryFolder}' folder in background...`);
         
         loadImagesFromFolder(galleryFolder, null, (msg) => {
-            // Silent background loading - don't show status messages
-            console.debug(`[Sidebar Gallery Preload] ${msg}`);
+            // Only log start and completion messages, skip progress updates to reduce console noise
+            if (msg.includes('Loading images from') || msg.includes('Error') || msg.includes('Complete')) {
+                console.debug(`[Sidebar Gallery Preload] ${msg}`);
+            }
         }).then(() => {
             console.debug(`[Sidebar] Gallery preload complete for '${galleryFolder}' folder`);
         }).catch(err => {

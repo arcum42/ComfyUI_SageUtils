@@ -5,6 +5,7 @@
  */
 
 import { createDatasetNavigationControls } from '../components/navigation.js';
+import { createDatasetProgressDialog } from '../components/progressBar.js';
 import { selectors } from "./stateManager.js";
 import { loadThumbnail } from "./imageLoader.js";
 import { notifications } from './notifications.js';
@@ -1412,7 +1413,7 @@ export async function handleDatasetText(image) {
  */
 async function generateDescriptionForImage(image, presetId, isAppend, textArea) {
     // Create progress dialog
-    const progressOverlay = createProgressDialog();
+    const progressOverlay = createDatasetProgressDialog();
     const { dialog, elements } = progressOverlay;
     
     elements.titleText.textContent = 'Generating Description';
@@ -1421,7 +1422,7 @@ async function generateDescriptionForImage(image, presetId, isAppend, textArea) 
     elements.progressFill.style.width = '50%'; // Show some progress
     elements.cancelBtn.style.display = 'none'; // No cancel for single image
     
-    document.body.appendChild(dialog);
+    progressOverlay.show();
     
     try {
         // Load image and convert to base64
@@ -1492,167 +1493,14 @@ async function generateDescriptionForImage(image, presetId, isAppend, textArea) 
         // Keep dialog visible for a moment to show result
         await new Promise(resolve => setTimeout(resolve, 1500));
         
-        document.body.removeChild(dialog);
+        progressOverlay.close();
         
     } catch (error) {
-        document.body.removeChild(dialog);
+        progressOverlay.close();
         console.error('Error generating description:', error);
         notifications.error(`Error generating description: ${error.message}`);
         throw error;
     }
-}
-
-/**
- * Create progress dialog for LLM generation
- * @returns {Object} Dialog overlay and element references
- */
-function createProgressDialog() {
-    const progressOverlay = document.createElement('div');
-    progressOverlay.style.cssText = `
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(0, 0, 0, 0.8);
-        z-index: 10001;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    `;
-    
-    const progressDialog = document.createElement('div');
-    progressDialog.style.cssText = `
-        background: #2d2d2d;
-        border-radius: 8px;
-        padding: 20px;
-        min-width: 500px;
-        max-width: 700px;
-        border: 1px solid #555;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
-    `;
-    
-    const progressTitle = document.createElement('h3');
-    progressTitle.textContent = 'Generating Descriptions';
-    progressTitle.style.cssText = `
-        color: #fff;
-        margin: 0 0 15px 0;
-        font-size: 16px;
-    `;
-    
-    const progressText = document.createElement('div');
-    progressText.style.cssText = `
-        color: #fff;
-        margin-bottom: 10px;
-        font-size: 14px;
-    `;
-    progressText.textContent = 'Processing...';
-    
-    const progressBar = document.createElement('div');
-    progressBar.style.cssText = `
-        width: 100%;
-        height: 20px;
-        background: #555;
-        border-radius: 10px;
-        overflow: hidden;
-        margin-bottom: 15px;
-    `;
-    
-    const progressFill = document.createElement('div');
-    progressFill.style.cssText = `
-        width: 0%;
-        height: 100%;
-        background: #4CAF50;
-        transition: width 0.3s;
-    `;
-    
-    progressBar.appendChild(progressFill);
-    
-    const statusText = document.createElement('div');
-    statusText.style.cssText = `
-        color: #aaa;
-        font-size: 12px;
-        margin-bottom: 15px;
-        font-family: monospace;
-    `;
-    
-    // Preview container for image and text
-    const previewContainer = document.createElement('div');
-    previewContainer.style.cssText = `
-        background: #1a1a1a;
-        border-radius: 4px;
-        padding: 10px;
-        margin-bottom: 15px;
-        max-height: 300px;
-        overflow-y: auto;
-    `;
-    
-    const previewLabel = document.createElement('div');
-    previewLabel.style.cssText = `
-        color: #888;
-        font-size: 11px;
-        margin-bottom: 8px;
-        text-transform: uppercase;
-    `;
-    previewLabel.textContent = 'Last Generated';
-    
-    const imagePreview = document.createElement('img');
-    imagePreview.style.cssText = `
-        max-width: 100%;
-        max-height: 150px;
-        object-fit: contain;
-        display: block;
-        margin-bottom: 10px;
-        border-radius: 4px;
-    `;
-    
-    const textPreview = document.createElement('div');
-    textPreview.style.cssText = `
-        color: #ddd;
-        font-size: 12px;
-        line-height: 1.5;
-        white-space: pre-wrap;
-        word-wrap: break-word;
-    `;
-    
-    previewContainer.appendChild(previewLabel);
-    previewContainer.appendChild(imagePreview);
-    previewContainer.appendChild(textPreview);
-    
-    const cancelBtn = document.createElement('button');
-    cancelBtn.textContent = 'Cancel';
-    cancelBtn.style.cssText = `
-        background: #f44336;
-        color: white;
-        border: none;
-        padding: 8px 16px;
-        border-radius: 4px;
-        cursor: pointer;
-        font-size: 13px;
-        width: 100%;
-    `;
-    
-    progressDialog.appendChild(progressTitle);
-    progressDialog.appendChild(progressText);
-    progressDialog.appendChild(progressBar);
-    progressDialog.appendChild(statusText);
-    progressDialog.appendChild(previewContainer);
-    progressDialog.appendChild(cancelBtn);
-    progressOverlay.appendChild(progressDialog);
-    
-    return {
-        dialog: progressOverlay,
-        elements: {
-            titleText: progressTitle,
-            progressText: progressText,
-            progressBar: progressBar,
-            progressFill: progressFill,
-            statusText: statusText,
-            imagePreview: imagePreview,
-            textPreview: textPreview,
-            cancelBtn: cancelBtn
-        }
-    };
 }
 
 /**
@@ -1664,13 +1512,13 @@ function createProgressDialog() {
  */
 async function batchGenerateDescriptions(images, presetId, isAppend, onComplete) {
     // Create progress dialog
-    const progressOverlay = createProgressDialog();
+    const progressOverlay = createDatasetProgressDialog();
     const { dialog, elements } = progressOverlay;
     
     elements.titleText.textContent = 'Batch Generating Descriptions';
     elements.progressText.textContent = 'Processing image 0 of ' + images.length + '...';
     
-    document.body.appendChild(dialog);
+    progressOverlay.show();
     
     let cancelled = false;
     elements.cancelBtn.addEventListener('click', () => {
@@ -1786,7 +1634,7 @@ async function batchGenerateDescriptions(images, presetId, isAppend, onComplete)
         }
         
         // Show completion summary
-        document.body.removeChild(dialog);
+        progressOverlay.close();
         
         let message = `Batch generation ${cancelled ? 'cancelled' : 'complete'}!\n`;
         message += `Processed: ${processed} images\n`;
@@ -1806,7 +1654,7 @@ async function batchGenerateDescriptions(images, presetId, isAppend, onComplete)
         }
         
     } catch (error) {
-        document.body.removeChild(dialog);
+        progressOverlay.close();
         console.error('Error in batch generation:', error);
         notifications.error(`Error in batch generation: ${error.message}`);
     }
