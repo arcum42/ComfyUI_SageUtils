@@ -1048,6 +1048,189 @@ def register_routes(routes_instance):
             }
         )
     
+    @routes_instance.post('/sage_utils/find_duplicates')
+    @route_error_handler
+    async def find_duplicates(request):
+        """
+        Find duplicate images in a folder by computing image hashes.
+        Body: { "folder_path": "/path/to/folder", "include_subfolders": true }
+        Returns: { "success": true, "duplicates": [[img1, img2], [img3, img4, img5]], "total_images": 100, "total_duplicates": 5 }
+        """
+        import pathlib
+        import hashlib
+        from collections import defaultdict
+        from aiohttp import web
+        
+        data = await request.json()
+        folder_path_str = data.get('folder_path', '')
+        include_subfolders = data.get('include_subfolders', False)
+        
+        if not folder_path_str:
+            return web.json_response(
+                {"success": False, "error": "Folder path is required"}, 
+                status=400
+            )
+        
+        folder_path = pathlib.Path(folder_path_str)
+        
+        # Security check: ensure the folder exists
+        if not folder_path.exists() or not folder_path.is_dir():
+            return web.json_response(
+                {"success": False, "error": "Folder not found or is not a directory"}, 
+                status=404
+            )
+        
+        # Supported image extensions
+        image_extensions = {
+            '.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp',
+            '.tiff', '.tif', '.ico', '.heic', '.heif', '.avif'
+        }
+        
+        # Hash map: hash -> [image_paths]
+        hash_map = defaultdict(list)
+        total_images = 0
+        
+        try:
+            # Get all image files
+            if include_subfolders:
+                image_files = [
+                    f for f in folder_path.rglob('*') 
+                    if f.is_file() and f.suffix.lower() in image_extensions
+                ]
+            else:
+                image_files = [
+                    f for f in folder_path.iterdir() 
+                    if f.is_file() and f.suffix.lower() in image_extensions
+                ]
+            
+            total_images = len(image_files)
+            
+            # Calculate hash for each image
+            for image_file in image_files:
+                try:
+                    # Use MD5 hash of file content for duplicate detection
+                    hasher = hashlib.md5()
+                    with open(image_file, 'rb') as f:
+                        # Read in chunks for memory efficiency
+                        for chunk in iter(lambda: f.read(8192), b''):
+                            hasher.update(chunk)
+                    
+                    file_hash = hasher.hexdigest()
+                    
+                    # Get file stats
+                    stat = image_file.stat()
+                    
+                    image_info = {
+                        'path': str(image_file),
+                        'filename': image_file.name,
+                        'size': stat.st_size,
+                        'size_human': _format_file_size(stat.st_size),
+                        'hash': file_hash
+                    }
+                    
+                    hash_map[file_hash].append(image_info)
+                    
+                except (OSError, PermissionError) as e:
+                    # Skip files we cannot read
+                    continue
+            
+            # Extract groups with duplicates (more than 1 image with same hash)
+            duplicate_groups = [
+                images for images in hash_map.values() if len(images) > 1
+            ]
+            
+            # Count total duplicate images (excluding one original from each group)
+            total_duplicates = sum(len(group) - 1 for group in duplicate_groups)
+            
+            return web.json_response({
+                "success": True,
+                "duplicates": duplicate_groups,
+                "total_images": total_images,
+                "total_duplicates": total_duplicates,
+                "duplicate_groups": len(duplicate_groups)
+            })
+            
+        except PermissionError:
+            return web.json_response(
+                {"success": False, "error": f"Permission denied accessing folder: {folder_path}"}, 
+                status=403
+            )
+        except Exception as e:
+            return web.json_response(
+                {"success": False, "error": f"Failed to find duplicates: {str(e)}"}, 
+                status=500
+            )
+    
+    @routes_instance.post('/sage_utils/delete_images')
+    @route_error_handler
+    async def delete_images(request):
+        """
+        Delete multiple images.
+        Body: { "image_paths": ["/path/to/image1.jpg", "/path/to/image2.jpg"] }
+        Returns: { "success": true, "deleted": 2, "failed": 0, "errors": [] }
+        """
+        import pathlib
+        import os
+        from aiohttp import web
+        
+        data = await request.json()
+        image_paths = data.get('image_paths', [])
+        
+        if not image_paths or not isinstance(image_paths, list):
+            return web.json_response(
+                {"success": False, "error": "image_paths must be a non-empty array"}, 
+                status=400
+            )
+        
+        deleted_count = 0
+        failed_count = 0
+        errors = []
+        
+        for image_path_str in image_paths:
+            try:
+                image_path = pathlib.Path(image_path_str)
+                
+                # Security check: ensure the file exists and is a file
+                if not image_path.exists():
+                    errors.append({
+                        'path': image_path_str,
+                        'error': 'File not found'
+                    })
+                    failed_count += 1
+                    continue
+                
+                if not image_path.is_file():
+                    errors.append({
+                        'path': image_path_str,
+                        'error': 'Path is not a file'
+                    })
+                    failed_count += 1
+                    continue
+                
+                # Delete the file
+                os.remove(image_path)
+                deleted_count += 1
+                
+            except PermissionError:
+                errors.append({
+                    'path': image_path_str,
+                    'error': 'Permission denied'
+                })
+                failed_count += 1
+            except Exception as e:
+                errors.append({
+                    'path': image_path_str,
+                    'error': str(e)
+                })
+                failed_count += 1
+        
+        return web.json_response({
+            "success": True,
+            "deleted": deleted_count,
+            "failed": failed_count,
+            "errors": errors
+        })
+    
     # Track registered routes
     _route_list.extend([
         "POST /sage_utils/civitai_images",
@@ -1060,7 +1243,9 @@ def register_routes(routes_instance):
         "POST /sage_utils/browse_folder",
         "POST /sage_utils/browse_directory_tree",
         "POST /sage_utils/copy_image",
-        "POST /sage_utils/image"
+        "POST /sage_utils/image",
+        "POST /sage_utils/find_duplicates",
+        "POST /sage_utils/delete_images"
     ])
     
     logging.info("Gallery routes registered successfully")

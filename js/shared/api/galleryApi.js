@@ -321,9 +321,13 @@ export async function loadImagesFromFolder(folderType, customPath = null, setSta
         return returnValue;
         
     } catch (error) {
-        console.error('Error loading images:', error);
+        // Don't log abort errors - these are expected when user changes folders
+        if (error.name !== 'AbortError' && error.name !== 'DOMException') {
+            console.error('Error loading images:', error);
+        }
         
-        if (setStatus) {
+        // Don't show status for abort errors
+        if (error.name !== 'AbortError' && error.name !== 'DOMException' && setStatus) {
             setStatus(`Error loading images: ${error.message}`, true);
         }
         
@@ -520,4 +524,96 @@ export function generateFallbackMetadata(image, errorMessage) {
     `;
     
     return fallbackHtml;
+}
+
+/**
+ * Find duplicate images in a folder
+ * @param {string} folderPath - Path to the folder to scan
+ * @param {boolean} includeSubfolders - Whether to include subfolders
+ * @param {Function} setStatus - Status callback function
+ * @returns {Promise<Object>} Duplicate scan results
+ */
+export async function findDuplicateImages(folderPath, includeSubfolders = false, setStatus = null) {
+    try {
+        if (setStatus) {
+            setStatus('Scanning for duplicates...');
+        }
+        
+        const response = await api.fetchApi('/sage_utils/find_duplicates', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                folder_path: folderPath,
+                include_subfolders: includeSubfolders
+            })
+        });
+        
+        if (!response.ok) {
+            throw new Error(`Server error: ${response.statusText}`);
+        }
+        
+        const result = await response.json();
+        
+        if (!result.success) {
+            throw new Error(result.error || 'Failed to find duplicates');
+        }
+        
+        if (setStatus) {
+            setStatus(`Found ${result.duplicate_groups} duplicate groups`);
+        }
+        
+        return result;
+        
+    } catch (error) {
+        console.error('Error finding duplicates:', error);
+        if (setStatus) {
+            setStatus(`Error: ${error.message}`, true);
+        }
+        throw error;
+    }
+}
+
+/**
+ * Delete multiple images
+ * @param {Array<string>} imagePaths - Array of image paths to delete
+ * @param {Function} setStatus - Status callback function
+ * @returns {Promise<Object>} Deletion results
+ */
+export async function deleteImages(imagePaths, setStatus = null) {
+    try {
+        if (setStatus) {
+            setStatus(`Deleting ${imagePaths.length} images...`);
+        }
+        
+        const response = await api.fetchApi('/sage_utils/delete_images', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                image_paths: imagePaths
+            })
+        });
+        
+        if (!response.ok) {
+            throw new Error(`Server error: ${response.statusText}`);
+        }
+        
+        const result = await response.json();
+        
+        if (!result.success) {
+            throw new Error(result.error || 'Failed to delete images');
+        }
+        
+        if (setStatus) {
+            setStatus(`Deleted ${result.deleted} images`);
+        }
+        
+        return result;
+        
+    } catch (error) {
+        console.error('Error deleting images:', error);
+        if (setStatus) {
+            setStatus(`Error: ${error.message}`, true);
+        }
+        throw error;
+    }
 }

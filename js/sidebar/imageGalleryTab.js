@@ -103,6 +103,9 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
 
     // Load images from selected folder - wrapper for imported API function
     async function loadImagesWrapper(folderType, customPath = null, forceReload = false) {
+        // Keep track of progress container for cleanup
+        let progressContainer = null;
+        
         try {
             // Cancel any ongoing folder load operation
             if (currentAbortController) {
@@ -123,8 +126,18 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
                 console.log('Gallery: Loading from cache:', cacheKey);
                 const cached = folderCache.get(cacheKey);
                 
+                // Clear abort controller for cache loads since there's no async operation
+                const savedController = currentAbortController;
+                currentAbortController = null;
+                
+                // Check if we were aborted while setting up
+                if (savedController && savedController.signal.aborted) {
+                    console.log('Gallery: Cache load aborted before render');
+                    return;
+                }
+                
                 // Update UI immediately from cache
-                grid.imageCountSpan.textContent = `(${cached.images.length} images, ${cached.folders.length} folders)`;
+                grid.imageCountSpan.textContent = `${cached.images.length} images / ${cached.folders.length} folders`;
                 await renderImageGrid(cached.images, cached.folders, loadImagesWrapper);
                 
                 // Auto-show metadata for the first image if available
@@ -143,7 +156,6 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
                 }
                 
                 setStatus('Loaded from cache', false);
-                currentAbortController = null; // Clear controller since we're done
                 return;
             }
             
@@ -157,8 +169,12 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
             grid.imageCountSpan.textContent = '(Loading...)';
             
             // Create a progress update function
-            let progressContainer = null;
             const updateProgress = (current, total, message = '') => {
+                // Don't update if aborted
+                if (signal.aborted) {
+                    return;
+                }
+                
                 if (!progressContainer) {
                     grid.gridContainer.innerHTML = '';
                     progressContainer = document.createElement('div');
@@ -222,6 +238,11 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
             
             // Create a custom setStatus that also updates the progress bar
             const customSetStatus = (message) => {
+                // Don't update if aborted
+                if (signal.aborted) {
+                    return;
+                }
+                
                 // Parse progress messages like "Checking metadata 10/50..."
                 const progressMatch = message.match(/(\d+)\/(\d+)/);
                 if (progressMatch) {
@@ -235,6 +256,11 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
             
             // Create a progress callback for metadata loading
             const onMetadataProgress = (progressData) => {
+                // Don't update if aborted
+                if (signal.aborted) {
+                    return;
+                }
+                
                 const { current, total, withParams } = progressData;
                 updateProgress(current, total, `Checking metadata ${current}/${total}... (${withParams} with params)`);
                 
@@ -315,9 +341,13 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
             
         } catch (error) {
             // Check if this was an abort error (user switched folders)
-            if (error.name === 'AbortError') {
+            if (error.name === 'AbortError' || error.message.includes('aborted')) {
                 console.log('Gallery: Folder load was cancelled');
-                setStatus('Folder load cancelled', false);
+                // Clean up progress container if it exists
+                if (progressContainer && progressContainer.parentNode) {
+                    progressContainer.remove();
+                }
+                // Don't show status for aborts - this is normal when switching folders quickly
                 return;
             }
             
@@ -726,6 +756,40 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
         });
         
         setStatus('Opening dataset text manager...');
+    });
+
+    folderAndControls.findDuplicatesButton.addEventListener('click', async () => {
+        const currentFolder = selectors.selectedFolder();
+        const currentPath = selectors.currentPath();
+        
+        // Determine the folder path to scan
+        let folderPath = null;
+        if (currentFolder === 'custom' && currentPath) {
+            folderPath = currentPath;
+        } else if (currentFolder === 'notes') {
+            // We need to get the notes path - for now, show error
+            setStatus('Please use Browse Custom Folder to select a specific folder for duplicate detection', true);
+            return;
+        } else if (currentFolder === 'input' || currentFolder === 'output') {
+            // We need to get these paths - for now, show error
+            setStatus('Please use Browse Custom Folder to select a specific folder for duplicate detection', true);
+            return;
+        }
+        
+        if (!folderPath) {
+            setStatus('Please select a folder first', true);
+            return;
+        }
+        
+        // Import the duplicate finder dialog
+        const { showDuplicateFinderDialog } = await import('../dialogs/duplicateFinderDialog.js');
+        
+        // Show dialog with option for subfolders
+        // For now, default to not including subfolders
+        showDuplicateFinderDialog(folderPath, false, () => {
+            // Refresh the gallery after deletion
+            refreshCurrentFolder();
+        });
     });
 
     // Function to update grid layout based on current settings
