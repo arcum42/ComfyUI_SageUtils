@@ -34,12 +34,12 @@ export function setupViewTextOrAnythingNode(nodeType, nodeData, app) {
     updateTextWidget(widget, message);
     
     // Add copy-to-node button
-    addCopyButton(this, () => {
+/*     addCopyButton(this, () => {
       const content = Array.isArray(message["text"]) 
         ? message["text"].join("") 
         : String(message["text"]);
       return content;
-    }, app);
+    }, app); */
     
     this.onResize?.(this.size);
   };

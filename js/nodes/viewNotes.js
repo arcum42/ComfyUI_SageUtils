@@ -144,12 +144,12 @@ export function setupViewNotesNode(nodeType, nodeData, app) {
     updateOutputWidget(this, message, this.widgets.find(w => w.name === 'filename')?.value);
     
     // Add copy-to-node button
-    addCopyButton(this, () => {
+/*     addCopyButton(this, () => {
       const content = Array.isArray(message.text) 
         ? message.text.join("") 
         : (typeof message.text === "string" ? message.text : String(message.text ?? ""));
       return content;
-    }, app);
+    }, app); */
     
     this.onResize?.(this.size);
   };
