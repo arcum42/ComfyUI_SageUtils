@@ -195,7 +195,6 @@ class Sage_MultiSelectorSingleClip(ComfyNodeABC):
 
     RETURN_TYPES = ("MODEL_INFO",)
     RETURN_NAMES = ("model_info",)
-    OUTPUT_IS_LIST = (True,)
 
     OUTPUT_TOOLTIPS = ("The model path and hash, all in one output.")
     FUNCTION = "get_model_info"
@@ -207,7 +206,8 @@ class Sage_MultiSelectorSingleClip(ComfyNodeABC):
         clip_info = mi.get_model_info_clips([clip_name], clip_type)
         vae_info = mi.get_model_info_vae(vae_name)
 
-        return ((unet_info, clip_info, vae_info),)
+        ret = (unet_info[0], clip_info[0], vae_info[0])
+        return (ret,)
 
 class Sage_MultiSelectorDoubleClip(ComfyNodeABC):
     @classmethod
@@ -228,7 +228,6 @@ class Sage_MultiSelectorDoubleClip(ComfyNodeABC):
 
     RETURN_TYPES = ("MODEL_INFO",)
     RETURN_NAMES = ("model_info",)
-    OUTPUT_IS_LIST = (True,)
 
     OUTPUT_TOOLTIPS = ("The model path and hash, all in one output.")
     FUNCTION = "get_model_info"
@@ -240,7 +239,8 @@ class Sage_MultiSelectorDoubleClip(ComfyNodeABC):
         clip_info = mi.get_model_info_clips([clip_name_1, clip_name_2], clip_type)
         vae_info = mi.get_model_info_vae(vae_name)
 
-        return ((unet_info, clip_info, vae_info),)
+        ret = (unet_info[0], clip_info[0], vae_info[0])
+        return (ret,)
 
 class Sage_MultiSelectorTripleClip(ComfyNodeABC):
     @classmethod
@@ -261,7 +261,6 @@ class Sage_MultiSelectorTripleClip(ComfyNodeABC):
 
     RETURN_TYPES = ("MODEL_INFO",)
     RETURN_NAMES = ("model_info",)
-    OUTPUT_IS_LIST = (True,)
 
     OUTPUT_TOOLTIPS = ("The model path and hash, all in one output.")
     FUNCTION = "get_model_info"
@@ -273,7 +272,8 @@ class Sage_MultiSelectorTripleClip(ComfyNodeABC):
         clip_info = mi.get_model_info_clips([clip_name_1, clip_name_2, clip_name_3])
         vae_info = mi.get_model_info_vae(vae_name)
 
-        return ((unet_info, clip_info, vae_info),)
+        ret = (unet_info[0], clip_info[0], vae_info[0])
+        return (ret,)
     
 class Sage_MultiSelectorQuadClip(ComfyNodeABC):
     @classmethod
@@ -295,8 +295,7 @@ class Sage_MultiSelectorQuadClip(ComfyNodeABC):
 
     RETURN_TYPES = ("MODEL_INFO",)
     RETURN_NAMES = ("model_info",)
-    OUTPUT_IS_LIST = (True,)
-
+    
     OUTPUT_TOOLTIPS = ("The model path and hash, all in one output.")
     FUNCTION = "get_model_info"
 
@@ -307,7 +306,8 @@ class Sage_MultiSelectorQuadClip(ComfyNodeABC):
         clip_info = mi.get_model_info_clips([clip_name_1, clip_name_2, clip_name_3, clip_name_4])
         vae_info = mi.get_model_info_vae(vae_name)
 
-        return ((unet_info, clip_info, vae_info),)
+        ret = (unet_info[0], clip_info[0], vae_info[0])
+        return (ret,)
 
 # Model Shifts and FreeU2 Settings
 class Sage_ModelShifts(ComfyNodeABC):
