@@ -1248,7 +1248,6 @@ def register_routes(routes_instance):
         "POST /sage_utils/delete_images"
     ])
     
-    logging.info("Gallery routes registered successfully")
     return len(_route_list)
 
 def get_route_list():

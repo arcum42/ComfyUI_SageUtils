@@ -132,7 +132,6 @@ def register_routes(routes_instance):
         {"method": "GET", "path": "/sage_utils/timing_report", "description": "Get combined timing report"}
     ])
     
-    logging.info("Utility routes registered successfully")
     return len(_route_list)
 
 

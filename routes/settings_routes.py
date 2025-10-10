@@ -153,7 +153,6 @@ def register_routes(routes_instance):
         {"method": "POST", "path": "/sage_utils/settings/reset", "description": "Reset settings to defaults"}
     ])
     
-    logging.info("Settings routes registered successfully")
     return len(_route_list)
 
 

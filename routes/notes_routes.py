@@ -347,7 +347,6 @@ def register_routes(routes_instance):
         {"method": "POST", "path": "/sage_utils/delete_note", "description": "Delete note file"}
     ])
     
-    logging.info("Notes routes registered successfully")
     return len(_route_list)
 
 

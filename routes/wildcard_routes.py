@@ -316,7 +316,6 @@ def register_routes(routes_instance):
         {"method": "POST", "path": "/sage_utils/wildcard/file/save", "description": "Save wildcard file content"}
     ])
     
-    logging.info("Wildcard routes registered successfully")
     return len(_route_list)
 
 

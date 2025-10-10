@@ -470,7 +470,6 @@ def register_routes(routes_instance):
         {"method": "GET", "path": "/sage_utils/tags/defaults", "description": "Get default tag library from assets"}
     ])
     
-    logging.info("Tag management routes registered successfully")
     return len(_route_list)
 
 

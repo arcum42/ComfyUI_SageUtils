@@ -1617,7 +1617,6 @@ def register_routes(routes_instance):
         "description": "Generate response using preset with image"
     })
     
-    logging.info(f"Registered {len(_route_list)} LLM routes")
     return len(_route_list)
 
 

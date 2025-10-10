@@ -387,7 +387,6 @@ def register_routes(routes_instance):
         {"method": "GET", "path": "/sage_utils/cache_info_images", "description": "Get Civitai images for hash"}
     ])
     
-    logging.info("Cache routes registered successfully")
     return len(_route_list)
 
 

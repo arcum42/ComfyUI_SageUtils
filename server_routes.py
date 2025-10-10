@@ -36,7 +36,7 @@ try:
             try:
                 route_count = register_routes(routes)
                 if route_count > 0:
-                    print(f"SageUtils: Registered {route_count} additional routes using modular system")
+                    # The modular system already logs its output
                     log_init("MODULAR_ROUTES_REGISTERED", server_timer)
                 else:
                     print("SageUtils: Modular system loaded but no routes registered yet (Phase 2)")
@@ -555,13 +555,12 @@ try:
                 # Gallery management routes
 
         # Gallery management routes
-        print("SageUtils custom routes loaded successfully!")
         log_init("ROUTES_REGISTERED", server_timer)
         
         # Complete server timer initialization
         from .utils.performance_timer import complete_initialization
         server_init_time = complete_initialization(server_timer)
-        print(f"SageUtils server initialization completed in {server_init_time:.4f}s")
+        print(f"SageUtils: Initialization complete ({server_init_time:.4f}s)")
     else:
         print("Warning: PromptServer instance not available, skipping route registration")
         log_init("PROMPT_SERVER_UNAVAILABLE", server_timer)
