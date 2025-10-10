@@ -43,6 +43,12 @@ export const ERROR_CATEGORIES = {
  * @returns {void}
  */
 export function handleError(error, context = {}) {
+    // Guard against undefined/null errors
+    if (!error) {
+        console.warn('handleError called with undefined/null error', context);
+        return;
+    }
+
     const {
         component = 'unknown',
         operation = 'unknown',
@@ -56,8 +62,8 @@ export function handleError(error, context = {}) {
         timestamp: new Date().toISOString(),
         component,
         operation,
-        message: error.message || 'Unknown error',
-        stack: error.stack,
+        message: error?.message || String(error) || 'Unknown error',
+        stack: error?.stack,
         metadata,
         category: categorizeError(error),
         severity: determineSeverity(error, context)
@@ -89,17 +95,24 @@ export function handleError(error, context = {}) {
  * @returns {string} Error category
  */
 function categorizeError(error) {
+    // Guard against non-object errors
+    if (!error || typeof error !== 'object') {
+        return ERROR_CATEGORIES.UNKNOWN;
+    }
+
     if (error.status) {
         if (error.status === 404) return ERROR_CATEGORIES.NOT_FOUND;
         if (error.status === 401 || error.status === 403) return ERROR_CATEGORIES.PERMISSION;
         if (error.status >= 500) return ERROR_CATEGORIES.NETWORK;
     }
 
-    if (error.name === 'ValidationError' || error.message.includes('validation')) {
+    const errorMessage = error.message || String(error);
+    
+    if (error.name === 'ValidationError' || errorMessage.includes('validation')) {
         return ERROR_CATEGORIES.VALIDATION;
     }
 
-    if (error.name === 'NetworkError' || error.message.includes('fetch')) {
+    if (error.name === 'NetworkError' || errorMessage.includes('fetch')) {
         return ERROR_CATEGORIES.NETWORK;
     }
 
@@ -113,8 +126,15 @@ function categorizeError(error) {
  * @returns {string} Error severity level
  */
 function determineSeverity(error, context) {
+    // Guard against non-object errors
+    if (!error || typeof error !== 'object') {
+        return ERROR_LEVELS.MEDIUM;
+    }
+
+    const errorMessage = error.message || String(error);
+    
     // Critical errors that break core functionality
-    if (error.name === 'TypeError' || error.message.includes('Cannot read property')) {
+    if (error.name === 'TypeError' || errorMessage.includes('Cannot read property')) {
         return ERROR_LEVELS.CRITICAL;
     }
 

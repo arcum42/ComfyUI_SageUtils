@@ -329,6 +329,9 @@ function setupTabSwitching(tabComponents, tabContentData) {
     return { switchTab, initializedTabs };
 }
 
+// Track if global error handlers have been registered to prevent duplicates
+let errorHandlersRegistered = false;
+
 /**
  * Initialize the cache sidebar data and state
  */
@@ -337,16 +340,28 @@ async function initializeSidebarData() {
         // Set loading state
         actions.setModelsLoading(true);
         
-        // Set up error handling for the entire sidebar
-        window.addEventListener('error', (event) => {
-            console.error('Sidebar error caught:', event.error);
-            handleError(event.error, 'Sidebar Error');
-        });
-        
-        window.addEventListener('unhandledrejection', (event) => {
-            console.error('Sidebar promise rejection:', event.reason);
-            handleError(event.reason, 'Sidebar Promise Rejection');
-        });
+        // Set up error handling for the entire sidebar (only once)
+        if (!errorHandlersRegistered) {
+            const sidebarErrorHandler = (event) => {
+                console.error('Sidebar error caught:', event.error);
+                // Only handle error if it exists
+                if (event.error) {
+                    handleError(event.error, { component: 'Sidebar', operation: 'Global Error Handler' });
+                }
+            };
+            
+            const sidebarRejectionHandler = (event) => {
+                console.error('Sidebar promise rejection:', event.reason);
+                // Only handle error if it exists
+                if (event.reason) {
+                    handleError(event.reason, { component: 'Sidebar', operation: 'Promise Rejection' });
+                }
+            };
+            
+            window.addEventListener('error', sidebarErrorHandler);
+            window.addEventListener('unhandledrejection', sidebarRejectionHandler);
+            errorHandlersRegistered = true;
+        }
         
         // Set up state subscriptions for debugging (optional)
         subscribe((state, prevState) => {
