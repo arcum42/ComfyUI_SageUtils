@@ -22,6 +22,7 @@ from ..utils.helpers_graph import (
 
 from comfy_execution.graph_utils import GraphBuilder
 import folder_paths
+import logging
 
 class Sage_UNETLoaderFromInfo(ComfyNodeABC):
     """Load UNET model component from model info."""
@@ -46,7 +47,7 @@ class Sage_UNETLoaderFromInfo(ComfyNodeABC):
 
     def load_unet(self, unet_info):
         """Load UNET from model info."""
-        print("Loading UNET...")
+        logging.info("Loading UNET...")
         graph = GraphBuilder()
         unet_node = add_unet_node_from_info(graph, unet_info)
         if unet_node is None:
@@ -55,7 +56,7 @@ class Sage_UNETLoaderFromInfo(ComfyNodeABC):
             pull_and_update_model_timestamp(unet_info["path"], model_type="unet")
 
         # Return the UNET node as a model component.
-        print(f"UNET loaded: {unet_info['path']}")
+        logging.info(f"UNET loaded: {unet_info['path']}")
         unet_out = unet_node.out(0) if unet_node else None
         # Return the UNET node and the serialized graph.
         return {
@@ -86,7 +87,7 @@ class Sage_CLIPLoaderFromInfo(ComfyNodeABC):
 
     def load_clip(self, clip_info):
         """Load CLIP from model info."""
-        print("Loading CLIP...")
+        logging.info("Loading CLIP...")
         graph = GraphBuilder()
         clip_node = add_clip_node_from_info(graph, clip_info)
         if clip_node is None:
@@ -95,7 +96,7 @@ class Sage_CLIPLoaderFromInfo(ComfyNodeABC):
             pull_and_update_model_timestamp(clip_info["path"], model_type="clip")
 
         # Return the CLIP node as a model component.
-        print(f"CLIP loaded: {clip_info['path']}")
+        logging.info(f"CLIP loaded: {clip_info['path']}")
         clip_out = clip_node.out(0) if clip_node else None
         # Return the CLIP node and the serialized graph.
         return {
@@ -126,7 +127,7 @@ class Sage_ChromaCLIPLoaderFromInfo(ComfyNodeABC):
 
     def load_clip(self, clip_info):
         """Load Chroma CLIP from model info."""
-        print("Loading CLIP...")
+        logging.info("Loading CLIP...")
         graph = GraphBuilder()
         clip_node = add_clip_node_from_info(graph, clip_info)
         if clip_node is None:
@@ -136,7 +137,7 @@ class Sage_ChromaCLIPLoaderFromInfo(ComfyNodeABC):
 
         clip_node = graph.node("T5TokenizerOptions", clip=clip_node.out(0), min_padding=1, min_length=0)
         # Return the CLIP node as a model component.
-        print(f"CLIP loaded: {clip_info['path']}")
+        logging.info(f"CLIP loaded: {clip_info['path']}")
         return {
             "result": (clip_node.out(0),),
             "expand": graph.finalize()
@@ -165,7 +166,7 @@ class Sage_VAELoaderFromInfo(ComfyNodeABC):
 
     def load_vae(self, vae_info):
         """Load VAE from model info."""
-        print("Loading VAE...")
+        logging.info("Loading VAE...")
         graph = GraphBuilder()
         vae_node = add_vae_node_from_info(graph, vae_info)
         if vae_node is None:
@@ -174,7 +175,7 @@ class Sage_VAELoaderFromInfo(ComfyNodeABC):
             pull_and_update_model_timestamp(vae_info["path"], model_type="vae")
 
         # Return the VAE node as a model component.
-        print(f"VAE loaded: {vae_info['path']}")
+        logging.info(f"VAE loaded: {vae_info['path']}")
         vae_out = vae_node.out(0) if vae_node else None
         # Return the VAE node and the serialized graph.
         return {
@@ -224,20 +225,20 @@ class Sage_LoraStackLoader(ComfyNodeABC):
 
         if exit_node is None:
             if lora_node is None:
-                print("No loras in stack, returning original model and clip.")
+                logging.info("No loras in stack, returning original model and clip.")
                 model_out = model
             else:
-                print("No model shifts applied, returning original model.")
+                logging.info("No model shifts applied, returning original model.")
                 model_out = lora_node.out(0)
         else:
-            print("Model shifts applied, returning modified model.")
+            logging.info("Model shifts applied, returning modified model.")
             model_out = exit_node.out(0)
         
         if lora_node is None:
-            print("No loras in stack, returning original clip.")
+            logging.info("No loras in stack, returning original clip.")
             clip_out = clip
         else:
-            print("Returning modified clip.")
+            logging.info("Returning modified clip.")
             clip_out = lora_node.out(1)
 
         return {
@@ -393,7 +394,7 @@ class Sage_ModelLoraStackLoader(Sage_LoadModelFromInfo):
         graph, unet_out, clip_out, vae_out = self.prepare_model_graph(model_info)
 
         if model_shifts is not None:
-            print(f"Applying model shifts: {model_shifts}")
+            logging.info(f"Applying model shifts: {model_shifts}")
             unet_out = create_model_shift_nodes_v2(graph, unet_out, model_shifts[0])
 
         # The lora_stack is supposed to be a list of tuples. INPUT_IS_LIST means it will be passed as a list.
@@ -408,7 +409,7 @@ class Sage_ModelLoraStackLoader(Sage_LoadModelFromInfo):
             if len(lora_stack) == 1 and isinstance(lora_stack[0], list):
                 lora_stack = lora_stack[0]
 
-            print(f"Applying LoRA stack: {lora_stack}")
+            logging.info(f"Applying LoRA stack: {lora_stack}")
 
             lora_paths = [folder_paths.get_full_path_or_raise("loras", lora[0]) for lora in lora_stack]
             pull_and_update_model_timestamp(lora_paths, model_type="lora")

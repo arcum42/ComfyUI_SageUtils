@@ -9,6 +9,7 @@ import hashlib
 import datetime
 import tempfile
 import copy
+import logging
 import os
 from typing import Any, Dict, Optional, List
 
@@ -60,7 +61,7 @@ class SageCache:
 
     def prune_all_backups_on_init(self) -> None:
         """Prune all backup files for known prefixes on initialization, printing only once."""
-        print("Pruning old backups for all known prefixes...")
+        logging.info("Pruning old backups for all known prefixes...")
         prefixes = [
             "sage_cache_info",
             "sage_cache_hash",
@@ -77,7 +78,7 @@ class SageCache:
         the_hash = self.hash.get(file_path, "")
         if the_hash:
             return self.info.get(the_hash, {})
-        print(f"No hash found for file: {file_path}")
+        logging.warning(f"No hash found for file: {file_path}")
         return {}
 
     def by_hash(self, file_hash: str) -> dict:
@@ -86,7 +87,7 @@ class SageCache:
 
     def convert_old_cache(self) -> None:
         """Convert old cache format to new format, splitting into hash and info."""
-        print("Converting old cache format to new format.")
+        logging.info("Converting old cache format to new format.")
         for key, val in self.data.items():
             current_hash = val.get("hash", "")
             if current_hash:
@@ -150,7 +151,7 @@ class SageCache:
         try:
             self._atomic_write_json(path, data)
         except Exception as e:
-            print(f"Unable to save {label} to {path}: {e}")
+            logging.error(f"Unable to save {label} to {path}: {e}")
             current_date = datetime.datetime.now().strftime("%Y-%m-%dT%H-%M-%S")
             if path.is_file():
                 error_prefix = f"{path.stem}-save-error"
@@ -158,9 +159,9 @@ class SageCache:
                 try:
                     with path.open("r") as src_file, error_backup_path.open("w") as dst_file:
                         dst_file.write(src_file.read())
-                    print(f"Backed up problematic file to {error_backup_path}")
+                    logging.info(f"Backed up problematic file to {error_backup_path}")
                 except Exception as backup_e:
-                    print(f"Unable to backup error file {path} to {error_backup_path}: {backup_e}")
+                    logging.error(f"Unable to backup error file {path} to {error_backup_path}: {backup_e}")
 
     def backup_json(self, backup_prefix: str, data: Any, current_date: str) -> None:
         """Backup data to a JSON file atomically, pruning old backups. Skip if identical backup already exists."""
@@ -173,7 +174,6 @@ class SageCache:
                         file_bytes = file_obj.read()
                         file_hash = hashlib.sha256(file_bytes).hexdigest()
                     if file_hash == data_hash:
-                        #print(f"Identical backup already exists: {f}. Skipping new backup.")
                         return
                 except Exception:
                     continue
@@ -188,7 +188,7 @@ class SageCache:
                 tempname = tf.name
             os.replace(tempname, backup_path)
         except Exception as e:
-            print(f"Unable to backup {backup_prefix} to {backup_path}: {e}")
+            logging.error(f"Unable to backup {backup_prefix} to {backup_path}: {e}")
 
     def load_json_file(self, path: pathlib.Path, label: str, current_date: str) -> Optional[Any]:
         """Load data from a JSON file, backing up the file if an error occurs."""
@@ -197,7 +197,7 @@ class SageCache:
                 data = json.load(read_file)
             return data
         except Exception as e:
-            print(f"Unable to load {label} from {path}: {e}")
+            logging.error(f"Unable to load {label} from {path}: {e}")
             if path.is_file():
                 safe_date = current_date.replace(":", "-")
                 error_prefix = f"{path.stem}-error"
@@ -205,9 +205,9 @@ class SageCache:
                 try:
                     with path.open("r") as src_file, error_backup_path.open("w") as dst_file:
                         dst_file.write(src_file.read())
-                    print(f"Backed up problematic file to {error_backup_path}")
+                    logging.info(f"Backed up problematic file to {error_backup_path}")
                 except Exception as backup_e:
-                    print(f"Unable to backup error file {path} to {error_backup_path}: {backup_e}")
+                    logging.error(f"Unable to backup error file {path} to {error_backup_path}: {backup_e}")
             return None
 
     def load(self) -> None:
@@ -270,7 +270,6 @@ class SageCache:
                 else:
                     self.data = {}
             if self.ollama_models_path.is_file() and ollama_needs_reload:
-                #print("Loading Ollama models cache from disk.")
                 ollama_data = self.load_json_file(self.ollama_models_path, "Ollama models cache", current_date)
                 if ollama_data is not None:
                     self.ollama_models = ollama_data
@@ -282,7 +281,7 @@ class SageCache:
                     self.last_ollama_models = {}
                     self.ollama_mtime = None
         except Exception as e:
-            print(f"Unable to load cache: {e}")
+            logging.error(f"Unable to load cache: {e}")
 
     def save(self) -> None:
         """Save cache to disk."""
@@ -300,7 +299,7 @@ class SageCache:
             self.last_ollama_models = copy.deepcopy(self.ollama_models)
             saved = True
         if saved:
-            print("Saved cache to disk.")
+            logging.info("Saved cache to disk.")
 
     def add_entry(self, file_path: str, file_hash: str) -> None:
         self.hash[file_path] = file_hash

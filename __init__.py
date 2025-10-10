@@ -60,7 +60,8 @@ try:
     from . import server_routes
     log_init("SERVER_ROUTES_LOADED")
 except Exception as e:
-    print(f"Warning: Failed to load SageUtils custom routes: {e}")
+    import logging
+    logging.warning(f"Warning: Failed to load SageUtils custom routes: {e}")
     log_init("SERVER_ROUTES_FAILED")
 
 WEB_DIRECTORY = "./js"
@@ -102,7 +103,8 @@ try:
     from .utils.performance_fix import populate_llm_cache_async
     populate_llm_cache_async()
 except Exception as e:
-    print(f"Warning: Failed to start background LLM cache population: {e}")
+    import logging
+    logging.warning(f"Warning: Failed to start background LLM cache population: {e}")
 
 # Print timing report if enabled.
 if SAGEUTILS_PRINT_TIMING:

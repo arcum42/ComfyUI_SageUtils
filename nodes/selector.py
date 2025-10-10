@@ -13,6 +13,8 @@ from ..utils.helpers_graph import (
     add_lora_stack_node
 )
 
+import logging
+
 # Selectors for Checkpoints, UNETs, VAEs, CLIPs, and Loras.
 class Sage_CheckpointSelector(ComfyNodeABC):
     @classmethod
@@ -415,7 +417,7 @@ class Sage_UnetClipVaeToModelInfo(ComfyNodeABC):
     DESCRIPTION = "Returns a list with the unets, clips, and vae in it to be loaded."
 
     def get_model_info(self, unet_info, clip_info, vae_info) -> tuple:
-        print(f"Constructing model info from UNET: {unet_info}, CLIP: {clip_info}, VAE: {vae_info}")
+        logging.info(f"Constructing model info from UNET: {unet_info}, CLIP: {clip_info}, VAE: {vae_info}")
 
         return ((unet_info, clip_info, vae_info),)
 

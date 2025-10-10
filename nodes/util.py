@@ -5,6 +5,8 @@ from __future__ import annotations
 from comfy.comfy_types.node_typing import ComfyNodeABC, InputTypeDict, IO
 
 import folder_paths
+import logging
+
 from comfy_execution.graph import ExecutionBlocker
 
 # Import specific utilities instead of wildcard import
@@ -156,7 +158,7 @@ class Sage_ModelInfo(ComfyNodeABC):
                 latest_url,
                 image)
         except:
-            print("Exception when getting json data.")
+            logging.error("Exception when getting json data.")
             return ("", "", "", "", image)
 
 class Sage_ModelInfoDisplay(ComfyNodeABC):
@@ -509,7 +511,7 @@ class Sage_LastLoraInfo(ComfyNodeABC):
                 latest_url,
                 image)
         except:
-            print("Exception when getting json data.")
+            logging.error("Exception when getting json data.")
             return ("", "", "", "", image)
 
 class Sage_GetFileHash(ComfyNodeABC):
@@ -538,10 +540,10 @@ class Sage_GetFileHash(ComfyNodeABC):
             pull_metadata(file_path)
             the_hash = cache.hash[file_path]
         except:
-            print(f"Unable to hash file '{filename}'. \n")
+            logging.error(f"Unable to hash file '{filename}'. \n")
             the_hash = ""
 
-        print(f"Hash for '{filename}': {the_hash}")
+        logging.info(f"Hash for '{filename}': {the_hash}")
         return (str(the_hash),)
 
 class Sage_CacheMaintenance(ComfyNodeABC):
@@ -750,18 +752,18 @@ class Sage_CheckLorasForUpdates(ComfyNodeABC):
 
         for i, lora in enumerate(lora_stack):
             if lora is not None:
-                print(f"Checking {lora[0]} for updates...")
+                logging.info(f"Checking {lora[0]} for updates...")
                 lora_path = folder_paths.get_full_path_or_raise("loras", lora[0])
                 pull_metadata(lora_path, force_all=force)
-                print(f"Update check complete for {lora[0]}")
-                
+                logging.info(f"Update check complete for {lora[0]}")
+
                 if "update_available" in cache.by_path(lora_path):
                     if cache.by_path(lora_path)["update_available"] == True:
                         model_id = cache.by_path(lora_path)["modelId"]
                         latest_version = get_latest_model_version(model_id)
                         latest_url = f"https://civitai.com/models/{model_id}?modelVersionId={latest_version}"
                         if latest_url is not None:
-                            print(f"Update found for {lora[0]}")
+                            logging.info(f"Update found for {lora[0]}")
                             lora_url_list.append(latest_url)
                             lora_list.append(lora_path)
                 

@@ -20,7 +20,7 @@ try:
         from .routes import register_routes, is_initialized
         _modular_routes_available = True
     except ImportError as e:
-        print(f"SageUtils: Modular routes not available ({e}), using legacy routes only")
+        logging.warning(f"SageUtils: Modular routes not available ({e}), using legacy routes only")
         _modular_routes_available = False
     
     log_init("SERVER_IMPORTS_COMPLETE", server_timer)
@@ -39,9 +39,9 @@ try:
                     # The modular system already logs its output
                     log_init("MODULAR_ROUTES_REGISTERED", server_timer)
                 else:
-                    print("SageUtils: Modular system loaded but no routes registered yet (Phase 2)")
+                    logging.info("SageUtils: Modular system loaded but no routes registered yet (Phase 2)")
             except Exception as modular_error:
-                print(f"SageUtils: Error with modular routes ({modular_error}), continuing with legacy routes")
+                logging.error(f"SageUtils: Error with modular routes ({modular_error}), continuing with legacy routes")
                 log_init("MODULAR_ROUTES_ERROR", server_timer)
 
         # Settings management routes
@@ -70,7 +70,7 @@ try:
             except Exception as e:
                 import traceback
                 error_details = traceback.format_exc()
-                print(f"SageUtils settings error: {error_details}")
+                logging.error(f"SageUtils settings error: {error_details}")
                 return web.json_response(
                     {"success": False, "error": f"Failed to retrieve settings: {str(e)}", "details": error_details}, 
                     status=500
@@ -560,12 +560,12 @@ try:
         # Complete server timer initialization
         from .utils.performance_timer import complete_initialization
         server_init_time = complete_initialization(server_timer)
-        print(f"SageUtils: Initialization complete ({server_init_time:.4f}s)")
+        logging.info(f"SageUtils: Initialization complete ({server_init_time:.4f}s)")
     else:
-        print("Warning: PromptServer instance not available, skipping route registration")
+        logging.warning("Warning: PromptServer instance not available, skipping route registration")
         log_init("PROMPT_SERVER_UNAVAILABLE", server_timer)
 
 except ImportError as e:
-    print(f"Warning: Could not import required modules for SageUtils routes: {e}")
+    logging.warning(f"Warning: Could not import required modules for SageUtils routes: {e}")
 except Exception as e:
-    print(f"Warning: Error setting up SageUtils routes: {e}")
+    logging.error(f"Warning: Error setting up SageUtils routes: {e}")

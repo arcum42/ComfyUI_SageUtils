@@ -62,16 +62,20 @@ def register_routes(routes_instance):
                 if hasattr(route_module, 'register_routes'):
                     group_count = route_module.register_routes(routes_instance)
                     route_count += group_count
+                    logging.info(f"{group_name} routes registered successfully")
+                    logging.info(f"Registered {group_count} {group_name} routes")
                     _registered_routes.extend(route_module.get_route_list() if hasattr(route_module, 'get_route_list') else [])
                 else:
                     logging.warning(f"Route module {group_name} missing register_routes function")
             except ImportError as e:
                 logging.warning(f"Could not import {group_name} routes: {e}")
             except Exception as e:
+                import traceback
                 logging.error(f"Error registering {group_name} routes: {e}")
+                logging.error(traceback.format_exc())
         
         _routes_initialized = True
-        print(f"SageUtils: Registered {route_count} routes across {len(route_groups)} modules")
+        logging.info(f"SageUtils: Registered {route_count} routes across {len(route_groups)} modules")
         return route_count
         
     except Exception as e:

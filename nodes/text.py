@@ -6,6 +6,7 @@ from comfy.comfy_types.node_typing import ComfyNodeABC, InputTypeDict, IO
 from typing_extensions import override
 import random
 import string
+import logging
 
 # Import specific utilities instead of wildcard import
 from ..utils import (
@@ -213,7 +214,7 @@ class Sage_SaveText(ComfyNodeABC):
             with open(full_path, 'w', encoding='utf-8') as file:
                 file.write(text)
 
-            print(f"Text saved to {full_path}")
+            logging.info(f"Text saved to {full_path}")
         return (full_path,)
 
 class Sage_JoinText(ComfyNodeABC):
@@ -414,8 +415,8 @@ class Sage_TextSubstitution(ComfyNodeABC):
             if key.startswith("str_"):
                 sub_dict[key] = value or ""
             else:
-                print(f"Warning: Key '{key}' does not start with 'str_', skipping substitution.")
-        
+                logging.warning(f"Key '{key}' does not start with 'str_', skipping substitution.")
+
         # Create a dynamic Template class with the specified delimiter
         # We need to create this dynamically to avoid class-level variable conflicts
         def create_template_class(delim):
@@ -535,7 +536,7 @@ class Sage_HiDreamE1_Instruction(ComfyNodeABC):
         elif not cleaned_description:
             raise ValueError("Description cannot be empty.")
         elif cleaned_instruction[-1] != ".":
-            print(f"Last character of instruction is '{cleaned_instruction[-1]}'")
+            logging.warning(f"Last character of instruction is '{cleaned_instruction[-1]}'")
             cleaned_instruction += "."
 
         # Generate the prompt
@@ -576,7 +577,7 @@ class Sage_ViewNotes(ComfyNodeABC):
                 notes_files = [f.name for f in notes_path.iterdir() if f.is_file()]
                 notes_files.sort()  # Sort alphabetically
         except Exception as e:
-            print(f"Error reading notes directory: {e}")
+            logging.error(f"Error reading notes directory: {e}")
             notes_files = ["No files found"]
         
         if not notes_files:

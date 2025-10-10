@@ -50,6 +50,12 @@ def register_routes(routes_instance):
             from ..utils.settings import get_setting
             from ..utils import llm_wrapper as llm
             
+            # Ensure initialization has been attempted
+            try:
+                llm.ensure_llm_initialized()
+            except Exception as init_error:
+                logging.warning(f"LLM initialization warning: {init_error}")
+            
             # Check settings
             ollama_enabled = get_setting("enable_ollama", True)
             lmstudio_enabled = get_setting("enable_lmstudio", True)

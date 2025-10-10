@@ -2,6 +2,7 @@
 
 import datetime
 import requests
+import logging
 from requests.exceptions import HTTPError
 
 from .model_cache import cache
@@ -12,13 +13,13 @@ def _get_civitai_json(url):
         r = requests.get(url)
         r.raise_for_status()
     except HTTPError as http_err:
-        print(f"HTTP error occurred: {http_err}")
+        logging.error(f"HTTP error occurred: {http_err}")
         return {"error": f"HTTP error occurred: {http_err}"}
     except Exception as err:
-        print(f"Other error occurred: {err}")
+        logging.error(f"Other error occurred: {err}")
         return {"error": f"Other error occurred: {err}"}
     else:
-        print(f"Retrieved JSON from {url}")
+        logging.debug(f"Retrieved JSON from {url}")
         return r.json()
 
 def get_civitai_model_version_json_by_hash(hash_):
@@ -55,7 +56,7 @@ def get_latest_model_version(model_id):
     """Get the latest published and public model version ID for a model."""
     json_data = get_civitai_model_json(model_id)
     if 'error' in json_data:
-        print(f"Error retrieving model versions: {json_data['error']}")
+        logging.error(f"Error retrieving model versions: {json_data['error']}")
         return None
 
     latest_model = None

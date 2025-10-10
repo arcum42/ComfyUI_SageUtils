@@ -59,22 +59,22 @@ def register_routes(routes_instance):
         timing_data = data.get('data', {})
         
         # Log the timing data
-        print(f"\\n=== Timing Data from {source.upper()} ===")
+        logging.debug(f"\\n=== Timing Data from {source.upper()} ===")
         if 'initializationTimes' in timing_data:
-            print("Initialization Times:")
+            logging.debug("Initialization Times:")
             for milestone, time_ms in timing_data['initializationTimes'].items():
                 if milestone != '__complete__':
-                    print(f"  {milestone}: {time_ms:.4f}ms")
+                    logging.debug(f"  {milestone}: {time_ms:.4f}ms")
             
             if '__complete__' in timing_data['initializationTimes']:
                 total = timing_data['initializationTimes']['__complete__']
-                print(f"  TOTAL: {total:.4f}ms")
+                logging.debug(f"  TOTAL: {total:.4f}ms")
         
         if 'runtimeStats' in timing_data:
-            print("Runtime Statistics:")
+            logging.debug("Runtime Statistics:")
             for operation, stats in timing_data['runtimeStats'].items():
                 if stats:
-                    print(f"  {operation}: {stats.get('count', 0)} calls, "
+                    logging.debug(f"  {operation}: {stats.get('count', 0)} calls, "
                         f"{stats.get('total', 0):.4f}ms total, "
                         f"{stats.get('average', 0):.4f}ms avg")
         

@@ -27,6 +27,7 @@ import comfy.utils
 import comfy.cli_args
 from ..utils.common import get_files_in_dir
 import datetime
+import logging
 
 class Sage_EmptyLatentImagePassthrough(ComfyNodeABC):
     def __init__(self):
@@ -74,11 +75,11 @@ class Sage_LoadImage(ComfyNodeABC):
                 # ComfyUI, why are you like this?
                 # INPUT_TYPES is called multiple times during workflow loading, so cache the results for 20 seconds to avoid rescanning the input directory repeatedly.
                 input_files = cls.input_cache
-                print("Last called within 20 seconds. Using cached input files.")
+                logging.info("Last called within 20 seconds. Using cached input files.")
             else:
-                print("Grabbing input files for Sage_LoadImage node...")
+                logging.info("Grabbing input files for Sage_LoadImage node...")
         else:
-            print("Grabbing input files for Sage_LoadImage node...")
+            logging.info("Grabbing input files for Sage_LoadImage node...")
 
         if not input_files:
             input_files = get_files_in_dir(
@@ -312,7 +313,7 @@ class Sage_GuessResolutionByRatio(ComfyNodeABC):
                 closest_diff = diff
                 closest_ratio = (w, h)
         if closest_ratio is None:
-            print("No close resolution found, defaulting to 1024x1024.")
+            logging.info("No close resolution found, defaulting to 1024x1024.")
             return (1024, 1024)
         width, height = closest_ratio
         # Round to the nearest multiple of 64
@@ -322,7 +323,7 @@ class Sage_GuessResolutionByRatio(ComfyNodeABC):
         if landscape:
             width, height = height, width
 
-        print(f"Guessed resolution: {width}x{height}")
+        logging.info(f"Guessed resolution: {width}x{height}")
         return (width, height)
 
 class Sage_QuickResPicker(ComfyNodeABC):
@@ -374,7 +375,7 @@ class Sage_QuickResPicker(ComfyNodeABC):
         }
         if aspect_ratio not in aspect_ratios:
             aspect_ratio = "1:1"  # Default to 1:1 if not found
-            print(f"Aspect ratio '{aspect_ratio}' not found, defaulting to 1:1.")
+            logging.info(f"Aspect ratio '{aspect_ratio}' not found, defaulting to 1:1.")
 
         width, height = aspect_ratios[aspect_ratio]
         if orientation == "Landscape":

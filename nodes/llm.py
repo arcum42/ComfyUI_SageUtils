@@ -34,6 +34,8 @@ DEFAULT_VISION_PROMPT = "Write a detailed description for this image. Use precis
 # Default text prompt for LLMs.
 DEFAULT_TEXT_PROMPT = "Write a detailed and coherent description of an image based on the provided list of tags."
 
+import logging
+
 # Nodes to construct prompts for LLMs, including extra instructions and advanced options.
 
 class Sage_ConstructLLMPrompt(ComfyNodeABC):
@@ -223,7 +225,7 @@ class Sage_OllamaLLMPromptVision(ComfyNodeABC):
         models = get_cached_ollama_vision_models_for_input_types()
         if not models:
             models = ["(No Ollama vision models available)"]
-            print("No Ollama vision models are available.")
+            logging.info("No Ollama vision models are available.")
         models = sorted(models)
 
         return {
@@ -276,7 +278,7 @@ class Sage_OllamaLLMPromptVisionRefine(ComfyNodeABC):
         models = get_cached_ollama_vision_models_for_input_types()
         if not models:
             models = ["(No Ollama vision models available)"]
-            print("No Ollama vision models are available.")
+            logging.info("No Ollama vision models are available.")
         models = sorted(models)
         
         refine_models = get_cached_ollama_models_for_input_types()
@@ -339,7 +341,7 @@ class Sage_LMStudioLLMPromptText(ComfyNodeABC):
         models = get_cached_lmstudio_models_for_input_types()
         if not models:
             models = ["(LM Studio not available)"]
-            print("LM Studio is not available or no models are loaded.")
+            logging.info("LM Studio is not available or no models are loaded.")
         models = sorted(models)
 
         return {
@@ -382,7 +384,7 @@ class Sage_LMStudioLLMPromptVision(ComfyNodeABC):
         models = get_cached_lmstudio_vision_models_for_input_types()
         if not models:
             models = ["(No LM Studio vision models available)"]
-            print("No LM Studio vision models are available.")
+            logging.info("No LM Studio vision models are available.")
         models = sorted(models)
 
         return {
@@ -430,7 +432,7 @@ class Sage_LMStudioLLMPromptVisionRefine(ComfyNodeABC):
         models = get_cached_lmstudio_vision_models_for_input_types()
         if not models:
             models = ["(No LM Studio vision models available)"]
-            print("No LM Studio vision models are available.")
+            logging.info("No LM Studio vision models are available.")
         models = sorted(models)
         
         refine_models = get_cached_lmstudio_models_for_input_types()

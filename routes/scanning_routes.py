@@ -17,6 +17,7 @@ try:
     import time
     import asyncio
     import pathlib
+    import logging
     
     # Global scan progress storage
     scan_progress_store = {
@@ -112,7 +113,7 @@ try:
                                     total_count += file_count
                                         
                         except Exception as folder_error:
-                            print(f"Error processing folder '{folder_key}': {str(folder_error)}")
+                            logging.error(f"Error processing folder '{folder_key}': {str(folder_error)}")
                             continue
                     
                     # Add category entry if it has any valid paths
@@ -140,12 +141,12 @@ try:
             except Exception as e:
                 import traceback
                 error_details = traceback.format_exc()
-                print(f"SageUtils get available folders error: {error_details}")
+                logging.error(f"SageUtils get available folders error: {error_details}")
                 return web.json_response(
                     {"success": False, "error": f"Failed to get available folders: {str(e)}"}, 
                     status=500
                 )
-
+        
         @routes_instance.get('/sage_cache/scan_progress')
         async def get_scan_progress(request):
             """
@@ -168,12 +169,12 @@ try:
             except Exception as e:
                 import traceback
                 error_details = traceback.format_exc()
-                print(f"SageUtils scan progress error: {error_details}")
+                logging.error(f"SageUtils scan progress error: {error_details}")
                 return web.json_response(
                     {"success": False, "error": f"Failed to get scan progress: {str(e)}"}, 
                     status=500
                 )
-
+        
         @routes_instance.post('/sage_cache/scan_model_folders')
         async def perform_model_scan(request):
             """
@@ -228,7 +229,7 @@ try:
                 
                 import traceback
                 error_details = traceback.format_exc()
-                print(f"SageUtils perform model scan error: {error_details}")
+                logging.error(f"SageUtils perform model scan error: {error_details}")
                 return web.json_response(
                     {"success": False, "error": f"Failed to perform model scan: {str(e)}"}, 
                     status=500
@@ -260,12 +261,12 @@ try:
             except Exception as e:
                 import traceback
                 error_details = traceback.format_exc()
-                print(f"SageUtils cancel scan error: {error_details}")
+                logging.error(f"SageUtils cancel scan error: {error_details}")
                 return web.json_response(
                     {"success": False, "error": f"Failed to cancel scan: {str(e)}"}, 
                     status=500
                 )
-
+        
         # Add routes to tracking list
         _route_list.extend([
             {'method': 'GET', 'path': '/sage_cache/scan_model_folders', 'handler': 'get_available_folders'},
@@ -340,13 +341,13 @@ try:
             scan_progress_store['total'] = len(model_list)
             scan_progress_store['status'] = 'processing_metadata'
             
-            print(f"Found {len(model_list)} models to process")
+            logging.info(f"Found {len(model_list)} models to process")
             
             # Process files with progress updates
             processed_count = 0
             for file_path in model_list:
                 if not scan_progress_store['active']:  # Check if cancelled
-                    print(f"Scan cancelled, stopping at {processed_count}/{len(model_list)} files")
+                    logging.info(f"Scan cancelled, stopping at {processed_count}/{len(model_list)} files")
                     break
                     
                 file_name = os.path.basename(file_path)
@@ -355,14 +356,14 @@ try:
                 
                 # Debug progress update
                 if processed_count % 10 == 0:  # Log every 10 files
-                    print(f"Progress: {processed_count}/{len(model_list)} files processed ({(processed_count/len(model_list)*100):.1f}%)")
+                    logging.debug(f"Progress: {processed_count}/{len(model_list)} files processed ({(processed_count/len(model_list)*100):.1f}%)")
                 
                 try:
                     # Process single file without updating timestamp
                     pull_metadata(file_path, timestamp=False, force_all=force)
                     processed_count += 1
                 except Exception as file_error:
-                    print(f"Error processing {file_path}: {file_error}")
+                    logging.error(f"Error processing {file_path}: {file_error}")
                     # Continue with other files
                     processed_count += 1
                 
@@ -377,7 +378,7 @@ try:
                 'current_file': 'Scan completed'
             })
             
-            print(f"Background scan completed: {processed_count} files processed")
+            logging.info(f"Background scan completed: {processed_count} files processed")
             
         except Exception as scan_error:
             scan_progress_store.update({
@@ -388,14 +389,15 @@ try:
             
             import traceback
             error_details = traceback.format_exc()
-            print(f"Background scan execution error: {error_details}")
+            logging.error(f"Background scan execution error: {error_details}")
 
     def get_route_list():
         """Get list of registered routes for this module."""
         return _route_list.copy()
 
 except ImportError as e:
-    print(f"SageUtils scanning routes import error: {e}")
+    import logging
+    logging.error(f"SageUtils scanning routes import error: {e}")
     
     # Route list for documentation and registration tracking
     _route_list = []

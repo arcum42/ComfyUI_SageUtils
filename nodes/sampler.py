@@ -166,7 +166,6 @@ class Sage_KSampler(ComfyNodeABC):
     DESCRIPTION = "Uses the provided model, positive and negative conditioning to denoise the latent image. Designed to work with the Sampler info node."
 
     def sample(self, model, sampler_info, positive, negative, latent_image, denoise=1.0, advanced_info = None) -> tuple:
-        print(f"KSampler called.")
         if advanced_info is None:
             return nodes.common_ksampler(model, sampler_info["seed"], sampler_info["steps"], sampler_info["cfg"], sampler_info["sampler"], sampler_info["scheduler"], positive, negative, latent_image, denoise=denoise)
         
@@ -221,7 +220,6 @@ class Sage_KSamplerTiledDecoder(ComfyNodeABC):
             latent_result = nodes.common_ksampler(model, sampler_info["seed"], sampler_info["steps"], sampler_info["cfg"], sampler_info["sampler"],  sampler_info["scheduler"], positive, negative, latent_image, denoise=denoise, disable_noise=disable_noise, start_step=advanced_info['start_at_step'], last_step=advanced_info['end_at_step'], force_full_denoise=force_full_denoise)
         
         if tiling_info is not None:
-            print("Tiling info provided")
             t_info_tile_size = tiling_info["tile_size"]
             t_info_overlap = tiling_info["overlap"]
             t_info_temporal_size = tiling_info["temporal_size"]

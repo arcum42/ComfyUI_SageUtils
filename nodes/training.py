@@ -336,7 +336,6 @@ class Sage_Load_Dataset_From_Folder(ComfyNodeABC):
                 else:
                     captions.append("")
 
-        print(f"Captions: {captions}")
         return (batch_images, filenames, captions)
 
 class Sage_TrainingCaptionsToConditioning(ComfyNodeABC):

@@ -142,16 +142,16 @@ def get_ollama_models() -> list[str]:
             return ["(Ollama not available)"]
 
         try:
-            print("Fetching models from Ollama...")
+            logging.info("Fetching models from Ollama...")
             response = ollama_client.list()
-            print(f"Found {len(response.models)} models.")
+            logging.info(f"Found {len(response.models)} models.")
             return [model.model for model in response.models if model.model is not None]
         except Exception as e:
             logging.error(f"Error retrieving models from Ollama: {e}")
             return []
     
     cache = get_llm_cache()
-    print("Fetching Ollama models from cache...")
+    logging.debug("Fetching Ollama models from cache...")
     return cache.get_ollama_models(_fetch_ollama_models)
 
 

@@ -321,9 +321,11 @@ def pull_metadata(file_paths, timestamp = True, force_all = False, pbar = None, 
         file_paths = [file_paths]
     
     if not file_paths:
-        print("No file paths provided.")
+        logging.warning("No file paths provided.")
         return
     
+    num_not_pulled = 0
+
     for file_path in file_paths:
         force = force_all
         hash = cache.hash.get(str(file_path), None)
@@ -350,7 +352,7 @@ def pull_metadata(file_paths, timestamp = True, force_all = False, pbar = None, 
 
         if not force and civitai_val == True:
             if days_since_last_used(file_path) <= metadata_days_recheck:
-                print(f"Pulled metadata within the last {metadata_days_recheck} days. No pull needed.")
+                num_not_pulled += 1
                 pull_json = False
 
         # If force, recalculate hash before any API call
@@ -394,6 +396,9 @@ def pull_metadata(file_paths, timestamp = True, force_all = False, pbar = None, 
 
         if pbar is not None:
             pbar.update(1)
+
+    if num_not_pulled > 0:
+        logging.info(f"Metadata pull complete. Skipped {num_not_pulled} files checked within the last {metadata_days_recheck} days.")
     cache.save()
 
 def lora_to_string(lora_name, model_weight, clip_weight):
