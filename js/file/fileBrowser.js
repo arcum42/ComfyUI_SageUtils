@@ -6,6 +6,9 @@
 // Import API for ComfyUI integration
 import { api } from "../../../../scripts/api.js";
 
+// Import button components
+import { createButton, BUTTON_VARIANTS } from "../components/buttons.js";
+
 /**
  * Configuration object for file browser instances
  */
@@ -146,22 +149,31 @@ export class GenericFileBrowser {
 
         // Create action buttons based on config
         if (this.config.allowCreate) {
-            const createButton = this.createActionButton('Create File', '#4CAF50', () => {
-                this.callbacks.onFileCreate();
+            const createFileButton = createButton('Create File', {
+                variant: BUTTON_VARIANTS.SUCCESS,
+                size: 'small',
+                marginTop: '0',
+                onClick: () => this.callbacks.onFileCreate()
             });
-            actions.appendChild(createButton);
+            actions.appendChild(createFileButton);
         }
 
         if (this.config.allowCreateFolder) {
-            const createFolderButton = this.createActionButton('Create Folder', '#2196F3', () => {
-                this.callbacks.onFolderCreate();
+            const createFolderButton = createButton('Create Folder', {
+                variant: BUTTON_VARIANTS.INFO,
+                size: 'small',
+                marginTop: '0',
+                onClick: () => this.callbacks.onFolderCreate()
             });
             actions.appendChild(createFolderButton);
         }
 
         // Refresh button
-        const refreshButton = this.createActionButton('Refresh', '#FF9800', () => {
-            this.loadFiles();
+        const refreshButton = createButton('Refresh', {
+            variant: BUTTON_VARIANTS.WARNING,
+            size: 'small',
+            marginTop: '0',
+            onClick: () => this.loadFiles()
         });
         actions.appendChild(refreshButton);
 
@@ -173,34 +185,21 @@ export class GenericFileBrowser {
 
     /**
      * Creates an action button
+     * @deprecated Use createButton() from buttons.js instead
      * @param {string} text - Button text
      * @param {string} color - Button color
      * @param {Function} onClick - Click handler
      * @returns {HTMLElement} - Button element
      */
     createActionButton(text, color, onClick) {
-        const button = document.createElement('button');
-        button.textContent = text;
-        button.style.cssText = `
-            background: ${color};
-            color: white;
-            border: none;
-            padding: 4px 8px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 11px;
-            transition: opacity 0.2s;
-        `;
-
-        button.addEventListener('click', onClick);
-        button.addEventListener('mouseenter', () => {
-            button.style.opacity = '0.8';
+        console.warn('createActionButton is deprecated. Use createButton() from buttons.js instead.');
+        return createButton(text, {
+            color,
+            size: 'small',
+            marginTop: '0',
+            onClick,
+            hoverEffect: true
         });
-        button.addEventListener('mouseleave', () => {
-            button.style.opacity = '1';
-        });
-
-        return button;
     }
 
     /**

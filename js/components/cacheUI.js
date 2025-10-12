@@ -3,6 +3,9 @@
  * Reusable UI component factory functions for the cache sidebar
  */
 
+// Import centralized button components
+export { createButton, createIconButton, createButtonGroup, BUTTON_VARIANTS, BUTTON_SIZES, BUTTON_CONFIGS } from './buttons.js';
+
 /**
  * Create a labeled container with consistent styling
  */
@@ -75,22 +78,16 @@ export function createStyledInput(type = 'text', placeholder = '') {
 
 /**
  * Create a styled button
+ * @deprecated Use createButton() from buttons.js instead
  */
 export function createStyledButton(text, backgroundColor = '#4CAF50', icon = '') {
-    const button = document.createElement('button');
-    button.textContent = `${icon} ${text}`.trim();
-    button.style.cssText = `
-        margin-top: 8px;
-        padding: 6px 12px;
-        background: ${backgroundColor};
-        color: white;
-        border: none;
-        border-radius: 4px;
-        cursor: pointer;
-        font-size: 12px;
-    `;
-
-    return button;
+    console.warn('createStyledButton is deprecated. Use createButton() from buttons.js instead.');
+    // Use the centralized button component
+    const { createButton } = require('./buttons.js');
+    return createButton(text, {
+        color: backgroundColor,
+        icon
+    });
 }
 
 /**
@@ -207,8 +204,10 @@ export { createProgressBar } from './progressBar.js';
 
 /**
  * Create a button container for multiple buttons
+ * @deprecated Use createButtonGroup() from buttons.js instead
  */
 export function createButtonContainer() {
+    console.warn('createButtonContainer is deprecated. Use createButtonGroup() from buttons.js instead.');
     const container = document.createElement('div');
     container.style.cssText = `
         display: flex;
@@ -375,16 +374,7 @@ export function createTabButton(text, isActive = false) {
     return button;
 }
 
-/**
- * Pre-defined button configurations
- */
-export const BUTTON_CONFIGS = {
-    refresh: { text: 'Refresh', color: '#4CAF50', icon: '↻' },
-    pull: { text: 'Pull', color: '#2196F3', icon: '⬇' },
-    edit: { text: 'Edit', color: '#FF9800', icon: '✏' },
-    scan: { text: 'Scan All', color: '#9C27B0', icon: '🔍' },
-    report: { text: 'Generate Report', color: '#673AB7', icon: '📊' }
-};
+// BUTTON_CONFIGS has been moved to buttons.js and is re-exported above
 
 /**
  * Pre-defined filter options

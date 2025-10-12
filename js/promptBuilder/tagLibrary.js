@@ -4,6 +4,7 @@
  */
 
 import { tagApi } from '../shared/api/tagApi.js';
+import { createButton, BUTTON_VARIANTS } from '../components/buttons.js';
 
 /**
  * Tag Library class for managing the tag system UI
@@ -548,12 +549,15 @@ export class TagLibrary {
 
     /**
      * Create a button element
+     * @deprecated Use createButton() from buttons.js instead
      */
     createButton(text, onClick) {
-        const button = document.createElement('button');
-        button.textContent = text;
-        button.addEventListener('click', onClick);
-        return button;
+        return createButton(text, {
+            variant: BUTTON_VARIANTS.SECONDARY,
+            size: 'small',
+            marginTop: '4px',
+            onClick
+        });
     }
 
     /**

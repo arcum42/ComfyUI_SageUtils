@@ -41,15 +41,21 @@ import {
     updateCacheInfo
 } from "../shared/api/cacheApi.js";
 
-// Import shared UI components - will be created next
+// Import shared UI components
 import {
     createHeader,
     createFilterSection,
     createSearchSection,
     createToggleSection,
-    createStyledButton,
     createInfoDisplay
 } from "../components/cacheUI.js";
+
+// Import button components
+import {
+    createButton,
+    createConfigButton,
+    BUTTON_VARIANTS
+} from "../components/buttons.js";
 
 // Import file selector components
 import {
@@ -383,19 +389,15 @@ function createModelsFileSelectorWrapper() {
  * @returns {Object} Action buttons object with all button references
  */
 function createModelsActionButtons() {
-    const refreshButton = createStyledButton(BUTTON_CONFIGS.refresh.text, BUTTON_CONFIGS.refresh.color, BUTTON_CONFIGS.refresh.icon);
+    const refreshButton = createConfigButton('refresh');
     
-    const pullButton = createStyledButton(BUTTON_CONFIGS.pull.text, BUTTON_CONFIGS.pull.color, BUTTON_CONFIGS.pull.icon);
-    pullButton.disabled = true; // Initially disabled until a file is selected
-    pullButton.style.opacity = '0.5';
+    const pullButton = createConfigButton('pull', { disabled: true });
 
-    const editButton = createStyledButton(BUTTON_CONFIGS.edit.text, BUTTON_CONFIGS.edit.color, BUTTON_CONFIGS.edit.icon);
-    editButton.disabled = true; // Initially disabled until a file is selected
-    editButton.style.opacity = '0.5';
+    const editButton = createConfigButton('edit', { disabled: true });
 
-    const scanButton = createStyledButton(BUTTON_CONFIGS.scan.text, BUTTON_CONFIGS.scan.color, BUTTON_CONFIGS.scan.icon);
+    const scanButton = createConfigButton('scan');
 
-    const reportButton = createStyledButton(BUTTON_CONFIGS.report.text, BUTTON_CONFIGS.report.color, BUTTON_CONFIGS.report.icon);
+    const reportButton = createConfigButton('report');
 
     return {
         refreshButton,

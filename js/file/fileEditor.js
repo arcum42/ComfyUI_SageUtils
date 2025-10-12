@@ -5,6 +5,7 @@
 
 import { api } from "../../../../scripts/api.js";
 import { FILE_BROWSER_CONFIGS } from './fileBrowser.js';
+import { createButton, BUTTON_VARIANTS } from '../components/buttons.js';
 
 /**
  * Generic File Editor component
@@ -126,26 +127,33 @@ export class GenericFileEditor {
         `;
 
         // Copy from node button
-        this.copyFromNodeButton = this.createActionButton('📥 From Node', '#9c27b0', () => {
-            this.copyFromNode();
+        this.copyFromNodeButton = createButton('📥 From Node', {
+            color: '#9c27b0',
+            size: 'medium',
+            marginTop: '0',
+            onClick: () => this.copyFromNode()
         });
         actions.appendChild(this.copyFromNodeButton);
         
         // Save button
-        this.saveButton = this.createActionButton('Save', '#4CAF50', () => {
-            this.saveFile();
+        this.saveButton = createButton('Save', {
+            variant: BUTTON_VARIANTS.SUCCESS,
+            size: 'medium',
+            marginTop: '0',
+            disabled: true,
+            onClick: () => this.saveFile()
         });
-        this.saveButton.disabled = true;
-        this.saveButton.style.opacity = '0.5';
         actions.appendChild(this.saveButton);
 
         // Delete button (if allowed)
         if (this.config.allowDelete) {
-            this.deleteButton = this.createActionButton('Delete', '#f44336', () => {
-                this.deleteFile();
+            this.deleteButton = createButton('Delete', {
+                variant: BUTTON_VARIANTS.DANGER,
+                size: 'medium',
+                marginTop: '0',
+                disabled: true,
+                onClick: () => this.deleteFile()
             });
-            this.deleteButton.disabled = true;
-            this.deleteButton.style.opacity = '0.5';
             actions.appendChild(this.deleteButton);
         }
 
@@ -157,28 +165,20 @@ export class GenericFileEditor {
 
     /**
      * Creates an action button
+     * @deprecated Use createButton() from buttons.js instead
      * @param {string} text - Button text
      * @param {string} color - Button color
      * @param {Function} onClick - Click handler
      * @returns {HTMLElement} - Button element
      */
     createActionButton(text, color, onClick) {
-        const button = document.createElement('button');
-        button.textContent = text;
-        button.style.cssText = `
-            background: ${color};
-            color: white;
-            border: none;
-            padding: 6px 12px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 12px;
-            transition: opacity 0.2s;
-        `;
-
-        button.addEventListener('click', onClick);
-        
-        return button;
+        console.warn('createActionButton is deprecated. Use createButton() from buttons.js instead.');
+        return createButton(text, {
+            color,
+            size: 'medium',
+            marginTop: '0',
+            onClick
+        });
     }
 
     /**
