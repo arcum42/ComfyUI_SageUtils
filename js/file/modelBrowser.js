@@ -123,9 +123,15 @@ export class ModelBrowser {
             parentContainer.appendChild(this.container);
         }
         
-        // Set up keyboard navigation
+        // Set up keyboard navigation and accessibility
         this.container.addEventListener('keydown', this.handleKeyDown);
         this.container.setAttribute('tabindex', '0');
+        this.container.setAttribute('role', 'application');
+        this.container.setAttribute('aria-label', 'Model Browser');
+        
+        // Make list container a listbox for screen readers
+        this.listContainer.setAttribute('role', 'listbox');
+        this.listContainer.setAttribute('aria-label', 'Models');
         
         return this.container;
     }
@@ -284,6 +290,13 @@ export class ModelBrowser {
         item.className = 'model-browser-item';
         item.dataset.hash = hash;
         item.dataset.index = index;
+        
+        // ARIA attributes for accessibility
+        item.setAttribute('role', 'option');
+        item.setAttribute('aria-selected', isSelected.toString());
+        const modelName = info?.model?.name || info?.name || path.split('/').pop();
+        item.setAttribute('aria-label', `Model: ${modelName}`);
+        
         item.style.cssText = `
             padding: 12px 15px;
             padding-left: ${15 + (depth * 20)}px;
@@ -625,11 +638,22 @@ export class ModelBrowser {
             const index = parseInt(item.dataset.index);
             const isHighlighted = this.highlightedIndex === index;
             
-            // Update background with more prominent selected state
+            // Update visual styling with more prominent selected state
             item.style.background = isSelected ? '#2d5a2d' : isHighlighted ? '#353535' : '#2a2a2a';
             item.style.borderLeftColor = isSelected ? '#4CAF50' : 'transparent';
             item.style.borderLeftWidth = isSelected ? '4px' : '4px';
             item.style.boxShadow = isSelected ? 'inset 0 0 10px rgba(76, 175, 80, 0.2)' : 'none';
+            
+            // Update ARIA attributes for accessibility
+            item.setAttribute('aria-selected', isSelected.toString());
+            
+            // Add focus indicator for highlighted item
+            if (isHighlighted) {
+                item.style.outline = '2px solid #4CAF50';
+                item.style.outlineOffset = '-2px';
+            } else {
+                item.style.outline = 'none';
+            }
         });
     }
     
@@ -638,27 +662,38 @@ export class ModelBrowser {
      * @param {KeyboardEvent} e - Keyboard event
      */
     handleKeyDown(e) {
-        if (this.filteredModels.length === 0) return;
+        if (this.filteredModels.length === 0 && e.key !== 'Escape') return;
         
         switch (e.key) {
             case 'ArrowDown':
                 e.preventDefault();
-                this.highlightedIndex = Math.min(
-                    this.highlightedIndex + 1,
-                    this.filteredModels.length - 1
-                );
+                // Initialize to first item if no highlight
+                if (this.highlightedIndex === -1) {
+                    this.highlightedIndex = 0;
+                } else {
+                    this.highlightedIndex = Math.min(
+                        this.highlightedIndex + 1,
+                        this.filteredModels.length - 1
+                    );
+                }
                 this.updateSelectionVisuals();
                 this.scrollToHighlighted();
                 break;
                 
             case 'ArrowUp':
                 e.preventDefault();
-                this.highlightedIndex = Math.max(this.highlightedIndex - 1, 0);
+                // Initialize to first item if no highlight
+                if (this.highlightedIndex === -1) {
+                    this.highlightedIndex = 0;
+                } else {
+                    this.highlightedIndex = Math.max(this.highlightedIndex - 1, 0);
+                }
                 this.updateSelectionVisuals();
                 this.scrollToHighlighted();
                 break;
                 
             case 'Enter':
+            case ' ': // Spacebar also selects
                 e.preventDefault();
                 if (this.highlightedIndex >= 0 && this.highlightedIndex < this.filteredModels.length) {
                     const model = this.filteredModels[this.highlightedIndex];
@@ -676,6 +711,32 @@ export class ModelBrowser {
             case 'End':
                 e.preventDefault();
                 this.highlightedIndex = this.filteredModels.length - 1;
+                this.updateSelectionVisuals();
+                this.scrollToHighlighted();
+                break;
+                
+            case 'Escape':
+                e.preventDefault();
+                this.clearSelection();
+                this.highlightedIndex = -1;
+                this.updateSelectionVisuals();
+                break;
+                
+            case 'PageDown':
+                e.preventDefault();
+                // Jump down by ~10 items
+                this.highlightedIndex = Math.min(
+                    this.highlightedIndex + 10,
+                    this.filteredModels.length - 1
+                );
+                this.updateSelectionVisuals();
+                this.scrollToHighlighted();
+                break;
+                
+            case 'PageUp':
+                e.preventDefault();
+                // Jump up by ~10 items
+                this.highlightedIndex = Math.max(this.highlightedIndex - 10, 0);
                 this.updateSelectionVisuals();
                 this.scrollToHighlighted();
                 break;
@@ -832,7 +893,12 @@ export class ModelBrowser {
     /**
      * Renders or re-renders the model list
      */
+    /**
+     * Renders the model list (either flat or hierarchical)
+     */
     renderList() {
+        const startTime = performance.now();
+        
         // Clear existing items (except empty message)
         const items = this.listContainer.querySelectorAll('.model-browser-item, .model-folder-item');
         items.forEach(item => item.remove());
@@ -863,17 +929,40 @@ export class ModelBrowser {
         if (this.highlightedIndex >= this.filteredModels.length) {
             this.highlightedIndex = this.filteredModels.length - 1;
         }
+        
+        const renderTime = performance.now() - startTime;
+        console.log(`[ModelBrowser] Rendered ${this.filteredModels.length} models in ${renderTime.toFixed(2)}ms`);
     }
     
     /**
      * Renders models in a flat list
      */
+    /**
+     * Renders models in flat list view
+     * Uses batch rendering for better performance with large lists
+     */
     renderFlat() {
-        // Create and append model items
-        this.filteredModels.forEach((modelData, index) => {
-            const item = this.createModelItem(modelData, index);
-            this.listContainer.appendChild(item);
-        });
+        const BATCH_SIZE = 50; // Render 50 items at a time
+        let currentIndex = 0;
+        
+        const renderBatch = () => {
+            const endIndex = Math.min(currentIndex + BATCH_SIZE, this.filteredModels.length);
+            const fragment = document.createDocumentFragment();
+            
+            for (let i = currentIndex; i < endIndex; i++) {
+                const item = this.createModelItem(this.filteredModels[i], i);
+                fragment.appendChild(item);
+            }
+            
+            this.listContainer.appendChild(fragment);
+            currentIndex = endIndex;
+            
+            if (currentIndex < this.filteredModels.length) {
+                requestAnimationFrame(renderBatch);
+            }
+        };
+        
+        renderBatch();
     }
     
     /**

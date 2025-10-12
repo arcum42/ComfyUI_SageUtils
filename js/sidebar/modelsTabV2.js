@@ -30,89 +30,23 @@ import { pullMetadata, updateCacheInfo } from "../shared/api/cacheApi.js";
 import { escapeHtml, generateHtmlContent, openHtmlReport } from "../reports/reportGenerator.js";
 
 /**
- * Creates the tab header section
- * @returns {HTMLElement} Header element
- */
-function createModelsHeader() {
-    const header = createSection('Model Browser V2', {
-        subtitle: 'Browse and manage your model cache with enhanced UI',
-        collapsible: false,
-        styles: {
-            padding: '15px',
-            marginBottom: '15px'
-        }
-    });
-    
-    return header;
-}
-
-/**
- * Creates multi-model action buttons (top section)
- * These actions work on the entire collection or don't require selection
+ * Creates the unified header section with filters and actions
  * @param {Function} onRefresh - Refresh button callback
  * @param {Function} onScan - Scan button callback
  * @param {Function} onReport - Report button callback
- * @returns {Object} Section and button references
+ * @returns {Object} Header section and all control references
  */
-function createMultiModelActions(onRefresh, onScan, onReport) {
-    const section = createSection('Collection Actions', {
+function createHeaderAndControls(onRefresh, onScan, onReport) {
+    const section = createSection('Model Browser', null, {
         collapsible: false,
-        styles: {
+        padding: '12px',  // Control the content padding
+        style: {
             marginBottom: '15px'
         }
     });
     
-    const buttonContainer = createFlexContainer({
-        gap: '8px',
-        wrap: true
-    });
-    
-    const refreshButton = createConfigButton('refresh');
-    refreshButton.setAttribute('data-test', 'refresh-btn');
-    refreshButton.addEventListener('click', onRefresh);
-    
-    const scanButton = createConfigButton('scan');
-    scanButton.setAttribute('data-test', 'scan-btn');
-    scanButton.addEventListener('click', onScan);
-    
-    const reportButton = createConfigButton('report');
-    reportButton.setAttribute('data-test', 'report-btn');
-    reportButton.addEventListener('click', onReport);
-    
-    buttonContainer.appendChild(refreshButton);
-    buttonContainer.appendChild(scanButton);
-    buttonContainer.appendChild(reportButton);
-    
-    section.appendChild(buttonContainer);
-    
-    return {
-        section,
-        refreshButton,
-        scanButton,
-        reportButton
-    };
-}
-
-/**
- * Creates filter controls section using components
- * @returns {Object} Filter controls and references
- */
-function createFilterControls() {
-    const section = createSection('Filters & Search', {
-        collapsible: false,
-        styles: {
-            marginBottom: '15px'
-        }
-    });
-    
-    // Create filter grid
-    const filterGrid = document.createElement('div');
-    filterGrid.style.cssText = `
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-        gap: 10px;
-        margin-bottom: 10px;
-    `;
+    // Get the content area to append our controls to
+    const contentArea = section.querySelector('div:last-child');
     
     // Helper to create labeled select
     const createLabeledSelect = (labelText, items) => {
@@ -136,6 +70,15 @@ function createFilterControls() {
         return { container, select };
     };
     
+    // Create filter grid
+    const filterGrid = document.createElement('div');
+    filterGrid.style.cssText = `
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 10px;
+        margin-bottom: 10px;
+    `;
+    
     // Folder type filter
     const { container: folderContainer, select: folderSelect } = createLabeledSelect('Folder:', FILTER_OPTIONS.folderType);
     
@@ -154,7 +97,7 @@ function createFilterControls() {
         gap: '8px',
         alignItems: 'center',
         styles: {
-            marginBottom: '10px'
+            marginBottom: '8px'  // Space before search input
         }
     });
     
@@ -203,14 +146,42 @@ function createFilterControls() {
         placeholder: 'Search models by name or path...',
         style: {
             width: '100%',
+            marginTop: '8px',     // Space from sort controls
+            marginBottom: '8px'   // Space before buttons
+        }
+    });
+    
+    // Create action buttons (below search)
+    const buttonContainer = createFlexContainer({
+        gap: '8px',
+        wrap: true,
+        styles: {
+            marginTop: '0',
             marginBottom: '0'
         }
     });
     
-    // Assemble section
-    section.appendChild(filterGrid);
-    section.appendChild(sortContainer);
-    section.appendChild(searchInput);
+    const refreshButton = createConfigButton('refresh');
+    refreshButton.setAttribute('data-test', 'refresh-btn');
+    refreshButton.addEventListener('click', onRefresh);
+    
+    const scanButton = createConfigButton('scan');
+    scanButton.setAttribute('data-test', 'scan-btn');
+    scanButton.addEventListener('click', onScan);
+    
+    const reportButton = createConfigButton('report');
+    reportButton.setAttribute('data-test', 'report-btn');
+    reportButton.addEventListener('click', onReport);
+    
+    buttonContainer.appendChild(refreshButton);
+    buttonContainer.appendChild(scanButton);
+    buttonContainer.appendChild(reportButton);
+    
+    // Assemble section - append to contentArea, not section
+    contentArea.appendChild(filterGrid);
+    contentArea.appendChild(sortContainer);
+    contentArea.appendChild(searchInput);
+    contentArea.appendChild(buttonContainer);
     
     // Restore persisted filter values from state
     const savedFilters = selectors.modelFilters();
@@ -243,7 +214,10 @@ function createFilterControls() {
         updatesSelect,
         sortSelect,
         sortOrderButton,
-        searchInput
+        searchInput,
+        refreshButton,
+        scanButton,
+        reportButton
     };
 }
 
@@ -634,17 +608,13 @@ export function createModelsTabV2(container) {
         initialMessage: 'Ready...'
     });
     
-    // Create header
-    const header = createModelsHeader();
-    container.appendChild(header);
-    
     // Track current state
     let selectedModelHash = null;
     let currentFilters = selectors.modelFilters() || {};
     let showNsfw = currentFilters.showNsfw !== undefined ? currentFilters.showNsfw : false;
     
-    // Create multi-model actions
-    const multiModelActions = createMultiModelActions(
+    // Create unified header with filters and actions
+    const headerControls = createHeaderAndControls(
         // Refresh handler
         async () => {
             await loadModels();
@@ -658,11 +628,7 @@ export function createModelsTabV2(container) {
             await generateReport();
         }
     );
-    container.appendChild(multiModelActions.section);
-    
-    // Create filter controls
-    const filterControls = createFilterControls();
-    container.appendChild(filterControls.section);
+    container.appendChild(headerControls.section);
     
     // Create ModelBrowser
     const modelBrowser = new ModelBrowser({
@@ -764,14 +730,14 @@ export function createModelsTabV2(container) {
      * Applies current filters to the model browser
      */
     function applyCurrentFilters() {
-        const sortValue = filterControls.sortSelect.value;
-        const isDescending = filterControls.sortOrderButton.textContent === '↓';
+        const sortValue = headerControls.sortSelect.value;
+        const isDescending = headerControls.sortOrderButton.textContent === '↓';
         
         const filters = {
-            search: filterControls.searchInput.value,
-            type: filterControls.folderSelect.value,
-            lastUsed: filterControls.lastUsedSelect.value,
-            updates: filterControls.updatesSelect.value,
+            search: headerControls.searchInput.value,
+            type: headerControls.folderSelect.value,
+            lastUsed: headerControls.lastUsedSelect.value,
+            updates: headerControls.updatesSelect.value,
             sort: isDescending ? `${sortValue}-desc` : sortValue
         };
         
@@ -932,8 +898,8 @@ export function createModelsTabV2(container) {
      */
     async function generateReport() {
         try {
-            multiModelActions.reportButton.disabled = true;
-            multiModelActions.reportButton.textContent = 'Generating...';
+            headerControls.reportButton.disabled = true;
+            headerControls.reportButton.textContent = 'Generating...';
             
             progressBar.updateTitle('Generating Report');
             progressBar.reset();
@@ -959,15 +925,15 @@ export function createModelsTabV2(container) {
             
             progressBar.updateProgress(20, `Processing ${models.length} models...`);
             
-            const sortValue = filterControls.sortSelect.value;
-            const isDescending = filterControls.sortOrderButton.textContent === '↓';
+            const sortValue = headerControls.sortSelect.value;
+            const isDescending = headerControls.sortOrderButton.textContent === '↓';
             const reportSortBy = isDescending ? `${sortValue}-desc` : sortValue;
             
             const htmlContent = await generateHtmlContent({
                 models: models,
                 title: 'SageUtils Model Cache Report',
                 sortBy: reportSortBy,
-                folderFilter: filterControls.folderSelect.value,
+                folderFilter: headerControls.folderSelect.value,
                 progressCallback: (progress, message) => {
                     const adjustedProgress = 40 + (progress * 0.55);
                     progressBar.updateProgress(adjustedProgress, message);
@@ -987,34 +953,34 @@ export function createModelsTabV2(container) {
             progressBar.hide();
             alertDialog(`Failed to generate report: ${error.message}`, 'Error');
         } finally {
-            multiModelActions.reportButton.disabled = false;
-            multiModelActions.reportButton.textContent = 'Report';
+            headerControls.reportButton.disabled = false;
+            headerControls.reportButton.textContent = 'Report';
         }
     }
     
     // ==================== Filter Event Listeners ====================
     
-    filterControls.folderSelect.addEventListener('change', () => {
+    headerControls.folderSelect.addEventListener('change', () => {
         applyCurrentFilters();
     });
     
-    filterControls.lastUsedSelect.addEventListener('change', () => {
+    headerControls.lastUsedSelect.addEventListener('change', () => {
         applyCurrentFilters();
     });
     
-    filterControls.updatesSelect.addEventListener('change', () => {
+    headerControls.updatesSelect.addEventListener('change', () => {
         applyCurrentFilters();
     });
     
-    filterControls.sortSelect.addEventListener('change', () => {
+    headerControls.sortSelect.addEventListener('change', () => {
         applyCurrentFilters();
     });
     
-    filterControls.sortOrderButton.addEventListener('click', () => {
+    headerControls.sortOrderButton.addEventListener('click', () => {
         applyCurrentFilters();
     });
     
-    filterControls.searchInput.addEventListener('input', () => {
+    headerControls.searchInput.addEventListener('input', () => {
         applyCurrentFilters();
     });
     
