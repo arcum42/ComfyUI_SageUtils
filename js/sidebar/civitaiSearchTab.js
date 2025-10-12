@@ -14,6 +14,8 @@ import {
     createDialog
 } from '../components/dialogManager.js';
 
+import { createButton, BUTTON_VARIANTS } from '../components/buttons.js';
+
 import { escapeHtml, formatFileSize } from '../reports/reportGenerator.js';
 
 /**
@@ -186,18 +188,14 @@ function createSearchForm() {
     `;
     
     // Search button
-    const searchButton = document.createElement('button');
-    searchButton.id = 'civitai-search-button';
-    searchButton.textContent = 'Search';
-    searchButton.style.cssText = `
-        padding: 8px 20px;
-        background: #4CAF50;
-        color: white;
-        border: none;
-        border-radius: 4px;
-        cursor: pointer;
-        font-weight: bold;
-    `;
+    const searchButton = createButton('Search', {
+        id: 'civitai-search-button',
+        variant: BUTTON_VARIANTS.SUCCESS,
+        styles: {
+            padding: '8px 20px',
+            fontWeight: 'bold'
+        }
+    });
     
     // NSFW toggle
     const nsfwToggle = document.createElement('label');
@@ -510,32 +508,14 @@ function displaySearchResults(container, results, options = {}) {
     
     // Add Next button if more pages available
     if (onNextPage) {
-        const nextButton = document.createElement('button');
-        nextButton.id = 'next-page-btn';
-        nextButton.textContent = '📄 Load More Results';
-        nextButton.style.cssText = `
-            padding: 10px 20px;
-            background: #4CAF50;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-weight: bold;
-            font-size: 14px;
-            transition: background 0.3s ease;
-        `;
-        
-        nextButton.addEventListener('click', onNextPage);
-        
-        nextButton.addEventListener('mouseenter', () => {
-            if (!nextButton.disabled) {
-                nextButton.style.background = '#45a049';
-            }
-        });
-        
-        nextButton.addEventListener('mouseleave', () => {
-            if (!nextButton.disabled) {
-                nextButton.style.background = '#4CAF50';
+        const nextButton = createButton('📄 Load More Results', {
+            id: 'next-page-btn',
+            variant: BUTTON_VARIANTS.SUCCESS,
+            onClick: onNextPage,
+            styles: {
+                padding: '10px 20px',
+                fontWeight: 'bold',
+                fontSize: '14px'
             }
         });
         

@@ -9,11 +9,14 @@
  * - Progress tracking with cancel support
  */
 
+import { createDialog } from '../components/dialogManager.js';
 import { notifications } from '../shared/notifications.js';
 
 class ModelScanDialog {
     constructor(options = {}) {
-        this.dialog = null;
+        this.dialogObj = null;
+        this.dialog = null;  // Will be the dialog container element
+        this.contentArea = null;
         this.isScanning = false;
         this.cancelRequested = false;
         this.currentRequest = null;
@@ -32,504 +35,428 @@ class ModelScanDialog {
      * Show the model scan dialog
      */
     async show() {
-        if (this.dialog) {
-            this.dialog.remove();
+        if (this.dialogObj) {
+            this.dialogObj.close();
         }
 
-        this.dialog = this.createDialog();
-        document.body.appendChild(this.dialog);
-        
-        // Center the dialog and wait for it to be ready
-        await this.centerDialog();
+        this.buildDialog();
+        this.dialogObj.show();
         
         // Load available folders
         await this.loadAvailableFolders();
     }
 
     /**
-     * Create the dialog DOM structure
+     * Build the dialog structure using dialogManager
      */
-    createDialog() {
-        const dialog = document.createElement('div');
-        dialog.className = 'model-scan-dialog-overlay';
-        dialog.innerHTML = `
-            <div class="model-scan-dialog">
-                <div class="model-scan-header">
-                    <h3>Model Metadata Scan</h3>
-                    <button class="close-btn" type="button">&times;</button>
-                </div>
-                
-                <div class="model-scan-content">
-                    <div class="scan-options">
-                        <div class="option-group">
-                            <label class="option-label">
-                                <strong>Scan Folders:</strong>
-                            </label>
-                            <div class="folder-list" id="folderList">
-                                <div class="loading">Loading folders...</div>
-                            </div>
-                            <div class="folder-summary" id="folderSummary" style="display: none;">
-                                <small class="help-text">
-                                    <span id="selectedFolderCount">0</span> folders selected, 
-                                    <span id="totalFileCount">0</span> files total
-                                </small>
-                            </div>
-                        </div>
-                        
-                        <div class="option-group">
-                            <label class="checkbox-label">
-                                <input type="checkbox" id="forceRefresh" />
-                                Force metadata refresh (ignore cache)
-                            </label>
-                            <small class="help-text">
-                                Check to re-download metadata even if recently cached
-                            </small>
-                        </div>
-                        
-                        <div class="option-group">
-                            <label class="checkbox-label">
-                                <input type="checkbox" id="includeCached" checked />
-                                Include models already in cache
-                            </label>
-                            <small class="help-text">
-                                Uncheck to only scan new/modified models
-                            </small>
-                        </div>
-                        
-                        <div class="option-group">
-                            <label for="rateLimitDelay" class="option-label">
-                                Civitai API Rate Limit (ms):
-                            </label>
-                            <input type="number" id="rateLimitDelay" value="1000" min="100" max="5000" step="100" />
-                            <small class="help-text">
-                                Delay between API requests to prevent rate limiting (recommended: 1000ms)
-                            </small>
-                        </div>
-                    </div>
-                    
-                    <div class="scan-progress" id="scanProgress" style="display: none;">
-                        <div class="progress-info">
-                            <div class="progress-stats">
-                                <span id="progressText">Initializing scan...</span>
-                                <span id="progressStats" class="stats-text"></span>
-                            </div>
-                            <div class="progress-time">
-                                <span id="elapsedTime">00:00</span>
-                            </div>
-                        </div>
-                        <div class="progress-bar-container">
-                            <div class="progress-bar" id="progressBar">
-                                <div class="progress-fill" id="progressFill"></div>
-                            </div>
-                            <div class="progress-percentage" id="progressPercentage">0%</div>
-                        </div>
-                        <div class="scan-log" id="scanLog"></div>
-                    </div>
-                </div>
-                
-                <div class="model-scan-footer">
-                    <button class="btn btn-secondary" id="cancelBtn">Cancel</button>
-                    <button class="btn btn-primary" id="startScanBtn">Start Scan</button>
-                </div>
-            </div>
+    buildDialog() {
+        // Create the main content container
+        const content = document.createElement('div');
+        content.style.cssText = `
+            min-width: 550px;
+            max-width: 600px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
         `;
 
-        this.addDialogStyles();
-        this.bindEvents(dialog);
-        return dialog;
-    }
+        // Create scan options section
+        const scanOptions = this.createScanOptionsSection();
+        content.appendChild(scanOptions);
 
-    /**
-     * Add CSS styles for the dialog
-     */
-    addDialogStyles() {
-        if (document.getElementById('model-scan-dialog-styles')) {
-            return;
-        }
+        // Create progress section (hidden initially)
+        const progressSection = this.createProgressSection();
+        content.appendChild(progressSection);
 
-        const style = document.createElement('style');
-        style.id = 'model-scan-dialog-styles';
-        style.textContent = `
-            .model-scan-dialog-overlay {
-                position: fixed;
-                top: 0;
-                left: 0;
-                right: 0;
-                bottom: 0;
-                background: rgba(0, 0, 0, 0.7);
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                z-index: 10000;
+        // Create the dialog using dialogManager
+        this.dialogObj = createDialog({
+            title: 'Model Metadata Scan',
+            content: content,
+            width: '600px',
+            height: 'auto',
+            showFooter: true,
+            closeOnOverlayClick: false,
+            onClose: () => {
+                if (!this.isScanning) {
+                    this.cleanup();
+                }
             }
-            
-            .model-scan-dialog {
-                background: var(--comfy-menu-bg);
-                border: 1px solid var(--border-color);
-                border-radius: 8px;
-                width: 90%;
-                max-width: 600px;
-                max-height: 80vh;
-                display: flex;
-                flex-direction: column;
-                box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
-            }
-            
-            .model-scan-header {
-                padding: 16px 20px;
-                border-bottom: 1px solid var(--border-color);
-                display: flex;
-                align-items: center;
-                justify-content: space-between;
-            }
-            
-            .model-scan-header h3 {
-                margin: 0;
-                color: var(--input-text);
-                font-size: 18px;
-            }
-            
-            .close-btn {
-                background: none;
-                border: none;
-                font-size: 24px;
-                cursor: pointer;
-                color: var(--input-text);
-                padding: 0;
-                line-height: 1;
-            }
-            
-            .close-btn:hover {
-                color: var(--error-text);
-            }
-            
-            .model-scan-content {
-                flex: 1;
-                padding: 20px;
-                overflow-y: auto;
-            }
-            
-            .option-group {
-                margin-bottom: 20px;
-            }
-            
-            .option-label {
-                display: block;
-                margin-bottom: 8px;
-                color: var(--input-text);
-                font-weight: 500;
-            }
-            
-            .checkbox-label {
-                display: flex;
-                align-items: center;
-                gap: 8px;
-                color: var(--input-text);
-                cursor: pointer;
-            }
-            
-            .checkbox-label input[type="checkbox"] {
-                margin: 0;
-            }
-            
-            .help-text {
-                display: block;
-                margin-top: 4px;
-                color: var(--descrip-text);
-                font-size: 12px;
-                line-height: 1.4;
-            }
-            
-            .folder-list {
-                border: 1px solid var(--border-color);
-                border-radius: 4px;
-                max-height: 150px;
-                overflow-y: auto;
-                background: var(--comfy-input-bg);
-            }
-            
-            .folder-item {
-                padding: 8px 12px;
-                border-bottom: 1px solid var(--border-color);
-                display: flex;
-                align-items: center;
-                gap: 8px;
-            }
-            
-            .folder-item:last-child {
-                border-bottom: none;
-            }
-            
-            .folder-item:hover {
-                background: var(--comfy-input-bg);
-                filter: brightness(1.1);
-            }
-            
-            .folder-item input[type="checkbox"] {
-                margin: 0;
-            }
-            
-            .folder-name {
-                flex: 1;
-                color: var(--input-text);
-                font-family: monospace;
-                font-size: 13px;
-            }
-            
-            .folder-count {
-                color: var(--descrip-text);
-                font-size: 12px;
-            }
-            
-            .loading {
-                padding: 20px;
-                text-align: center;
-                color: var(--descrip-text);
-            }
-            
-            .folder-summary {
-                margin-top: 8px;
-                padding: 8px 12px;
-                background: var(--comfy-menu-bg);
-                border: 1px solid var(--border-color);
-                border-radius: 4px;
-            }
-            
-            .folder-summary .help-text {
-                margin: 0;
-                font-weight: 500;
-                color: var(--input-text);
-            }
-            
-            #rateLimitDelay {
-                width: 100px;
-                padding: 6px 8px;
-                border: 1px solid var(--border-color);
-                border-radius: 4px;
-                background: var(--comfy-input-bg);
-                color: var(--input-text);
-            }
-            
-            .scan-progress {
-                border: 1px solid var(--border-color);
-                border-radius: 6px;
-                padding: 16px;
-                background: var(--comfy-input-bg);
-            }
-            
-            .progress-info {
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                margin-bottom: 12px;
-            }
-            
-            .progress-stats {
-                flex: 1;
-            }
-            
-            #progressText {
-                display: block;
-                color: var(--input-text);
-                font-weight: 500;
-                margin-bottom: 4px;
-            }
-            
-            .stats-text {
-                color: var(--descrip-text);
-                font-size: 13px;
-            }
-            
-            .progress-time {
-                color: var(--descrip-text);
-                font-size: 14px;
-                font-family: monospace;
-            }
-            
-            .progress-bar-container {
-                display: flex;
-                align-items: center;
-                gap: 12px;
-                margin-bottom: 12px;
-            }
-            
-            .progress-bar {
-                flex: 1;
-                height: 20px;
-                background: #2a2a2a;
-                background: var(--comfy-menu-bg, #2a2a2a);
-                border: 1px solid #555;
-                border: 1px solid var(--border-color, #555);
-                border-radius: 10px;
-                overflow: hidden;
-                position: relative;
-            }
-            
-            .progress-fill {
-                height: 100%;
-                background: linear-gradient(90deg, #007acc, #005a9e);
-                background: linear-gradient(90deg, var(--primary-color, #007acc), var(--primary-color-hover, #005a9e));
-                transition: width 0.3s ease;
-                width: 0%;
-            }
-            
-            .progress-percentage {
-                min-width: 45px;
-                text-align: right;
-                color: var(--input-text);
-                font-family: monospace;
-                font-size: 13px;
-            }
-            
-            .scan-log {
-                max-height: 120px;
-                overflow-y: auto;
-                font-family: monospace;
-                font-size: 12px;
-                line-height: 1.4;
-                background: var(--comfy-menu-bg);
-                border: 1px solid var(--border-color);
-                border-radius: 4px;
-                padding: 8px;
-            }
-            
-            .log-entry {
-                margin-bottom: 2px;
-                color: var(--descrip-text);
-            }
-            
-            .log-entry.success {
-                color: var(--success-text);
-            }
-            
-            .log-entry.error {
-                color: var(--error-text);
-            }
-            
-            .log-entry.info {
-                color: var(--info-text);
-            }
-            
-            .model-scan-footer {
-                padding: 16px 20px;
-                border-top: 1px solid var(--border-color);
-                display: flex;
-                justify-content: flex-end;
-                gap: 12px;
-            }
-            
-            .btn {
-                padding: 8px 16px;
-                border: none;
-                border-radius: 4px;
-                font-size: 14px;
-                cursor: pointer;
-                transition: all 0.2s;
-            }
-            
-            .btn-primary {
-                background: var(--primary-color);
-                color: white;
-            }
-            
-            .btn-primary:hover {
-                background: var(--primary-color-hover);
-            }
-            
-            .btn-primary:disabled {
-                background: var(--border-color);
-                cursor: not-allowed;
-            }
-            
-            .btn-secondary {
-                background: var(--comfy-input-bg);
-                color: var(--input-text);
-                border: 1px solid var(--border-color);
-            }
-            
-            .btn-secondary:hover {
-                background: var(--comfy-menu-bg);
-            }
-        `;
-        document.head.appendChild(style);
-    }
-
-    /**
-     * Bind event handlers
-     */
-    bindEvents(dialog) {
-        // Close button
-        dialog.querySelector('.close-btn').addEventListener('click', () => {
-            this.close();
         });
 
-        // Cancel button
-        const cancelBtn = dialog.querySelector('#cancelBtn');
-        cancelBtn.addEventListener('click', () => {
+        // Store references to key elements
+        this.dialog = this.dialogObj.dialog;
+        this.contentArea = this.dialogObj.contentArea;
+        
+        // Add footer buttons
+        this.dialogObj.addFooterButton('Cancel', () => {
             if (this.isScanning) {
                 this.cancelScan();
             } else {
                 this.close();
             }
-        });
+        }, { background: '#666', id: 'cancelBtn' });
 
-        // Start scan button
-        dialog.querySelector('#startScanBtn').addEventListener('click', () => {
+        this.dialogObj.addFooterButton('Start Scan', () => {
             this.startScan();
-        });
+        }, { background: '#007acc', id: 'startScanBtn' });
 
-        // Close on overlay click
-        dialog.addEventListener('click', (e) => {
-            if (e.target === dialog) {
-                if (!this.isScanning) {
-                    this.close();
-                }
-            }
-        });
-
-        // Prevent closing during scan with Escape
-        document.addEventListener('keydown', this.handleKeydown.bind(this));
+        // Setup keyboard handlers
+        this.setupKeyboardHandlers();
     }
 
     /**
-     * Handle keyboard events
+     * Create the scan options section
      */
-    handleKeydown(e) {
-        if (e.key === 'Escape' && !this.isScanning) {
-            this.close();
-        }
+    createScanOptionsSection() {
+        const section = document.createElement('div');
+        section.className = 'scan-options';
+        section.style.cssText = `
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        `;
+
+        // Folder selection
+        const folderGroup = this.createFolderSelectionGroup();
+        section.appendChild(folderGroup);
+
+        // Force refresh checkbox
+        const forceRefreshGroup = this.createCheckboxOption(
+            'forceRefresh',
+            'Force metadata refresh (ignore cache)',
+            'Check to re-download metadata even if recently cached',
+            false
+        );
+        section.appendChild(forceRefreshGroup);
+
+        // Include cached checkbox
+        const includeCachedGroup = this.createCheckboxOption(
+            'includeCached',
+            'Include models already in cache',
+            'Uncheck to only scan new/modified models',
+            true
+        );
+        section.appendChild(includeCachedGroup);
+
+        // Rate limit input
+        const rateLimitGroup = this.createRateLimitGroup();
+        section.appendChild(rateLimitGroup);
+
+        return section;
     }
 
     /**
-     * Center the dialog on screen
+     * Create folder selection group
+     */
+    createFolderSelectionGroup() {
+        const group = document.createElement('div');
+        group.className = 'option-group';
+        group.style.cssText = `
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        `;
+
+        const label = document.createElement('label');
+        label.className = 'option-label';
+        label.innerHTML = '<strong>Scan Folders:</strong>';
+        label.style.cssText = `
+            color: var(--input-text);
+            font-weight: 500;
+        `;
+
+        const folderList = document.createElement('div');
+        folderList.id = 'folderList';
+        folderList.className = 'folder-list';
+        folderList.style.cssText = `
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            max-height: 150px;
+            overflow-y: auto;
+            background: var(--comfy-input-bg);
+        `;
+        folderList.innerHTML = '<div class="loading" style="padding: 20px; text-align: center; color: var(--descrip-text);">Loading folders...</div>';
+
+        const folderSummary = document.createElement('div');
+        folderSummary.id = 'folderSummary';
+        folderSummary.className = 'folder-summary';
+        folderSummary.style.cssText = `
+            display: none;
+            padding: 8px 12px;
+            background: var(--comfy-menu-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+        `;
+        folderSummary.innerHTML = `
+            <small class="help-text" style="margin: 0; font-weight: 500; color: var(--input-text); font-size: 12px;">
+                <span id="selectedFolderCount">0</span> folders selected, 
+                <span id="totalFileCount">0</span> files total
+            </small>
+        `;
+
+        group.appendChild(label);
+        group.appendChild(folderList);
+        group.appendChild(folderSummary);
+
+        return group;
+    }
+
+    /**
+     * Create a checkbox option group
+     */
+    createCheckboxOption(id, labelText, helpText, checked = false) {
+        const group = document.createElement('div');
+        group.className = 'option-group';
+
+        const label = document.createElement('label');
+        label.className = 'checkbox-label';
+        label.style.cssText = `
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--input-text);
+            cursor: pointer;
+        `;
+
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.id = id;
+        checkbox.checked = checked;
+        checkbox.style.margin = '0';
+
+        label.appendChild(checkbox);
+        label.appendChild(document.createTextNode(labelText));
+
+        const help = document.createElement('small');
+        help.className = 'help-text';
+        help.textContent = helpText;
+        help.style.cssText = `
+            display: block;
+            margin-top: 4px;
+            margin-left: 24px;
+            color: var(--descrip-text);
+            font-size: 12px;
+            line-height: 1.4;
+        `;
+
+        group.appendChild(label);
+        group.appendChild(help);
+
+        return group;
+    }
+
+    /**
+     * Create rate limit input group
+     */
+    createRateLimitGroup() {
+        const group = document.createElement('div');
+        group.className = 'option-group';
+        group.style.cssText = `
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        `;
+
+        const label = document.createElement('label');
+        label.htmlFor = 'rateLimitDelay';
+        label.className = 'option-label';
+        label.textContent = 'Civitai API Rate Limit (ms):';
+        label.style.cssText = `
+            color: var(--input-text);
+            font-weight: 500;
+        `;
+
+        const input = document.createElement('input');
+        input.type = 'number';
+        input.id = 'rateLimitDelay';
+        input.value = '1000';
+        input.min = '100';
+        input.max = '5000';
+        input.step = '100';
+        input.style.cssText = `
+            width: 100px;
+            padding: 6px 8px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            background: var(--comfy-input-bg);
+            color: var(--input-text);
+        `;
+
+        const help = document.createElement('small');
+        help.className = 'help-text';
+        help.textContent = 'Delay between API requests to prevent rate limiting (recommended: 1000ms)';
+        help.style.cssText = `
+            display: block;
+            margin-top: 4px;
+            color: var(--descrip-text);
+            font-size: 12px;
+            line-height: 1.4;
+        `;
+
+        group.appendChild(label);
+        group.appendChild(input);
+        group.appendChild(help);
+
+        return group;
+    }
+
+    /**
+     * Create progress section
+     */
+    createProgressSection() {
+        const section = document.createElement('div');
+        section.id = 'scanProgress';
+        section.className = 'scan-progress';
+        section.style.cssText = `
+            display: none;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 16px;
+            background: var(--comfy-input-bg);
+        `;
+
+        // Progress info header
+        const progressInfo = document.createElement('div');
+        progressInfo.className = 'progress-info';
+        progressInfo.style.cssText = `
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        `;
+
+        const progressStats = document.createElement('div');
+        progressStats.className = 'progress-stats';
+        progressStats.style.flex = '1';
+
+        const progressText = document.createElement('span');
+        progressText.id = 'progressText';
+        progressText.textContent = 'Initializing scan...';
+        progressText.style.cssText = `
+            display: block;
+            color: var(--input-text);
+            font-weight: 500;
+            margin-bottom: 4px;
+        `;
+
+        const statsText = document.createElement('span');
+        statsText.id = 'progressStats';
+        statsText.className = 'stats-text';
+        statsText.style.cssText = `
+            color: var(--descrip-text);
+            font-size: 13px;
+        `;
+
+        progressStats.appendChild(progressText);
+        progressStats.appendChild(statsText);
+
+        const progressTime = document.createElement('div');
+        progressTime.className = 'progress-time';
+        progressTime.style.cssText = `
+            color: var(--descrip-text);
+            font-size: 14px;
+            font-family: monospace;
+        `;
+
+        const elapsedTime = document.createElement('span');
+        elapsedTime.id = 'elapsedTime';
+        elapsedTime.textContent = '00:00';
+
+        progressTime.appendChild(elapsedTime);
+        progressInfo.appendChild(progressStats);
+        progressInfo.appendChild(progressTime);
+
+        // Progress bar container
+        const progressBarContainer = document.createElement('div');
+        progressBarContainer.className = 'progress-bar-container';
+        progressBarContainer.style.cssText = `
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 12px;
+        `;
+
+        const progressBar = document.createElement('div');
+        progressBar.id = 'progressBar';
+        progressBar.className = 'progress-bar';
+        progressBar.style.cssText = `
+            flex: 1;
+            height: 20px;
+            background: var(--comfy-menu-bg, #2a2a2a);
+            border: 1px solid var(--border-color, #555);
+            border-radius: 10px;
+            overflow: hidden;
+            position: relative;
+        `;
+
+        const progressFill = document.createElement('div');
+        progressFill.id = 'progressFill';
+        progressFill.className = 'progress-fill';
+        progressFill.style.cssText = `
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary-color, #007acc), var(--primary-color-hover, #005a9e));
+            transition: width 0.3s ease;
+            width: 0%;
+        `;
+
+        progressBar.appendChild(progressFill);
+
+        const progressPercentage = document.createElement('div');
+        progressPercentage.id = 'progressPercentage';
+        progressPercentage.className = 'progress-percentage';
+        progressPercentage.textContent = '0%';
+        progressPercentage.style.cssText = `
+            min-width: 45px;
+            text-align: right;
+            color: var(--input-text);
+            font-family: monospace;
+            font-size: 13px;
+        `;
+
+        progressBarContainer.appendChild(progressBar);
+        progressBarContainer.appendChild(progressPercentage);
+
+        // Scan log
+        const scanLog = document.createElement('div');
+        scanLog.id = 'scanLog';
+        scanLog.className = 'scan-log';
+        scanLog.style.cssText = `
+            max-height: 120px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+            line-height: 1.4;
+            background: var(--comfy-menu-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            padding: 8px;
+        `;
+
+        section.appendChild(progressInfo);
+        section.appendChild(progressBarContainer);
+        section.appendChild(scanLog);
+
+        return section;
+    }
+
+    /**
+     * Setup keyboard event handlers
+     */
+    setupKeyboardHandlers() {
+        this.handleKeydown = (e) => {
+            if (e.key === 'Escape' && !this.isScanning) {
+                this.close();
+            }
+        };
+        document.addEventListener('keydown', this.handleKeydown);
+    }
+
+    /**
+     * Center the dialog on screen (deprecated - dialogManager handles this)
      */
     centerDialog() {
-        return new Promise((resolve) => {
-            // Already centered with CSS flexbox, but we add animation
-            requestAnimationFrame(() => {
-                if (!this.dialog) {
-                    resolve();
-                    return;
-                }
-                
-                this.dialog.style.opacity = '0';
-                this.dialog.style.transform = 'scale(0.95)';
-                this.dialog.style.transition = 'opacity 0.2s, transform 0.2s';
-                
-                requestAnimationFrame(() => {
-                    if (!this.dialog) {
-                        resolve();
-                        return;
-                    }
-                    
-                    this.dialog.style.opacity = '1';
-                    this.dialog.style.transform = 'scale(1)';
-                    
-                    // Wait for animation to complete
-                    setTimeout(() => resolve(), 200);
-                });
-            });
-        });
+        // No-op: dialogManager handles centering and animations
+        return Promise.resolve();
     }
 
     /**
@@ -554,35 +481,38 @@ class ModelScanDialog {
      * Render the folder selection list
      */
     renderFolderList(folders, errorMessage = null) {
-        if (!this.dialog) {
+        if (!this.contentArea) {
             console.error('Cannot render folder list: dialog not initialized');
             return;
         }
         
-        const folderList = this.dialog.querySelector('#folderList');
+        const folderList = this.contentArea.querySelector('#folderList');
         if (!folderList) {
             console.error('Cannot render folder list: folderList element not found');
             return;
         }
         
         if (errorMessage) {
-            folderList.innerHTML = `<div class="loading error">${errorMessage}</div>`;
+            folderList.innerHTML = `<div class="loading error" style="padding: 20px; text-align: center; color: var(--error-text);">${errorMessage}</div>`;
             return;
         }
 
         if (!folders.length) {
-            folderList.innerHTML = '<div class="loading">No model folders found</div>';
+            folderList.innerHTML = '<div class="loading" style="padding: 20px; text-align: center; color: var(--descrip-text);">No model folders found</div>';
             return;
         }
 
         folderList.innerHTML = folders.map(folder => `
-            <div class="folder-item">
+            <div class="folder-item" style="padding: 8px 12px; border-bottom: 1px solid var(--border-color); display: flex; align-items: center; gap: 8px;">
                 <input type="checkbox" id="folder_${folder.name.replace(/[^a-zA-Z0-9]/g, '_')}" 
-                       value="${JSON.stringify(folder.paths || [folder.path]).replace(/"/g, '&quot;')}" checked />
-                <label for="folder_${folder.name.replace(/[^a-zA-Z0-9]/g, '_')}" class="folder-name">
+                       value="${JSON.stringify(folder.paths || [folder.path]).replace(/"/g, '&quot;')}" 
+                       checked style="margin: 0;" />
+                <label for="folder_${folder.name.replace(/[^a-zA-Z0-9]/g, '_')}" 
+                       class="folder-name" 
+                       style="flex: 1; color: var(--input-text); font-family: monospace; font-size: 13px; cursor: pointer;">
                     ${folder.name}
                 </label>
-                <span class="folder-count">(${folder.count || 0} files)</span>
+                <span class="folder-count" style="color: var(--descrip-text); font-size: 12px;">(${folder.count || 0} files)</span>
             </div>
         `).join('');
         
@@ -599,12 +529,12 @@ class ModelScanDialog {
      * Update the folder selection summary
      */
     updateFolderSummary(allFolders) {
-        if (!this.dialog) {
+        if (!this.contentArea) {
             console.error('Cannot update folder summary: dialog not initialized');
             return;
         }
         
-        const selectedFolders = Array.from(this.dialog.querySelectorAll('.folder-item input:checked'))
+        const selectedFolders = Array.from(this.contentArea.querySelectorAll('.folder-item input:checked'))
             .map(checkbox => {
                 try {
                     // Try to parse as JSON array (new format)
@@ -623,9 +553,9 @@ class ModelScanDialog {
         });
         const totalFiles = selectedFolderData.reduce((sum, folder) => sum + (folder.count || 0), 0);
         
-        const summaryElement = this.dialog.querySelector('#folderSummary');
-        const selectedCountElement = this.dialog.querySelector('#selectedFolderCount');
-        const totalFileCountElement = this.dialog.querySelector('#totalFileCount');
+        const summaryElement = this.contentArea.querySelector('#folderSummary');
+        const selectedCountElement = this.contentArea.querySelector('#selectedFolderCount');
+        const totalFileCountElement = this.contentArea.querySelector('#totalFileCount');
         
         if (summaryElement && selectedCountElement && totalFileCountElement) {
             selectedCountElement.textContent = selectedFolderData.length; // Number of categories, not paths
@@ -638,7 +568,7 @@ class ModelScanDialog {
      * Get selected scan options
      */
     getScanOptions() {
-        if (!this.dialog) {
+        if (!this.contentArea) {
             console.error('Cannot get scan options: dialog not initialized');
             return {
                 folders: [],
@@ -648,7 +578,7 @@ class ModelScanDialog {
             };
         }
         
-        const selectedFolders = Array.from(this.dialog.querySelectorAll('.folder-item input:checked'))
+        const selectedFolders = Array.from(this.contentArea.querySelectorAll('.folder-item input:checked'))
             .map(checkbox => {
                 try {
                     // Try to parse as JSON array (new format)
@@ -662,9 +592,9 @@ class ModelScanDialog {
         
         return {
             folders: selectedFolders,
-            forceRefresh: this.dialog.querySelector('#forceRefresh').checked,
-            includeCached: this.dialog.querySelector('#includeCached').checked,
-            rateLimitDelay: parseInt(this.dialog.querySelector('#rateLimitDelay').value, 10)
+            forceRefresh: this.contentArea.querySelector('#forceRefresh').checked,
+            includeCached: this.contentArea.querySelector('#includeCached').checked,
+            rateLimitDelay: parseInt(this.contentArea.querySelector('#rateLimitDelay').value, 10)
         };
     }
 
@@ -872,10 +802,10 @@ class ModelScanDialog {
      * Update the scan UI state
      */
     updateScanUI(scanning) {
-        const startBtn = this.dialog.querySelector('#startScanBtn');
-        const cancelBtn = this.dialog.querySelector('#cancelBtn');
-        const progressSection = this.dialog.querySelector('#scanProgress');
-        const optionsSection = this.dialog.querySelector('.scan-options');
+        const startBtn = this.dialogObj.footer.querySelector('button:last-child');
+        const cancelBtn = this.dialogObj.footer.querySelector('button:first-child');
+        const progressSection = this.contentArea.querySelector('#scanProgress');
+        const optionsSection = this.contentArea.querySelector('.scan-options');
         
         if (scanning) {
             startBtn.disabled = true;
@@ -888,7 +818,7 @@ class ModelScanDialog {
         } else {
             startBtn.disabled = false;
             startBtn.textContent = 'Start Scan';
-            cancelBtn.textContent = 'Close';
+            cancelBtn.textContent = 'Cancel';
             
             this.stopProgressTimer();
         }
@@ -905,7 +835,10 @@ class ModelScanDialog {
                 const seconds = Math.floor((elapsed % 60000) / 1000);
                 const timeStr = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
                 
-                this.dialog.querySelector('#elapsedTime').textContent = timeStr;
+                const elapsedTimeEl = this.contentArea.querySelector('#elapsedTime');
+                if (elapsedTimeEl) {
+                    elapsedTimeEl.textContent = timeStr;
+                }
                 
                 // Show file processing stats if available
                 const { processed, totalFiles, errors } = this.scanResults;
@@ -918,7 +851,10 @@ class ModelScanDialog {
                     }
                 }
                 
-                this.dialog.querySelector('#progressStats').textContent = statsText;
+                const progressStatsEl = this.contentArea.querySelector('#progressStats');
+                if (progressStatsEl) {
+                    progressStatsEl.textContent = statsText;
+                }
             }
         }, 1000);
     }
@@ -939,9 +875,9 @@ class ModelScanDialog {
     updateProgress(text, percentage) {
         console.log(`UpdateProgress called: ${text}, ${percentage}%`);
         
-        const progressFill = this.dialog.querySelector('#progressFill');
-        const progressText = this.dialog.querySelector('#progressText');
-        const progressPercentage = this.dialog.querySelector('#progressPercentage');
+        const progressFill = this.contentArea.querySelector('#progressFill');
+        const progressText = this.contentArea.querySelector('#progressText');
+        const progressPercentage = this.contentArea.querySelector('#progressPercentage');
         
         if (progressText) {
             progressText.textContent = text;
@@ -950,15 +886,9 @@ class ModelScanDialog {
         if (progressFill) {
             const width = `${Math.max(0, Math.min(100, percentage))}%`;
             console.log(`Setting progress bar width to: ${width}`);
-            console.log('Progress fill element:', progressFill);
-            console.log('Current computed style:', window.getComputedStyle(progressFill));
             
             // Set the width
             progressFill.style.width = width;
-            
-            // Add inline background color as fallback in case CSS variables aren't working
-            progressFill.style.background = 'linear-gradient(90deg, #007acc, #005a9e)';
-            progressFill.style.height = '100%';
             
             // Force a repaint to ensure the change is applied
             progressFill.offsetHeight;
@@ -977,9 +907,28 @@ class ModelScanDialog {
      * Add entry to scan log
      */
     addLogEntry(message, type = 'info') {
-        const logContainer = this.dialog.querySelector('#scanLog');
+        const logContainer = this.contentArea.querySelector('#scanLog');
+        if (!logContainer) {
+            console.error('Cannot add log entry: scanLog element not found');
+            return;
+        }
+        
         const entry = document.createElement('div');
         entry.className = `log-entry ${type}`;
+        entry.style.cssText = `
+            margin-bottom: 2px;
+            color: var(--descrip-text);
+        `;
+        
+        // Add type-specific colors
+        if (type === 'success') {
+            entry.style.color = 'var(--success-text, #4CAF50)';
+        } else if (type === 'error') {
+            entry.style.color = 'var(--error-text, #f44336)';
+        } else if (type === 'info') {
+            entry.style.color = 'var(--info-text, #2196F3)';
+        }
+        
         entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
         
         logContainer.appendChild(entry);
@@ -1013,6 +962,22 @@ class ModelScanDialog {
     }
 
     /**
+     * Cleanup resources
+     */
+    cleanup() {
+        this.stopProgressTimer();
+        
+        if (this.handleKeydown) {
+            document.removeEventListener('keydown', this.handleKeydown);
+            this.handleKeydown = null;
+        }
+        
+        this.dialogObj = null;
+        this.dialog = null;
+        this.contentArea = null;
+    }
+
+    /**
      * Close and cleanup the dialog
      */
     close() {
@@ -1021,21 +986,11 @@ class ModelScanDialog {
             return;
         }
 
-        this.stopProgressTimer();
-        
-        document.removeEventListener('keydown', this.handleKeydown.bind(this));
-        
-        if (this.dialog) {
-            this.dialog.style.opacity = '0';
-            this.dialog.style.transform = 'scale(0.95)';
-            
-            setTimeout(() => {
-                if (this.dialog && this.dialog.parentNode) {
-                    this.dialog.remove();
-                }
-                this.dialog = null;
-            }, 200);
+        if (this.dialogObj) {
+            this.dialogObj.close();
         }
+        
+        this.cleanup();
     }
 }
 

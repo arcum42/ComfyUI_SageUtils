@@ -9,6 +9,7 @@ import { createDialog } from '../components/dialogManager.js';
 import { handleError } from '../shared/errorHandler.js';
 import { notifications } from '../shared/notifications.js';
 import { app } from '../../../../scripts/app.js';
+import { createCheckbox, createRadioGroup, createInput } from '../components/formElements.js';
 
 /**
  * Mapping between backend setting keys and ComfyUI setting IDs
@@ -222,31 +223,33 @@ function createDefaultProviderSelector(settings) {
   const defaultProviderSetting = settings['default_llm_provider'];
   const currentValue = defaultProviderSetting ? defaultProviderSetting.current_value : 'ollama';
 
-  // Create radio buttons container
-  const radioContainer = document.createElement('div');
-  radioContainer.style.cssText = `
-    display: flex;
-    gap: 20px;
-    margin-left: 10px;
-  `;
+  // Create radio button group
+  const radioItems = [
+    { value: 'ollama', label: 'Ollama' },
+    { value: 'lmstudio', label: 'LM Studio' }
+  ];
 
-  // Ollama radio button
-  const ollamaRadio = createRadioButton(
-    'default_llm_provider',
-    'ollama',
-    'Ollama',
-    currentValue === 'ollama'
-  );
-  radioContainer.appendChild(ollamaRadio.container);
+  const { container: radioContainer } = createRadioGroup('default_llm_provider', radioItems, {
+    value: currentValue,
+    layout: 'horizontal',
+    styles: {
+      display: 'flex',
+      gap: '20px',
+      marginLeft: '10px'
+    },
+    itemStyles: {
+      color: '#ccc',
+      fontSize: '14px',
+      cursor: 'pointer',
+      userSelect: 'none'
+    }
+  });
 
-  // LM Studio radio button
-  const lmstudioRadio = createRadioButton(
-    'default_llm_provider',
-    'lmstudio',
-    'LM Studio',
-    currentValue === 'lmstudio'
-  );
-  radioContainer.appendChild(lmstudioRadio.container);
+  // Add data attributes to radios for settings management
+  const radios = radioContainer.querySelectorAll('input[type="radio"]');
+  radios.forEach(radio => {
+    radio.dataset.settingKey = 'default_llm_provider';
+  });
 
   group.appendChild(radioContainer);
 
@@ -383,10 +386,28 @@ function createProviderGroup(providerName, settings, providerKey) {
  * Create a checkbox input
  * @param {string} label - Label text
  * @param {boolean} checked - Initial checked state
- * @param {string} settingKey - Setting key
+ * @param {string} settingKey - Setting key for data attribute
  * @returns {Object} Object with container and checkbox elements
  */
-function createCheckbox(label, checked, settingKey) {
+function createCheckboxInput(label, checked, settingKey) {
+  const { label: labelElement, checkbox } = createCheckbox(label, {
+    id: `setting-${settingKey}`,
+    checked: checked,
+    className: '',
+    labelClass: '',
+    styles: {
+      cursor: 'pointer'
+    },
+    labelStyles: {
+      color: '#ccc',
+      fontSize: '14px',
+      cursor: 'pointer',
+      userSelect: 'none'
+    }
+  });
+
+  checkbox.dataset.settingKey = settingKey;
+
   const container = document.createElement('div');
   container.style.cssText = `
     display: flex;
@@ -394,69 +415,9 @@ function createCheckbox(label, checked, settingKey) {
     gap: 8px;
     margin-bottom: 10px;
   `;
-
-  const checkbox = document.createElement('input');
-  checkbox.type = 'checkbox';
-  checkbox.id = `setting-${settingKey}`;
-  checkbox.checked = checked;
-  checkbox.dataset.settingKey = settingKey;
-  checkbox.style.cssText = 'cursor: pointer;';
-
-  const labelElement = document.createElement('label');
-  labelElement.htmlFor = `setting-${settingKey}`;
-  labelElement.textContent = label;
-  labelElement.style.cssText = `
-    color: #ccc;
-    font-size: 14px;
-    cursor: pointer;
-    user-select: none;
-  `;
-
-  container.appendChild(checkbox);
   container.appendChild(labelElement);
 
   return { container, checkbox };
-}
-
-/**
- * Create a radio button input
- * @param {string} name - Radio group name (setting key)
- * @param {string} value - Value for this radio button
- * @param {string} label - Label text
- * @param {boolean} checked - Initial checked state
- * @returns {Object} Object with container and radio elements
- */
-function createRadioButton(name, value, label, checked) {
-  const container = document.createElement('div');
-  container.style.cssText = `
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  `;
-
-  const radio = document.createElement('input');
-  radio.type = 'radio';
-  radio.name = name;
-  radio.value = value;
-  radio.id = `setting-${name}-${value}`;
-  radio.checked = checked;
-  radio.dataset.settingKey = name;
-  radio.style.cssText = 'cursor: pointer;';
-
-  const labelElement = document.createElement('label');
-  labelElement.htmlFor = `setting-${name}-${value}`;
-  labelElement.textContent = label;
-  labelElement.style.cssText = `
-    color: #ccc;
-    font-size: 14px;
-    cursor: pointer;
-    user-select: none;
-  `;
-
-  container.appendChild(radio);
-  container.appendChild(labelElement);
-
-  return { container, radio };
 }
 
 /**
@@ -468,6 +429,25 @@ function createRadioButton(name, value, label, checked) {
  * @returns {Object} Object with container and input elements
  */
 function createTextInput(label, value, settingKey, placeholder = '') {
+  const input = createInput({
+    type: 'text',
+    id: `setting-${settingKey}`,
+    value: value || '',
+    placeholder: placeholder,
+    styles: {
+      width: '100%',
+      padding: '8px',
+      background: '#2a2a2a',
+      border: '1px solid #555',
+      borderRadius: '4px',
+      color: '#ccc',
+      fontSize: '13px',
+      boxSizing: 'border-box'
+    }
+  });
+
+  input.dataset.settingKey = settingKey;
+
   const container = document.createElement('div');
   container.style.cssText = 'margin-bottom: 10px;';
 
@@ -478,23 +458,6 @@ function createTextInput(label, value, settingKey, placeholder = '') {
     color: #ccc;
     font-size: 13px;
     margin-bottom: 5px;
-  `;
-
-  const input = document.createElement('input');
-  input.type = 'text';
-  input.id = `setting-${settingKey}`;
-  input.value = value || '';
-  input.placeholder = placeholder;
-  input.dataset.settingKey = settingKey;
-  input.style.cssText = `
-    width: 100%;
-    padding: 8px;
-    background: #2a2a2a;
-    border: 1px solid #555;
-    border-radius: 4px;
-    color: #ccc;
-    font-size: 13px;
-    box-sizing: border-box;
   `;
 
   container.appendChild(labelElement);
