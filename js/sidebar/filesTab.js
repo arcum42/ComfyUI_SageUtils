@@ -4,6 +4,7 @@
  */
 
 import { GenericFileManager } from "../file/fileManager.js";
+import { createSelect } from "../components/formElements.js";
 
 /**
  * Creates a folder selector for the Files tab
@@ -31,38 +32,29 @@ function createFolderSelector(onFolderChange) {
     `;
     label.textContent = 'Folder:';
 
-    const folderDropdown = document.createElement('select');
-    folderDropdown.style.cssText = `
-        width: 100%;
-        padding: 8px 12px;
-        background: #333;
-        color: #fff;
-        border: 1px solid #555;
-        border-radius: 4px;
-        font-size: 13px;
-        cursor: pointer;
-    `;
-
     // Add folder options
     const folders = [
-        { value: 'notes', text: '📝 Notes', icon: '📝' },
-        { value: 'wildcards', text: '🎲 Wildcards', icon: '🎲' }
+        { value: 'notes', text: '📝 Notes' },
+        { value: 'wildcards', text: '🎲 Wildcards' }
     ];
 
-    folders.forEach(folder => {
-        const option = document.createElement('option');
-        option.value = folder.value;
-        option.textContent = folder.text;
-        folderDropdown.appendChild(option);
-    });
-
-    // Set default to notes
-    folderDropdown.value = 'notes';
-
-    // Add event listener
-    folderDropdown.addEventListener('change', (e) => {
-        if (onFolderChange) {
-            onFolderChange(e.target.value);
+    const folderDropdown = createSelect({
+        items: folders,
+        value: 'notes',
+        onChange: (e) => {
+            if (onFolderChange) {
+                onFolderChange(e.target.value);
+            }
+        },
+        styles: {
+            width: '100%',
+            padding: '8px 12px',
+            background: '#333',
+            color: '#fff',
+            border: '1px solid #555',
+            borderRadius: '4px',
+            fontSize: '13px',
+            cursor: 'pointer'
         }
     });
 
