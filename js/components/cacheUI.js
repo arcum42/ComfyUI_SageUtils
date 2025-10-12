@@ -331,11 +331,14 @@ export function addDropdownStyles() {
 
 /**
  * Create tab button with hover effects
+ * @deprecated Use TabManager class from components/tabs.js instead for complete tab management
  * @param {string} text - Button text
  * @param {boolean} isActive - Whether the button is initially active
  * @returns {HTMLElement} Tab button element
  */
 export function createTabButton(text, isActive = false) {
+    console.warn('[DEPRECATED] createTabButton from cacheUI.js is deprecated. Use TabManager class from components/tabs.js instead.');
+    
     const button = document.createElement('button');
     button.textContent = text;
     button.style.cssText = `

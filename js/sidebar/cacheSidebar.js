@@ -39,9 +39,11 @@ import {
 
 // Import shared UI components
 import {
-    createMainContainer,
-    createTabButton
+    createMainContainer
 } from "../components/cacheUI.js";
+
+// Import TabManager
+import { TabManager } from "../components/tabs.js";
 
 // Import API for settings
 import { api } from '../../../../scripts/api.js';
@@ -86,68 +88,53 @@ async function loadTabVisibilitySettings() {
 }
 
 /**
- * Creates the tab header with Models, Files, Search, Gallery, Prompt Builder, and LLM tabs
+ * Creates the tab manager with all tabs
+ * @param {HTMLElement} container - Container element for tabs
  * @param {Object} tabVisibility - Object containing visibility settings for each tab
- * @returns {Object} Object containing tab button elements
+ * @param {Object} tabContentFactories - Object containing content factory functions for each tab
+ * @returns {TabManager} Configured TabManager instance
  */
-function createTabHeader(tabVisibility = {}) {
-    const tabHeader = document.createElement('div');
-    tabHeader.style.cssText = `
-        display: flex;
-        border-bottom: 2px solid #4CAF50;
-        margin-bottom: 15px;
-        background: #1a1a1a;
-        overflow-x: auto;
-        min-height: 50px;
-        position: relative;
-    `;
-
-    const tabs = {};
-
-    // Create tabs based on visibility settings
+function createTabManager(container, tabVisibility = {}, tabContentFactories = {}) {
+    const tabManager = new TabManager({
+        container: container,
+        lazyLoad: true,
+        onTabSwitch: (tabId) => {
+            console.debug(`Switched to tab: ${tabId}`);
+        },
+        onTabInit: (tabId) => {
+            console.debug(`Initialized tab: ${tabId}`);
+        }
+    });
+    
+    // Initialize the tab manager
+    tabManager.init();
+    
+    // Add all tabs with their visibility settings and content factories
     if (tabVisibility.show_models_tab !== false) {
-        const modelsTab = createTabButton('Models', true);
-        modelsTab.style.flexShrink = '0';
-        tabHeader.appendChild(modelsTab);
-        tabs.modelsTab = modelsTab;
+        tabManager.addTab('models', 'Models', tabContentFactories.models, { active: true });
     }
-
+    
     if (tabVisibility.show_files_tab !== false) {
-        const notesTab = createTabButton('Files', false);
-        notesTab.style.flexShrink = '0';
-        tabHeader.appendChild(notesTab);
-        tabs.notesTab = notesTab;
+        tabManager.addTab('notes', 'Files', tabContentFactories.notes);
     }
-
+    
     if (tabVisibility.show_search_tab !== false) {
-        const civitaiTab = createTabButton('Search', false);
-        civitaiTab.style.flexShrink = '0';
-        tabHeader.appendChild(civitaiTab);
-        tabs.civitaiTab = civitaiTab;
+        tabManager.addTab('civitai', 'Search', tabContentFactories.civitai);
     }
-
+    
     if (tabVisibility.show_gallery_tab !== false) {
-        const galleryTab = createTabButton('Gallery', false);
-        galleryTab.style.flexShrink = '0';
-        tabHeader.appendChild(galleryTab);
-        tabs.galleryTab = galleryTab;
+        tabManager.addTab('gallery', 'Gallery', tabContentFactories.gallery);
     }
-
+    
     if (tabVisibility.show_prompts_tab !== false) {
-        const promptBuilderTab = createTabButton('Prompts', false);
-        promptBuilderTab.style.flexShrink = '0';
-        tabHeader.appendChild(promptBuilderTab);
-        tabs.promptBuilderTab = promptBuilderTab;
+        tabManager.addTab('promptBuilder', 'Prompts', tabContentFactories.promptBuilder);
     }
-
+    
     if (tabVisibility.show_llm_tab !== false) {
-        const llmTab = createTabButton('LLM', false);
-        llmTab.style.flexShrink = '0';
-        tabHeader.appendChild(llmTab);
-        tabs.llmTab = llmTab;
+        tabManager.addTab('llm', 'LLM', tabContentFactories.llm);
     }
-
-    // Create settings gear button
+    
+    // Add settings button to the tab header
     const settingsButton = document.createElement('button');
     settingsButton.innerHTML = '⚙️';
     settingsButton.title = 'Settings';
@@ -181,7 +168,7 @@ function createTabHeader(tabVisibility = {}) {
         settingsButton.style.transform = 'translateY(-50%) scale(1)';
     });
 
-    // Click handler - will be set up after import
+    // Click handler
     settingsButton.addEventListener('click', async () => {
         try {
             const { showSettingsDialog } = await import('../dialogs/settingsDialog.js');
@@ -192,268 +179,9 @@ function createTabHeader(tabVisibility = {}) {
         }
     });
 
-    tabHeader.appendChild(settingsButton);
-
-    return {
-        tabHeader,
-        ...tabs,
-        settingsButton
-    };
-}
-
-/**
- * Creates the main tab content container with individual tab containers
- * @returns {Object} Tab content container and individual tab containers
- */
-function createTabContent() {
-    const tabContent = document.createElement('div');
-    tabContent.style.cssText = `
-        flex: 1;
-        overflow-y: auto;
-        background: #1a1a1a;
-        padding: 0;
-        position: relative;
-    `;
-
-    // Create individual containers for each tab
-    const modelsContainer = document.createElement('div');
-    modelsContainer.style.cssText = `
-        display: block;
-        width: 100%;
-        height: 100%;
-    `;
-    modelsContainer.setAttribute('data-tab', 'models');
-
-    const notesContainer = document.createElement('div');
-    notesContainer.style.cssText = `
-        display: none;
-        width: 100%;
-        height: 100%;
-    `;
-    notesContainer.setAttribute('data-tab', 'notes');
-
-    const civitaiContainer = document.createElement('div');
-    civitaiContainer.style.cssText = `
-        display: none;
-        width: 100%;
-        height: 100%;
-    `;
-    civitaiContainer.setAttribute('data-tab', 'civitai');
-
-    const galleryContainer = document.createElement('div');
-    galleryContainer.style.cssText = `
-        display: none;
-        width: 100%;
-        height: 100%;
-    `;
-    galleryContainer.setAttribute('data-tab', 'gallery');
-
-    const promptBuilderContainer = document.createElement('div');
-    promptBuilderContainer.style.cssText = `
-        display: none;
-        width: 100%;
-        height: 100%;
-    `;
-    promptBuilderContainer.setAttribute('data-tab', 'promptBuilder');
-
-    const llmContainer = document.createElement('div');
-    llmContainer.style.cssText = `
-        display: none;
-        width: 100%;
-        height: 100%;
-    `;
-    llmContainer.setAttribute('data-tab', 'llm');
-
-    // Append all containers to main content
-    tabContent.appendChild(modelsContainer);
-    tabContent.appendChild(notesContainer);
-    tabContent.appendChild(civitaiContainer);
-    tabContent.appendChild(galleryContainer);
-    tabContent.appendChild(promptBuilderContainer);
-    tabContent.appendChild(llmContainer);
-
-    return {
-        tabContent,
-        containers: {
-            models: modelsContainer,
-            notes: notesContainer,
-            civitai: civitaiContainer,
-            gallery: galleryContainer,
-            promptBuilder: promptBuilderContainer,
-            llm: llmContainer
-        }
-    };
-}
-
-/**
- * Sets up tab switching functionality with lazy loading and hide/show approach
- * @param {Object} tabComponents - Tab header components
- * @param {Object} tabContentData - Tab content data with containers
- */
-function setupTabSwitching(tabComponents, tabContentData) {
-    const { modelsTab, notesTab, civitaiTab, galleryTab, promptBuilderTab, llmTab } = tabComponents;
-    const { containers } = tabContentData;
+    tabManager.tabHeader.appendChild(settingsButton);
     
-    // Track which tabs have been initialized
-    const initializedTabs = {
-        models: false,
-        notes: false,
-        civitai: false,
-        gallery: false,
-        promptBuilder: false,
-        llm: false
-    };
-    
-    // Tab configuration mapping - only include tabs that exist
-    const tabConfig = {};
-    
-    if (modelsTab) {
-        tabConfig.models = {
-            button: modelsTab,
-            container: containers.models,
-            createFunction: createModelsTab
-        };
-    }
-    
-    if (notesTab) {
-        tabConfig.notes = {
-            button: notesTab,
-            container: containers.notes,
-            createFunction: createFilesTab
-        };
-    }
-    
-    if (civitaiTab) {
-        tabConfig.civitai = {
-            button: civitaiTab,
-            container: containers.civitai,
-            createFunction: createCivitaiSearchTab
-        };
-    }
-    
-    if (galleryTab) {
-        tabConfig.gallery = {
-            button: galleryTab,
-            container: containers.gallery,
-            createFunction: createImageGalleryTab
-        };
-    }
-    
-    if (promptBuilderTab) {
-        tabConfig.promptBuilder = {
-            button: promptBuilderTab,
-            container: containers.promptBuilder,
-            createFunction: createPromptBuilderTab
-        };
-    }
-    
-    if (llmTab) {
-        tabConfig.llm = {
-            button: llmTab,
-            container: containers.llm,
-            createFunction: createLLMTab
-        };
-    }
-
-    /**
-     * Switches between tabs using hide/show approach
-     * @param {string} activeTabKey - The key of the tab to show
-     */
-    function switchTab(activeTabKey) {
-        const config = tabConfig[activeTabKey];
-        if (!config) {
-            console.error(`Unknown tab: ${activeTabKey}`);
-            return;
-        }
-        
-        try {
-            // Update button styles for all tabs
-            Object.values(tabConfig).forEach(({ button }) => {
-                button.classList.remove('active');
-                button.style.background = '#2a2a2a';
-                button.style.color = '#ccc';
-                button.style.fontWeight = 'normal';
-                button.style.borderBottom = '2px solid transparent';
-                button.style.transform = 'translateY(0)';
-            });
-            
-            // Style the active button
-            config.button.classList.add('active');
-            config.button.style.background = '#4CAF50';
-            config.button.style.color = 'white';
-            config.button.style.fontWeight = 'bold';
-            config.button.style.borderBottom = '2px solid #4CAF50';
-            config.button.style.transform = 'translateY(-1px)';
-            
-            // Hide all tab containers
-            Object.values(containers).forEach(container => {
-                container.style.display = 'none';
-            });
-            
-            // Show the active tab container
-            config.container.style.display = 'block';
-            
-            // Initialize tab content if not already done (lazy loading)
-            if (!initializedTabs[activeTabKey]) {
-                console.debug(`Initializing ${activeTabKey} tab for the first time`);
-                
-                try {
-                    // Show loading state
-                    config.container.innerHTML = `
-                        <div style="text-align: center; padding: 40px; color: #888;">
-                            <div style="font-size: 16px; margin-bottom: 10px;">Loading ${activeTabKey} tab...</div>
-                            <div style="font-size: 12px;">Please wait while content is initialized</div>
-                        </div>
-                    `;
-                    
-                    // Initialize the tab content with a small delay to show loading state
-                    setTimeout(() => {
-                        try {
-                            console.log(`Calling createFunction for ${activeTabKey} with container:`, config.container);
-                            config.createFunction(config.container);
-                            initializedTabs[activeTabKey] = true;
-                            console.debug(`${activeTabKey} tab initialized successfully`);
-                        } catch (initError) {
-                            console.error(`Error initializing ${activeTabKey} tab:`, initError);
-                            config.container.innerHTML = `
-                                <div style="color: #f44336; padding: 20px; text-align: center;">
-                                    <div style="font-size: 16px; margin-bottom: 10px;">Error loading ${activeTabKey} tab</div>
-                                    <div style="font-size: 14px; opacity: 0.8;">${initError.message}</div>
-                                    <button onclick="location.reload()" 
-                                            style="margin-top: 15px; padding: 8px 16px; background: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer;">
-                                        Reload Page
-                                    </button>
-                                </div>
-                            `;
-                        }
-                    }, 50); // Small delay to ensure loading state is visible
-                } catch (error) {
-                    console.error(`Error setting up ${activeTabKey} tab initialization:`, error);
-                    config.container.innerHTML = `
-                        <div style="color: #f44336; padding: 20px; text-align: center;">
-                            Error loading tab content: ${error.message}
-                        </div>
-                    `;
-                }
-            } else {
-                console.debug(`Showing already initialized ${activeTabKey} tab`);
-            }
-            
-        } catch (error) {
-            console.error('Error switching tab:', error);
-            handleError(error, 'Tab Switching Error');
-        }
-    }
-    
-    // Tab event listeners - only add if tab exists
-    if (modelsTab) modelsTab.addEventListener('click', () => switchTab('models'));
-    if (notesTab) notesTab.addEventListener('click', () => switchTab('notes'));
-    if (civitaiTab) civitaiTab.addEventListener('click', () => switchTab('civitai'));
-    if (galleryTab) galleryTab.addEventListener('click', () => switchTab('gallery'));
-    if (promptBuilderTab) promptBuilderTab.addEventListener('click', () => switchTab('promptBuilder'));
-    if (llmTab) llmTab.addEventListener('click', () => switchTab('llm'));
-
-    return { switchTab, initializedTabs };
+    return tabManager;
 }
 
 // Track if global error handlers have been registered to prevent duplicates
@@ -584,22 +312,27 @@ export async function createCacheSidebar(el) {
     // Create main container
     const mainContainer = createMainContainer();
     
-    // Create tab components with visibility settings
-    const tabComponents = createTabHeader(tabVisibility);
-    const tabContentData = createTabContent();
+    // Create tab content factories for lazy loading
+    const tabContentFactories = {
+        models: createModelsTab,
+        notes: createFilesTab,
+        civitai: createCivitaiSearchTab,
+        gallery: createImageGalleryTab,
+        promptBuilder: createPromptBuilderTab,
+        llm: createLLMTab
+    };
     
-    // Setup tab switching with hide/show approach
-    const { switchTab, initializedTabs } = setupTabSwitching(tabComponents, tabContentData);
-    
-    // Assemble main container
-    mainContainer.appendChild(tabComponents.tabHeader);
-    mainContainer.appendChild(tabContentData.tabContent);
+    // Create tab manager
+    const tabManager = createTabManager(mainContainer, tabVisibility, tabContentFactories);
     
     // Add to provided element
     el.appendChild(mainContainer);
     
     // Initialize sidebar data and state
     initializeSidebarData();
+    
+    // Activate the first visible tab
+    tabManager.activateFirstTab();
     
     // Preload gallery images in the background for better UX
     // This loads the default folder (usually 'notes') so data is ready when user clicks Gallery tab
@@ -624,10 +357,9 @@ export async function createCacheSidebar(el) {
     
     // Store references for potential external access
     el._sidebarData = {
-        tabComponents,
-        tabContentData,
-        switchTab,
-        initializedTabs,
+        tabManager,
+        switchTab: (tabId) => tabManager.switchTab(tabId),
+        initializedTabs: tabManager.initializedTabs,
         cleanup: () => {
             // Cleanup cross-tab subscription
             if (crossTabUnsubscribe) {
@@ -638,16 +370,8 @@ export async function createCacheSidebar(el) {
                     console.warn('[Sidebar] Error unsubscribing from cross-tab messaging:', err);
                 }
             }
-            // Cleanup individual tabs if they have destroy methods
-            Object.entries(initializedTabs).forEach(([key, tabObj]) => {
-                if (tabObj && typeof tabObj.destroy === 'function') {
-                    try {
-                        tabObj.destroy();
-                    } catch (err) {
-                        console.warn(`[Sidebar] Error destroying ${key} tab:`, err);
-                    }
-                }
-            });
+            // Destroy tab manager
+            tabManager.destroy();
         }
     };
     
@@ -675,44 +399,29 @@ export async function createCacheSidebar(el) {
                 
                 const tabKey = tabKeyMap[tabId] || tabId;
                 
-                // Validate that switchTab function exists
-                if (typeof switchTab !== 'function') {
-                    console.warn('[Sidebar] switchTab function not available');
+                // Validate that tab manager exists
+                if (!tabManager) {
+                    console.warn('[Sidebar] TabManager not available');
                     return;
                 }
                 
+                console.debug(`[Sidebar] Received cross-tab switch request for '${tabId}' from ${source}, mapped to '${tabKey}'`);
+                
+                // Switch to the requested tab using TabManager
                 try {
-                    switchTab(tabKey);
+                    tabManager.switchTab(tabKey);
                     bus.publish(MessageTypes.TAB_SWITCHED, { tabId: tabKey, source: 'sidebar' });
+                    console.debug(`[Sidebar] Successfully switched to tab: ${tabKey}`);
                 } catch (error) {
                     console.error(`[Sidebar] Error switching to tab '${tabKey}':`, error);
                 }
             });
+            
+            console.debug('[Sidebar] Subscribed to cross-tab switch requests');
         }).catch(err => {
             console.warn('[Sidebar] Failed to load cross-tab messaging:', err);
         });
     }, 100);
-    
-    // Initialize with first visible tab (this will lazy load it)
-    setTimeout(() => {
-        // Find the first visible tab to initialize
-        const tabOrder = ['models', 'notes', 'civitai', 'gallery', 'promptBuilder', 'llm'];
-        const visibilityMap = {
-            'models': tabVisibility.show_models_tab,
-            'notes': tabVisibility.show_files_tab,
-            'civitai': tabVisibility.show_search_tab,
-            'gallery': tabVisibility.show_gallery_tab,
-            'promptBuilder': tabVisibility.show_prompts_tab,
-            'llm': tabVisibility.show_llm_tab
-        };
-        
-        const firstVisibleTab = tabOrder.find(tab => visibilityMap[tab] !== false);
-        if (firstVisibleTab) {
-            switchTab(firstVisibleTab);
-        } else {
-            console.warn('No visible tabs found in sidebar');
-        }
-    }, 0);
 }
 
 /**

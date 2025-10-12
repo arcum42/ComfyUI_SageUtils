@@ -216,6 +216,84 @@ const input = createInput({
 
 **See Also:** `docs/FORM_ELEMENTS_GUIDE.md` for complete API reference and 40+ examples
 
+### tabs.js
+
+**Purpose**: Comprehensive tab management system with lazy loading and state management  
+**Complexity**: Medium  
+**File Size**: 576 lines  
+
+**Dependencies:**
+- No external dependencies - standalone component
+
+**Key Classes:**
+
+- `TabManager`: Main class for managing tabbed interfaces
+  - **Constructor Parameters**: Options object (container, onTabSwitch, onTabInit, lazyLoad, styles)
+  - **Returns**: TabManager instance with full tab lifecycle management
+  - **Features**: State tracking, lazy loading, visibility control, event callbacks
+
+**Key Methods:**
+
+- `init()`: Initializes the TabManager by creating tab header and content containers
+  - **Returns**: TabManager instance (chainable)
+  - **Features**: Creates DOM structure for tabs
+  
+- `addTab(id, label, contentFactory, options)`: Adds a new tab to the interface
+  - **Parameters**: Tab ID, label text, content factory function, options object
+  - **Returns**: TabManager instance (chainable)
+  - **Features**: Lazy loading support, visibility control, custom styles
+  
+- `switchTab(tabId)`: Switches to the specified tab, initializing if needed
+  - **Parameters**: Tab ID to switch to
+  - **Features**: Automatic lazy loading, state management, callback invocation
+  
+- `removeTab(tabId)`: Removes a tab from the interface
+- `showTab(tabId)` / `hideTab(tabId)`: Show or hide specific tabs
+- `getActiveTab()`: Returns the currently active tab ID
+- `isTabInitialized(tabId)`: Checks if a tab has been initialized
+- `getTabIds()` / `getVisibleTabIds()`: Get all or only visible tab IDs
+- `activateFirstTab()`: Activates the first visible tab
+- `updateVisibility(settings)`: Updates tab visibility based on settings object
+- `destroy()`: Cleans up all resources and event listeners
+
+**Standalone Functions:**
+
+- `createTabButton(text, isActive)`: Standalone tab button creation (deprecated, use TabManager)
+  - **Parameters**: Button text, active state
+  - **Returns**: Styled button element
+  - **Features**: Backward compatibility for legacy code
+
+**Usage Example:**
+
+```javascript
+import { TabManager } from '../components/tabs.js';
+
+// Create TabManager
+const tabManager = new TabManager({
+    container: document.getElementById('tab-container'),
+    onTabSwitch: (tabId) => console.log(`Switched to: ${tabId}`),
+    lazyLoad: true
+});
+
+// Initialize and add tabs
+tabManager.init()
+    .addTab('home', 'Home', createHomeContent, { visible: true })
+    .addTab('settings', 'Settings', createSettingsContent, { visible: true })
+    .addTab('advanced', 'Advanced', createAdvancedContent, { visible: false });
+
+// Activate first visible tab
+tabManager.activateFirstTab();
+
+// Dynamic visibility control
+tabManager.updateVisibility({
+    home: true,
+    settings: true,
+    advanced: userIsAdmin
+});
+```
+
+**See Also:** `docs/TAB_MANAGER_GUIDE.md` for complete API reference
+
 ## Display Widget Files
 
 ### display.js

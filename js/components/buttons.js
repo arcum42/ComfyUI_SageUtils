@@ -82,6 +82,7 @@ function getSizeFontSize(size) {
  * @param {Object} options.style - Custom style overrides
  * @param {string} options.title - Tooltip text
  * @param {string} options.className - Additional CSS class
+ * @param {string} options.id - Element ID
  * @param {boolean} options.hoverEffect - Enable hover opacity effect (default: true)
  * @param {string} options.marginTop - Margin top value (default: '8px')
  * @returns {HTMLButtonElement}
@@ -97,6 +98,7 @@ export function createButton(text, options = {}) {
         style = {},
         title = '',
         className = '',
+        id = '',
         hoverEffect = true,
         marginTop = '8px'
     } = options;
@@ -109,6 +111,7 @@ export function createButton(text, options = {}) {
     // Set attributes
     if (title) button.title = title;
     if (className) button.className = className;
+    if (id) button.id = id;
     button.disabled = disabled;
     
     // Determine background color

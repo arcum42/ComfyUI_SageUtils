@@ -191,7 +191,7 @@ function createSearchForm() {
     const searchButton = createButton('Search', {
         id: 'civitai-search-button',
         variant: BUTTON_VARIANTS.SUCCESS,
-        styles: {
+        style: {
             padding: '8px 20px',
             fontWeight: 'bold'
         }
