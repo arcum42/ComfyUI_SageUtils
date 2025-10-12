@@ -20,6 +20,7 @@ import {
 
 // Import decomposed tab modules
 import { createModelsTab } from "./modelsTab.js";
+import { createModelsTabV2 } from "./modelsTabV2.js";
 import { createFilesTab } from "./filesTab.js";
 import { createCivitaiSearchTab } from "./civitaiSearchTab.js";
 import { createImageGalleryTab } from "./imageGalleryTab.js";
@@ -47,6 +48,9 @@ import { TabManager } from "../components/tabs.js";
 
 // Import API for settings
 import { api } from '../../../../scripts/api.js';
+
+// Feature flag for Models Tab V2 (set to true to use new implementation)
+const USE_MODELS_TAB_V2 = true;
 
 // Track the current sidebar element for reloading
 let currentSidebarElement = null;
@@ -314,7 +318,7 @@ export async function createCacheSidebar(el) {
     
     // Create tab content factories for lazy loading
     const tabContentFactories = {
-        models: createModelsTab,
+        models: USE_MODELS_TAB_V2 ? createModelsTabV2 : createModelsTab,
         notes: createFilesTab,
         civitai: createCivitaiSearchTab,
         gallery: createImageGalleryTab,

@@ -130,8 +130,22 @@ async function createCivitaiImageGallery(hash, showNsfw = false) {
         `;
         
         const galleryHeader = document.createElement('div');
-        galleryHeader.innerHTML = `<strong style="color: #E91E63;">Preview Images (${filteredImages.length}):</strong>`;
-        galleryHeader.style.marginBottom = '10px';
+        galleryHeader.style.cssText = `
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        `;
+        
+        const titleSpan = document.createElement('span');
+        titleSpan.innerHTML = `<strong style="color: #E91E63;">Preview Images (${filteredImages.length}):</strong>`;
+        galleryHeader.appendChild(titleSpan);
+        
+        // Add NSFW toggle placeholder (will be populated from parent)
+        const nsfwToggleSpot = document.createElement('div');
+        nsfwToggleSpot.id = 'nsfw-toggle-spot';
+        galleryHeader.appendChild(nsfwToggleSpot);
+        
         galleryContainer.appendChild(galleryHeader);
         
         const imagesGrid = document.createElement('div');
