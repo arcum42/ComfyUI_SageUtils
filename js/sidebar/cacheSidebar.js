@@ -56,6 +56,7 @@ function createTabHeader() {
         background: #1a1a1a;
         overflow-x: auto;
         min-height: 50px;
+        position: relative;
     `;
 
     const modelsTab = createTabButton('Models', true);
@@ -80,6 +81,53 @@ function createTabHeader() {
     tabHeader.appendChild(promptBuilderTab);
     tabHeader.appendChild(llmTab);
 
+    // Create settings gear button
+    const settingsButton = document.createElement('button');
+    settingsButton.innerHTML = '⚙️';
+    settingsButton.title = 'Settings';
+    settingsButton.className = 'sidebar-settings-button';
+    settingsButton.style.cssText = `
+        position: absolute;
+        right: 10px;
+        top: 50%;
+        transform: translateY(-50%);
+        background: #2a2a2a;
+        border: 1px solid #444;
+        border-radius: 4px;
+        color: #ccc;
+        padding: 6px 10px;
+        cursor: pointer;
+        font-size: 18px;
+        transition: all 0.2s ease;
+        z-index: 10;
+    `;
+
+    // Hover effect
+    settingsButton.addEventListener('mouseenter', () => {
+        settingsButton.style.background = '#4CAF50';
+        settingsButton.style.borderColor = '#4CAF50';
+        settingsButton.style.transform = 'translateY(-50%) scale(1.1)';
+    });
+
+    settingsButton.addEventListener('mouseleave', () => {
+        settingsButton.style.background = '#2a2a2a';
+        settingsButton.style.borderColor = '#444';
+        settingsButton.style.transform = 'translateY(-50%) scale(1)';
+    });
+
+    // Click handler - will be set up after import
+    settingsButton.addEventListener('click', async () => {
+        try {
+            const { showSettingsDialog } = await import('../dialogs/settingsDialog.js');
+            showSettingsDialog();
+        } catch (error) {
+            console.error('Failed to open settings dialog:', error);
+            handleError(error, 'Settings Dialog Error');
+        }
+    });
+
+    tabHeader.appendChild(settingsButton);
+
     return {
         tabHeader,
         modelsTab,
@@ -87,7 +135,8 @@ function createTabHeader() {
         civitaiTab,
         galleryTab,
         promptBuilderTab,
-        llmTab
+        llmTab,
+        settingsButton
     };
 }
 

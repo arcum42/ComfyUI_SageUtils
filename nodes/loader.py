@@ -47,7 +47,7 @@ class Sage_UNETLoaderFromInfo(ComfyNodeABC):
 
     def load_unet(self, unet_info):
         """Load UNET from model info."""
-        logging.info("Loading UNET...")
+        #logging.info("Loading UNET...")
         graph = GraphBuilder()
         unet_node = add_unet_node_from_info(graph, unet_info)
         if unet_node is None:
@@ -87,7 +87,7 @@ class Sage_CLIPLoaderFromInfo(ComfyNodeABC):
 
     def load_clip(self, clip_info):
         """Load CLIP from model info."""
-        logging.info("Loading CLIP...")
+        #logging.info("Loading CLIP...")
         graph = GraphBuilder()
         clip_node = add_clip_node_from_info(graph, clip_info)
         if clip_node is None:
@@ -127,7 +127,7 @@ class Sage_ChromaCLIPLoaderFromInfo(ComfyNodeABC):
 
     def load_clip(self, clip_info):
         """Load Chroma CLIP from model info."""
-        logging.info("Loading CLIP...")
+        #logging.info("Loading CLIP...")
         graph = GraphBuilder()
         clip_node = add_clip_node_from_info(graph, clip_info)
         if clip_node is None:
@@ -166,7 +166,7 @@ class Sage_VAELoaderFromInfo(ComfyNodeABC):
 
     def load_vae(self, vae_info):
         """Load VAE from model info."""
-        logging.info("Loading VAE...")
+        #logging.info("Loading VAE...")
         graph = GraphBuilder()
         vae_node = add_vae_node_from_info(graph, vae_info)
         if vae_node is None:

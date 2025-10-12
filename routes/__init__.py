@@ -62,8 +62,7 @@ def register_routes(routes_instance):
                 if hasattr(route_module, 'register_routes'):
                     group_count = route_module.register_routes(routes_instance)
                     route_count += group_count
-                    logging.info(f"{group_name} routes registered successfully")
-                    logging.info(f"Registered {group_count} {group_name} routes")
+                    logging.debug(f"Registered {group_count} {group_name} routes successfully")
                     _registered_routes.extend(route_module.get_route_list() if hasattr(route_module, 'get_route_list') else [])
                 else:
                     logging.warning(f"Route module {group_name} missing register_routes function")

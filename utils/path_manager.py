@@ -126,7 +126,7 @@ class SageFileManager:
                 data = self.load_json_file(path, f"{config_name} config")
                 if data is not None:
                     configs.append(data)
-                    print(f"Loading {config_name} from {path}")
+                    #print(f"Loading {config_name} from {path}")
         
         if not configs:
             return {}

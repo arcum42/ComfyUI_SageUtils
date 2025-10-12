@@ -1,4 +1,13 @@
 import os
+import logging
+
+# Uncomment the next line to enable debug logging
+# logging.basicConfig(level=logging.DEBUG)
+
+# Set to 1 for v1 nodes, 3 for v3 nodes.
+# Right now, v3 nodes aren't ready for use.
+CURRENT_NODE_VERSION = '1'
+NODE_VERSION = os.environ.get('SAGEUTILS_NODE_VERSION', CURRENT_NODE_VERSION)
 
 SAGEUTILS_PRINT_TIMING = False  # Set to True to enable timing report
 # Print timing report if enabled via environment variable
@@ -8,11 +17,6 @@ if os.environ.get('SAGEUTILS_PRINT_TIMING', '').lower() in ('1', 'true', 'yes'):
 # Initialize performance timing as early as possible
 from .utils.performance_timer import python_timer, log_init
 log_init("IMPORTS_START")
-
-# Set to 1 for v1 nodes, 3 for v3 nodes.
-# Right now, v3 nodes aren't ready for use.
-CURRENT_NODE_VERSION = '1'
-NODE_VERSION = os.environ.get('SAGEUTILS_NODE_VERSION', CURRENT_NODE_VERSION)
 
 # Import all node classes
 if NODE_VERSION == '1':
@@ -103,7 +107,6 @@ try:
     from .utils.performance_fix import populate_llm_cache_async
     populate_llm_cache_async()
 except Exception as e:
-    import logging
     logging.warning(f"Warning: Failed to start background LLM cache population: {e}")
 
 # Print timing report if enabled.
