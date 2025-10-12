@@ -5,6 +5,7 @@
 import { promptGenerationComponent } from '../promptBuilder/promptGeneration.js';
 import { tagLibraryComponent } from '../promptBuilder/tagLibrary.js';
 import { savedPromptsComponent } from '../promptBuilder/savedPrompts.js';
+import { copyToClipboard } from '../components/clipboard.js';
 
 /**
  * Creates the main Prompt Builder tab content
@@ -340,32 +341,7 @@ function insertTagIntoActivePrompt(tag) {
     }
 }
 
-/**
- * Copy text to clipboard
- * @param {string} text - Text to copy
- */
-async function copyToClipboard(text) {
-    try {
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-            await navigator.clipboard.writeText(text);
-            return true;
-        } else {
-            // Fallback for older browsers
-            const textArea = document.createElement('textarea');
-            textArea.value = text;
-            textArea.style.position = 'fixed';
-            textArea.style.left = '-9999px';
-            document.body.appendChild(textArea);
-            textArea.select();
-            const success = document.execCommand('copy');
-            document.body.removeChild(textArea);
-            return success;
-        }
-    } catch (error) {
-        console.error('Failed to copy to clipboard:', error);
-        return false;
-    }
-}
+// copyToClipboard function removed - now imported from components/clipboard.js
 
 /**
  * Show feedback for tag insertion

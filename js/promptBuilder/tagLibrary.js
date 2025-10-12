@@ -5,6 +5,8 @@
 
 import { tagApi } from '../shared/api/tagApi.js';
 import { createButton, BUTTON_VARIANTS } from '../components/buttons.js';
+import { copyToClipboard } from '../components/clipboard.js';
+import { showToast, NOTIFICATION_TYPES } from '../shared/notifications.js';
 
 /**
  * Tag Library class for managing the tag system UI
@@ -563,20 +565,24 @@ export class TagLibrary {
     /**
      * Insert a tag into the active prompt field
      */
-    insertTag(tag) {
+    async insertTag(tag) {
         if (this.options.onTagInsert) {
             this.options.onTagInsert(tag);
         } else {
             // Default behavior - copy to clipboard
-            this.copyToClipboard(tag);
-            this.showToast(`Copied "${tag}" to clipboard`);
+            const success = await copyToClipboard(tag);
+            if (success) {
+                showToast(`Copied "${tag}" to clipboard`, NOTIFICATION_TYPES.SUCCESS);
+            } else {
+                showToast('Failed to copy to clipboard', NOTIFICATION_TYPES.ERROR);
+            }
         }
     }
 
     /**
      * Insert a tag set into the active prompt field
      */
-    insertTagSet(tagSet) {
+    async insertTagSet(tagSet) {
         const tagsText = tagSet.tags?.join(', ') || '';
         if (this.options.onTagSetInsert) {
             this.options.onTagSetInsert(tagSet, tagsText);
@@ -584,64 +590,13 @@ export class TagLibrary {
             this.options.onTagInsert(tagsText);
         } else {
             // Default behavior - copy to clipboard
-            this.copyToClipboard(tagsText);
-            this.showToast(`Copied "${tagSet.name}" tag set to clipboard`);
-        }
-    }
-
-    /**
-     * Copy text to clipboard
-     */
-    async copyToClipboard(text) {
-        try {
-            if (navigator.clipboard && navigator.clipboard.writeText) {
-                await navigator.clipboard.writeText(text);
-                return true;
+            const success = await copyToClipboard(tagsText);
+            if (success) {
+                showToast(`Copied "${tagSet.name}" tag set to clipboard`, NOTIFICATION_TYPES.SUCCESS);
             } else {
-                // Fallback for older browsers
-                const textArea = document.createElement('textarea');
-                textArea.value = text;
-                textArea.style.position = 'fixed';
-                textArea.style.left = '-9999px';
-                document.body.appendChild(textArea);
-                textArea.select();
-                const success = document.execCommand('copy');
-                document.body.removeChild(textArea);
-                return success;
+                showToast('Failed to copy to clipboard', NOTIFICATION_TYPES.ERROR);
             }
-        } catch (error) {
-            console.error('Failed to copy to clipboard:', error);
-            return false;
         }
-    }
-
-    /**
-     * Show a toast notification
-     */
-    showToast(message, type = 'info') {
-        // Simple toast implementation
-        const toast = document.createElement('div');
-        toast.className = `toast toast-${type}`;
-        toast.textContent = message;
-        
-        toast.style.cssText = `
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            padding: 12px 16px;
-            background: #333;
-            color: white;
-            border-radius: 4px;
-            z-index: 10000;
-            animation: slideIn 0.3s ease;
-        `;
-        
-        document.body.appendChild(toast);
-        
-        setTimeout(() => {
-            toast.style.animation = 'slideOut 0.3s ease';
-            setTimeout(() => toast.remove(), 300);
-        }, 3000);
     }
 
     /**
@@ -775,10 +730,10 @@ export class TagLibrary {
                 this.setActiveCategory(category.id);
                 this.showToast(`Category "${category.name}" added successfully`);
             } else {
-                this.showToast(`Failed to add category: ${result.error}`, 'error');
+                showToast(`Failed to add category: ${result.error}`, NOTIFICATION_TYPES.ERROR);
             }
         } catch (error) {
-            this.showToast(`Error adding category: ${error.message}`, 'error');
+            showToast(`Error adding category: ${error.message}`, NOTIFICATION_TYPES.ERROR);
         }
     }
 
@@ -793,10 +748,10 @@ export class TagLibrary {
                 this.updateTagDisplay();
                 this.showToast(`Tag "${tag}" added successfully`);
             } else {
-                this.showToast(`Failed to add tag: ${result.error}`, 'error');
+                showToast(`Failed to add tag: ${result.error}`, NOTIFICATION_TYPES.ERROR);
             }
         } catch (error) {
-            this.showToast(`Error adding tag: ${error.message}`, 'error');
+            showToast(`Error adding tag: ${error.message}`, NOTIFICATION_TYPES.ERROR);
         }
     }
 
@@ -811,10 +766,10 @@ export class TagLibrary {
                 this.updateTagDisplay();
                 this.showToast(`Tag set "${tagSet.name}" added successfully`);
             } else {
-                this.showToast(`Failed to add tag set: ${result.error}`, 'error');
+                showToast(`Failed to add tag set: ${result.error}`, NOTIFICATION_TYPES.ERROR);
             }
         } catch (error) {
-            this.showToast(`Error adding tag set: ${error.message}`, 'error');
+            showToast(`Error adding tag set: ${error.message}`, NOTIFICATION_TYPES.ERROR);
         }
     }
 
@@ -831,10 +786,10 @@ export class TagLibrary {
                 this.updateTagDisplay();
                 this.showToast(`Tag "${tag}" removed successfully`);
             } else {
-                this.showToast(`Failed to remove tag: ${result.error}`, 'error');
+                showToast(`Failed to remove tag: ${result.error}`, NOTIFICATION_TYPES.ERROR);
             }
         } catch (error) {
-            this.showToast(`Error removing tag: ${error.message}`, 'error');
+            showToast(`Error removing tag: ${error.message}`, NOTIFICATION_TYPES.ERROR);
         }
     }
 
@@ -851,10 +806,10 @@ export class TagLibrary {
                 this.updateTagDisplay();
                 this.showToast(`Tag set "${tagSet.name}" deleted successfully`);
             } else {
-                this.showToast(`Failed to delete tag set: ${result.error}`, 'error');
+                showToast(`Failed to delete tag set: ${result.error}`, NOTIFICATION_TYPES.ERROR);
             }
         } catch (error) {
-            this.showToast(`Error deleting tag set: ${error.message}`, 'error');
+            showToast(`Error deleting tag set: ${error.message}`, NOTIFICATION_TYPES.ERROR);
         }
     }
 
@@ -869,10 +824,10 @@ export class TagLibrary {
                 this.setActiveCategory(category.id);
                 this.showToast(`Category "${category.name}" updated successfully`);
             } else {
-                this.showToast(`Failed to update category: ${result.error}`, 'error');
+                showToast(`Failed to update category: ${result.error}`, NOTIFICATION_TYPES.ERROR);
             }
         } catch (error) {
-            this.showToast(`Error updating category: ${error.message}`, 'error');
+            showToast(`Error updating category: ${error.message}`, NOTIFICATION_TYPES.ERROR);
         }
     }
 
@@ -890,13 +845,13 @@ export class TagLibrary {
                     this.updateTagDisplay();
                     this.showToast(`Tag set "${tagSet.name}" updated successfully`);
                 } else {
-                    this.showToast(`Failed to update tag set: ${addResult.error}`, 'error');
+                    showToast(`Failed to update tag set: ${addResult.error}`, NOTIFICATION_TYPES.ERROR);
                 }
             } else {
-                this.showToast(`Failed to update tag set: ${result.error}`, 'error');
+                showToast(`Failed to update tag set: ${result.error}`, NOTIFICATION_TYPES.ERROR);
             }
         } catch (error) {
-            this.showToast(`Error updating tag set: ${error.message}`, 'error');
+            showToast(`Error updating tag set: ${error.message}`, NOTIFICATION_TYPES.ERROR);
         }
     }
 
@@ -919,10 +874,10 @@ export class TagLibrary {
                 }
                 this.showToast(`Category "${category.name}" deleted successfully`);
             } else {
-                this.showToast(`Failed to delete category: ${result.error}`, 'error');
+                showToast(`Failed to delete category: ${result.error}`, NOTIFICATION_TYPES.ERROR);
             }
         } catch (error) {
-            this.showToast(`Error deleting category: ${error.message}`, 'error');
+            showToast(`Error deleting category: ${error.message}`, NOTIFICATION_TYPES.ERROR);
         }
     }
 
@@ -952,7 +907,7 @@ export class TagLibrary {
             // Load default library structure from the server
             const defaultLibrary = await this.loadDefaultLibrary();
             if (!defaultLibrary) {
-                this.showToast('Failed to load default library', 'error');
+                showToast('Failed to load default library', NOTIFICATION_TYPES.ERROR);
                 return;
             }
 
@@ -962,10 +917,10 @@ export class TagLibrary {
                 await this.refreshLibrary();
                 this.showToast('Tag library reset to defaults successfully', 'success');
             } else {
-                this.showToast(`Failed to reset library: ${result.error}`, 'error');
+                showToast(`Failed to reset library: ${result.error}`, NOTIFICATION_TYPES.ERROR);
             }
         } catch (error) {
-            this.showToast(`Error resetting library: ${error.message}`, 'error');
+            showToast(`Error resetting library: ${error.message}`, NOTIFICATION_TYPES.ERROR);
         }
     }
 
@@ -985,14 +940,14 @@ export class TagLibrary {
             // Load default library structure
             const defaultLibrary = await this.loadDefaultLibrary();
             if (!defaultLibrary) {
-                this.showToast('Failed to load default library', 'error');
+                showToast('Failed to load default library', NOTIFICATION_TYPES.ERROR);
                 return;
             }
 
             // Get current library
             const currentResult = await tagApi.getTagLibrary(false);
             if (!currentResult.success) {
-                this.showToast(`Failed to get current library: ${currentResult.error}`, 'error');
+                showToast(`Failed to get current library: ${currentResult.error}`, NOTIFICATION_TYPES.ERROR);
                 return;
             }
 
@@ -1005,10 +960,10 @@ export class TagLibrary {
                 await this.refreshLibrary();
                 this.showToast('Default categories and tags added successfully', 'success');
             } else {
-                this.showToast(`Failed to merge libraries: ${result.error}`, 'error');
+                showToast(`Failed to merge libraries: ${result.error}`, NOTIFICATION_TYPES.ERROR);
             }
         } catch (error) {
-            this.showToast(`Error merging libraries: ${error.message}`, 'error');
+            showToast(`Error merging libraries: ${error.message}`, NOTIFICATION_TYPES.ERROR);
         }
     }
 
