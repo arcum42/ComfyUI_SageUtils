@@ -294,6 +294,105 @@ tabManager.updateVisibility({
 
 **See Also:** `docs/TAB_MANAGER_GUIDE.md` for complete API reference
 
+### layout.js
+
+**Purpose**: Comprehensive layout utilities for consistent UI structure  
+**Complexity**: Medium  
+**File Size**: 680 lines  
+
+**Dependencies:**
+- No external dependencies - standalone component
+
+**Key Functions:**
+
+- `createFlexContainer(options)`: Flexible box layout with common configurations
+  - **Parameters**: Options object (direction, justify, align, gap, wrap, padding, etc.)
+  - **Returns**: Configured flex container
+  - **Features**: Row/column direction, justify content, align items, gap spacing, wrapping
+  
+- `createGrid(options)`: CSS Grid layout with flexible column/row definitions
+  - **Parameters**: Options object (columns, rows, gap, padding, background, etc.)
+  - **Returns**: Configured grid container
+  - **Features**: Numeric or string column definitions, auto-fit, custom gaps
+  
+- `createResponsiveGrid(options)`: Auto-fitting grid that adapts to container width
+  - **Parameters**: Options object (minItemWidth, maxItemWidth, gap, padding, etc.)
+  - **Returns**: Responsive grid container using CSS auto-fill
+  - **Features**: Automatic column calculation, min/max item widths
+  
+- `createCard(options)`: Card container with optional title and action buttons
+  - **Parameters**: Options object (title, content, actions, padding, background, etc.)
+  - **Returns**: Card element with header and content areas
+  - **Features**: Optional title, action buttons in header, custom styling
+  
+- `createSection(title, content, options)`: Titled section with bordered header
+  - **Parameters**: Title string, content element/HTML, options object
+  - **Returns**: Section container with title and content
+  - **Features**: Collapsible sections, custom colors and borders
+  
+- `createScrollContainer(content, options)`: Scrollable container with max-height/width
+  - **Parameters**: Content element/HTML, options object
+  - **Returns**: Scrollable container
+  - **Features**: Max height/width, show/hide scrollbars, custom styling
+  
+- `createSplitPane(leftContent, rightContent, options)`: Two-column layout with optional resizing
+  - **Parameters**: Left and right content elements, options object
+  - **Returns**: Split pane container
+  - **Features**: Configurable split ratios, resizable panes, min widths
+  
+- `createCenteredContainer(content, options)`: Centered container with max-width
+  - **Parameters**: Content element/HTML, options object
+  - **Returns**: Centered container
+  - **Features**: Max width, auto margins, custom padding
+  
+- `createStack(items, options)`: Vertical stack with consistent spacing
+  - **Parameters**: Array of elements, options object
+  - **Returns**: Vertical flex container
+  - **Features**: Shorthand for column flex layout
+  
+- `createInline(items, options)`: Horizontal inline layout with consistent spacing
+  - **Parameters**: Array of elements, options object
+  - **Returns**: Horizontal flex container
+  - **Features**: Shorthand for row flex layout, optional wrapping
+
+**Usage Example:**
+
+```javascript
+import { createCard, createGrid, createResponsiveGrid, createStack } from '../components/layout.js';
+import { createButton, BUTTON_VARIANTS } from '../components/buttons.js';
+
+// Responsive image gallery
+const gallery = createResponsiveGrid({
+    minItemWidth: 200,
+    gap: '16px',
+    children: imageElements
+});
+
+// Settings card with actions
+const editBtn = createButton('Edit', { variant: BUTTON_VARIANTS.INFO });
+const card = createCard({
+    title: 'Model Info',
+    content: detailsElement,
+    actions: [editBtn]
+});
+
+// Form with stacked fields
+const form = createStack([
+    nameInput,
+    emailInput,
+    submitButton
+], { gap: '12px' });
+
+// Two-column grid
+const twoColumns = createGrid({
+    columns: 2,
+    gap: '16px',
+    children: [leftPanel, rightPanel]
+});
+```
+
+**See Also:** `docs/LAYOUT_COMPONENT_GUIDE.md` for complete API reference
+
 ## Display Widget Files
 
 ### display.js
