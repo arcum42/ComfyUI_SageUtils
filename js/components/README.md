@@ -14,9 +14,209 @@ The components system provides a standardized approach to creating and managing 
 
 ## Core Components
 
-The widgets are designed to work as overlays on top of standard ComfyUI text widgets, preserving compatibility while enhancing functionality.
+The components system includes two main categories:
 
-## Widget Files
+1. **Display Widgets**: Overlay-based widgets for rich content display (text, markdown, images, videos)
+2. **UI Components**: Reusable form elements, buttons, and utilities for consistent interface creation
+
+## UI Component Files
+
+### buttons.js
+
+**Purpose**: Centralized button creation system with variants and pre-configured options  
+**Complexity**: Low  
+**File Size**: 310 lines  
+
+**Dependencies:**
+- No external dependencies - standalone component
+
+**Key Functions:**
+
+- `createButton(text, options)`: Main button creation function with extensive customization
+  - **Parameters**: Button text, options object (variant, size, icon, onClick, etc.)
+  - **Returns**: Configured button element
+  - **Features**: Variants, sizes, icons, tooltips, disabled state, custom styles
+  
+- `createIconButton(icon, options)`: Icon-only buttons for compact UI
+  - **Parameters**: Icon character/emoji, options object
+  - **Returns**: Icon button element
+  - **Features**: Consistent sizing, hover effects, tooltips
+  
+- `createButtonGroup(buttons, options)`: Group multiple buttons with consistent spacing
+  - **Parameters**: Array of button elements, options object
+  - **Returns**: Container element with grouped buttons
+  - **Features**: Horizontal/vertical layout, custom spacing and alignment
+  
+- `createConfigButton(configKey, overrides)`: Quick button creation from predefined configs
+  - **Parameters**: Config key (e.g., 'save', 'delete', 'refresh'), optional overrides
+  - **Returns**: Pre-configured button element
+  - **Features**: Common button patterns, consistent styling
+
+**Constants:**
+
+- `BUTTON_VARIANTS`: Color schemes (primary, success, warning, danger, info, secondary)
+- `BUTTON_SIZES`: Size options (small, medium, large)
+- `BUTTON_CONFIGS`: Pre-configured common buttons (refresh, pull, edit, scan, report, save, delete, cancel, confirm)
+
+**Usage Example:**
+
+```javascript
+import { createButton, createConfigButton, BUTTON_VARIANTS } from '../components/buttons.js';
+
+// Custom button
+const saveBtn = createButton('Save', {
+    variant: BUTTON_VARIANTS.SUCCESS,
+    icon: '💾',
+    onClick: () => saveData()
+});
+
+// Pre-configured button
+const deleteBtn = createConfigButton('delete', {
+    onClick: () => deleteItem()
+});
+```
+
+**See Also:** `docs/BUTTON_COMPONENT_GUIDE.md` for complete API reference
+
+### clipboard.js
+
+**Purpose**: Centralized clipboard operations with fallback support  
+**Complexity**: Low  
+**File Size**: 106 lines  
+
+**Dependencies:**
+- `shared/imageUtils.js` (re-exports `copyImageToClipboard`)
+- `shared/notifications.js` (for `copyWithNotification`)
+
+**Key Functions:**
+
+- `copyToClipboard(text)`: Copy text to clipboard with automatic fallback
+  - **Parameters**: Text string to copy
+  - **Returns**: Promise<boolean> - success status
+  - **Features**: Modern Clipboard API with execCommand fallback
+  
+- `readFromClipboard()`: Read text from clipboard
+  - **Parameters**: None
+  - **Returns**: Promise<string> - clipboard text content
+  - **Features**: Permission handling, error recovery
+  
+- `copyWithNotification(text, message, showNotification)`: Copy with automatic toast
+  - **Parameters**: Text to copy, optional success message, show notification flag
+  - **Returns**: Promise<boolean>
+  - **Features**: Integrated toast notifications, customizable messages
+  
+- `isClipboardSupported()`: Check clipboard API availability
+- `isClipboardWriteSupported()`: Check write capability
+- `isClipboardReadSupported()`: Check read capability
+
+**Re-exports:**
+
+- `copyImageToClipboard` from `shared/imageUtils.js`
+
+**Usage Example:**
+
+```javascript
+import { copyToClipboard, copyWithNotification } from '../components/clipboard.js';
+
+// Basic copy
+const success = await copyToClipboard('Hello World');
+
+// Copy with notification
+await copyWithNotification('Copied text', 'Copied to clipboard!', true);
+```
+
+### formElements.js
+
+**Purpose**: Comprehensive form element creation system for consistent UI  
+**Complexity**: Medium-High  
+**File Size**: 761 lines  
+
+**Dependencies:**
+- No external dependencies - standalone component
+
+**Key Functions:**
+
+- `createInput(options)`: Create input elements (text, number, email, password, etc.)
+  - **Parameters**: Options object (type, value, placeholder, min, max, step, etc.)
+  - **Returns**: Input element
+  - **Features**: All HTML5 input types, validation, event handlers, ARIA labels
+  
+- `createSelect(options)`: Create dropdown/select elements
+  - **Parameters**: Options object (items, value, multiple, onChange, etc.)
+  - **Returns**: Select element
+  - **Features**: Flexible item formats (string, object, optgroup), multiple selection
+  
+- `createTextarea(options)`: Create multi-line text input
+  - **Parameters**: Options object (rows, cols, placeholder, monospace, etc.)
+  - **Returns**: Textarea element
+  - **Features**: Auto-sizing, monospace option, keyboard shortcuts support
+  
+- `createCheckbox(labelText, options)`: Create checkbox with integrated label
+  - **Parameters**: Label text, options object (checked, onChange, etc.)
+  - **Returns**: Object with {label, checkbox} elements
+  - **Features**: Accessible labeling, custom styling, event handlers
+  
+- `createSlider(labelText, options)`: Create range slider with value display
+  - **Parameters**: Label text, options object (min, max, step, value, formatValue, etc.)
+  - **Returns**: Object with {container, slider, valueDisplay} elements
+  - **Features**: Automatic value display, custom formatting, real-time updates
+  
+- `createRadioGroup(name, items, options)`: Create radio button group
+  - **Parameters**: Group name, items array, options object
+  - **Returns**: Object with {container, radios} elements
+  - **Features**: Horizontal/vertical layout, pre-selection, change handlers
+  
+- `createFormRow(labelText, element, options)`: Create label + element row
+  - **Parameters**: Label text, form element, options object
+  - **Returns**: Container with labeled form element
+  - **Features**: Consistent spacing, required indicators, help text
+  
+- `createFormGroup(elements, options)`: Create grouped form section
+  - **Parameters**: Array of elements, options object
+  - **Returns**: Container with grouped elements
+  - **Features**: Section titles, consistent spacing, fieldset support
+
+**Constants:**
+
+- `DEFAULT_STYLES`: Default CSS styling for all form elements
+
+**Helper Functions:**
+
+- `applyStyles(element, styles)`: Apply CSS styles safely to elements
+
+**Usage Examples:**
+
+```javascript
+import { createSlider, createSelect, createInput } from '../components/formElements.js';
+
+// Slider with custom formatting
+const { container, slider } = createSlider('Temperature', {
+    min: 0, max: 2, step: 0.1, value: 0.7,
+    formatValue: (v) => `${v} (randomness)`
+});
+
+// Dropdown
+const select = createSelect({
+    items: [
+        { value: 'opt1', text: 'Option 1' },
+        { value: 'opt2', text: 'Option 2' }
+    ],
+    value: 'opt1',
+    onChange: (e) => handleChange(e.target.value)
+});
+
+// Input field
+const input = createInput({
+    type: 'number',
+    placeholder: 'Enter value...',
+    min: 0, max: 100,
+    onInput: (e) => updateValue(e.target.value)
+});
+```
+
+**See Also:** `docs/FORM_ELEMENTS_GUIDE.md` for complete API reference and 40+ examples
+
+## Display Widget Files
 
 ### display.js
 
@@ -294,13 +494,122 @@ When adding new content types:
 - **Style Isolation**: Maintain CSS encapsulation to avoid conflicts with ComfyUI styling
 - **Browser Compatibility**: Test video and image support across different browsers
 - **Performance**: Monitor DOM manipulation performance with large content
+- **Component Consistency**: Use centralized components (buttons.js, formElements.js, clipboard.js) for all new UI development
+- **Migration Progress**: Legacy button and form creation patterns are being phased out in favor of components
+
+## Migration to Component System
+
+The codebase is undergoing a gradual migration to use centralized UI components:
+
+### Completed Migrations (Phase 1 & 2)
+
+✅ **Button System** (`buttons.js`)
+- Files migrated: `modelsTab.js`, `fileBrowser.js`, `fileEditor.js`, `tagLibrary.js`, `cacheUI.js`
+- Legacy functions deprecated with forwarding for backward compatibility
+- ~80 lines of duplicate code eliminated
+
+✅ **Clipboard & Toast** (`clipboard.js` + `shared/notifications.js`)
+- Files migrated: `tagLibrary.js`, `promptBuilderTab.js`
+- Centralized clipboard operations with fallback support
+- ~83 lines of duplicate code eliminated
+
+✅ **Form Elements** (`formElements.js`)
+- Files migrated: `llmTab.js` (5991 → 5827 lines, 164 lines saved)
+- Replaces manual creation of: sliders, selects, inputs, textareas, checkboxes
+- Consistent styling and behavior across all form elements
+- 14 sliders, 5 selects, 3 inputs, 2 textareas, 2 checkboxes refactored in llmTab.js
+
+### Pending Migrations
+
+⚠️ **Other Sidebar Tabs** (In Progress)
+- Files pending: `civitaiSearchTab.js`, `modelsTab.js`, `filesTab.js`, `settingsDialog.js`
+- Estimated: ~100 additional lines to be eliminated
+
+### Migration Guidelines
+
+When updating existing code or creating new UI:
+
+1. **Buttons**: Always use `createButton()` or `createConfigButton()` from `buttons.js`
+   ```javascript
+   // Old (deprecated)
+   createStyledButton('Save', '#4CAF50', '💾')
+   
+   // New
+   createButton('Save', { variant: BUTTON_VARIANTS.SUCCESS, icon: '💾' })
+   // Or even simpler:
+   createConfigButton('save')
+   ```
+
+2. **Form Elements**: Use functions from `formElements.js` instead of manual DOM creation
+   ```javascript
+   // Old (manual creation)
+   const slider = document.createElement('input');
+   slider.type = 'range';
+   slider.min = '0';
+   slider.max = '100';
+   // ... 15+ more lines
+   
+   // New
+   const { slider, container } = createSlider('Label', { min: 0, max: 100 });
+   ```
+
+3. **Clipboard**: Use `copyToClipboard()` from `clipboard.js`
+   ```javascript
+   // Old (inline implementation)
+   navigator.clipboard.writeText(text).catch(err => { /* ... */ });
+   
+   // New
+   await copyToClipboard(text);
+   // Or with notification:
+   await copyWithNotification(text, 'Copied!');
+   ```
+
+4. **Toast Notifications**: Use `showToast()` from `shared/notifications.js`
+   ```javascript
+   import { showToast, NOTIFICATION_TYPES } from '../shared/notifications.js';
+   showToast('Success!', NOTIFICATION_TYPES.SUCCESS);
+   ```
+
+### Component Documentation References
+
+- **buttons.js**: See `docs/BUTTON_COMPONENT_GUIDE.md`
+- **formElements.js**: See `docs/FORM_ELEMENTS_GUIDE.md`
+- **Refactoring Progress**: See `docs/REFACTORING_PROGRESS.md` for session-by-session migration details
+- **Component Analysis**: See `docs/COMPONENT_DUPLICATION_ANALYSIS.md` for original analysis and plan
 
 ## Future Enhancement Opportunities
+
+### Display Widgets
 
 1. **Audio Support**: Add audio file display capabilities
 2. **PDF Rendering**: Support for PDF file preview
 3. **Code Highlighting**: Enhanced syntax highlighting for code blocks
 4. **Interactive Elements**: Support for interactive content within widgets
 5. **Thumbnail Generation**: Automatic thumbnail creation for media files
+
+### UI Components
+
+1. **Tab Component**: Reusable tab system for multi-section interfaces
+2. **Modal System**: Standardized modal dialogs (currently in `dialogManager.js`, could be enhanced)
+3. **Table Component**: Data table with sorting, filtering, pagination
+4. **Tree View**: Hierarchical data display
+5. **Date/Time Pickers**: Specialized input components for temporal data
+6. **Color Picker**: Color selection component
+7. **File Upload**: Drag-and-drop file upload component
+8. **Autocomplete**: Type-ahead search/selection component
+
+## Component System Benefits
+
+The centralized component system provides:
+
+1. **Consistency**: Uniform styling and behavior across the application
+2. **Maintainability**: Single source of truth for UI patterns - fix once, fix everywhere
+3. **Developer Efficiency**: Faster development with pre-built components
+4. **Code Quality**: Less duplication, cleaner codebase, easier to test
+5. **Accessibility**: Built-in ARIA labels and semantic HTML
+6. **Flexibility**: Extensive customization options while maintaining defaults
+7. **Documentation**: Comprehensive guides with examples
+
+**Total Code Reduction (So Far)**: ~300+ lines eliminated across Phases 1 & 2
 
 This directory provides the foundation for rich content display within ComfyUI nodes, enabling sophisticated user interfaces while maintaining compatibility with the existing ComfyUI ecosystem.

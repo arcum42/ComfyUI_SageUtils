@@ -57,6 +57,11 @@ import {
     BUTTON_VARIANTS
 } from "../components/buttons.js";
 
+// Import form element components
+import {
+    createSelect
+} from "../components/formElements.js";
+
 // Import file selector components
 import {
     createModelsFileSelector,
@@ -135,18 +140,6 @@ function createModelsFilterControls() {
         min-width: 35px;
     `;
 
-    const sortSelector = document.createElement('select');
-    sortSelector.style.cssText = `
-        flex: 1;
-        padding: 4px 8px;
-        background: #333;
-        border: 1px solid #555;
-        border-radius: 4px;
-        color: white;
-        font-size: 11px;
-        cursor: pointer;
-    `;
-
     // Add sort options without direction suffixes
     const baseSortOptions = [
         { value: 'name', text: 'Name' },
@@ -155,11 +148,18 @@ function createModelsFilterControls() {
         { value: 'type', text: 'Folder Type' }
     ];
 
-    baseSortOptions.forEach(option => {
-        const optionElement = document.createElement('option');
-        optionElement.value = option.value;
-        optionElement.textContent = option.text;
-        sortSelector.appendChild(optionElement);
+    const sortSelector = createSelect({
+        items: baseSortOptions,
+        styles: {
+            flex: '1',
+            padding: '4px 8px',
+            background: '#333',
+            border: '1px solid #555',
+            borderRadius: '4px',
+            color: 'white',
+            fontSize: '11px',
+            cursor: 'pointer'
+        }
     });
 
     // Create sort order button
