@@ -109,6 +109,10 @@ function buildSettingsUI(container, settings, dialog) {
   const llmSection = createLLMSection(settings);
   settingsContainer.appendChild(llmSection);
 
+  // Tab Visibility Section
+  const tabVisibilitySection = createTabVisibilitySection(settings);
+  settingsContainer.appendChild(tabVisibilitySection);
+
   container.appendChild(settingsContainer);
 
   // Add footer buttons
@@ -151,6 +155,19 @@ function createLLMSection(settings) {
   `;
   section.appendChild(title);
 
+  // Default provider selection
+  const defaultProviderGroup = createDefaultProviderSelector(settings);
+  section.appendChild(defaultProviderGroup);
+
+  // Separator after default provider
+  const topSeparator = document.createElement('div');
+  topSeparator.style.cssText = `
+    height: 1px;
+    background: #444;
+    margin: 15px 0;
+  `;
+  section.appendChild(topSeparator);
+
   // Ollama settings
   const ollamaGroup = createProviderGroup('Ollama', settings, 'ollama');
   section.appendChild(ollamaGroup);
@@ -167,6 +184,140 @@ function createLLMSection(settings) {
   // LM Studio settings
   const lmstudioGroup = createProviderGroup('LM Studio', settings, 'lmstudio');
   section.appendChild(lmstudioGroup);
+
+  return section;
+}
+
+/**
+ * Create default LLM provider selector
+ * @param {Object} settings - Current settings
+ * @returns {HTMLElement} Default provider selector group
+ */
+function createDefaultProviderSelector(settings) {
+  const group = document.createElement('div');
+  group.style.cssText = 'margin-bottom: 15px;';
+
+  const label = document.createElement('label');
+  label.textContent = 'Default LLM Provider:';
+  label.style.cssText = `
+    display: block;
+    color: #ccc;
+    font-size: 14px;
+    margin-bottom: 8px;
+    font-weight: 500;
+  `;
+  group.appendChild(label);
+
+  const description = document.createElement('div');
+  description.textContent = 'Select which provider to use by default when opening the LLM tab';
+  description.style.cssText = `
+    color: #888;
+    font-size: 12px;
+    margin-bottom: 10px;
+    font-style: italic;
+  `;
+  group.appendChild(description);
+
+  // Get current setting
+  const defaultProviderSetting = settings['default_llm_provider'];
+  const currentValue = defaultProviderSetting ? defaultProviderSetting.current_value : 'ollama';
+
+  // Create radio buttons container
+  const radioContainer = document.createElement('div');
+  radioContainer.style.cssText = `
+    display: flex;
+    gap: 20px;
+    margin-left: 10px;
+  `;
+
+  // Ollama radio button
+  const ollamaRadio = createRadioButton(
+    'default_llm_provider',
+    'ollama',
+    'Ollama',
+    currentValue === 'ollama'
+  );
+  radioContainer.appendChild(ollamaRadio.container);
+
+  // LM Studio radio button
+  const lmstudioRadio = createRadioButton(
+    'default_llm_provider',
+    'lmstudio',
+    'LM Studio',
+    currentValue === 'lmstudio'
+  );
+  radioContainer.appendChild(lmstudioRadio.container);
+
+  group.appendChild(radioContainer);
+
+  return group;
+}
+
+/**
+ * Create Tab Visibility settings section
+ * @param {Object} settings - Current settings
+ * @returns {HTMLElement} Section element
+ */
+function createTabVisibilitySection(settings) {
+  const section = document.createElement('div');
+  section.style.cssText = `
+    padding: 15px;
+    background: #1e1e1e;
+    border-radius: 6px;
+    border: 1px solid #444;
+  `;
+
+  const title = document.createElement('h3');
+  title.textContent = 'Sidebar Tab Visibility';
+  title.style.cssText = `
+    margin: 0 0 15px 0;
+    color: #4CAF50;
+    font-size: 16px;
+    font-weight: 600;
+  `;
+  section.appendChild(title);
+
+  const description = document.createElement('p');
+  description.textContent = 'Control which tabs are visible in the sidebar. Changes take effect immediately.';
+  description.style.cssText = `
+    margin: 0 0 15px 0;
+    color: #888;
+    font-size: 13px;
+    font-style: italic;
+  `;
+  section.appendChild(description);
+
+  // Create a grid for tab checkboxes
+  const tabsGrid = document.createElement('div');
+  tabsGrid.style.cssText = `
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  `;
+
+  // Define tabs with their settings keys and display names
+  const tabs = [
+    { key: 'show_models_tab', label: 'Models' },
+    { key: 'show_files_tab', label: 'Files' },
+    { key: 'show_search_tab', label: 'Search (Civitai)' },
+    { key: 'show_gallery_tab', label: 'Gallery' },
+    { key: 'show_prompts_tab', label: 'Prompts' },
+    { key: 'show_llm_tab', label: 'LLM' }
+  ];
+
+  // Create checkbox for each tab
+  tabs.forEach(tab => {
+    const setting = settings[tab.key];
+    const checkbox = createCheckbox(
+      tab.label,
+      setting ? setting.current_value : true,
+      tab.key
+    );
+    checkbox.container.style.marginBottom = '5px';
+    tabsGrid.appendChild(checkbox.container);
+  });
+
+  section.appendChild(tabsGrid);
 
   return section;
 }
@@ -268,6 +419,47 @@ function createCheckbox(label, checked, settingKey) {
 }
 
 /**
+ * Create a radio button input
+ * @param {string} name - Radio group name (setting key)
+ * @param {string} value - Value for this radio button
+ * @param {string} label - Label text
+ * @param {boolean} checked - Initial checked state
+ * @returns {Object} Object with container and radio elements
+ */
+function createRadioButton(name, value, label, checked) {
+  const container = document.createElement('div');
+  container.style.cssText = `
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  `;
+
+  const radio = document.createElement('input');
+  radio.type = 'radio';
+  radio.name = name;
+  radio.value = value;
+  radio.id = `setting-${name}-${value}`;
+  radio.checked = checked;
+  radio.dataset.settingKey = name;
+  radio.style.cssText = 'cursor: pointer;';
+
+  const labelElement = document.createElement('label');
+  labelElement.htmlFor = `setting-${name}-${value}`;
+  labelElement.textContent = label;
+  labelElement.style.cssText = `
+    color: #ccc;
+    font-size: 14px;
+    cursor: pointer;
+    user-select: none;
+  `;
+
+  container.appendChild(radio);
+  container.appendChild(labelElement);
+
+  return { container, radio };
+}
+
+/**
  * Create a text input field
  * @param {string} label - Label text
  * @param {string} value - Initial value
@@ -329,6 +521,14 @@ async function saveSettings(dialog, container, originalSettings) {
 
       if (input.type === 'checkbox') {
         value = input.checked;
+      } else if (input.type === 'radio') {
+        // Only get value from checked radio button
+        if (input.checked) {
+          value = input.value;
+        } else {
+          // Skip unchecked radio buttons
+          return;
+        }
       } else {
         value = input.value;
       }
@@ -369,6 +569,31 @@ async function saveSettings(dialog, container, originalSettings) {
       }
     }
 
+    // Check if any tab visibility settings changed
+    const tabVisibilityKeys = [
+      'show_models_tab',
+      'show_files_tab', 
+      'show_search_tab',
+      'show_gallery_tab',
+      'show_prompts_tab',
+      'show_llm_tab'
+    ];
+    const tabVisibilityChanged = Object.keys(updates).some(key => tabVisibilityKeys.includes(key));
+
+    // If tab visibility changed, reload the sidebar
+    if (tabVisibilityChanged) {
+      try {
+        const { reloadCacheSidebar } = await import('../sidebar/cacheSidebar.js');
+        await reloadCacheSidebar();
+        console.log('Sidebar reloaded due to tab visibility changes');
+      } catch (error) {
+        console.error('Failed to reload sidebar:', error);
+        if (notifications && notifications.show) {
+          notifications.show('Settings saved but sidebar reload failed. Please refresh the page.', 'warning');
+        }
+      }
+    }
+
     // Show success notification
     if (notifications && notifications.show) {
       notifications.show('Settings saved successfully', 'success');
@@ -404,6 +629,15 @@ async function resetSettings(dialog) {
 
     if (!result.success) {
       throw new Error(result.error || 'Failed to reset settings');
+    }
+
+    // Reload the sidebar since tab visibility may have changed
+    try {
+      const { reloadCacheSidebar } = await import('../sidebar/cacheSidebar.js');
+      await reloadCacheSidebar();
+      console.log('Sidebar reloaded after settings reset');
+    } catch (error) {
+      console.error('Failed to reload sidebar:', error);
     }
 
     // Show success notification

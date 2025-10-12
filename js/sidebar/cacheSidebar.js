@@ -43,11 +43,54 @@ import {
     createTabButton
 } from "../components/cacheUI.js";
 
+// Import API for settings
+import { api } from '../../../../scripts/api.js';
+
+// Track the current sidebar element for reloading
+let currentSidebarElement = null;
+
+/**
+ * Load tab visibility settings from the backend
+ * @returns {Promise<Object>} Tab visibility settings
+ */
+async function loadTabVisibilitySettings() {
+    try {
+        const response = await api.fetchApi('/sage_utils/settings');
+        if (response.ok) {
+            const data = await response.json();
+            if (data.success && data.settings) {
+                const settings = data.settings;
+                return {
+                    show_models_tab: settings.show_models_tab?.current_value !== false,
+                    show_files_tab: settings.show_files_tab?.current_value !== false,
+                    show_search_tab: settings.show_search_tab?.current_value !== false,
+                    show_gallery_tab: settings.show_gallery_tab?.current_value !== false,
+                    show_prompts_tab: settings.show_prompts_tab?.current_value !== false,
+                    show_llm_tab: settings.show_llm_tab?.current_value !== false
+                };
+            }
+        }
+    } catch (error) {
+        console.warn('Failed to load tab visibility settings, using defaults:', error);
+    }
+    
+    // Return all tabs visible by default
+    return {
+        show_models_tab: true,
+        show_files_tab: true,
+        show_search_tab: true,
+        show_gallery_tab: true,
+        show_prompts_tab: true,
+        show_llm_tab: true
+    };
+}
+
 /**
  * Creates the tab header with Models, Files, Search, Gallery, Prompt Builder, and LLM tabs
+ * @param {Object} tabVisibility - Object containing visibility settings for each tab
  * @returns {Object} Object containing tab button elements
  */
-function createTabHeader() {
+function createTabHeader(tabVisibility = {}) {
     const tabHeader = document.createElement('div');
     tabHeader.style.cssText = `
         display: flex;
@@ -59,27 +102,50 @@ function createTabHeader() {
         position: relative;
     `;
 
-    const modelsTab = createTabButton('Models', true);
-    const notesTab = createTabButton('Files', false);
-    const civitaiTab = createTabButton('Search', false);
-    const galleryTab = createTabButton('Gallery', false);
-    const promptBuilderTab = createTabButton('Prompts', false);
-    const llmTab = createTabButton('LLM', false);
+    const tabs = {};
 
-    // Ensure tabs are properly sized
-    modelsTab.style.flexShrink = '0';
-    notesTab.style.flexShrink = '0';
-    civitaiTab.style.flexShrink = '0';
-    galleryTab.style.flexShrink = '0';
-    promptBuilderTab.style.flexShrink = '0';
-    llmTab.style.flexShrink = '0';
+    // Create tabs based on visibility settings
+    if (tabVisibility.show_models_tab !== false) {
+        const modelsTab = createTabButton('Models', true);
+        modelsTab.style.flexShrink = '0';
+        tabHeader.appendChild(modelsTab);
+        tabs.modelsTab = modelsTab;
+    }
 
-    tabHeader.appendChild(modelsTab);
-    tabHeader.appendChild(notesTab);
-    tabHeader.appendChild(civitaiTab);
-    tabHeader.appendChild(galleryTab);
-    tabHeader.appendChild(promptBuilderTab);
-    tabHeader.appendChild(llmTab);
+    if (tabVisibility.show_files_tab !== false) {
+        const notesTab = createTabButton('Files', false);
+        notesTab.style.flexShrink = '0';
+        tabHeader.appendChild(notesTab);
+        tabs.notesTab = notesTab;
+    }
+
+    if (tabVisibility.show_search_tab !== false) {
+        const civitaiTab = createTabButton('Search', false);
+        civitaiTab.style.flexShrink = '0';
+        tabHeader.appendChild(civitaiTab);
+        tabs.civitaiTab = civitaiTab;
+    }
+
+    if (tabVisibility.show_gallery_tab !== false) {
+        const galleryTab = createTabButton('Gallery', false);
+        galleryTab.style.flexShrink = '0';
+        tabHeader.appendChild(galleryTab);
+        tabs.galleryTab = galleryTab;
+    }
+
+    if (tabVisibility.show_prompts_tab !== false) {
+        const promptBuilderTab = createTabButton('Prompts', false);
+        promptBuilderTab.style.flexShrink = '0';
+        tabHeader.appendChild(promptBuilderTab);
+        tabs.promptBuilderTab = promptBuilderTab;
+    }
+
+    if (tabVisibility.show_llm_tab !== false) {
+        const llmTab = createTabButton('LLM', false);
+        llmTab.style.flexShrink = '0';
+        tabHeader.appendChild(llmTab);
+        tabs.llmTab = llmTab;
+    }
 
     // Create settings gear button
     const settingsButton = document.createElement('button');
@@ -130,12 +196,7 @@ function createTabHeader() {
 
     return {
         tabHeader,
-        modelsTab,
-        notesTab,
-        civitaiTab,
-        galleryTab,
-        promptBuilderTab,
-        llmTab,
+        ...tabs,
         settingsButton
     };
 }
@@ -243,39 +304,56 @@ function setupTabSwitching(tabComponents, tabContentData) {
         llm: false
     };
     
-    // Tab configuration mapping
-    const tabConfig = {
-        models: {
+    // Tab configuration mapping - only include tabs that exist
+    const tabConfig = {};
+    
+    if (modelsTab) {
+        tabConfig.models = {
             button: modelsTab,
             container: containers.models,
             createFunction: createModelsTab
-        },
-        notes: {
+        };
+    }
+    
+    if (notesTab) {
+        tabConfig.notes = {
             button: notesTab,
             container: containers.notes,
             createFunction: createFilesTab
-        },
-        civitai: {
+        };
+    }
+    
+    if (civitaiTab) {
+        tabConfig.civitai = {
             button: civitaiTab,
             container: containers.civitai,
             createFunction: createCivitaiSearchTab
-        },
-        gallery: {
+        };
+    }
+    
+    if (galleryTab) {
+        tabConfig.gallery = {
             button: galleryTab,
             container: containers.gallery,
             createFunction: createImageGalleryTab
-        },
-        promptBuilder: {
+        };
+    }
+    
+    if (promptBuilderTab) {
+        tabConfig.promptBuilder = {
             button: promptBuilderTab,
             container: containers.promptBuilder,
             createFunction: createPromptBuilderTab
-        },
-        llm: {
+        };
+    }
+    
+    if (llmTab) {
+        tabConfig.llm = {
             button: llmTab,
             container: containers.llm,
             createFunction: createLLMTab
-        }
-    };
+        };
+    }
 
     /**
      * Switches between tabs using hide/show approach
@@ -367,13 +445,13 @@ function setupTabSwitching(tabComponents, tabContentData) {
         }
     }
     
-    // Tab event listeners
-    modelsTab.addEventListener('click', () => switchTab('models'));
-    notesTab.addEventListener('click', () => switchTab('notes'));
-    civitaiTab.addEventListener('click', () => switchTab('civitai'));
-    galleryTab.addEventListener('click', () => switchTab('gallery'));
-    promptBuilderTab.addEventListener('click', () => switchTab('promptBuilder'));
-    llmTab.addEventListener('click', () => switchTab('llm'));
+    // Tab event listeners - only add if tab exists
+    if (modelsTab) modelsTab.addEventListener('click', () => switchTab('models'));
+    if (notesTab) notesTab.addEventListener('click', () => switchTab('notes'));
+    if (civitaiTab) civitaiTab.addEventListener('click', () => switchTab('civitai'));
+    if (galleryTab) galleryTab.addEventListener('click', () => switchTab('gallery'));
+    if (promptBuilderTab) promptBuilderTab.addEventListener('click', () => switchTab('promptBuilder'));
+    if (llmTab) llmTab.addEventListener('click', () => switchTab('llm'));
 
     return { switchTab, initializedTabs };
 }
@@ -496,12 +574,18 @@ async function initializeSidebarData() {
  * Main function to create the cache sidebar with tabs
  * @param {HTMLElement} el - Element to populate with the sidebar
  */
-export function createCacheSidebar(el) {
+export async function createCacheSidebar(el) {
+    // Store reference for potential reload
+    currentSidebarElement = el;
+    
+    // Load tab visibility settings
+    const tabVisibility = await loadTabVisibilitySettings();
+    
     // Create main container
     const mainContainer = createMainContainer();
     
-    // Create tab components
-    const tabComponents = createTabHeader();
+    // Create tab components with visibility settings
+    const tabComponents = createTabHeader(tabVisibility);
     const tabContentData = createTabContent();
     
     // Setup tab switching with hide/show approach
@@ -609,8 +693,45 @@ export function createCacheSidebar(el) {
         });
     }, 100);
     
-    // Initialize with Models tab (this will lazy load it)
+    // Initialize with first visible tab (this will lazy load it)
     setTimeout(() => {
-        switchTab('models');
+        // Find the first visible tab to initialize
+        const tabOrder = ['models', 'notes', 'civitai', 'gallery', 'promptBuilder', 'llm'];
+        const visibilityMap = {
+            'models': tabVisibility.show_models_tab,
+            'notes': tabVisibility.show_files_tab,
+            'civitai': tabVisibility.show_search_tab,
+            'gallery': tabVisibility.show_gallery_tab,
+            'promptBuilder': tabVisibility.show_prompts_tab,
+            'llm': tabVisibility.show_llm_tab
+        };
+        
+        const firstVisibleTab = tabOrder.find(tab => visibilityMap[tab] !== false);
+        if (firstVisibleTab) {
+            switchTab(firstVisibleTab);
+        } else {
+            console.warn('No visible tabs found in sidebar');
+        }
     }, 0);
+}
+
+/**
+ * Reload the sidebar with updated settings
+ * This is called when tab visibility settings change
+ */
+export async function reloadCacheSidebar() {
+    if (!currentSidebarElement) {
+        console.warn('No sidebar element reference found for reload');
+        return;
+    }
+    
+    console.log('Reloading sidebar with updated settings...');
+    
+    // Clear the current sidebar content
+    currentSidebarElement.innerHTML = '';
+    
+    // Recreate the sidebar
+    await createCacheSidebar(currentSidebarElement);
+    
+    console.log('Sidebar reloaded successfully');
 }

@@ -8,13 +8,51 @@ import { showNotification } from '../shared/crossTabMessaging.js';
 import { copyTextToSelectedNode } from '../utils/textCopyUtils.js';
 import { copyTextFromSelectedNode } from '../utils/textCopyFromNode.js';
 import { app } from '../../../scripts/app.js';
+import { api } from '../../../scripts/api.js';
+
+/**
+ * Load default LLM provider from settings
+ * @returns {Promise<string>} Default provider ('ollama' or 'lmstudio')
+ */
+async function loadDefaultProvider() {
+    try {
+        const response = await api.fetchApi('/sage_utils/settings');
+        if (response.ok) {
+            const data = await response.json();
+            console.log('[LLM Tab] Settings API response:', data);
+            
+            if (data.success && data.settings && data.settings.default_llm_provider) {
+                const setting = data.settings.default_llm_provider;
+                console.log('[LLM Tab] default_llm_provider setting:', setting);
+                
+                // Try current_value first, then fall back to default
+                const provider = setting.current_value || setting.default;
+                console.log('[LLM Tab] Resolved provider value:', provider);
+                
+                if (provider === 'ollama' || provider === 'lmstudio') {
+                    console.log(`[LLM Tab] Loading default LLM provider: ${provider}`);
+                    return provider;
+                } else {
+                    console.warn(`[LLM Tab] Invalid provider value: ${provider}, using ollama`);
+                }
+            } else {
+                console.warn('[LLM Tab] default_llm_provider setting not found in response');
+            }
+        } else {
+            console.warn('[LLM Tab] Settings API request failed:', response.status);
+        }
+    } catch (error) {
+        console.warn('[LLM Tab] Failed to load default LLM provider setting, using ollama:', error);
+    }
+    return 'ollama'; // Default fallback
+}
 
 /**
  * Creates the main LLM tab content
  * @param {HTMLElement} container - The container element for the tab
  * @returns {Object} - Tab utility object with destroy method
  */
-export function createLLMTab(container) {
+export async function createLLMTab(container) {
     // Clear any existing content
     container.innerHTML = '';
     container.className = 'llm-tab';
@@ -64,9 +102,12 @@ export function createLLMTab(container) {
     // Add styles
     addLLMStyles();
     
+    // Load default provider from settings
+    const defaultProvider = await loadDefaultProvider();
+    
     // Initialize tab state
     const state = {
-        provider: 'ollama',
+        provider: defaultProvider,
         model: null,
         models: { ollama: [], lmstudio: [] },
         visionModels: { ollama: [], lmstudio: [] },
@@ -93,6 +134,15 @@ export function createLLMTab(container) {
     
     // Load initial data
     initializeTab(state, wrapper, modelSelection, visionSection, inputSection, advancedOptions, responseSection, historySection);
+    
+    // Set the provider dropdown to match the loaded default
+    const providerSelect = modelSelection.querySelector('.llm-provider-select');
+    if (providerSelect && state.provider) {
+        console.log(`[LLM Tab] Setting provider dropdown to: ${state.provider}`);
+        providerSelect.value = state.provider;
+        // Trigger change event to update model list
+        providerSelect.dispatchEvent(new Event('change'));
+    }
     
     // Update UI from loaded settings
     updateUIFromSettings(state.settings, advancedOptions);

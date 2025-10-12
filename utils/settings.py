@@ -44,6 +44,43 @@ SETTINGS_SCHEMA = {
         "default": "",
         "type": str,
         "description": "Custom URL for LM Studio service (e.g., 'http://localhost:1234')"
+    },
+    "default_llm_provider": {
+        "default": "ollama",
+        "type": str,
+        "description": "Default LLM provider to use when opening the LLM tab",
+        "valid_values": ["ollama", "lmstudio"]
+    },
+    # Sidebar Tab Visibility Settings
+    "show_models_tab": {
+        "default": True,
+        "type": bool,
+        "description": "Show Models tab in sidebar"
+    },
+    "show_files_tab": {
+        "default": True,
+        "type": bool,
+        "description": "Show Files tab in sidebar"
+    },
+    "show_search_tab": {
+        "default": True,
+        "type": bool,
+        "description": "Show Search (Civitai) tab in sidebar"
+    },
+    "show_gallery_tab": {
+        "default": True,
+        "type": bool,
+        "description": "Show Gallery tab in sidebar"
+    },
+    "show_prompts_tab": {
+        "default": True,
+        "type": bool,
+        "description": "Show Prompts (Prompt Builder) tab in sidebar"
+    },
+    "show_llm_tab": {
+        "default": True,
+        "type": bool,
+        "description": "Show LLM tab in sidebar"
     }
 }
 
@@ -178,7 +215,8 @@ class SageSettings:
             return None
         
         schema_entry = SETTINGS_SCHEMA[key].copy()
-        schema_entry["current_value"] = self._settings.get(key)
+        # Get current value, falling back to default if not set
+        schema_entry["current_value"] = self._settings.get(key, schema_entry["default"])
         # Convert type to string representation for JSON serialization
         if "type" in schema_entry:
             schema_entry["type"] = schema_entry["type"].__name__
