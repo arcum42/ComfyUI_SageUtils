@@ -7,21 +7,23 @@ import { selectors, actions } from "../shared/stateManager.js";
 import { GALLERY_CONFIG, getThumbnailSize } from "../shared/config.js";
 import { generateThumbnail, loadFullImage, copyImageToClipboard } from "../shared/imageUtils.js";
 import { handleDatasetText } from "../shared/datasetTextManager.js";
+import { createResponsiveGrid, createScrollContainer } from "../components/layout.js";
 
 /**
  * Create a thumbnail grid component
  * @returns {Object} Grid widget with container and utility functions
  */
 export function createThumbnailGrid() {
-    const gridContainer = document.createElement('div');
-    gridContainer.style.cssText = `
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-        gap: 8px;
-        padding: 10px;
-        overflow-y: auto;
-        flex: 1;
-    `;
+    // Create responsive grid using layout component
+    const gridContainer = createResponsiveGrid({
+        minItemWidth: 120,
+        gap: '8px',
+        style: {
+            padding: '10px',
+            overflowY: 'auto',
+            flex: '1'
+        }
+    });
     
     const imageCountSpan = document.createElement('span');
     imageCountSpan.style.cssText = `
@@ -38,6 +40,7 @@ export function createThumbnailGrid() {
         const sizeConfig = getThumbnailSize(size);
         const minSize = sizeConfig.width;
         
+        // Update responsive grid's min width
         gridContainer.style.gridTemplateColumns = `repeat(auto-fill, minmax(${minSize}px, 1fr))`;
         
         // Update existing thumbnails

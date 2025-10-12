@@ -10,6 +10,7 @@ import { copyTextFromSelectedNode } from '../utils/textCopyFromNode.js';
 import { app } from '../../../scripts/app.js';
 import { api } from '../../../scripts/api.js';
 import { createSlider, createSelect, createInput, createTextarea, createCheckbox } from '../components/formElements.js';
+import { createResponsiveGrid } from '../components/layout.js';
 
 /**
  * Load default LLM provider from settings
@@ -650,10 +651,16 @@ function createVisionSection() {
     uploadZone.appendChild(uploadText);
     uploadZone.appendChild(fileInput);
     
-    // Image preview grid
-    const previewGrid = document.createElement('div');
-    previewGrid.className = 'llm-image-preview-grid';
-    previewGrid.style.display = 'none';
+    // Image preview grid using responsive grid component
+    const previewGrid = createResponsiveGrid({
+        minItemWidth: 100,
+        gap: '12px',
+        className: 'llm-image-preview-grid',
+        style: {
+            marginTop: '16px',
+            display: 'none'
+        }
+    });
     
     section.appendChild(header);
     section.appendChild(uploadZone);
@@ -4918,10 +4925,7 @@ function addLLMStyles() {
 
         /* Image preview grid */
         .llm-image-preview-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
-            gap: 12px;
-            margin-top: 16px;
+            /* Grid layout now handled by createResponsiveGrid() component */
         }
 
         .llm-image-preview-item {
