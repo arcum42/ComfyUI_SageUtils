@@ -9,6 +9,7 @@ import { copyTextToSelectedNode } from '../utils/textCopyUtils.js';
 import { copyTextFromSelectedNode } from '../utils/textCopyFromNode.js';
 import { app } from '../../../scripts/app.js';
 import { api } from '../../../scripts/api.js';
+import { createSlider, createSelect } from '../components/formElements.js';
 
 /**
  * Load default LLM provider from settings
@@ -495,12 +496,13 @@ function createModelSelection() {
     providerLabel.textContent = 'Provider';
     providerLabel.className = 'llm-label';
     
-    const providerSelect = document.createElement('select');
-    providerSelect.className = 'llm-select llm-provider-select';
-    providerSelect.innerHTML = `
-        <option value="ollama">Ollama</option>
-        <option value="lmstudio">LM Studio</option>
-    `;
+    const providerSelect = createSelect({
+        items: [
+            { value: 'ollama', text: 'Ollama' },
+            { value: 'lmstudio', text: 'LM Studio' }
+        ],
+        className: 'llm-select llm-provider-select'
+    });
     
     providerGroup.appendChild(providerLabel);
     providerGroup.appendChild(providerSelect);
@@ -513,10 +515,11 @@ function createModelSelection() {
     modelLabel.textContent = 'Model';
     modelLabel.className = 'llm-label';
     
-    const modelSelect = document.createElement('select');
-    modelSelect.className = 'llm-select llm-model-select';
-    modelSelect.innerHTML = '<option value="">Loading models...</option>';
-    modelSelect.setAttribute('aria-label', 'Select LLM model');
+    const modelSelect = createSelect({
+        items: [{ value: '', text: 'Loading models...' }],
+        className: 'llm-select llm-model-select',
+        ariaLabel: 'Select LLM model'
+    });
     
     modelGroup.appendChild(modelLabel);
     modelGroup.appendChild(modelSelect);
@@ -543,9 +546,10 @@ function createModelSelection() {
     presetLabel.textContent = 'Preset';
     presetLabel.className = 'llm-label';
     
-    const presetSelect = document.createElement('select');
-    presetSelect.className = 'llm-select llm-preset-select';
-    presetSelect.innerHTML = '<option value="">Loading presets...</option>';
+    const presetSelect = createSelect({
+        items: [{ value: '', text: 'Loading presets...' }],
+        className: 'llm-select llm-preset-select'
+    });
     
     presetGroup.appendChild(presetLabel);
     presetGroup.appendChild(presetSelect);
@@ -1048,15 +1052,19 @@ function createTemplateSelector() {
     container.className = 'llm-template-selector-container';
     
     // Category selector
-    const categorySelect = document.createElement('select');
-    categorySelect.className = 'llm-select llm-category-select';
-    categorySelect.innerHTML = '<option value="">Select category...</option>';
+    const categorySelect = createSelect({
+        items: [],
+        placeholder: 'Select category...',
+        className: 'llm-select llm-category-select'
+    });
     
     // Template selector
-    const templateSelect = document.createElement('select');
-    templateSelect.className = 'llm-select llm-template-select';
-    templateSelect.innerHTML = '<option value="">Select template...</option>';
-    templateSelect.disabled = true;
+    const templateSelect = createSelect({
+        items: [],
+        placeholder: 'Select template...',
+        className: 'llm-select llm-template-select',
+        disabled: true
+    });
     
     container.appendChild(categorySelect);
     container.appendChild(templateSelect);
@@ -1290,28 +1298,17 @@ function createSystemPromptInput() {
  * @returns {HTMLElement} - Temperature slider container
  */
 function createTemperatureSlider() {
-    const container = document.createElement('div');
-    container.className = 'llm-slider-container';
-    
-    const slider = document.createElement('input');
-    slider.type = 'range';
-    slider.min = '0';
-    slider.max = '2';
-    slider.step = '0.1';
-    slider.value = '0.7';
-    slider.className = 'llm-slider llm-temperature-slider';
-    
-    const valueDisplay = document.createElement('span');
-    valueDisplay.className = 'llm-slider-value';
-    valueDisplay.textContent = '0.7';
-    
-    slider.addEventListener('input', () => {
-        valueDisplay.textContent = slider.value;
+    const { container } = createSlider('Temperature', {
+        min: 0,
+        max: 2,
+        step: 0.1,
+        value: 0.7,
+        sliderClass: 'llm-slider llm-temperature-slider',
+        className: 'llm-slider-container',
+        valueClass: 'llm-slider-value',
+        formatValue: (v) => parseFloat(v).toFixed(1),
+        showValue: true
     });
-    
-    container.appendChild(slider);
-    container.appendChild(valueDisplay);
-    
     return container;
 }
 
@@ -1426,28 +1423,16 @@ function createMaxHistoryInput() {
  * @returns {HTMLElement} - Top-k slider container
  */
 function createTopKSlider() {
-    const container = document.createElement('div');
-    container.className = 'llm-slider-container';
-    
-    const slider = document.createElement('input');
-    slider.type = 'range';
-    slider.min = '1';
-    slider.max = '100';
-    slider.step = '1';
-    slider.value = '40';
-    slider.className = 'llm-slider llm-topk-slider';
-    
-    const valueDisplay = document.createElement('span');
-    valueDisplay.className = 'llm-slider-value';
-    valueDisplay.textContent = '40';
-    
-    slider.addEventListener('input', () => {
-        valueDisplay.textContent = slider.value;
+    const { container } = createSlider('Top-K', {
+        min: 1,
+        max: 100,
+        step: 1,
+        value: 40,
+        sliderClass: 'llm-slider llm-topk-slider',
+        className: 'llm-slider-container',
+        valueClass: 'llm-slider-value',
+        showValue: true
     });
-    
-    container.appendChild(slider);
-    container.appendChild(valueDisplay);
-    
     return container;
 }
 
@@ -1456,28 +1441,17 @@ function createTopKSlider() {
  * @returns {HTMLElement} - Top-p slider container
  */
 function createTopPSlider() {
-    const container = document.createElement('div');
-    container.className = 'llm-slider-container';
-    
-    const slider = document.createElement('input');
-    slider.type = 'range';
-    slider.min = '0';
-    slider.max = '1';
-    slider.step = '0.05';
-    slider.value = '0.9';
-    slider.className = 'llm-slider llm-topp-slider';
-    
-    const valueDisplay = document.createElement('span');
-    valueDisplay.className = 'llm-slider-value';
-    valueDisplay.textContent = '0.9';
-    
-    slider.addEventListener('input', () => {
-        valueDisplay.textContent = slider.value;
+    const { container } = createSlider('Top-P', {
+        min: 0,
+        max: 1,
+        step: 0.05,
+        value: 0.9,
+        sliderClass: 'llm-slider llm-topp-slider',
+        className: 'llm-slider-container',
+        valueClass: 'llm-slider-value',
+        formatValue: (v) => parseFloat(v).toFixed(2),
+        showValue: true
     });
-    
-    container.appendChild(slider);
-    container.appendChild(valueDisplay);
-    
     return container;
 }
 
@@ -1486,28 +1460,17 @@ function createTopPSlider() {
  * @returns {HTMLElement} - Repeat penalty slider container
  */
 function createRepeatPenaltySlider() {
-    const container = document.createElement('div');
-    container.className = 'llm-slider-container';
-    
-    const slider = document.createElement('input');
-    slider.type = 'range';
-    slider.min = '0';
-    slider.max = '2';
-    slider.step = '0.1';
-    slider.value = '1.1';
-    slider.className = 'llm-slider llm-repeat-penalty-slider';
-    
-    const valueDisplay = document.createElement('span');
-    valueDisplay.className = 'llm-slider-value';
-    valueDisplay.textContent = '1.1';
-    
-    slider.addEventListener('input', () => {
-        valueDisplay.textContent = slider.value;
+    const { container } = createSlider('Repeat Penalty', {
+        min: 0,
+        max: 2,
+        step: 0.1,
+        value: 1.1,
+        sliderClass: 'llm-slider llm-repeat-penalty-slider',
+        className: 'llm-slider-container',
+        valueClass: 'llm-slider-value',
+        formatValue: (v) => parseFloat(v).toFixed(1),
+        showValue: true
     });
-    
-    container.appendChild(slider);
-    container.appendChild(valueDisplay);
-    
     return container;
 }
 
@@ -1516,28 +1479,16 @@ function createRepeatPenaltySlider() {
  * @returns {HTMLElement} - Top K slider container
  */
 function createLMSTopKSlider() {
-    const container = document.createElement('div');
-    container.className = 'llm-slider-container';
-    
-    const slider = document.createElement('input');
-    slider.type = 'range';
-    slider.min = '1';
-    slider.max = '100';
-    slider.step = '1';
-    slider.value = '40';
-    slider.className = 'llm-slider llm-lms-topk-slider';
-    
-    const valueDisplay = document.createElement('span');
-    valueDisplay.className = 'llm-slider-value';
-    valueDisplay.textContent = '40';
-    
-    slider.addEventListener('input', () => {
-        valueDisplay.textContent = slider.value;
+    const { container } = createSlider('Top K', {
+        min: 1,
+        max: 100,
+        step: 1,
+        value: 40,
+        sliderClass: 'llm-slider llm-lms-topk-slider',
+        className: 'llm-slider-container',
+        valueClass: 'llm-slider-value',
+        showValue: true
     });
-    
-    container.appendChild(slider);
-    container.appendChild(valueDisplay);
-    
     return container;
 }
 
@@ -1546,28 +1497,17 @@ function createLMSTopKSlider() {
  * @returns {HTMLElement} - Top P slider container
  */
 function createLMSTopPSlider() {
-    const container = document.createElement('div');
-    container.className = 'llm-slider-container';
-    
-    const slider = document.createElement('input');
-    slider.type = 'range';
-    slider.min = '0';
-    slider.max = '1';
-    slider.step = '0.01';
-    slider.value = '0.95';
-    slider.className = 'llm-slider llm-lms-topp-slider';
-    
-    const valueDisplay = document.createElement('span');
-    valueDisplay.className = 'llm-slider-value';
-    valueDisplay.textContent = '0.95';
-    
-    slider.addEventListener('input', () => {
-        valueDisplay.textContent = slider.value;
+    const { container } = createSlider('Top P', {
+        min: 0,
+        max: 1,
+        step: 0.01,
+        value: 0.95,
+        sliderClass: 'llm-slider llm-lms-topp-slider',
+        className: 'llm-slider-container',
+        valueClass: 'llm-slider-value',
+        formatValue: (v) => parseFloat(v).toFixed(2),
+        showValue: true
     });
-    
-    container.appendChild(slider);
-    container.appendChild(valueDisplay);
-    
     return container;
 }
 
@@ -1576,28 +1516,17 @@ function createLMSTopPSlider() {
  * @returns {HTMLElement} - Repeat penalty slider container
  */
 function createLMSRepeatPenaltySlider() {
-    const container = document.createElement('div');
-    container.className = 'llm-slider-container';
-    
-    const slider = document.createElement('input');
-    slider.type = 'range';
-    slider.min = '0';
-    slider.max = '2';
-    slider.step = '0.1';
-    slider.value = '1.1';
-    slider.className = 'llm-slider llm-lms-repeat-penalty-slider';
-    
-    const valueDisplay = document.createElement('span');
-    valueDisplay.className = 'llm-slider-value';
-    valueDisplay.textContent = '1.1';
-    
-    slider.addEventListener('input', () => {
-        valueDisplay.textContent = slider.value;
+    const { container } = createSlider('Repeat Penalty', {
+        min: 0,
+        max: 2,
+        step: 0.1,
+        value: 1.1,
+        sliderClass: 'llm-slider llm-lms-repeat-penalty-slider',
+        className: 'llm-slider-container',
+        valueClass: 'llm-slider-value',
+        formatValue: (v) => parseFloat(v).toFixed(1),
+        showValue: true
     });
-    
-    container.appendChild(slider);
-    container.appendChild(valueDisplay);
-    
     return container;
 }
 
@@ -1606,28 +1535,17 @@ function createLMSRepeatPenaltySlider() {
  * @returns {HTMLElement} - Min P slider container
  */
 function createLMSMinPSlider() {
-    const container = document.createElement('div');
-    container.className = 'llm-slider-container';
-    
-    const slider = document.createElement('input');
-    slider.type = 'range';
-    slider.min = '0';
-    slider.max = '1';
-    slider.step = '0.01';
-    slider.value = '0.05';
-    slider.className = 'llm-slider llm-lms-minp-slider';
-    
-    const valueDisplay = document.createElement('span');
-    valueDisplay.className = 'llm-slider-value';
-    valueDisplay.textContent = '0.05';
-    
-    slider.addEventListener('input', () => {
-        valueDisplay.textContent = slider.value;
+    const { container } = createSlider('Min P', {
+        min: 0,
+        max: 1,
+        step: 0.01,
+        value: 0.05,
+        sliderClass: 'llm-slider llm-lms-minp-slider',
+        className: 'llm-slider-container',
+        valueClass: 'llm-slider-value',
+        formatValue: (v) => parseFloat(v).toFixed(2),
+        showValue: true
     });
-    
-    container.appendChild(slider);
-    container.appendChild(valueDisplay);
-    
     return container;
 }
 
@@ -1636,28 +1554,16 @@ function createLMSMinPSlider() {
  * @returns {HTMLElement} - Num keep slider container
  */
 function createNumKeepSlider() {
-    const container = document.createElement('div');
-    container.className = 'llm-slider-container';
-    
-    const slider = document.createElement('input');
-    slider.type = 'range';
-    slider.min = '0';
-    slider.max = '100';
-    slider.step = '1';
-    slider.value = '0';
-    slider.className = 'llm-slider llm-num-keep-slider';
-    
-    const valueDisplay = document.createElement('span');
-    valueDisplay.className = 'llm-slider-value';
-    valueDisplay.textContent = '0';
-    
-    slider.addEventListener('input', () => {
-        valueDisplay.textContent = slider.value;
+    const { container } = createSlider('Num Keep', {
+        min: 0,
+        max: 100,
+        step: 1,
+        value: 0,
+        sliderClass: 'llm-slider llm-num-keep-slider',
+        className: 'llm-slider-container',
+        valueClass: 'llm-slider-value',
+        showValue: true
     });
-    
-    container.appendChild(slider);
-    container.appendChild(valueDisplay);
-    
     return container;
 }
 
@@ -1666,28 +1572,16 @@ function createNumKeepSlider() {
  * @returns {HTMLElement} - Num predict slider container
  */
 function createNumPredictSlider() {
-    const container = document.createElement('div');
-    container.className = 'llm-slider-container';
-    
-    const slider = document.createElement('input');
-    slider.type = 'range';
-    slider.min = '-1';
-    slider.max = '2048';
-    slider.step = '1';
-    slider.value = '-1';
-    slider.className = 'llm-slider llm-num-predict-slider';
-    
-    const valueDisplay = document.createElement('span');
-    valueDisplay.className = 'llm-slider-value';
-    valueDisplay.textContent = '-1';
-    
-    slider.addEventListener('input', () => {
-        valueDisplay.textContent = slider.value;
+    const { container } = createSlider('Num Predict', {
+        min: -1,
+        max: 2048,
+        step: 1,
+        value: -1,
+        sliderClass: 'llm-slider llm-num-predict-slider',
+        className: 'llm-slider-container',
+        valueClass: 'llm-slider-value',
+        showValue: true
     });
-    
-    container.appendChild(slider);
-    container.appendChild(valueDisplay);
-    
     return container;
 }
 
@@ -1696,28 +1590,16 @@ function createNumPredictSlider() {
  * @returns {HTMLElement} - Repeat last N slider container
  */
 function createRepeatLastNSlider() {
-    const container = document.createElement('div');
-    container.className = 'llm-slider-container';
-    
-    const slider = document.createElement('input');
-    slider.type = 'range';
-    slider.min = '0';
-    slider.max = '256';
-    slider.step = '1';
-    slider.value = '64';
-    slider.className = 'llm-slider llm-repeat-last-n-slider';
-    
-    const valueDisplay = document.createElement('span');
-    valueDisplay.className = 'llm-slider-value';
-    valueDisplay.textContent = '64';
-    
-    slider.addEventListener('input', () => {
-        valueDisplay.textContent = slider.value;
+    const { container } = createSlider('Repeat Last N', {
+        min: 0,
+        max: 256,
+        step: 1,
+        value: 64,
+        sliderClass: 'llm-slider llm-repeat-last-n-slider',
+        className: 'llm-slider-container',
+        valueClass: 'llm-slider-value',
+        showValue: true
     });
-    
-    container.appendChild(slider);
-    container.appendChild(valueDisplay);
-    
     return container;
 }
 
@@ -1726,28 +1608,17 @@ function createRepeatLastNSlider() {
  * @returns {HTMLElement} - Presence penalty slider container
  */
 function createPresencePenaltySlider() {
-    const container = document.createElement('div');
-    container.className = 'llm-slider-container';
-    
-    const slider = document.createElement('input');
-    slider.type = 'range';
-    slider.min = '-2';
-    slider.max = '2';
-    slider.step = '0.1';
-    slider.value = '0';
-    slider.className = 'llm-slider llm-presence-penalty-slider';
-    
-    const valueDisplay = document.createElement('span');
-    valueDisplay.className = 'llm-slider-value';
-    valueDisplay.textContent = '0.0';
-    
-    slider.addEventListener('input', () => {
-        valueDisplay.textContent = parseFloat(slider.value).toFixed(1);
+    const { container } = createSlider('Presence Penalty', {
+        min: -2,
+        max: 2,
+        step: 0.1,
+        value: 0,
+        sliderClass: 'llm-slider llm-presence-penalty-slider',
+        className: 'llm-slider-container',
+        valueClass: 'llm-slider-value',
+        formatValue: (v) => parseFloat(v).toFixed(1),
+        showValue: true
     });
-    
-    container.appendChild(slider);
-    container.appendChild(valueDisplay);
-    
     return container;
 }
 
@@ -1756,28 +1627,17 @@ function createPresencePenaltySlider() {
  * @returns {HTMLElement} - Frequency penalty slider container
  */
 function createFrequencyPenaltySlider() {
-    const container = document.createElement('div');
-    container.className = 'llm-slider-container';
-    
-    const slider = document.createElement('input');
-    slider.type = 'range';
-    slider.min = '-2';
-    slider.max = '2';
-    slider.step = '0.1';
-    slider.value = '0';
-    slider.className = 'llm-slider llm-frequency-penalty-slider';
-    
-    const valueDisplay = document.createElement('span');
-    valueDisplay.className = 'llm-slider-value';
-    valueDisplay.textContent = '0.0';
-    
-    slider.addEventListener('input', () => {
-        valueDisplay.textContent = parseFloat(slider.value).toFixed(1);
+    const { container } = createSlider('Frequency Penalty', {
+        min: -2,
+        max: 2,
+        step: 0.1,
+        value: 0,
+        sliderClass: 'llm-slider llm-frequency-penalty-slider',
+        className: 'llm-slider-container',
+        valueClass: 'llm-slider-value',
+        formatValue: (v) => parseFloat(v).toFixed(1),
+        showValue: true
     });
-    
-    container.appendChild(slider);
-    container.appendChild(valueDisplay);
-    
     return container;
 }
 
@@ -1786,35 +1646,22 @@ function createFrequencyPenaltySlider() {
  * @returns {HTMLElement} - Keep alive slider container
  */
 function createKeepAliveSlider() {
-    const container = document.createElement('div');
-    container.className = 'llm-slider-container';
-    
-    const slider = document.createElement('input');
-    slider.type = 'range';
-    slider.min = '0';
-    slider.max = '3600';
-    slider.step = '60';
-    slider.value = '300';
-    slider.className = 'llm-slider llm-keep-alive-slider';
-    
-    const valueDisplay = document.createElement('span');
-    valueDisplay.className = 'llm-slider-value';
-    valueDisplay.textContent = '5m';
-    
-    slider.addEventListener('input', () => {
-        const seconds = parseInt(slider.value);
-        if (seconds === 0) {
-            valueDisplay.textContent = 'Off';
-        } else if (seconds < 60) {
-            valueDisplay.textContent = `${seconds}s`;
-        } else {
-            valueDisplay.textContent = `${Math.floor(seconds / 60)}m`;
-        }
+    const { container } = createSlider('Keep Alive', {
+        min: 0,
+        max: 3600,
+        step: 60,
+        value: 300,
+        sliderClass: 'llm-slider llm-keep-alive-slider',
+        className: 'llm-slider-container',
+        valueClass: 'llm-slider-value',
+        formatValue: (v) => {
+            const seconds = parseInt(v);
+            if (seconds === 0) return 'Off';
+            if (seconds < 60) return `${seconds}s`;
+            return `${Math.floor(seconds / 60)}m`;
+        },
+        showValue: true
     });
-    
-    container.appendChild(slider);
-    container.appendChild(valueDisplay);
-    
     return container;
 }
 
