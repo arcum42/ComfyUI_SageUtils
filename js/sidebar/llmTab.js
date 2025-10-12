@@ -9,7 +9,7 @@ import { copyTextToSelectedNode } from '../utils/textCopyUtils.js';
 import { copyTextFromSelectedNode } from '../utils/textCopyFromNode.js';
 import { app } from '../../../scripts/app.js';
 import { api } from '../../../scripts/api.js';
-import { createSlider, createSelect } from '../components/formElements.js';
+import { createSlider, createSelect, createInput, createTextarea, createCheckbox } from '../components/formElements.js';
 
 /**
  * Load default LLM provider from settings
@@ -689,29 +689,27 @@ function createInputSection() {
     inputHeader.appendChild(charCounter);
     
     // Textarea
-    const textarea = document.createElement('textarea');
-    textarea.className = 'llm-textarea llm-main-prompt';
-    textarea.placeholder = 'Type your prompt here... (Ctrl+Enter to send)';
-    textarea.rows = 6;
-    
-    // Character counter update
-    textarea.addEventListener('input', () => {
-        const count = textarea.value.length;
-        charCounter.textContent = `${count} character${count !== 1 ? 's' : ''}`;
-    });
-    
-    // Ctrl+Enter to send
-    textarea.addEventListener('keydown', (e) => {
-        if (e.ctrlKey && e.key === 'Enter') {
-            e.preventDefault();
-            const sendBtn = document.querySelector('.llm-send-btn');
-            if (sendBtn && !sendBtn.disabled) {
-                sendBtn.click();
+    const textarea = createTextarea({
+        className: 'llm-textarea llm-main-prompt',
+        placeholder: 'Type your prompt here... (Ctrl+Enter to send)',
+        rows: 6,
+        monospace: false,
+        onInput: () => {
+            const count = textarea.value.length;
+            charCounter.textContent = `${count} character${count !== 1 ? 's' : ''}`;
+        },
+        onKeydown: (e) => {
+            if (e.ctrlKey && e.key === 'Enter') {
+                e.preventDefault();
+                const sendBtn = document.querySelector('.llm-send-btn');
+                if (sendBtn && !sendBtn.disabled) {
+                    sendBtn.click();
+                }
             }
-        }
-        // Escape to blur
-        if (e.key === 'Escape') {
-            textarea.blur();
+            // Escape to blur
+            if (e.key === 'Escape') {
+                textarea.blur();
+            }
         }
     });
     
@@ -984,19 +982,12 @@ function createAdvancedOptions() {
     const includeHistoryGroup = document.createElement('div');
     includeHistoryGroup.className = 'llm-form-group';
     
-    const includeHistoryLabel = document.createElement('label');
-    includeHistoryLabel.className = 'llm-checkbox-label';
+    const { label: includeHistoryLabel, checkbox: includeHistoryCheckbox } = createCheckbox('Include conversation history in prompts', {
+        className: 'llm-checkbox llm-include-history',
+        labelClass: 'llm-checkbox-label',
+        checked: false
+    });
     
-    const includeHistoryCheckbox = document.createElement('input');
-    includeHistoryCheckbox.type = 'checkbox';
-    includeHistoryCheckbox.className = 'llm-checkbox llm-include-history';
-    includeHistoryCheckbox.checked = false;
-    
-    const includeHistoryText = document.createElement('span');
-    includeHistoryText.textContent = 'Include conversation history in prompts';
-    
-    includeHistoryLabel.appendChild(includeHistoryCheckbox);
-    includeHistoryLabel.appendChild(includeHistoryText);
     includeHistoryGroup.appendChild(includeHistoryLabel);
     contextSettings.appendChild(includeHistoryGroup);
     
@@ -1264,17 +1255,17 @@ function createSystemPromptInput() {
     const container = document.createElement('div');
     container.className = 'llm-system-prompt-container';
     
-    const textarea = document.createElement('textarea');
-    textarea.className = 'llm-textarea llm-system-prompt';
-    textarea.placeholder = 'Optional: Define the AI\'s role and behavior (e.g., "You are a helpful assistant...")';
-    textarea.rows = 3;
-    textarea.setAttribute('aria-label', 'System prompt - Define AI behavior');
-    
-    // Keyboard shortcuts
-    textarea.addEventListener('keydown', (e) => {
-        // Escape to blur/unfocus
-        if (e.key === 'Escape') {
-            textarea.blur();
+    const textarea = createTextarea({
+        className: 'llm-textarea llm-system-prompt',
+        placeholder: 'Optional: Define the AI\'s role and behavior (e.g., "You are a helpful assistant...")',
+        rows: 3,
+        monospace: false,
+        ariaLabel: 'System prompt - Define AI behavior',
+        onKeydown: (e) => {
+            // Escape to blur/unfocus
+            if (e.key === 'Escape') {
+                textarea.blur();
+            }
         }
     });
     
@@ -1320,11 +1311,12 @@ function createSeedInput() {
     const container = document.createElement('div');
     container.className = 'llm-seed-container';
     
-    const input = document.createElement('input');
-    input.type = 'number';
-    input.value = '42';
-    input.className = 'llm-input llm-seed-input';
-    input.placeholder = 'Seed';
+    const input = createInput({
+        type: 'number',
+        value: '42',
+        className: 'llm-input llm-seed-input',
+        placeholder: 'Seed'
+    });
     
     const randomBtn = document.createElement('button');
     randomBtn.className = 'llm-btn llm-btn-secondary llm-btn-small llm-random-seed-btn';
@@ -1349,13 +1341,14 @@ function createMaxTokensInput() {
     const container = document.createElement('div');
     container.className = 'llm-max-tokens-container';
     
-    const input = document.createElement('input');
-    input.type = 'number';
-    input.value = '1024';
-    input.min = '1';
-    input.max = '32768';
-    input.className = 'llm-input llm-max-tokens-input';
-    input.placeholder = 'Max tokens';
+    const input = createInput({
+        type: 'number',
+        value: '1024',
+        min: '1',
+        max: '32768',
+        className: 'llm-input llm-max-tokens-input',
+        placeholder: 'Max tokens'
+    });
     
     const presets = document.createElement('div');
     presets.className = 'llm-token-presets';
@@ -1387,13 +1380,17 @@ function createMaxHistoryInput() {
     const container = document.createElement('div');
     container.className = 'llm-max-history-container';
     
-    const input = document.createElement('input');
-    input.type = 'number';
-    input.value = '10';
-    input.min = '1';
-    input.max = '100';
-    input.className = 'llm-input llm-max-history-input';
-    input.placeholder = 'Max messages';
+    const input = createInput({
+        type: 'number',
+        value: '10',
+        min: '1',
+        max: '100',
+        className: 'llm-input llm-max-history-input',
+        placeholder: 'Max messages',
+        style: {
+            title: 'Maximum number of previous messages to include (2 messages = 1 exchange)'
+        }
+    });
     input.title = 'Maximum number of previous messages to include (2 messages = 1 exchange)';
     
     const presets = document.createElement('div');
@@ -2179,21 +2176,14 @@ async function loadPromptTemplates(state, advancedOptions) {
             
             Object.entries(prompts.extra).forEach(([key, extra]) => {
                 if (extra.type === 'boolean') {
-                    const checkboxContainer = document.createElement('label');
-                    checkboxContainer.className = 'llm-extra-checkbox-label';
+                    const { label: checkboxContainer, checkbox } = createCheckbox(extra.name, {
+                        className: 'llm-extra-checkbox',
+                        labelClass: 'llm-extra-checkbox-label',
+                        checked: extra.default || false,
+                        title: extra.prompt
+                    });
                     
-                    const checkbox = document.createElement('input');
-                    checkbox.type = 'checkbox';
-                    checkbox.className = 'llm-extra-checkbox';
                     checkbox.dataset.extraKey = key;
-                    checkbox.checked = extra.default || false;
-                    
-                    const labelText = document.createElement('span');
-                    labelText.textContent = extra.name;
-                    labelText.title = extra.prompt;
-                    
-                    checkboxContainer.appendChild(checkbox);
-                    checkboxContainer.appendChild(labelText);
                     extrasGrid.appendChild(checkboxContainer);
                     
                     // Initialize state
