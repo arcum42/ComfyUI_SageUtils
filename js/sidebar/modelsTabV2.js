@@ -28,6 +28,10 @@ import { pullMetadata, updateCacheInfo } from "../shared/api/cacheApi.js";
 
 // Import utilities
 import { escapeHtml, generateHtmlContent, openHtmlReport } from "../reports/reportGenerator.js";
+import { createComponentLogger } from "../utils/logger.js";
+
+// Component logger
+const log = createComponentLogger('ModelsTabV2');
 
 /**
  * Creates the unified header section with filters and actions
@@ -596,6 +600,18 @@ async function openScanDialog() {
 /**
  * Main function to create the Models Tab V2
  * @param {HTMLElement} container - Container element to populate
+ * @example
+ * // Basic usage
+ * const container = document.getElementById('models-tab');
+ * createModelsTabV2(container);
+ * 
+ * @example
+ * // Typically called from tab manager
+ * tabManager.addTab({
+ *     id: 'models',
+ *     label: 'Models',
+ *     factory: (container) => createModelsTabV2(container)
+ * });
  */
 export function createModelsTabV2(container) {
     // Clear container
@@ -678,10 +694,10 @@ export function createModelsTabV2(container) {
         try {
             const cacheData = selectors.cacheData();
             
-            console.log('[ModelsTabV2] loadModels called, cacheData:', cacheData);
+            log.debug('loadModels called, cacheData:', cacheData);
             
             if (!cacheData || !cacheData.hash) {
-                console.warn('[ModelsTabV2] No cache data or hash found');
+                log.warn('No cache data or hash found');
                 modelBrowser.updateModels([]);
                 return;
             }
@@ -716,7 +732,7 @@ export function createModelsTabV2(container) {
             
             const models = Array.from(modelsByHash.values());
             
-            console.log('[ModelsTabV2] Loaded models:', models.length, '(deduplicated from', Object.keys(cacheData.hash).length, 'paths)');
+            log.debug('Loaded models:', models.length, '(deduplicated from', Object.keys(cacheData.hash).length, 'paths)');
             
             modelBrowser.updateModels(models);
             applyCurrentFilters();

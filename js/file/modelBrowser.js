@@ -7,10 +7,34 @@
 import { createButton, BUTTON_VARIANTS } from "../components/buttons.js";
 import { createCard } from "../components/layout.js";
 import { copyToClipboard } from "../components/clipboard.js";
+import { createComponentLogger } from "../utils/logger.js";
+
+// Component logger
+const log = createComponentLogger('ModelBrowser');
 
 /**
  * Model Browser Class
  * Handles model listing, selection, filtering, and display
+ * 
+ * @example
+ * // Basic usage
+ * const browser = new ModelBrowser({
+ *     selectionMode: 'single',
+ *     showFileSize: true,
+ *     onSelect: (hash, modelData) => {
+ *         console.log('Selected:', modelData.path);
+ *     }
+ * });
+ * browser.render(container);
+ * browser.updateModels(modelsArray);
+ * 
+ * @example
+ * // With filtering
+ * browser.applyFilters({
+ *     search: 'flux',
+ *     type: 'checkpoints',
+ *     sort: 'name-desc'
+ * });
  */
 export class ModelBrowser {
     /**
@@ -884,7 +908,7 @@ export class ModelBrowser {
             return isDescending ? -comparison : comparison;
         });
         
-        console.log('[ModelBrowser] After filtering:', filtered.length, 'models (from', this.models.length, 'total)');
+        log.debug('After filtering:', filtered.length, 'models (from', this.models.length, 'total)');
         
         this.filteredModels = filtered;
         this.renderList();
@@ -931,7 +955,7 @@ export class ModelBrowser {
         }
         
         const renderTime = performance.now() - startTime;
-        console.log(`[ModelBrowser] Rendered ${this.filteredModels.length} models in ${renderTime.toFixed(2)}ms`);
+        log.debug(`Rendered ${this.filteredModels.length} models in ${renderTime.toFixed(2)}ms`);
     }
     
     /**

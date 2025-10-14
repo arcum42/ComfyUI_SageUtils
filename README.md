@@ -15,20 +15,25 @@ The node suite supports A1111/Civitai metadata formats, while the UI features pr
 ### LLM Chat Tab
 Access AI language models directly within ComfyUI for prompt generation, refinement, and creative assistance:
 
-- **Multi-Provider Support**: OpenAI, Anthropic, OpenRouter, Google, LM Studio, Ollama, and custom endpoints
+- **Multi-Provider Support**: LM Studio and Ollama (local providers for privacy and unlimited usage)
 - **Vision Capabilities**: Upload up to 10 images for vision-enabled models with drag-and-drop support
 - **Streaming Responses**: Real-time text generation with SSE (Server-Sent Events)
 - **Conversation History**: Maintain context across multiple exchanges
-- **Advanced Options**: Temperature, top-p, max tokens, presence/frequency penalties, system prompts
+- **Preset System**: Save and reuse complete LLM configurations (model, settings, system prompts)
+- **System Prompt Management**: Create, save, and manage custom system prompts
+- **Advanced Options**: Temperature, top-p, max tokens, presence/frequency penalties, keep-alive, system prompts
 - **Keyboard Shortcuts**: Ctrl+Enter to send, Escape to blur textareas
 - **Accessibility**: Full screen reader support with ARIA labels
 
 📖 **[Complete LLM Tab Guide](docs/LLM_TAB_GUIDE.md)**
 
 ### Prompt Builder Tab
-Tag-based system for constructing complex prompts with LLM enhancement:
+Wildcard and tag-based system for constructing complex prompts with LLM enhancement:
 
-- **Tag Categories**: Character, setting, style, quality, camera, lighting, and more
+- **Wildcard System**: Use `__category__` syntax for dynamic, randomized prompt generation
+- **Tag Library**: Pre-organized tag collections across multiple categories for quick insertion
+- **Saved Prompts**: Save and manage complete prompt collections with descriptions
+- **Seed-Based Generation**: Control randomization with fixed or random seeds for reproducibility
 - **LLM Integration**: Send prompts to LLM for expansion, refinement, or creative variations
 - **Cross-Tab Messaging**: Receive enhanced prompts back from LLM tab automatically
 - **Positive/Negative Prompts**: Separate construction for better control
@@ -120,12 +125,13 @@ Seamless data flow between all components:
 
 ### Setting Up LLM Integration
 
-1. **Choose your LLM provider** (OpenAI, Anthropic, LM Studio, Ollama, etc.)
-2. **Configure API credentials**:
-   - For cloud providers: Add API key in LLM tab settings
-   - For local providers (LM Studio/Ollama): Ensure service is running
-3. **Select a model** from the dropdown
-4. **Start chatting** or use vision features by uploading images
+1. **Choose your LLM provider** (LM Studio or Ollama)
+2. **Install and configure**:
+   - **LM Studio**: Download from [lmstudio.ai](https://lmstudio.ai/), load a model, start local server
+   - **Ollama**: Install from [ollama.ai](https://ollama.ai/), pull a model with `ollama pull llama3.2`
+3. **Select provider** in LLM tab dropdown
+4. **Select a model** from the available models list
+5. **Start chatting** or use vision features by uploading images
 
 See the [LLM Tab Guide](docs/LLM_TAB_GUIDE.md) for detailed setup instructions for each provider.
 
@@ -175,7 +181,6 @@ Example workflows are available in the `example_workflows/` folder. In ComfyUI, 
 - **ComfyUI**: Latest version recommended
 - **Python**: 3.9+ (included with ComfyUI)
 - **Optional LLM Providers**:
-  - Cloud APIs: OpenAI, Anthropic, Google, OpenRouter (require API keys)
   - Local: LM Studio, Ollama (free, run locally)
 
 ### Installation
