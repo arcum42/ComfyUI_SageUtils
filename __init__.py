@@ -7,6 +7,8 @@ import logging
 # Set to 1 for v1 nodes, 3 for v3 nodes.
 # Right now, v3 nodes aren't ready for use.
 CURRENT_NODE_VERSION = '1'
+# CURRENT_NODE_VERSION = '3'
+
 NODE_VERSION = os.environ.get('SAGEUTILS_NODE_VERSION', CURRENT_NODE_VERSION)
 
 SAGEUTILS_PRINT_TIMING = False  # Set to True to enable timing report

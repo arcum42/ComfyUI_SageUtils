@@ -223,7 +223,7 @@ class Sage_MultiSelectorDoubleClip(ComfyNodeABC):
                     "weight_dtype": (mi.weight_dtype_options, {"default": "default", "tooltip": "The weight dtype to use for the UNET model."}),
                     "clip_name_1": (model_list, {"tooltip": "The name of the first CLIP model to load."}),
                     "clip_name_2": (model_list, {"tooltip": "The name of the second CLIP model to load."}),
-                    "clip_type": (mi.single_clip_loader_options, {"default": "chroma", "tooltip": "The type of the second CLIP model. If empty, will use the default type."}),
+                    "clip_type": (mi.dual_clip_loader_options, {"default": "flux", "tooltip": "The type of the second CLIP model. If empty, will use the default type."}),
                     "vae_name": (vae_list, {"tooltip": "The name of the VAE model to load."}),
                 }
             }
