@@ -1,5 +1,6 @@
 # Text nodes, v3 edition.
 # This contains any nodes that are dealing with text, including setting text, joining text, cleaning text, and viewing text.
+# See ref_docs/v3_migration.md for info on migrating to v3 nodes.
 
 from __future__ import annotations
 from comfy_api.latest import io, ComfyExtension
@@ -19,11 +20,247 @@ from dynamicprompts.generators import RandomPromptGenerator
 from dynamicprompts.wildcards.wildcard_manager import WildcardManager
 
 # To implement:
-# Sage_ViewAnything
-# Sage_TextSubstitution
-# Sage_ViewNotes
+# Sage_TextSubstitution - requires dynamic inputs support which may not be available yet in V3
 
-# I need to figure out how to do dynamic prompts properly, as well as show the text in the node.
+class Sage_IntToStr(io.ComfyNode):
+    @classmethod
+    def define_schema(cls):
+        return io.Schema(
+            node_id="Sage_IntToStr",
+            display_name="Int to String",
+            description="Converts a number to a string.",
+            category="Sage Utils/text",
+            inputs=[
+                io.Int.Input("num", default=0)
+            ],
+            outputs=[
+                io.String.Output("str")
+            ]
+        )
+    
+    @classmethod
+    def execute(cls, **kwargs):
+        num = kwargs.get("num", 0)
+        return io.NodeOutput(str(num))
+
+class Sage_FloatToStr(io.ComfyNode):
+    @classmethod
+    def define_schema(cls):
+        return io.Schema(
+            node_id="Sage_FloatToStr",
+            display_name="Float to String",
+            description="Converts a float to a string.",
+            category="Sage Utils/text",
+            inputs=[
+                io.Float.Input("num", default=0.0)
+            ],
+            outputs=[
+                io.String.Output("str")
+            ]
+        )
+    
+    @classmethod
+    def execute(cls, **kwargs):
+        num = kwargs.get("num", 0.0)
+        return io.NodeOutput(f"{num:.2g}")
+
+class SageSetWildcardText(io.ComfyNode):
+    @classmethod
+    def define_schema(cls):
+        return io.Schema(
+            node_id="SageSetWildcardText",
+            display_name="Set Wildcard Text",
+            description="Loads user defined wildcard from the wildcards directory, and applies them to any wildcards in the text.",
+            category="Sage Utils/text",
+            inputs=[
+                io.String.Input("str_input", display_name="str", force_input=False, dynamic_prompts=True, multiline=True),
+                io.Int.Input("seed", default=0, min=0, max=2**32-1, step=1),
+                io.Boolean.Input("clean", default=False),
+                io.String.Input("prefix", force_input=True, multiline=True, optional=True),
+                io.String.Input("suffix", force_input=True, multiline=True, optional=True)
+            ],
+            outputs=[
+                io.String.Output("str_output", display_name="str")
+            ]
+        )
+    
+    @classmethod
+    def execute(cls, **kwargs):
+        str_val = kwargs.get("str_input", "")
+        prefix = kwargs.get("prefix", "")
+        suffix = kwargs.get("suffix", "")
+        seed = kwargs.get("seed", 0)
+        clean = kwargs.get("clean", False)
+        
+        str_val = f"{prefix or ''}{str_val}{suffix or ''}"
+        
+        # Initialize the wildcard manager
+        wildcard_manager = WildcardManager(sage_wildcard_path)
+        
+        # Generate a random prompt using the wildcard manager
+        generator = RandomPromptGenerator(wildcard_manager, seed=seed)
+        
+        # Replace wildcards in the string
+        gen_str = generator.generate(str_val)
+        if not gen_str:
+            str_val = ""
+        elif isinstance(gen_str, list):
+            str_val = gen_str[0] if gen_str else ""
+        else:
+            str_val = gen_str
+        
+        # Clean the string if requested
+        if clean:
+            str_val = clean_text(str_val)
+        
+        return io.NodeOutput(str_val)
+
+class Sage_ViewAnything(io.ComfyNode):
+    @classmethod
+    def define_schema(cls):
+        return io.Schema(
+            node_id="Sage_ViewAnything",
+            display_name="View Anything",
+            description="Shows some text.",
+            category="Sage Utils/text",
+            is_output_node=True,
+            inputs=[
+                io.AnyType.Input("any")
+            ],
+            outputs=[
+                io.String.Output("str")
+            ]
+        )
+    
+    @classmethod
+    def execute(cls, **kwargs):
+        any_val = kwargs.get("any", "")
+        
+        str_val = ""
+        if isinstance(any_val, list):
+            for t in any_val:
+                str_val += f"{t}\n"
+            str_val = str_val.strip()
+        else:
+            str_val = str(any_val)
+        
+        return io.NodeOutput(str_val, ui={"text": str_val})
+    #{ "ui": {"text": str}, "result" : (str,) }
+
+class Sage_TextSubstitution(io.ComfyNode):
+    @classmethod
+    def define_schema(cls):
+        return io.Schema(
+            node_id="Sage_TextSubstitution",
+            display_name="Text Substitution",
+            description="Substitutes the placeholders in the text with the provided strings. The placeholders use the specified delimiter (default $) followed by str_1, str_2, etc. based on the number of connected inputs. The prefix and suffix are added to the final result.",
+            category="Sage Utils/text",
+            inputs=[
+                io.String.Input("text", default="", multiline=True),
+                io.String.Input("delimiter", default="$"),
+                io.String.Input("prefix", force_input=True, multiline=True, optional=True),
+                io.String.Input("suffix", force_input=True, multiline=True, optional=True)
+            ],
+            outputs=[
+                io.String.Output("result")
+            ]
+        )
+    
+    @classmethod
+    def execute(cls, **kwargs):
+        text = kwargs.get("text", "")
+        delimiter = kwargs.get("delimiter", "$")
+        prefix = kwargs.get("prefix", "")
+        suffix = kwargs.get("suffix", "")
+        
+        # Build substitution dictionary from dynamic inputs
+        sub_dict = {}
+        
+        # Extract str_X inputs from kwargs
+        for key, value in kwargs.items():
+            if key.startswith("str_"):
+                sub_dict[key] = value or ""
+        
+        # Create a dynamic Template class with the specified delimiter
+        def create_template_class(delim):
+            class CustomTemplate(string.Template):
+                delimiter = delim
+            return CustomTemplate
+        
+        # Get the custom Template class with our delimiter
+        TemplateClass = create_template_class(delimiter)
+        
+        # Create Template and perform substitution
+        template = TemplateClass(text)
+        try:
+            result = template.substitute(sub_dict)
+        except ValueError:
+            # Handle invalid placeholder errors - likely due to delimiter conflicts
+            try:
+                result = template.safe_substitute(sub_dict)
+            except Exception:
+                # Last resort: manual string replacement
+                result = text
+                for key, value in sub_dict.items():
+                    placeholder = f"{delimiter}{key}"
+                    result = result.replace(placeholder, str(value))
+        except KeyError:
+            # If a placeholder is missing, use safe_substitute to leave it as-is
+            result = template.safe_substitute(sub_dict)
+        
+        # Add prefix and suffix
+        result = f"{prefix or ''}{result}{suffix or ''}"
+        
+        return io.NodeOutput(result)
+
+class Sage_ViewNotes(io.ComfyNode):
+    @classmethod
+    def define_schema(cls):
+        # Get list of files in notes directory
+        notes_files = []
+        try:
+            notes_path = path_manager.notes_path
+            if notes_path.exists():
+                notes_files = [f.name for f in notes_path.iterdir() if f.is_file()]
+                notes_files.sort()  # Sort alphabetically
+        except Exception:
+            notes_files = ["No files found"]
+        
+        if not notes_files:
+            notes_files = ["No files found"]
+        
+        return io.Schema(
+            node_id="Sage_ViewNotes",
+            display_name="View Notes",
+            description="Views the contents of a selected file from the notes directory.",
+            category="Sage Utils/text",
+            is_output_node=True,
+            inputs=[
+                io.Combo.Input("filename", options=notes_files)
+            ],
+            outputs=[
+                io.String.Output("content")
+            ]
+        )
+    
+    @classmethod
+    def execute(cls, **kwargs):
+        filename = kwargs.get("filename", "No files found")
+        
+        try:
+            if filename == "No files found":
+                content = "No notes files found in the notes directory."
+            else:
+                notes_file_path = path_manager.notes_path / filename
+                if notes_file_path.exists() and notes_file_path.is_file():
+                    with open(notes_file_path, 'r', encoding='utf-8') as file:
+                        content = file.read()
+                else:
+                    content = f"File '{filename}' not found in notes directory."
+        except Exception as e:
+            content = f"Error reading file '{filename}': {str(e)}"
+        
+        return io.NodeOutput(content)
 
 class Sage_SetText(io.ComfyNode):
     @classmethod
@@ -98,7 +335,6 @@ class Sage_TextSwitch(io.ComfyNode):
     def execute(cls, **kwargs):
         str = kwargs.get("str", "")
         active = kwargs.get("active", True)
-
         return io.NodeOutput(str if active else "")
 
 class Sage_CleanText(io.ComfyNode):
@@ -196,12 +432,13 @@ class Sage_SaveText(io.ComfyNode):
         return io.Schema(
             node_id="Sage_SaveText",
             display_name="Save Text",
-            description="Saves text to a file.",
+            description="Saves the text to a file.",
             category="Sage Utils/text",
             inputs=[
-                io.String.Input("text", multiline=True),
-                io.String.Input("filename", default="output.txt"),
-                io.Boolean.Input("append", default=False)
+                io.String.Input("filename_prefix", default="ComfyUI_Text", tooltip="The prefix for the file to save. This may include formatting information such as %date:yyyy-MM-dd% to include values from nodes."),
+                io.String.Input("file_extension", default="txt", tooltip="The file extension to use for the saved file."),
+                io.String.Input("text", force_input=True, multiline=True),
+                io.Int.Input("batch_size", default=1, tooltip="The number of files to save.")
             ],
             outputs=[
                 io.String.Output("filepath")
@@ -210,17 +447,27 @@ class Sage_SaveText(io.ComfyNode):
     
     @classmethod
     def execute(cls, **kwargs):
+        filename_prefix = kwargs.get("filename_prefix", "ComfyUI_Text")
+        file_extension = kwargs.get("file_extension", "txt")
         text = kwargs.get("text", "")
-        filename = kwargs.get("filename", "output.txt")
-        append = kwargs.get("append", False)
+        batch_size = kwargs.get("batch_size", 1)
         
-        filepath = get_save_file_path(filename)
-        mode = 'a' if append else 'w'
+        if '\n' in filename_prefix:
+            filename_prefix_lines = filename_prefix.splitlines()
+            filename_prefix = ''.join(filename_prefix_lines)
+        if file_extension.startswith('.'):
+            file_extension = file_extension[1:]
         
-        with open(filepath, mode, encoding='utf-8') as f:
-            f.write(text)
+        full_path = ""
+        for i in range(batch_size):
+            full_path = get_save_file_path(filename_prefix, file_extension)
+            if not full_path:
+                raise ValueError("Invalid file path.")
+            
+            with open(full_path, 'w', encoding='utf-8') as file:
+                file.write(text)
         
-        return io.NodeOutput(str(filepath))
+        return io.NodeOutput(str(full_path))
 
 class Sage_JoinText(io.ComfyNode):
     @classmethod
@@ -228,25 +475,31 @@ class Sage_JoinText(io.ComfyNode):
         return io.Schema(
             node_id="Sage_JoinText",
             display_name="Join Text",
-            description="Joins two text strings with a separator.",
+            description="Joins two strings with a separator.",
             category="Sage Utils/text",
             inputs=[
-                io.String.Input("text1", multiline=True),
-                io.String.Input("text2", multiline=True),
-                io.String.Input("separator", default=", ")
+                io.String.Input("separator", default=", "),
+                io.Boolean.Input("add_separator_to_end", default=False, tooltip="Add separator to the end of the joined string."),
+                io.String.Input("str1", multiline=True),
+                io.String.Input("str2", multiline=True)
             ],
             outputs=[
-                io.String.Output("joined_text")
+                io.String.Output("str")
             ]
         )
     
     @classmethod
     def execute(cls, **kwargs):
-        text1 = kwargs.get("text1", "")
-        text2 = kwargs.get("text2", "")
         separator = kwargs.get("separator", ", ")
+        add_separator_to_end = kwargs.get("add_separator_to_end", False)
+        str1 = kwargs.get("str1", "")
+        str2 = kwargs.get("str2", "")
         
-        return io.NodeOutput(f"{text1}{separator}{text2}")
+        result = separator.join([str1, str2])
+        if add_separator_to_end:
+            result += separator
+        
+        return io.NodeOutput(result)
 
 class Sage_TripleJoinText(io.ComfyNode):
     @classmethod
@@ -254,27 +507,33 @@ class Sage_TripleJoinText(io.ComfyNode):
         return io.Schema(
             node_id="Sage_TripleJoinText",
             display_name="Triple Join Text",
-            description="Joins three text strings with separators.",
+            description="Joins three strings with a separator.",
             category="Sage Utils/text",
             inputs=[
-                io.String.Input("text1", multiline=True),
-                io.String.Input("text2", multiline=True),
-                io.String.Input("text3", multiline=True),
-                io.String.Input("separator", default=", ")
+                io.String.Input("separator", default=", "),
+                io.Boolean.Input("add_separator_to_end", default=False, tooltip="Add separator to the end of the joined string."),
+                io.String.Input("str1", multiline=True),
+                io.String.Input("str2", multiline=True),
+                io.String.Input("str3", multiline=True)
             ],
             outputs=[
-                io.String.Output("joined_text")
+                io.String.Output("str")
             ]
         )
     
     @classmethod
     def execute(cls, **kwargs):
-        text1 = kwargs.get("text1", "")
-        text2 = kwargs.get("text2", "")
-        text3 = kwargs.get("text3", "")
         separator = kwargs.get("separator", ", ")
+        add_separator_to_end = kwargs.get("add_separator_to_end", False)
+        str1 = kwargs.get("str1", "")
+        str2 = kwargs.get("str2", "")
+        str3 = kwargs.get("str3", "")
         
-        return io.NodeOutput(f"{text1}{separator}{text2}{separator}{text3}")
+        result = separator.join([str1, str2, str3])
+        if add_separator_to_end:
+            result += separator
+        
+        return io.NodeOutput(result)
 
 class Sage_TextRandomLine(io.ComfyNode):
     @classmethod
@@ -405,6 +664,9 @@ class Sage_HiDreamE1_Instruction(io.ComfyNode):
 
 # Update TEXT_NODES list
 TEXT_NODES = [
+    Sage_IntToStr,
+    Sage_FloatToStr,
+    SageSetWildcardText,
     Sage_SetText, 
     Sage_SetTextWithInt, 
     Sage_TextSwitch, 
@@ -414,11 +676,11 @@ TEXT_NODES = [
     Sage_SaveText,
     Sage_JoinText,
     Sage_TripleJoinText,
-    #Sage_ViewAnything,
+    Sage_ViewAnything,
     Sage_TextRandomLine,
     Sage_TextSelectLine,
-    #Sage_TextSubstitution,
+    Sage_TextSubstitution,
     Sage_TextWeight,
-    Sage_HiDreamE1_Instruction
-    #Sage_ViewNotes
+    Sage_HiDreamE1_Instruction,
+    Sage_ViewNotes
 ]

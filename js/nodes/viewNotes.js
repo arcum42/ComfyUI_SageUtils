@@ -52,7 +52,7 @@ export function setupViewNotesNode(nodeType, nodeData, app) {
       }
 
       // Make API call to get file content
-      const response = await api.fetchApi('/sage_utils/read_notes_file', {
+      const response = await api.fetchApi('/sage_utils/read_note', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ filename: filename })

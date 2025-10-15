@@ -172,7 +172,7 @@ export function setupImageDisplay(widget, filename) {
     // Create image element
     const img = document.createElement('img');
     // Construct the URL for the image in the notes directory
-    img.src = `/sage_utils/read_notes_file?filename=${encodeURIComponent(filename)}&type=image`;
+    img.src = `/sage_utils/read_note?filename=${encodeURIComponent(filename)}`;
     img.alt = filename;
     
     // Style the image to fit nicely
@@ -290,7 +290,7 @@ export function setupVideoDisplay(widget, filename, isSupported = true) {
       const video = document.createElement('video');
       video.controls = true;
       video.preload = 'metadata';
-      video.src = `/sage_utils/read_notes_file?filename=${encodeURIComponent(filename)}&type=video`;
+      video.src = `/sage_utils/read_note?filename=${encodeURIComponent(filename)}`;
       
       // Style the video to fit nicely
       video.style.cssText = `
