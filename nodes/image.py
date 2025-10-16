@@ -40,7 +40,7 @@ class Sage_EmptyLatentImagePassthrough(ComfyNodeABC):
                 "width": (IO.INT, {"default": 1024, "min": 16, "max": nodes.MAX_RESOLUTION, "step": 8, "tooltip": "The width of the latent images in pixels.", }),
                 "height": (IO.INT, {"default": 1024, "min": 16, "max": nodes.MAX_RESOLUTION, "step": 8, "tooltip": "The height of the latent images in pixels."}),
                 "batch_size": (IO.INT, { "default": 1, "min": 1, "max": 4096, "tooltip": "The number of latent images in the batch."}),
-                "sd3": (IO.BOOLEAN, {"default": False})
+                "type": (IO.COMBO, {"default": "4_channel", "options": ["4_channel", "16_channel", "radiance"], "tooltip": "The type of latent to create. 4_channel is for standard latent diffusion models, 16_channel is for SD3 models, and radiance is for Chroma Radiance models."})
             }
         }
 
@@ -58,11 +58,20 @@ class Sage_EmptyLatentImagePassthrough(ComfyNodeABC):
         "Create a new batch of empty latent images to be denoised via sampling."
     )
 
-    def generate(self, width, height, batch_size=1, sd3=False) -> tuple:
-        size = 16 if sd3 else 4
-        latent = torch.zeros(
-            [batch_size, size, height // 8, width // 8], device=self.device
-        )
+    def generate(self, width, height, batch_size=1, type="4_channel") -> tuple:
+        device = comfy.model_management.intermediate_device()
+        latent = None
+        if type not in ["4_channel", "16_channel", "radiance"]:
+            type = "4_channel"
+
+        if type == "4_channel":
+            latent = torch.zeros((batch_size, 4, height // 8, width // 8), device=device)
+        elif type == "16_channel":
+            latent = torch.zeros((batch_size, 16, height // 8, width // 8), device=device)
+        elif type == "radiance":
+            latent = torch.zeros((batch_size, 3, height, width), device=device)
+        else:
+            raise ValueError(f"Unknown latent type: {type}")
         return ({"samples": latent}, width, height)
 
 class Sage_LoadImage(ComfyNodeABC):
