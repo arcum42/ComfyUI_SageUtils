@@ -20,7 +20,8 @@ from dynamicprompts.generators import RandomPromptGenerator
 from dynamicprompts.wildcards.wildcard_manager import WildcardManager
 
 # To implement:
-# Sage_TextSubstitution - requires dynamic inputs support which may not be available yet in V3
+# Sage_PromptText - Lumina 2 prompt node
+# Sage_SystemPrompt - Lumina 2 system prompt node
 
 class Sage_IntToStr(io.ComfyNode):
     @classmethod

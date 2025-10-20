@@ -56,7 +56,9 @@ TEXT_CLASS_MAPPINGS = {
     "Sage_SaveText": Sage_SaveText,
     "Sage_PonyPrefix": Sage_PonyPrefix,
     "Sage_PonyStyle": Sage_PonyStyle,
-    "Sage_HiDreamE1_Instruction": Sage_HiDreamE1_Instruction
+    "Sage_HiDreamE1_Instruction": Sage_HiDreamE1_Instruction,
+    "Sage_PromptText": Sage_PromptText,
+    "Sage_SystemPrompt": Sage_SystemPrompt
 }
 
 LOADER_CLASS_MAPPINGS = {
@@ -202,7 +204,9 @@ TEXT_NAME_MAPPINGS = {
     "Sage_SaveText": "Save Text",
     "Sage_PonyPrefix": "Add Pony v6 Prefixes",
     "Sage_PonyStyle": "Add Pony Style",
-    "Sage_HiDreamE1_Instruction": "HiDreamE1 Instruction"
+    "Sage_HiDreamE1_Instruction": "HiDreamE1 Instruction",
+    "Sage_PromptText": "Prompt Text (Lumina 2)",
+    "Sage_SystemPrompt": "System Prompt (Lumina 2)"
 }
 
 LOADER_NAME_MAPPINGS = {

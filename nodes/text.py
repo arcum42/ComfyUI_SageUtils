@@ -18,6 +18,78 @@ from ..utils import (
 from dynamicprompts.generators import RandomPromptGenerator
 from dynamicprompts.wildcards.wildcard_manager import WildcardManager
 
+class Sage_SystemPrompt(ComfyNodeABC):
+    @classmethod
+    def INPUT_TYPES(s) -> InputTypeDict:
+        return {
+            "required": {
+                "system": (IO.COMBO, {"options": [
+                    "superior (lumina)", 
+                    "alignment (lumina)", 
+                    "anime (fixed)", 
+                    "anime (danbooru)",
+                    "anime (natural language)",
+                    "anime (structured)",
+                    "negative"
+                    ]})
+            }
+        }
+
+    RETURN_TYPES = (IO.STRING,)
+    FUNCTION = "pass_system"
+
+    CATEGORY = "Sage Utils/text"
+    DESCRIPTION = "Picks the system prompt based on the selected option."
+
+    def pass_system(self, system: str) -> tuple[str]:
+        """
+        Picks the system prompt based on the selected option.
+        """
+        
+        ret = ""
+        
+        if system == "superior (lumina)":
+            ret = "You are an assistant designed to generate superior images with the superior "
+            "degree of image-text alignment based on textual prompts or user prompts."
+        elif system == "alignment (lumina)":
+            ret = "You are an assistant designed to generate high-quality images with the "
+            "highest degree of image-text alignment based on textual prompts."
+        elif system == "anime (fixed)":
+            ret = "You are an assistant designed to generate anime images based on textual prompts. "
+        elif system == "anime (danbooru)":
+            ret = "You are an assistant designed to generate anime images with the highest degree of image-text alignment based on danbooru tags."
+        elif system == "anime (natural language)":
+            ret = "You are an assistant designed to generate high-quality images with the highest degree of image-text alignment based on textual prompts."
+        elif system == "anime (structured)":
+            ret = "You are an assistant designed to generate high-quality images with the highest degree of image-text alignment based on structural summary."
+        elif system == "negative":
+            ret = "You are an assistant designed to generate low-quality images based on textual prompts."
+        return (ret,)
+
+class Sage_PromptText(ComfyNodeABC):
+    @classmethod
+    def INPUT_TYPES(s) -> InputTypeDict:
+        return {
+            "required": {
+                "system": (IO.STRING, {"forceInput": True, "multiline": True}),
+                "prompt": (IO.STRING, {"forceInput": True, "multiline": True})
+            }
+        }
+
+    RETURN_TYPES = (IO.STRING,)
+    FUNCTION = "pass_prompt"
+
+    CATEGORY = "Sage Utils/text"
+    DESCRIPTION = "Combines a system prompt and a user prompt into a single prompt, with <Prompt Start> between them."
+
+    def pass_prompt(self, system: str, prompt: str) -> tuple[str]:
+        """
+        Combines a system prompt and a user prompt into a single prompt, with <Prompt Start> between them.
+        """
+
+        combined_prompt = f"{system}\n<Prompt Start>\n{prompt}"
+        return (combined_prompt,)
+
 class Sage_IntToStr(ComfyNodeABC):
     @classmethod
     def INPUT_TYPES(s) -> InputTypeDict:
