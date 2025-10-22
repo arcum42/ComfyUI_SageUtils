@@ -230,18 +230,12 @@ function createDefaultProviderSelector(settings) {
   ];
 
   const { container: radioContainer } = createRadioGroup('default_llm_provider', radioItems, {
-    value: currentValue,
+    selectedValue: currentValue,
     layout: 'horizontal',
-    styles: {
+    style: {
       display: 'flex',
       gap: '20px',
       marginLeft: '10px'
-    },
-    itemStyles: {
-      color: '#ccc',
-      fontSize: '14px',
-      cursor: 'pointer',
-      userSelect: 'none'
     }
   });
 
@@ -311,13 +305,16 @@ function createTabVisibilitySection(settings) {
   // Create checkbox for each tab
   tabs.forEach(tab => {
     const setting = settings[tab.key];
-    const checkbox = createCheckbox(
-      tab.label,
-      setting ? setting.current_value : true,
-      tab.key
-    );
-    checkbox.container.style.marginBottom = '5px';
-    tabsGrid.appendChild(checkbox.container);
+    const { container, checkbox } = createCheckbox(tab.label, {
+      checked: setting ? setting.current_value : true,
+      id: `setting-${tab.key}`
+    });
+    
+    // Add setting key to checkbox for saving later
+    checkbox.dataset.settingKey = tab.key;
+    
+    container.style.marginBottom = '5px';
+    tabsGrid.appendChild(container);
   });
 
   section.appendChild(tabsGrid);
@@ -339,85 +336,53 @@ function createProviderGroup(providerName, settings, providerKey) {
   // Enable checkbox
   const enableKey = `enable_${providerKey}`;
   const enableSetting = settings[enableKey];
-  const enableCheckbox = createCheckbox(
+  const { container: enableContainer, checkbox: enableCheckbox } = createCheckbox(
     `Enable ${providerName}`,
-    enableSetting ? enableSetting.current_value : true,
-    enableKey
+    {
+      checked: enableSetting ? enableSetting.current_value : true,
+      id: `setting-${enableKey}`
+    }
   );
-  group.appendChild(enableCheckbox.container);
+  enableCheckbox.dataset.settingKey = enableKey;
+  group.appendChild(enableContainer);
 
   // Custom URL checkbox
   const useCustomUrlKey = `${providerKey}_use_custom_url`;
   const useCustomUrlSetting = settings[useCustomUrlKey];
-  const customUrlCheckbox = createCheckbox(
+  const { container: customUrlCheckboxContainer, checkbox: customUrlCheckbox } = createCheckbox(
     `Use custom URL for ${providerName}`,
-    useCustomUrlSetting ? useCustomUrlSetting.current_value : false,
-    useCustomUrlKey
+    {
+      checked: useCustomUrlSetting ? useCustomUrlSetting.current_value : false,
+      id: `setting-${useCustomUrlKey}`
+    }
   );
-  customUrlCheckbox.container.style.marginLeft = '20px';
-  group.appendChild(customUrlCheckbox.container);
+  customUrlCheckbox.dataset.settingKey = useCustomUrlKey;
+  customUrlCheckboxContainer.style.marginLeft = '20px';
+  group.appendChild(customUrlCheckboxContainer);
 
   // Custom URL input
   const customUrlKey = `${providerKey}_custom_url`;
   const customUrlSetting = settings[customUrlKey];
-  const customUrlInput = createTextInput(
+  const { container: customUrlInputContainer, input: customUrlInput } = createTextInput(
     `${providerName} URL`,
     customUrlSetting ? customUrlSetting.current_value : '',
     customUrlKey,
     `e.g., http://localhost:${providerKey === 'ollama' ? '11434' : '1234'}`
   );
-  customUrlInput.container.style.marginLeft = '40px';
-  customUrlInput.container.style.marginTop = '10px';
+  customUrlInputContainer.style.marginLeft = '40px';
+  customUrlInputContainer.style.marginTop = '10px';
   
   // Show/hide URL input based on checkbox
   const updateUrlInputVisibility = () => {
-    customUrlInput.container.style.display = 
-      customUrlCheckbox.checkbox.checked ? 'block' : 'none';
+    customUrlInputContainer.style.display = 
+      customUrlCheckbox.checked ? 'block' : 'none';
   };
   updateUrlInputVisibility();
-  customUrlCheckbox.checkbox.addEventListener('change', updateUrlInputVisibility);
+  customUrlCheckbox.addEventListener('change', updateUrlInputVisibility);
 
-  group.appendChild(customUrlInput.container);
+  group.appendChild(customUrlInputContainer);
 
   return group;
-}
-
-/**
- * Create a checkbox input
- * @param {string} label - Label text
- * @param {boolean} checked - Initial checked state
- * @param {string} settingKey - Setting key for data attribute
- * @returns {Object} Object with container and checkbox elements
- */
-function createCheckboxInput(label, checked, settingKey) {
-  const { label: labelElement, checkbox } = createCheckbox(label, {
-    id: `setting-${settingKey}`,
-    checked: checked,
-    className: '',
-    labelClass: '',
-    styles: {
-      cursor: 'pointer'
-    },
-    labelStyles: {
-      color: '#ccc',
-      fontSize: '14px',
-      cursor: 'pointer',
-      userSelect: 'none'
-    }
-  });
-
-  checkbox.dataset.settingKey = settingKey;
-
-  const container = document.createElement('div');
-  container.style.cssText = `
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-bottom: 10px;
-  `;
-  container.appendChild(labelElement);
-
-  return { container, checkbox };
 }
 
 /**
@@ -434,7 +399,7 @@ function createTextInput(label, value, settingKey, placeholder = '') {
     id: `setting-${settingKey}`,
     value: value || '',
     placeholder: placeholder,
-    styles: {
+    style: {
       width: '100%',
       padding: '8px',
       background: '#2a2a2a',
@@ -453,6 +418,7 @@ function createTextInput(label, value, settingKey, placeholder = '') {
 
   const labelElement = document.createElement('label');
   labelElement.textContent = label;
+  labelElement.htmlFor = `setting-${settingKey}`;
   labelElement.style.cssText = `
     display: block;
     color: #ccc;
