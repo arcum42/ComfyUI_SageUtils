@@ -378,6 +378,17 @@ export async function createCacheSidebar(el) {
     // Activate the first visible tab
     tabManager.activateFirstTab();
     
+    // Start background preloading of other tabs during idle time
+    // Priority order: commonly used tabs first
+    setTimeout(() => {
+        console.debug('[Sidebar] Starting background tab preloading...');
+        tabManager.preloadTabsDuringIdle({
+            maxIdleTime: 20,  // Lower threshold to ensure we have real idle time
+            timeout: 5000,    // Longer timeout to wait for idle periods
+            priority: ['llm', 'gallery', 'promptBuilder', 'notes', 'civitai']
+        });
+    }, 2000); // Wait 2 seconds after initial load to ensure UI is responsive
+    
     // Preload gallery images in the background for better UX
     // This loads the default folder (usually 'notes') so data is ready when user clicks Gallery tab
     setTimeout(() => {
@@ -397,7 +408,7 @@ export async function createCacheSidebar(el) {
         }).catch(err => {
             console.warn(`[Sidebar] Gallery preload failed (non-critical):`, err);
         });
-    }, 500); // Small delay to avoid blocking initial sidebar render
+    }, 1500); // Slightly longer delay to let tab preloading start first
     
     // Store references for potential external access
     el._sidebarData = {

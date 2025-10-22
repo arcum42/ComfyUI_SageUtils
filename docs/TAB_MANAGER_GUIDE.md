@@ -175,6 +175,36 @@ tabManager.activateFirstTab();
 
 ---
 
+#### `preloadTabsDuringIdle(options)`
+Preloads uninitialized tabs in the background during browser idle time.
+
+**Parameters:**
+- `options` (object): Optional configuration
+  - `maxIdleTime` (number): Maximum time to spend in each idle callback in ms (default: 50)
+  - `timeout` (number): Timeout for idle callback in ms (default: 2000)
+  - `priority` (string[]): Array of tab IDs to prioritize for preloading
+
+**Example:**
+```javascript
+// Start background preloading after initial tab is loaded
+setTimeout(() => {
+    tabManager.preloadTabsDuringIdle({
+        maxIdleTime: 50,
+        timeout: 2000,
+        priority: ['llm', 'gallery', 'promptBuilder'] // Load these first
+    });
+}, 1000);
+```
+
+**Notes:**
+- Uses `requestIdleCallback` for efficient background loading
+- Falls back to `setTimeout` if `requestIdleCallback` is unavailable
+- Already initialized tabs and the active tab are skipped
+- Priority tabs are loaded first, then remaining tabs
+- Does not block user interactions
+
+---
+
 #### `updateVisibility(settings)`
 Updates tab visibility based on settings object.
 
@@ -549,6 +579,38 @@ function createErrorView(error) {
     return div;
 }
 ```
+
+### 6. Background Preloading
+
+Use background preloading to improve tab switching performance:
+
+```javascript
+// Create and initialize TabManager
+const tabManager = new TabManager({ container });
+tabManager.init()
+    .addTab('home', 'Home', createHomeTab)
+    .addTab('settings', 'Settings', createSettingsTab)
+    .addTab('data', 'Data', createDataTab)
+    .addTab('reports', 'Reports', createReportsTab);
+
+// Activate first tab
+tabManager.activateFirstTab();
+
+// Start background preloading after 1 second
+setTimeout(() => {
+    tabManager.preloadTabsDuringIdle({
+        maxIdleTime: 50,     // Don't block for more than 50ms
+        timeout: 2000,       // Give up if browser is busy for 2 seconds
+        priority: ['settings', 'data']  // Load commonly used tabs first
+    });
+}, 1000);
+```
+
+**Benefits:**
+- Tabs are ready instantly when clicked
+- No perceived loading delay for users
+- Uses idle browser time efficiently
+- Doesn't impact initial page load performance
 
 ## Troubleshooting
 

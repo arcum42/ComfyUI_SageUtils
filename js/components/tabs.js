@@ -265,7 +265,7 @@ export class TabManager {
             
             // Initialize tab content if needed (lazy loading)
             if (this.lazyLoad && !this.initializedTabs.has(tabId)) {
-                this.initializeTab(tabId);
+                this.initializeTab(tabId, true); // Show loading for user-initiated switches
             }
             
             this.activeTabId = tabId;
@@ -286,25 +286,36 @@ export class TabManager {
      * Initialize tab content
      * @private
      * @param {string} tabId - Tab ID
+     * @param {boolean} [showLoading=true] - Whether to show loading state
      */
-    initializeTab(tabId) {
+    initializeTab(tabId, showLoading = true) {
         const config = this.tabs.get(tabId);
         const container = this.tabContainers.get(tabId);
         
         if (!config || !container) return;
         
+        // Skip if already initialized
+        if (this.initializedTabs.has(tabId)) {
+            console.debug(`TabManager: Tab '${tabId}' already initialized, skipping`);
+            return;
+        }
+        
         console.debug(`TabManager: Initializing tab '${tabId}'`);
         
         try {
-            // Show loading state
-            container.innerHTML = `
-                <div style="text-align: center; padding: 40px; color: #888;">
-                    <div style="font-size: 16px; margin-bottom: 10px;">Loading ${config.label}...</div>
-                    <div style="font-size: 12px;">Please wait</div>
-                </div>
-            `;
+            // Show loading state only if requested (skip for background preloading)
+            if (showLoading) {
+                container.innerHTML = `
+                    <div style="text-align: center; padding: 40px; color: #888;">
+                        <div style="font-size: 16px; margin-bottom: 10px;">Loading ${config.label}...</div>
+                        <div style="font-size: 12px;">Please wait</div>
+                    </div>
+                `;
+            }
             
-            // Initialize content with delay to show loading
+            // Initialize content immediately for background loading, with small delay for user-initiated
+            const initDelay = showLoading ? 50 : 0;
+            
             setTimeout(() => {
                 try {
                     container.innerHTML = ''; // Clear loading message
@@ -325,7 +336,7 @@ export class TabManager {
                         </div>
                     `;
                 }
-            }, 50);
+            }, initDelay);
         } catch (error) {
             console.error(`TabManager: Error setting up initialization for tab '${tabId}':`, error);
             container.innerHTML = `
@@ -480,6 +491,104 @@ export class TabManager {
             return this.switchTab(firstTab);
         }
         return false;
+    }
+    
+    /**
+     * Preload tabs during idle time
+     * Initializes uninitialized tabs in the background to improve responsiveness
+     * Uses requestIdleCallback to avoid blocking the main thread
+     * @param {Object} [options] - Preload options
+     * @param {number} [options.maxIdleTime=50] - Maximum time to spend in each idle callback (ms)
+     * @param {number} [options.timeout=2000] - Timeout for idle callback (ms)
+     * @param {string[]} [options.priority] - Array of tab IDs to prioritize for preloading
+     */
+    preloadTabsDuringIdle(options = {}) {
+        const maxIdleTime = options.maxIdleTime || 50;
+        const timeout = options.timeout || 2000;
+        const priorityTabs = options.priority || [];
+        
+        // Get uninitialized tabs
+        const uninitializedTabs = this.getVisibleTabIds().filter(
+            tabId => !this.initializedTabs.has(tabId) && tabId !== this.activeTabId
+        );
+        
+        if (uninitializedTabs.length === 0) {
+            console.debug('[TabManager] All tabs already initialized');
+            return;
+        }
+        
+        // Sort tabs by priority
+        const sortedTabs = [...uninitializedTabs].sort((a, b) => {
+            const aPriority = priorityTabs.indexOf(a);
+            const bPriority = priorityTabs.indexOf(b);
+            
+            // If both have priority, sort by priority order
+            if (aPriority !== -1 && bPriority !== -1) {
+                return aPriority - bPriority;
+            }
+            // Priority tabs come first
+            if (aPriority !== -1) return -1;
+            if (bPriority !== -1) return 1;
+            // Otherwise maintain original order
+            return 0;
+        });
+        
+        console.debug(`[TabManager] Starting background preload for ${sortedTabs.length} tabs:`, sortedTabs);
+        
+        // Use requestIdleCallback to initialize tabs during idle time
+        const preloadNextTab = (index) => {
+            if (index >= sortedTabs.length) {
+                console.debug('[TabManager] Background preload complete');
+                return;
+            }
+            
+            const tabId = sortedTabs[index];
+            
+            // Skip if tab was initialized by user interaction in the meantime
+            if (this.initializedTabs.has(tabId)) {
+                console.debug(`[TabManager] Tab '${tabId}' already initialized, skipping preload`);
+                preloadNextTab(index + 1);
+                return;
+            }
+            
+            // Check if browser supports requestIdleCallback
+            if (typeof requestIdleCallback === 'function') {
+                requestIdleCallback((deadline) => {
+                    // Skip if tab was initialized while waiting
+                    if (this.initializedTabs.has(tabId)) {
+                        console.debug(`[TabManager] Tab '${tabId}' already initialized, skipping preload`);
+                        preloadNextTab(index + 1);
+                        return;
+                    }
+                    
+                    // Only preload if we have enough time remaining
+                    if (deadline.timeRemaining() > maxIdleTime) {
+                        console.debug(`[TabManager] Preloading tab '${tabId}' during idle time`);
+                        this.initializeTab(tabId, false); // No loading message for background
+                    } else {
+                        console.debug(`[TabManager] Insufficient idle time for '${tabId}', retrying`);
+                        // Retry this tab instead of skipping it
+                        setTimeout(() => preloadNextTab(index), 100);
+                        return; // Don't move to next tab yet
+                    }
+                    
+                    // Schedule next tab
+                    preloadNextTab(index + 1);
+                }, { timeout });
+            } else {
+                // Fallback for browsers without requestIdleCallback
+                console.debug(`[TabManager] Preloading tab '${tabId}' using setTimeout fallback`);
+                setTimeout(() => {
+                    if (!this.initializedTabs.has(tabId)) {
+                        this.initializeTab(tabId, false); // No loading message for background
+                    }
+                    preloadNextTab(index + 1);
+                }, 100);
+            }
+        };
+        
+        // Start preloading
+        preloadNextTab(0);
     }
     
     /**
