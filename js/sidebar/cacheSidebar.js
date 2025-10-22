@@ -157,6 +157,7 @@ function createTabManager(container, tabVisibility = {}, tabContentFactories = {
         font-size: 18px;
         transition: all 0.2s ease;
         z-index: 10;
+        flex-shrink: 0;
     `;
 
     // Hover effect
@@ -184,6 +185,45 @@ function createTabManager(container, tabVisibility = {}, tabContentFactories = {
     });
 
     tabManager.tabHeader.appendChild(settingsButton);
+
+    // Check if settings button overlaps with tabs and hide it if necessary
+    const checkSettingsButtonVisibility = () => {
+        const header = tabManager.tabHeader;
+        const tabs = header.querySelectorAll('.tab-button');
+        
+        if (tabs.length === 0) return;
+        
+        // Calculate total width needed for tabs
+        let tabsWidth = 0;
+        tabs.forEach(tab => {
+            tabsWidth += tab.offsetWidth;
+        });
+        
+        // Add padding and gap spacing
+        const headerPadding = 20; // 10px on each side
+        const tabGaps = (tabs.length - 1) * 2; // 2px gap between tabs
+        const settingsButtonWidth = 50; // Approximate width of settings button
+        const requiredWidth = tabsWidth + tabGaps + headerPadding + settingsButtonWidth;
+        
+        // Hide button if there's not enough space
+        if (header.offsetWidth < requiredWidth) {
+            settingsButton.style.display = 'none';
+        } else {
+            settingsButton.style.display = 'block';
+        }
+    };
+
+    // Check visibility on load and resize
+    setTimeout(checkSettingsButtonVisibility, 100);
+    
+    // Use ResizeObserver to dynamically check when header size changes
+    const resizeObserver = new ResizeObserver(() => {
+        checkSettingsButtonVisibility();
+    });
+    resizeObserver.observe(tabManager.tabHeader);
+    
+    // Store observer for cleanup if needed
+    tabManager.settingsButtonResizeObserver = resizeObserver;
     
     return tabManager;
 }
