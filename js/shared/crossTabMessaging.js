@@ -216,16 +216,24 @@ export const MessageTypes = {
 
 /**
  * Helper function to send images to LLM tab
- * @param {Array} images - Array of image objects { file, preview, base64 }
+ * @param {Array} images - Array of image data
  * @param {Object} options - Additional options
  */
 export function sendImagesToLLM(images, options = {}) {
+    console.log('[CrossTab] sendImagesToLLM called with:', {
+        imageCount: images.length,
+        options,
+        firstImage: images[0]
+    });
+    
     const bus = getEventBus();
     bus.publish(MessageTypes.IMAGE_TRANSFER, {
         images: images,
         source: options.source || 'unknown',
         autoSwitch: options.autoSwitch !== false
     });
+    
+    console.log('[CrossTab] IMAGE_TRANSFER published');
 }
 
 /**
