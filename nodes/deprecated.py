@@ -30,7 +30,7 @@ class Sage_ConstructMetadata(Sage_ConstructMetadataFlexible):
     DESCRIPTION = ("Constructs comprehensive A1111-style metadata with full LoRA hash information. "
                   "Uses the custom sampler info node. Returns a string that can be manipulated by other nodes.")
     FUNCTION = "construct_a1111"
-    CATEGORY = "Sage Utils/depreciated"
+    CATEGORY = "Sage Utils/deprecated"
 
     def construct_a1111(self, model_info: dict, positive_string: str, negative_string: str, 
                           width: int, height: int, sampler_info: dict, 
@@ -61,7 +61,7 @@ class Sage_ConstructMetadataLite(Sage_ConstructMetadataFlexible):
     DESCRIPTION = ("Constructs simplified A1111-style metadata with resource information "
                   "but without detailed LoRA hashes. Uses the custom sampler info node.")
     FUNCTION = "construct_lite"
-    CATEGORY = "Sage Utils/depreciated"
+    CATEGORY = "Sage Utils/deprecated"
 
     def construct_lite(self, model_info: dict, positive_string: str, negative_string: str,
                           width: int, height: int, sampler_info: dict, 
@@ -92,7 +92,7 @@ class Sage_KSamplerDecoder(ComfyNodeABC):
     OUTPUT_TOOLTIPS = ("The denoised latent.", "The decoded image.")
     FUNCTION = "sample"
 
-    CATEGORY = "Sage Utils/depreciated"
+    CATEGORY = "Sage Utils/deprecated"
     DESCRIPTION = "KSampler + Tiled Decoder is preferred, because the tiling is optional on it. Uses the provided model, positive and negative conditioning to denoise the latent image, and generate an image with the provided vae. Designed to work with the Sampler info node."
     DEPRECATED = True
 

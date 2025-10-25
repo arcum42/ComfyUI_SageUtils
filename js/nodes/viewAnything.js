@@ -21,12 +21,12 @@ export function setupViewTextOrAnythingNode(nodeType, nodeData, app) {
   const onExecuted = nodeType.prototype.onExecuted;
   nodeType.prototype.onExecuted = function (message) {
     // Log output for debugging - show processed text instead of raw array
-    if (message && message["text"]) {
+    /* if (message && message["text"]) {
       const processedText = Array.isArray(message["text"]) 
         ? message["text"].join("") 
         : String(message["text"]);
       console.log("ViewAnything processed text:", processedText.substring(0, 100) + "...");
-    }
+    } */
     if (onExecuted) onExecuted.apply(this, arguments);
     
     // Create or get the output widget and update it

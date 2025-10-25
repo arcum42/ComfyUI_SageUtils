@@ -137,10 +137,10 @@ function loadPersistedState() {
         const stored = localStorage.getItem(PERSISTENCE_KEY);
         if (stored) {
             const parsed = JSON.parse(stored);
-            console.debug('[StateManager] Loaded persisted state from localStorage:', parsed);
+            // console.debug('[StateManager] Loaded persisted state from localStorage:', parsed);
             return parsed;
         } else {
-            console.debug('[StateManager] No persisted state found in localStorage');
+            // console.debug('[StateManager] No persisted state found in localStorage');
         }
     } catch (error) {
         console.error('[StateManager] Error loading persisted state:', error);
@@ -193,7 +193,7 @@ function savePersistedState() {
             };
             
             localStorage.setItem(PERSISTENCE_KEY, JSON.stringify(stateToPersist));
-            console.debug('[StateManager] State persisted to localStorage');
+            // console.debug('[StateManager] State persisted to localStorage');
         } catch (error) {
             console.error('[StateManager] Error saving persisted state:', error);
         }
@@ -227,9 +227,9 @@ let currentState = JSON.parse(JSON.stringify(initialState));
 const persistedState = loadPersistedState();
 if (persistedState) {
     currentState = deepMerge(currentState, persistedState);
-    console.debug('[StateManager] Initialized with persisted state:', currentState);
+    // console.debug('[StateManager] Initialized with persisted state:', currentState);
 } else {
-    console.debug('[StateManager] Initialized with default state:', currentState);
+    // console.debug('[StateManager] Initialized with default state:', currentState);
 }
 
 // State change listeners
@@ -264,6 +264,44 @@ export function getStateValue(path) {
 }
 
 /**
+ * Deep equality check for comparing values
+ * @param {any} a - First value
+ * @param {any} b - Second value
+ * @returns {boolean} Whether values are deeply equal
+ */
+function deepEqual(a, b) {
+    if (a === b) return true;
+    
+    if (a == null || b == null) return a === b;
+    
+    if (typeof a !== typeof b) return false;
+    
+    if (typeof a !== 'object') return a === b;
+    
+    if (Array.isArray(a) !== Array.isArray(b)) return false;
+    
+    if (Array.isArray(a)) {
+        if (a.length !== b.length) return false;
+        for (let i = 0; i < a.length; i++) {
+            if (!deepEqual(a[i], b[i])) return false;
+        }
+        return true;
+    }
+    
+    const keysA = Object.keys(a);
+    const keysB = Object.keys(b);
+    
+    if (keysA.length !== keysB.length) return false;
+    
+    for (const key of keysA) {
+        if (!keysB.includes(key)) return false;
+        if (!deepEqual(a[key], b[key])) return false;
+    }
+    
+    return true;
+}
+
+/**
  * Update state immutably with change tracking and validation
  * @param {string} path - Path to the state value (e.g., 'models.selectedHash')
  * @param {any} value - New value to set
@@ -272,8 +310,13 @@ export function getStateValue(path) {
 export function updateState(path, value, action = 'update') {
     const oldValue = getStateValue(path);
     
-    // Don't update if value hasn't changed (shallow comparison)
-    if (oldValue === value) {
+    // Debug logging to track rapid updates
+    if (window._stateUpdateDebug) {
+        console.log(`[StateManager] updateState called: path="${path}", action="${action}"`, { oldValue, newValue: value });
+    }
+    
+    // Don't update if value hasn't changed (deep comparison for objects, shallow for primitives)
+    if (deepEqual(oldValue, value)) {
         return;
     }
     
@@ -508,7 +551,7 @@ export function resetState() {
             currentState: getState()
         });
         
-        console.debug('[StateManager] State reset to initial values');
+        // console.debug('[StateManager] State reset to initial values');
     } catch (error) {
         console.error('[StateManager] Error resetting state:', error);
     }

@@ -139,7 +139,7 @@ class Sage_DualCLIPTextEncodeLumina2(ComfyNodeABC):
     RETURN_NAMES = ("pos_cond", "neg_cond", "pos_text", "neg_text")
     OUTPUT_TOOLTIPS = ("A conditioning containing the embedded text used to guide the diffusion model. If neg is not hooked up, it'll be automatically zeroed.",)
     FUNCTION = "encode"
-    CATEGORY = "Sage Utils/clip"
+    CATEGORY = "Sage Utils/deprecated"
     DESCRIPTION = (
         "Turns a positive and negative prompt into conditionings, and passes through the prompts. "
         "Saves space over two CLIP Text Encoders, and zeros any input not hooked up."

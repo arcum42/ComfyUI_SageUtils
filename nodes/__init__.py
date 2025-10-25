@@ -1,6 +1,6 @@
 # Import the submodules
 from .conditioning import *
-from .depreciated import *
+from .deprecated import *
 from .image import *
 from .metadata import *
 from .loader import *
