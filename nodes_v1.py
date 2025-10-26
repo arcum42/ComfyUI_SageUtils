@@ -54,11 +54,19 @@ TEXT_CLASS_MAPPINGS = {
     "Sage_ViewAnything": Sage_ViewAnything,
     "Sage_ViewNotes": Sage_ViewNotes,
     "Sage_SaveText": Sage_SaveText,
-    "Sage_PonyPrefix": Sage_PonyPrefix,
-    "Sage_PonyStyle": Sage_PonyStyle,
     "Sage_HiDreamE1_Instruction": Sage_HiDreamE1_Instruction,
     "Sage_PromptText": Sage_PromptText,
     "Sage_SystemPrompt": Sage_SystemPrompt
+}
+
+PONY_CLASS_MAPPINGS = {
+    "Sage_PonyPrefix": Sage_PonyPrefix,
+    "Sage_PonyStyle": Sage_PonyStyle,
+    "Sage_PonyStyleCluster": Sage_PonyStyleCluster,
+    "Sage_PonySource": Sage_PonySource,
+    "Sage_PonyRatingv7": Sage_PonyRatingv7,
+    "Sage_PonyRatingv6": Sage_PonyRatingv6,
+    "Sage_PonyScore": Sage_PonyScore
 }
 
 LOADER_CLASS_MAPPINGS = {
@@ -162,7 +170,7 @@ UTILITY_CLASS_MAPPINGS = {
 
 # A dictionary that contains all nodes you want to export with their names
 # NOTE: names should be globally unique
-NODE_CLASS_MAPPINGS = UTILITY_CLASS_MAPPINGS | SELECTOR_CLASS_MAPPINGS |  TEXT_CLASS_MAPPINGS | \
+NODE_CLASS_MAPPINGS = UTILITY_CLASS_MAPPINGS | SELECTOR_CLASS_MAPPINGS |  TEXT_CLASS_MAPPINGS | PONY_CLASS_MAPPINGS | \
     LOADER_CLASS_MAPPINGS| MODEL_CLASS_MAPPINGS | LORA_CLASS_MAPPINGS | CLIP_CLASS_MAPPINGS | SAMPLER_CLASS_MAPPINGS | \
     IMAGE_CLASS_MAPPINGS | METADATA_CLASS_MAPPINGS
 
@@ -202,13 +210,20 @@ TEXT_NAME_MAPPINGS = {
     "Sage_ViewAnything": "View Any Node as Text",
     "Sage_ViewNotes": "View Notes",
     "Sage_SaveText": "Save Text",
-    "Sage_PonyPrefix": "Add Pony v6 Prefixes",
-    "Sage_PonyStyle": "Add Pony Style",
     "Sage_HiDreamE1_Instruction": "HiDreamE1 Instruction",
     "Sage_PromptText": "Prompt Text (Lumina 2)",
     "Sage_SystemPrompt": "System Prompt (Lumina 2)"
 }
 
+PONY_NAME_MAPPINGS = {
+    "Sage_PonyPrefix": "Add Pony v6 Prefixes",
+    "Sage_PonyStyle": "Add Pony Style",
+    "Sage_PonyStyleCluster": "Pony Style Cluster",
+    "Sage_PonySource": "Pony Source",
+    "Sage_PonyRatingv7": "Pony Rating (v7)",
+    "Sage_PonyRatingv6": "Pony Rating (v6)",
+    "Sage_PonyScore": "Pony Score"
+}
 LOADER_NAME_MAPPINGS = {
     "Sage_LoadModelFromInfo": "Load Models",
     "Sage_ModelLoraStackLoader": "Load Models + Loras",
@@ -309,6 +324,6 @@ UTILITY_NAME_MAPPINGS = {
 }
 
 # A dictionary that contains the friendly/human readable titles for the nodes
-NODE_DISPLAY_NAME_MAPPINGS = UTILITY_NAME_MAPPINGS | SELECTOR_NAME_MAPPINGS | TEXT_NAME_MAPPINGS | \
+NODE_DISPLAY_NAME_MAPPINGS = UTILITY_NAME_MAPPINGS | SELECTOR_NAME_MAPPINGS | TEXT_NAME_MAPPINGS | PONY_NAME_MAPPINGS | \
     LOADER_NAME_MAPPINGS | MODEL_NAME_MAPPINGS | LORA_NAME_MAPPINGS | CLIP_NAME_MAPPINGS | SAMPLER_NAME_MAPPINGS | \
     IMAGE_NAME_MAPPINGS | METADATA_NAME_MAPPINGS
