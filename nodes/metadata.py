@@ -209,3 +209,11 @@ class Sage_ConstructMetadataFlexible(ComfyNodeABC):
         formatted_metadata = self._format_metadata_string(template, components)
         
         return (formatted_metadata,)
+
+METADATA_CLASS_MAPPINGS = {
+    "Sage_ConstructMetadataFlexible": Sage_ConstructMetadataFlexible
+}
+
+METADATA_NAME_MAPPINGS = {
+    "Sage_ConstructMetadataFlexible": "Construct Metadata (Flexible)"
+}

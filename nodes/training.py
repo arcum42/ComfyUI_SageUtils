@@ -382,3 +382,15 @@ class Sage_TrainingCaptionsToConditioning(ComfyNodeABC):
         
         logging.info(f"Encoded {len(conditions)} captions.")
         return (conditions,)
+
+TRAINING_CLASS_MAPPINGS = {
+    #"Sage_LoadImageTextSetFromFolderNode": Sage_LoadImageTextSetFromFolderNode,
+    "Sage_Load_Dataset_From_Folder": Sage_Load_Dataset_From_Folder,
+    "Sage_TrainingCaptionsToConditioning": Sage_TrainingCaptionsToConditioning
+}
+
+TRAINING_NAME_MAPPINGS = {
+    #"Sage_LoadImageTextSetFromFolderNode": "Load Image(s) from Folder (Set Text)",
+    "Sage_Load_Dataset_From_Folder": "Load Dataset from Folder",
+    "Sage_TrainingCaptionsToConditioning": "Captions to Conditioning"
+}

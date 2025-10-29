@@ -768,3 +768,41 @@ class Sage_CheckLorasForUpdates(ComfyNodeABC):
                             lora_list.append(lora_path)
                 
         return (lora_stack, str(lora_list), str(lora_url_list))
+
+MODEL_CLASS_MAPPINGS = {
+    "Sage_ModelInfo": Sage_ModelInfo,
+    "Sage_ModelInfoDisplay": Sage_ModelInfoDisplay,
+    "Sage_LastLoraInfo": Sage_LastLoraInfo,
+    "Sage_CollectKeywordsFromLoraStack": Sage_CollectKeywordsFromLoraStack,
+    "Sage_CheckLorasForUpdates": Sage_CheckLorasForUpdates,
+    "Sage_CacheMaintenance": Sage_CacheMaintenance,
+    "Sage_ModelReport": Sage_ModelReport,
+    "Sage_MultiModelPicker": Sage_MultiModelPicker
+}
+
+MODEL_NAME_MAPPINGS = {
+    "Sage_ModelInfo": "Pull Model Info",
+    "Sage_ModelInfoDisplay": "Display Model Info",
+    "Sage_LastLoraInfo": "Last Lora Info",
+    "Sage_CollectKeywordsFromLoraStack": "Lora Stack -> Keywords",
+    "Sage_CheckLorasForUpdates": "Check Loras for Updates",
+    "Sage_CacheMaintenance": "Cache Maintenance",
+    "Sage_ModelReport": "Model Scan & Report",
+    "Sage_MultiModelPicker": "Multi Model Picker"
+}
+
+UTILITY_CLASS_MAPPINGS = {
+    "Sage_GetFileHash": Sage_GetFileHash,
+    "Sage_LogicalSwitch": Sage_LogicalSwitch,
+    "Sage_Halt": Sage_Halt,
+    "Sage_FreeMemory": Sage_FreeMemory,
+    "Sage_LoraStackInfoDisplay": Sage_LoraStackInfoDisplay
+}
+
+UTILITY_NAME_MAPPINGS = {
+    "Sage_GetFileHash": "Get Sha256 Hash",
+    "Sage_LogicalSwitch": "Switch",
+    "Sage_Halt": "Halt Workflow",
+    "Sage_FreeMemory": "Free Memory",
+    "Sage_LoraStackInfoDisplay": "Display LoRA Stack Info"
+}

@@ -472,3 +472,25 @@ class Sage_UNETLoRALoader(ComfyNodeABC):
             "result": (unet_out, lora_stack, keywords),
             "expand": graph.finalize()
         }
+
+LOADER_CLASS_MAPPINGS = {
+    "Sage_LoadModelFromInfo": Sage_LoadModelFromInfo,
+    "Sage_UNETLoaderFromInfo": Sage_UNETLoaderFromInfo,
+    "Sage_CLIPLoaderFromInfo": Sage_CLIPLoaderFromInfo,
+    "Sage_ChromaCLIPLoaderFromInfo": Sage_ChromaCLIPLoaderFromInfo,
+    "Sage_VAELoaderFromInfo": Sage_VAELoaderFromInfo,
+    "Sage_LoraStackLoader": Sage_LoraStackLoader,
+    "Sage_ModelLoraStackLoader": Sage_ModelLoraStackLoader,
+    "Sage_UNETLoRALoader": Sage_UNETLoRALoader,
+}
+
+LOADER_NAME_MAPPINGS = {
+    "Sage_LoadModelFromInfo": "Load Models",
+    "Sage_ModelLoraStackLoader": "Load Models + Loras",
+    "Sage_UNETLoaderFromInfo": "Load UNET Model <- Info",
+    "Sage_CLIPLoaderFromInfo": "Load CLIP Model <- Info",
+    "Sage_ChromaCLIPLoaderFromInfo": "Load CLIP (w/ Chroma T5 Options)",
+    "Sage_VAELoaderFromInfo": "Load VAE Model <- Info",
+    "Sage_LoraStackLoader": "Lora Stack Loader",
+    "Sage_UNETLoRALoader": "Load UNET + LoRA (Model Only)"
+}

@@ -311,6 +311,35 @@ class Sage_MultiSelectorQuadClip(ComfyNodeABC):
         ret = (unet_info[0], clip_info[0], vae_info[0])
         return (ret,)
 
+class Sage_TilingInfo(ComfyNodeABC):
+    def __init__(self):
+        pass
+
+    @classmethod
+    def INPUT_TYPES(cls) -> InputTypeDict:
+        return {
+            "required": {
+                "tile_size": (IO.INT, {"default": 512, "min": 64, "max": 4096, "step": 32}),
+                "overlap": (IO.INT, {"default": 64, "min": 0, "max": 4096, "step": 32}),
+                "temporal_size": (IO.INT, {"default": 64, "min": 8, "max": 4096, "step": 4, "tooltip": "Only used for video VAEs: Amount of frames to decode at a time."}),
+                "temporal_overlap": (IO.INT, {"default": 8, "min": 4, "max": 4096, "step": 4, "tooltip": "Only used for video VAEs: Amount of frames to overlap."}),
+            }
+        }
+    
+    RETURN_TYPES = ("TILING_INFO",)
+    OUTPUT_TOOLTIPS = ("To be piped to the KSampler.",)
+    FUNCTION = "pass_tiling_info"
+    CATEGORY = "Sage Utils/sampler"
+    DESCRIPTION = "Adds tiling information to the KSampler."
+    
+    def pass_tiling_info(self, tile_size, overlap, temporal_size, temporal_overlap) -> tuple:
+        t_info = {}
+        t_info["tile_size"] = tile_size
+        t_info["overlap"] = overlap
+        t_info["temporal_size"] = temporal_size
+        t_info["temporal_overlap"] = temporal_overlap
+        return t_info,
+    
 # Model Shifts and FreeU2 Settings
 class Sage_ModelShifts(ComfyNodeABC):
     def __init__(self):
@@ -599,3 +628,61 @@ class Sage_QuickNineLoraStack(Sage_TripleQuickLoraStack):
 
 class Sage_SixLoraStack(Sage_TripleLoraStack):
     NUM_OF_ENTRIES = 6
+
+SELECTOR_CLASS_MAPPINGS = {
+    "Sage_TilingInfo": Sage_TilingInfo,
+    "Sage_ModelShifts": Sage_ModelShifts,
+    "Sage_FreeU2": Sage_FreeU2,
+    "Sage_ModelShiftOnly": Sage_ModelShiftOnly,
+    "Sage_CheckpointSelector": Sage_CheckpointSelector,
+    "Sage_UNETSelector": Sage_UNETSelector,
+    "Sage_CLIPSelector": Sage_CLIPSelector,
+    "Sage_DualCLIPSelector": Sage_DualCLIPSelector,
+    "Sage_TripleCLIPSelector": Sage_TripleCLIPSelector,
+    "Sage_QuadCLIPSelector": Sage_QuadCLIPSelector,
+    "Sage_VAESelector": Sage_VAESelector,
+    "Sage_UnetClipVaeToModelInfo": Sage_UnetClipVaeToModelInfo,
+    "Sage_MultiSelectorSingleClip": Sage_MultiSelectorSingleClip,
+    "Sage_MultiSelectorDoubleClip": Sage_MultiSelectorDoubleClip,
+    "Sage_MultiSelectorTripleClip": Sage_MultiSelectorTripleClip,
+    "Sage_MultiSelectorQuadClip": Sage_MultiSelectorQuadClip
+}
+
+SELECTOR_NAME_MAPPINGS = {
+    "Sage_TilingInfo": "Tiling Info",
+    "Sage_ModelShifts": "Model Shifts",
+    "Sage_FreeU2": "Free U2 Selector",
+    "Sage_ModelShiftOnly": "Model Shift Only",
+    "Sage_CheckpointSelector": "Checkpoint Selector",
+    "Sage_UNETSelector": "UNET Selector",
+    "Sage_CLIPSelector": "CLIP Selector",
+    "Sage_DualCLIPSelector": "Dual CLIP Selector",
+    "Sage_TripleCLIPSelector": "Triple CLIP Selector",
+    "Sage_QuadCLIPSelector": "Quad CLIP Selector",
+    "Sage_VAESelector": "VAE Selector",
+    "Sage_UnetClipVaeToModelInfo": "UNET + CLIP + VAE",
+    "Sage_MultiSelectorSingleClip": "Multi Selector (Single CLIP)",
+    "Sage_MultiSelectorDoubleClip": "Multi Selector (Dual CLIP)",
+    "Sage_MultiSelectorTripleClip": "Multi Selector (Triple CLIP)",
+    "Sage_MultiSelectorQuadClip": "Multi Selector (Quad CLIP)"
+}
+
+LORA_CLASS_MAPPINGS = {
+    "Sage_LoraStack": Sage_LoraStack,
+    "Sage_QuickLoraStack": Sage_QuickLoraStack,
+    "Sage_TripleLoraStack": Sage_TripleLoraStack,
+    "Sage_SixLoraStack": Sage_SixLoraStack,
+    "Sage_TripleQuickLoraStack": Sage_TripleQuickLoraStack,
+    "Sage_QuickSixLoraStack": Sage_QuickSixLoraStack,
+    "Sage_QuickNineLoraStack": Sage_QuickNineLoraStack
+}
+
+LORA_NAME_MAPPINGS = {
+    "Sage_LoraStack": "Simple Lora Stack",
+    "Sage_QuickLoraStack": "Quick Lora Stack",
+    "Sage_TripleLoraStack": "Lora Stack (x3)",
+    "Sage_SixLoraStack": "Lora Stack (x6)",
+    "Sage_TripleQuickLoraStack": "Quick Lora Stack (x3)",
+    "Sage_QuickSixLoraStack": "Quick Lora Stack (x6)",
+    "Sage_QuickNineLoraStack": "Quick Lora Stack (x9)"
+}

@@ -558,3 +558,25 @@ class Sage_ReferenceImage(ComfyNodeABC):
             "result": (ref_latent_node.out(0), encoder_node.out(0)), 
             "expand": graph.finalize(),
             }
+
+IMAGE_CLASS_MAPPINGS = {
+    "Sage_LoadImage": Sage_LoadImage,
+    "Sage_EmptyLatentImagePassthrough": Sage_EmptyLatentImagePassthrough,
+    "Sage_SaveImageWithMetadata": Sage_SaveImageWithMetadata,
+    "Sage_QuickResPicker": Sage_QuickResPicker,
+    "Sage_GuessResolutionByRatio": Sage_GuessResolutionByRatio,
+    "Sage_CubiqImageResize": Sage_CubiqImageResize,
+    "Sage_CropImage": Sage_CropImage,
+    "Sage_ReferenceImage": Sage_ReferenceImage
+}
+
+IMAGE_NAME_MAPPINGS = {
+    "Sage_EmptyLatentImagePassthrough": "Empty Latent Passthrough",
+    "Sage_LoadImage": "Load Image w/ Size & Metadata",
+    "Sage_SaveImageWithMetadata": "Save Image w/ Added Metadata",
+    "Sage_QuickResPicker": "Quick Resolution Picker",
+    "Sage_GuessResolutionByRatio": "Guess Close Resolution by Ratio",
+    "Sage_CubiqImageResize": "Image Resize (from Essentials)",
+    "Sage_CropImage": "Sage Image Crop",
+    "Sage_ReferenceImage": "Reference Image"
+}

@@ -1,4 +1,4 @@
-# No real reason v1 and v3 nodes can't coexist, but the loader loads one of the other, so I guess I am too.
+# No real reason v1 and v3 nodes can't coexist, but the loader loads one or the other, so I guess I am too.
 # Yay, twice as much work to maintain!
 # See ref_docs/v3_migration.md for info on migrating to v3 nodes.
 

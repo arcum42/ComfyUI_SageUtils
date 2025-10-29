@@ -798,3 +798,67 @@ class Sage_PonyStyle(ComfyNodeABC):
 
     def return_style(self, style) -> tuple[str]:
         return (", ".join(style),)
+
+TEXT_CLASS_MAPPINGS = {
+    "Sage_SetText": Sage_SetText,
+    "Sage_SetTextWithInt": Sage_SetTextWithInt,
+    "Sage_TextSwitch": Sage_TextSwitch,
+    "SageSetWildcardText": SageSetWildcardText,
+    "Sage_TextSubstitution": Sage_TextSubstitution,
+    "Sage_JoinText": Sage_JoinText,
+    "Sage_TripleJoinText": Sage_TripleJoinText,
+    "Sage_CleanText": Sage_CleanText,
+    "Sage_TextSelectLine": Sage_TextSelectLine,
+    "Sage_TextRandomLine": Sage_TextRandomLine,
+    "Sage_TextWeight": Sage_TextWeight,
+    "Sage_IntToStr": Sage_IntToStr,
+    "Sage_FloatToStr": Sage_FloatToStr,
+    "Sage_ViewAnything": Sage_ViewAnything,
+    "Sage_ViewNotes": Sage_ViewNotes,
+    "Sage_SaveText": Sage_SaveText,
+    "Sage_HiDreamE1_Instruction": Sage_HiDreamE1_Instruction,
+    "Sage_PromptText": Sage_PromptText,
+    "Sage_SystemPrompt": Sage_SystemPrompt
+}
+
+PONY_CLASS_MAPPINGS = {
+    "Sage_PonyPrefix": Sage_PonyPrefix,
+    "Sage_PonyStyle": Sage_PonyStyle,
+    "Sage_PonyStyleCluster": Sage_PonyStyleCluster,
+    "Sage_PonySource": Sage_PonySource,
+    "Sage_PonyRatingv7": Sage_PonyRatingv7,
+    "Sage_PonyRatingv6": Sage_PonyRatingv6,
+    "Sage_PonyScore": Sage_PonyScore
+}
+
+TEXT_NAME_MAPPINGS = {
+    "Sage_SetText": "Set Text",
+    "Sage_SetTextWithInt": "Text w/ Int",
+    "Sage_TextSwitch": "Text Switch",
+    "SageSetWildcardText": "Set Text (Wildcards)",
+    "Sage_TextSubstitution": "Text Substitution",
+    "Sage_JoinText": "Join Text",
+    "Sage_TripleJoinText": "Join Text x3",
+    "Sage_CleanText": "Clean Text",
+    "Sage_TextSelectLine": "Select Line from Text",
+    "Sage_TextRandomLine": "Random Line from Text",
+    "Sage_TextWeight": "Text Weight",
+    "Sage_IntToStr": "Int to String",
+    "Sage_FloatToStr": "Float to String",
+    "Sage_ViewAnything": "View Any Node as Text",
+    "Sage_ViewNotes": "View Notes",
+    "Sage_SaveText": "Save Text",
+    "Sage_HiDreamE1_Instruction": "HiDreamE1 Instruction",
+    "Sage_PromptText": "Prompt Text (Lumina 2)",
+    "Sage_SystemPrompt": "System Prompt (Lumina 2)"
+}
+
+PONY_NAME_MAPPINGS = {
+    "Sage_PonyPrefix": "Add Pony v6 Prefixes",
+    "Sage_PonyStyle": "Add Pony Style",
+    "Sage_PonyStyleCluster": "Pony Style Cluster",
+    "Sage_PonySource": "Pony Source",
+    "Sage_PonyRatingv7": "Pony Rating (v7)",
+    "Sage_PonyRatingv6": "Pony Rating (v6)",
+    "Sage_PonyScore": "Pony Score"
+}

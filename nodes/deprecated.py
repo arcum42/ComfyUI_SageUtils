@@ -117,3 +117,13 @@ class Sage_KSamplerDecoder(ComfyNodeABC):
             images = images.reshape(-1, images.shape[-3], images.shape[-2], images.shape[-1])
         
         return (latent_result[0], images)
+
+DEPRECATED_CLASS_MAPPINGS = {
+    "Sage_ConstructMetadata": Sage_ConstructMetadata,
+    "Sage_ConstructMetadataLite": Sage_ConstructMetadataLite
+}
+
+DEPRECATED_NAME_MAPPINGS = {
+    "Sage_ConstructMetadata": "Construct Metadata",
+    "Sage_ConstructMetadataLite": "Construct Metadata Lite"
+}

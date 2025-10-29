@@ -220,3 +220,19 @@ class Sage_DualCLIPTextEncodeQwen(ComfyNodeABC):
             "result": (pos_cond, neg_cond, pos or "", neg or ""),
             "expand": graph.finalize()
         }
+
+CLIP_CLASS_MAPPINGS = {
+    "Sage_SingleCLIPTextEncode": Sage_SingleCLIPTextEncode,
+    "Sage_DualCLIPTextEncode": Sage_DualCLIPTextEncode,
+    "Sage_DualCLIPTextEncodeLumina2": Sage_DualCLIPTextEncodeLumina2,
+    "Sage_DualCLIPTextEncodeQwen": Sage_DualCLIPTextEncodeQwen,
+    "Sage_ConditioningZeroOut": Sage_ConditioningZeroOut
+}
+
+CLIP_NAME_MAPPINGS = {
+    "Sage_SingleCLIPTextEncode": "Text Encode",
+    "Sage_DualCLIPTextEncode": "Dual Prompt Encode",
+    "Sage_DualCLIPTextEncodeLumina2": "Dual Prompt Encode (Lumina 2)",
+    "Sage_DualCLIPTextEncodeQwen": "Dual Prompt Encode (Qwen Image Edit)",
+    "Sage_ConditioningZeroOut": "Zero Conditioning"
+}

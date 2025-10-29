@@ -112,35 +112,6 @@ class Sage_AdvSamplerInfo(ComfyNodeABC):
         s_info["return_with_leftover_noise"] = return_with_leftover_noise
         return s_info,
 
-class Sage_TilingInfo(ComfyNodeABC):
-    def __init__(self):
-        pass
-
-    @classmethod
-    def INPUT_TYPES(cls) -> InputTypeDict:
-        return {
-            "required": {
-                "tile_size": (IO.INT, {"default": 512, "min": 64, "max": 4096, "step": 32}),
-                "overlap": (IO.INT, {"default": 64, "min": 0, "max": 4096, "step": 32}),
-                "temporal_size": (IO.INT, {"default": 64, "min": 8, "max": 4096, "step": 4, "tooltip": "Only used for video VAEs: Amount of frames to decode at a time."}),
-                "temporal_overlap": (IO.INT, {"default": 8, "min": 4, "max": 4096, "step": 4, "tooltip": "Only used for video VAEs: Amount of frames to overlap."}),
-            }
-        }
-    
-    RETURN_TYPES = ("TILING_INFO",)
-    OUTPUT_TOOLTIPS = ("To be piped to the KSampler.",)
-    FUNCTION = "pass_tiling_info"
-    CATEGORY = "Sage Utils/sampler"
-    DESCRIPTION = "Adds tiling information to the KSampler."
-    
-    def pass_tiling_info(self, tile_size, overlap, temporal_size, temporal_overlap) -> tuple:
-        t_info = {}
-        t_info["tile_size"] = tile_size
-        t_info["overlap"] = overlap
-        t_info["temporal_size"] = temporal_size
-        t_info["temporal_overlap"] = temporal_overlap
-        return t_info,
-
 class Sage_KSampler(ComfyNodeABC):
     @classmethod
     def INPUT_TYPES(cls) -> InputTypeDict:
@@ -302,3 +273,24 @@ class Sage_KSamplerAudioDecoder(ComfyNodeABC):
         std[std < 1.0] = 1.0
         audio /= std
         return (latent_result[0], {"waveform": audio, "sample_rate": 44100} )
+
+SAMPLER_CLASS_MAPPINGS = {
+    "Sage_SamplerInfo": Sage_SamplerInfo,
+    "Sage_AdvSamplerInfo": Sage_AdvSamplerInfo,
+    "Sage_SamplerSelector": Sage_SamplerSelector,
+    "Sage_SchedulerSelector": Sage_SchedulerSelector,
+    "Sage_KSampler": Sage_KSampler,
+    "Sage_KSamplerTiledDecoder": Sage_KSamplerTiledDecoder,
+    "Sage_KSamplerAudioDecoder": Sage_KSamplerAudioDecoder
+}
+
+SAMPLER_NAME_MAPPINGS = {
+    "Sage_SamplerInfo": "KSampler Info",
+    "Sage_AdvSamplerInfo": "Adv KSampler Info",
+    "Sage_SamplerSelector": "Sampler Selector",
+    "Sage_SchedulerSelector": "Scheduler Selector",
+    "Sage_KSampler": "KSampler w/ Sampler Info",
+    "Sage_KSamplerTiledDecoder": "KSampler + Tiled Decoder",
+    "Sage_KSamplerAudioDecoder": "KSampler + Audio Decoder"
+}
+

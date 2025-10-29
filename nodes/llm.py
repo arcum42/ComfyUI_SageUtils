@@ -485,3 +485,39 @@ class Sage_LMStudioLLMPromptVisionRefine(ComfyNodeABC):
         refine_options["seed"] = refine_seed  # Ensure the seed is included in the refine options
         responses = llm.lmstudio_generate_vision_refine(model=model, prompt=prompt, images=image, options=options, refine_model=refine_model, refine_prompt=refine_prompt, refine_options=refine_options)
         return (responses[0], responses[1])  # Return both the initial and refined responses as a tuple
+
+OLLAMA_CLASS_MAPPINGS = {
+    "Sage_OllamaAdvancedOptions": Sage_OllamaAdvancedOptions,
+    "Sage_OllamaLLMPromptText": Sage_OllamaLLMPromptText,
+    "Sage_OllamaLLMPromptVision": Sage_OllamaLLMPromptVision,
+    "Sage_OllamaLLMPromptVisionRefine": Sage_OllamaLLMPromptVisionRefine
+}
+
+LMSTUDIO_CLASS_MAPPINGS = {
+    "Sage_LMStudioLLMPromptVision": Sage_LMStudioLLMPromptVision,
+    "Sage_LMStudioLLMPromptText": Sage_LMStudioLLMPromptText,
+    "Sage_LMStudioLLMPromptVisionRefine": Sage_LMStudioLLMPromptVisionRefine
+}
+
+LLM_CLASS_MAPPINGS = {
+    "Sage_ConstructLLMPrompt": Sage_ConstructLLMPrompt,
+    "Sage_ConstructLLMPromptExtra": Sage_ConstructLLMPromptExtra
+}
+
+OLLAMA_NAME_MAPPINGS = {
+    "Sage_OllamaAdvancedOptions": "Ollama Advanced Options",
+    "Sage_OllamaLLMPromptText": "Ollama LLM Prompt (Text)",
+    "Sage_OllamaLLMPromptVision": "Ollama LLM Prompt (Vision)",
+    "Sage_OllamaLLMPromptVisionRefine": "Ollama LLM Prompt (Vision) Refined"
+}
+
+LMSTUDIO_NAME_MAPPINGS = {
+    "Sage_LMStudioLLMPromptVision": "LM Studio LLM Prompt (Vision)",
+    "Sage_LMStudioLLMPromptText": "LM Studio LLM Prompt (Text)",
+    "Sage_LMStudioLLMPromptVisionRefine": "LM Studio LLM Prompt (Vision) Refined"
+}
+
+LLM_NAME_MAPPINGS = {
+    "Sage_ConstructLLMPrompt": "Construct LLM Prompt",
+    "Sage_ConstructLLMPromptExtra": "Construct LLM Prompt Extra"
+}
