@@ -256,6 +256,16 @@ const input = createInput({
 - `updateVisibility(settings)`: Updates tab visibility based on settings object
 - `destroy()`: Cleans up all resources and event listeners
 
+#### Background Preloading
+
+`preloadTabsDuringIdle(options)` initializes uninitialized, non-active tabs in the background using `requestIdleCallback` (with a `setTimeout` fallback). One tab is initialized per idle callback to keep the UI responsive. Options:
+
+- `priority: string[]` — tab IDs to initialize first
+- `timeout: number` — maximum wait for an idle callback before forcing execution
+- `maxIdleTime: number` — retained for API compatibility (no longer used as a strict `timeRemaining()` gate)
+
+This avoids repeated retry logging and ensures steady progress even on busy UIs.
+
 **Standalone Functions:**
 
 - `createTabButton(text, isActive)`: Standalone tab button creation (deprecated, use TabManager)

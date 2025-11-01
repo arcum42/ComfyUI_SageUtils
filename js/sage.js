@@ -35,6 +35,10 @@ recordInitializationMilestone("SETTINGS_UI_IMPORTED");
 import { createCacheSidebar } from "./sidebar/cacheSidebar.js";
 recordInitializationMilestone("CACHE_SIDEBAR_IMPORTED");
 
+// Import global data cache for preloading
+import { DataCache } from "./shared/dataCache.js";
+recordInitializationMilestone("DATA_CACHE_IMPORTED");
+
 app.registerExtension({
   name: "arcum42.sage.utils",
   async setup() {
@@ -42,6 +46,28 @@ app.registerExtension({
     
     await timeFunction("EXTENSION_SETUP", async () => {
       console.log("Sage Utils loaded.");
+      
+      // Start preloading critical data immediately (non-blocking)
+      const preloadStart = performance.now();
+      console.log("[SageUtils] Starting background data preload...");
+      
+      // Enable debug mode for cache if query parameter or localStorage flag is set
+      const shouldDebugCache = new URLSearchParams(window.location.search).get('sageutils_cache_debug') === '1';
+      const shouldDebugCacheLS = (localStorage.getItem('sageutils_cache_debug') === 'true') || (localStorage.getItem('sageutils_debug') === 'true');
+      if (shouldDebugCache || shouldDebugCacheLS) {
+        DataCache.setDebug(true);
+      }
+      
+      // Start preloading in background (don't await)
+      DataCache.preloadAll().then(() => {
+        const preloadEnd = performance.now();
+        console.log(`[SageUtils] Background preload completed in ${(preloadEnd - preloadStart).toFixed(2)}ms`);
+        console.log(DataCache.getSummary());
+      }).catch(error => {
+        console.error("[SageUtils] Background preload failed:", error);
+      });
+      
+      recordInitializationMilestone("DATA_PRELOAD_STARTED");
       
       // Register the cache sidebar tab
       const sidebarStart = performance.now();

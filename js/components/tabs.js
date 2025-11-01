@@ -503,7 +503,7 @@ export class TabManager {
      * @param {string[]} [options.priority] - Array of tab IDs to prioritize for preloading
      */
     preloadTabsDuringIdle(options = {}) {
-        const maxIdleTime = options.maxIdleTime || 50;
+        const maxIdleTime = options.maxIdleTime || 50; // kept for API compatibility (no longer a hard gate)
         const timeout = options.timeout || 2000;
         const priorityTabs = options.priority || [];
         
@@ -553,7 +553,7 @@ export class TabManager {
             
             // Check if browser supports requestIdleCallback
             if (typeof requestIdleCallback === 'function') {
-                requestIdleCallback((deadline) => {
+                requestIdleCallback(() => {
                     // Skip if tab was initialized while waiting
                     if (this.initializedTabs.has(tabId)) {
                         console.debug(`[TabManager] Tab '${tabId}' already initialized, skipping preload`);
@@ -561,16 +561,8 @@ export class TabManager {
                         return;
                     }
                     
-                    // Only preload if we have enough time remaining
-                    if (deadline.timeRemaining() > maxIdleTime) {
-                        console.debug(`[TabManager] Preloading tab '${tabId}' during idle time`);
-                        this.initializeTab(tabId, false); // No loading message for background
-                    } else {
-                        console.debug(`[TabManager] Insufficient idle time for '${tabId}', retrying`);
-                        // Retry this tab instead of skipping it
-                        setTimeout(() => preloadNextTab(index), 100);
-                        return; // Don't move to next tab yet
-                    }
+                    console.debug(`[TabManager] Preloading tab '${tabId}' during idle time`);
+                    this.initializeTab(tabId, false); // No loading message for background
                     
                     // Schedule next tab
                     preloadNextTab(index + 1);

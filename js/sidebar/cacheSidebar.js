@@ -33,6 +33,9 @@ import {
     fetchCacheInfo 
 } from "../shared/api/cacheApi.js";
 
+// Import global data cache
+import { DataCache, CacheKeys } from "../shared/dataCache.js";
+
 // Import gallery API for background preloading
 import { 
     loadImagesFromFolder 
@@ -285,23 +288,49 @@ async function initializeSidebarData() {
             }
         });
         
-        // Pre-load cache data to improve initial performance
-        try {
-            const [hashData, infoData] = await Promise.all([
-                fetchCacheHash(),
-                fetchCacheInfo()
-            ]);
+        // Check if data is already cached from preload
+        const cacheHashReady = DataCache.isReady(CacheKeys.CACHE_HASH);
+        const cacheInfoReady = DataCache.isReady(CacheKeys.CACHE_INFO);
+        
+        if (cacheHashReady && cacheInfoReady) {
+            console.debug('[Sidebar] Using preloaded cache data');
+            
+            // Get cached data
+            const hashData = DataCache.get(CacheKeys.CACHE_HASH);
+            const infoData = DataCache.get(CacheKeys.CACHE_INFO);
             
             // Store in state management
             actions.setCacheData({ hash: hashData, info: infoData });
             
-            console.debug('Cache data pre-loaded successfully', {
+            console.debug('Cache data loaded from preload', {
                 hashEntries: Object.keys(hashData).length,
                 infoEntries: Object.keys(infoData).length
             });
-        } catch (cacheError) {
-            console.warn('Failed to pre-load cache data:', cacheError);
-            // Don't throw - let individual tabs handle their own loading
+        } else {
+            // Fallback: Load cache data if not preloaded
+            console.debug('[Sidebar] Cache not preloaded, loading now...');
+            
+            try {
+                const [hashData, infoData] = await Promise.all([
+                    fetchCacheHash(),
+                    fetchCacheInfo()
+                ]);
+                
+                // Store in cache for future use
+                DataCache.set(CacheKeys.CACHE_HASH, hashData);
+                DataCache.set(CacheKeys.CACHE_INFO, infoData);
+                
+                // Store in state management
+                actions.setCacheData({ hash: hashData, info: infoData });
+                
+                console.debug('Cache data loaded', {
+                    hashEntries: Object.keys(hashData).length,
+                    infoEntries: Object.keys(infoData).length
+                });
+            } catch (cacheError) {
+                console.warn('Failed to load cache data:', cacheError);
+                // Don't throw - let individual tabs handle their own loading
+            }
         }
         
         // Initialize API connection status check
@@ -326,6 +355,12 @@ async function initializeSidebarData() {
                         fetchCacheHash(),
                         fetchCacheInfo()
                     ]);
+                    
+                    // Update cache
+                    DataCache.set(CacheKeys.CACHE_HASH, hashData);
+                    DataCache.set(CacheKeys.CACHE_INFO, infoData);
+                    
+                    // Update state
                     actions.setCacheData({ hash: hashData, info: infoData });
                     console.debug('Periodic cache refresh completed');
                 }
@@ -396,6 +431,21 @@ export async function createCacheSidebar(el) {
         const savedFolder = selectors.selectedFolder ? selectors.selectedFolder() : defaultFolder;
         const galleryFolder = savedFolder !== 'custom' ? savedFolder : 'notes'; // Don't auto-load custom folders
         
+        // Check if already preloaded in cache
+        const cacheKey = `galleryImages:${galleryFolder}`;
+        if (DataCache.isReady(cacheKey)) {
+            console.debug(`[Sidebar] Gallery images for '${galleryFolder}' already preloaded`);
+            
+            // Store in state management
+            const cachedData = DataCache.get(cacheKey);
+            if (cachedData && cachedData.images) {
+                actions.setImages(cachedData.images);
+                actions.setFolders(cachedData.folders || []);
+                console.debug(`[Sidebar] Gallery cache hit: ${cachedData.images.length} images, ${cachedData.folders?.length || 0} folders`);
+            }
+            return;
+        }
+        
         console.debug(`[Sidebar] Preloading gallery images from '${galleryFolder}' folder in background...`);
         
         loadImagesFromFolder(galleryFolder, null, (msg) => {
@@ -403,8 +453,17 @@ export async function createCacheSidebar(el) {
             if (msg.includes('Loading images from') || msg.includes('Error') || msg.includes('Complete')) {
                 console.debug(`[Sidebar Gallery Preload] ${msg}`);
             }
-        }).then(() => {
+        }).then((result) => {
             console.debug(`[Sidebar] Gallery preload complete for '${galleryFolder}' folder`);
+            
+            // Store in cache for future use
+            DataCache.set(cacheKey, result);
+            
+            // Also store in state management
+            if (result && result.images) {
+                actions.setImages(result.images);
+                actions.setFolders(result.folders || []);
+            }
         }).catch(err => {
             console.warn(`[Sidebar] Gallery preload failed (non-critical):`, err);
         });

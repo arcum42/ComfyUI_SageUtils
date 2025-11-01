@@ -21,6 +21,9 @@ import {
     generateFallbackMetadata
 } from "../shared/api/galleryApi.js";
 
+// Import global data cache
+import { DataCache, CacheKeys } from "../shared/dataCache.js";
+
 // Import gallery event handlers
 import { showFullImage, showImageContextMenu, browseCustomFolder, toggleViewMode } from '../gallery/galleryEvents.js';
 
@@ -55,6 +58,30 @@ import {
     refreshCurrentTextDisplay
 } from "../shared/datasetTextManager.js";
 
+// Import skeleton loader components
+import {
+    createSkeletonThumbnail,
+    createSkeletonGrid,
+    replaceSkeletonWithContent,
+    removeAllSkeletons,
+    getSkeletonCount
+} from "../shared/skeletonLoader.js";
+
+// Import viewport priority utilities
+import {
+    prioritizeByViewport,
+    batchWithPriority
+} from "../shared/viewportPriority.js";
+
+// Debug toggle helper for gallery logs
+function isDebugGalleryEnabled() {
+    try {
+        return (localStorage.getItem('sageutils_debug_gallery') === 'true') || (localStorage.getItem('sageutils_debug') === 'true');
+    } catch (_) {
+        return false;
+    }
+}
+
 /**
  * Sets up event handlers for Gallery tab interactions
  * @param {Object} folderSelector - Folder selector components
@@ -65,6 +92,8 @@ import {
  * @param {Object} galleryFunctions - Gallery function dependencies
  */
 function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, header, galleryFunctions) {
+    // Lightweight debug flag for gallery logging
+    const debugGallery = isDebugGalleryEnabled();
     // Folder cache for back navigation - stores images and folders by path
     const folderCache = new Map();
     
@@ -109,7 +138,7 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
         try {
             // Cancel any ongoing folder load operation
             if (currentAbortController) {
-                console.log('Gallery: Aborting previous folder load operation');
+                if (debugGallery) console.log('Gallery: Aborting previous folder load operation');
                 currentAbortController.abort();
                 currentAbortController = null;
             }
@@ -118,13 +147,16 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
             currentAbortController = new AbortController();
             const signal = currentAbortController.signal;
             
-            // Create cache key
-            const cacheKey = customPath ? `custom:${customPath}` : folderType;
+            // Create cache key for DataCache (global cache)
+            const globalCacheKey = customPath ? `galleryImages:custom:${customPath}` : `galleryImages:${folderType}`;
             
-            // Check cache first (unless force reload)
-            if (!forceReload && folderCache.has(cacheKey)) {
-                console.log('Gallery: Loading from cache:', cacheKey);
-                const cached = folderCache.get(cacheKey);
+            // Create cache key for local folder cache
+            const localCacheKey = customPath ? `custom:${customPath}` : folderType;
+            
+            // Check global DataCache first (unless force reload)
+            if (!forceReload && DataCache.isReady(globalCacheKey)) {
+                if (debugGallery) console.log('Gallery: Loading from global cache:', globalCacheKey);
+                const cached = DataCache.get(globalCacheKey);
                 
                 // Clear abort controller for cache loads since there's no async operation
                 const savedController = currentAbortController;
@@ -132,7 +164,48 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
                 
                 // Check if we were aborted while setting up
                 if (savedController && savedController.signal.aborted) {
-                    console.log('Gallery: Cache load aborted before render');
+                    if (debugGallery) console.log('Gallery: Cache load aborted before render');
+                    return;
+                }
+                
+                // Also populate local cache
+                folderCache.set(localCacheKey, cached);
+                
+                // Update UI immediately from cache
+                grid.imageCountSpan.textContent = `${cached.images.length} images / ${cached.folders.length} folders`;
+                await renderImageGrid(cached.images, cached.folders, loadImagesWrapper);
+                
+                // Auto-show metadata for the first image if available
+                if (cached.images && cached.images.length > 0) {
+                    showImageMetadata(cached.images[0]);
+                } else {
+                    metadata.metadataContent.innerHTML = `
+                        <div style="color: #888; text-align: center; padding: 20px;">
+                            <div style="font-size: 24px; margin-bottom: 10px;">📁</div>
+                            <div>No images in this folder</div>
+                            <div style="font-size: 12px; margin-top: 5px;">
+                                Select a folder with images to view details
+                            </div>
+                        </div>
+                    `;
+                }
+                
+                setStatus('Loaded from global cache', false);
+                return;
+            }
+            
+            // Check local folder cache (unless force reload)
+            if (!forceReload && folderCache.has(localCacheKey)) {
+                if (debugGallery) console.log('Gallery: Loading from local cache:', localCacheKey);
+                const cached = folderCache.get(localCacheKey);
+                
+                // Clear abort controller for cache loads since there's no async operation
+                const savedController = currentAbortController;
+                currentAbortController = null;
+                
+                // Check if we were aborted while setting up
+                if (savedController && savedController.signal.aborted) {
+                    if (debugGallery) console.log('Gallery: Cache load aborted before render');
                     return;
                 }
                 
@@ -155,13 +228,13 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
                     `;
                 }
                 
-                setStatus('Loaded from cache', false);
+                setStatus('Loaded from local cache', false);
                 return;
             }
             
             // Check if aborted after cache check
             if (signal.aborted) {
-                console.log('Gallery: Load operation aborted before starting');
+                if (debugGallery) console.log('Gallery: Load operation aborted before starting');
                 return;
             }
             
@@ -271,17 +344,24 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
                     grid.imageCountSpan.textContent = `${currentImages.length} images / ${currentFolders.length} folders`;
                 }
                 
-                // Optionally re-render if metadata-only filter is active
-                const showMetadataOnly = selectors.showMetadataOnly();
-                if (showMetadataOnly) {
-                    filterAndSortImages();
-                }
+                // Don't re-render during metadata loading to avoid flickering
+                // The metadata filter will be applied when user toggles it or after loading completes
                 
                 // Update cache with latest metadata
                 if (current === total) {
                     // Metadata loading is complete
-                    folderCache.set(cacheKey, { images: currentImages, folders: currentFolders });
-                    console.log('Gallery: Updated cache with metadata:', cacheKey);
+                    folderCache.set(localCacheKey, { images: currentImages, folders: currentFolders });
+                    
+                    // Also update global cache
+                    DataCache.set(globalCacheKey, { images: currentImages, folders: currentFolders });
+                    
+                    if (debugGallery) console.log('Gallery: Updated cache with metadata:', localCacheKey);
+                    
+                    // If filtering by metadata-only, re-render once to apply the final filter strictly
+                    if (selectors.showMetadataOnly()) {
+                        renderImageGrid(currentImages, currentFolders, loadImagesWrapper)
+                            .catch(err => console.warn('Gallery: Final re-render after metadata completion failed:', err));
+                    }
                 }
             };
             
@@ -290,15 +370,20 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
             
             // Check if operation was aborted after loading
             if (signal.aborted) {
-                console.log('Gallery: Load operation aborted after fetch');
+                if (debugGallery) console.log('Gallery: Load operation aborted after fetch');
                 return;
             }
             
             const { images, folders, totalItems } = result;
             
-            // Store in cache (will be updated as metadata loads)
-            folderCache.set(cacheKey, { images, folders });
-            console.log('Gallery: Cached folder data:', cacheKey, `(${images.length} images, ${folders.length} folders)`);
+            // Store in local cache (will be updated as metadata loads)
+            folderCache.set(localCacheKey, { images, folders });
+            
+            // Store in global DataCache
+            DataCache.set(globalCacheKey, { images, folders });
+            
+            if (debugGallery) console.log('Gallery: Cached folder data:', localCacheKey, `(${images.length} images, ${folders.length} folders)`);
+
             
             // Update UI immediately with actual counts
             grid.imageCountSpan.textContent = `${images.length} images / ${folders.length} folders`;
@@ -342,7 +427,7 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
         } catch (error) {
             // Check if this was an abort error (user switched folders)
             if (error.name === 'AbortError' || error.message.includes('aborted')) {
-                console.log('Gallery: Folder load was cancelled');
+                if (debugGallery) console.log('Gallery: Folder load was cancelled');
                 // Clean up progress container if it exists
                 if (progressContainer && progressContainer.parentNode) {
                     progressContainer.remove();
@@ -377,9 +462,14 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
     }
 
     // Render image grid with actual images and folders
-    async function renderImageGrid(images, folders = [], loadImagesCallback = null) {
+    async function renderImageGrid(images, folders = [], loadImagesCallback = null, options = {}) {
+        // Options: incremental (don't clear existing items), skipImages (only render folders/nav)
+        const { incremental = false, skipImages = false } = options;
         
-        grid.gridContainer.innerHTML = '';
+        // Only clear if not doing incremental update
+        if (!incremental) {
+            grid.gridContainer.innerHTML = '';
+        }
         
         if (!images || (images.length === 0 && folders.length === 0)) {
             grid.gridContainer.innerHTML = `
@@ -416,9 +506,22 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
             );
         }
         
-        // Apply metadata filter if enabled (instant filtering using pre-calculated flag)
+        // Apply metadata filter if enabled
         if (showMetadataOnly) {
-            filteredImages = filteredImages.filter(img => img.hasGenerationParams === true);
+            // For large folders during initial load, limit the render to a reasonable batch
+            // to avoid performance issues while metadata is still loading.
+            // We'll re-render once metadata completes to show the full filtered set.
+            const largeFolder = filteredImages.length > 500;
+            const isInitialLoad = filteredImages.some(img => img.metadataLoading === true);
+            
+            if (largeFolder && isInitialLoad) {
+                // During initial load of large folders, only include images that already have metadata
+                // This prevents trying to render 1000+ items at once
+                filteredImages = filteredImages.filter(img => img.hasGenerationParams === true);
+            } else {
+                // Normal behavior: include pending items so grid isn't empty during small folder loads
+                filteredImages = filteredImages.filter(img => img.hasGenerationParams === true || img.metadataLoading === true);
+            }
         }
         
         // Apply sorting to images
@@ -463,22 +566,29 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
         
         grid.imageCountSpan.textContent = countText;
         
-        // Render folders first
-        sortedFolders.forEach(folder => {
-            const folderItem = createFolderItem(folder, loadImagesCallback);
-            grid.gridContainer.appendChild(folderItem);
-        });
+        // Render folders first (skip if incremental update)
+        if (!incremental) {
+            sortedFolders.forEach(folder => {
+                const folderItem = createFolderItem(folder, loadImagesCallback);
+                grid.gridContainer.appendChild(folderItem);
+            });
+            
+            // Add "back" navigation if we're in a custom path
+            const currentPath = selectors.currentPath();
+            if (currentPath && currentPath !== '') {
+                const backItem = createBackNavigationItem(loadImagesCallback);
+                grid.gridContainer.insertBefore(backItem, grid.gridContainer.firstChild);
+            }
+        }
         
-        // Add "back" navigation if we're in a custom path
-        const currentPath = selectors.currentPath();
-        if (currentPath && currentPath !== '') {
-            const backItem = createBackNavigationItem(loadImagesCallback);
-            grid.gridContainer.insertBefore(backItem, grid.gridContainer.firstChild);
+        // Skip image rendering if requested (used for filter updates that only affect folders)
+        if (skipImages) {
+            return;
         }
         
         // Then render images
         if (filteredImages.length > 50) {
-            await renderImagesWithProgress(filteredImages);
+            await renderImagesWithProgress(filteredImages, incremental);
         } else {
             // Render all at once for small folders
             filteredImages.forEach(image => {
@@ -489,28 +599,46 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
     }
     
     // Render images with progress indicator for large folders
-    async function renderImagesWithProgress(images) {
+    async function renderImagesWithProgress(images, incremental = false) {
         const batchSize = 20; // Process 20 images at a time
         const totalImages = images.length;
         let processedCount = 0;
         
-        // Show initial progress
-        const progressContainer = document.createElement('div');
-        progressContainer.style.cssText = `
-            grid-column: 1 / -1;
-            text-align: center;
-            padding: 20px;
-            background: #2a2a2a;
-            border-radius: 6px;
-            margin-bottom: 15px;
-        `;
-        grid.gridContainer.appendChild(progressContainer);
+        // Find or create progress container
+        let progressContainer = grid.gridContainer.querySelector('.gallery-progress-container');
+        
+        if (!progressContainer) {
+            progressContainer = document.createElement('div');
+            progressContainer.className = 'gallery-progress-container';
+            progressContainer.style.cssText = `
+                grid-column: 1 / -1;
+                text-align: center;
+                padding: 20px;
+                background: #2a2a2a;
+                border-radius: 6px;
+                margin-bottom: 15px;
+            `;
+            
+            // Insert after folders/nav items or at the beginning
+            if (incremental) {
+                // Find the last folder or nav item
+                const folders = grid.gridContainer.querySelectorAll('.gallery-folder-item, .gallery-back-item');
+                if (folders.length > 0) {
+                    folders[folders.length - 1].after(progressContainer);
+                } else {
+                    grid.gridContainer.insertBefore(progressContainer, grid.gridContainer.firstChild);
+                }
+            } else {
+                grid.gridContainer.appendChild(progressContainer);
+            }
+        }
         
         const updateProgress = () => {
             const percentage = Math.round((processedCount / totalImages) * 100);
+            const skeletonCount = getSkeletonCount(grid.gridContainer);
             progressContainer.innerHTML = `
                 <div style="color: #4CAF50; margin-bottom: 10px;">
-                    Loading thumbnails... ${processedCount}/${totalImages} (${percentage}%)
+                    Loading thumbnails... ${processedCount}/${totalImages} (${percentage}%)${skeletonCount > 0 ? ` - ${skeletonCount} pending` : ''}
                 </div>
                 <div style="
                     width: 100%;
@@ -530,25 +658,145 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
         };
         
         updateProgress();
+
+        // Track which images have been rendered (by index)
+        let renderedCount = incremental ? grid.gridContainer.querySelectorAll('.gallery-image-item').length : 0;
+
+        // For large folders, show skeleton loaders first for better perceived performance
+        const skeletonThreshold = 100; // Show skeletons for folders with 100+ images
+        const useSkeletons = !incremental && totalImages >= skeletonThreshold;
         
-        // Process images in batches
-        for (let i = 0; i < images.length; i += batchSize) {
-            const batch = images.slice(i, i + batchSize);
+        // Use viewport-aware prioritization for very large folders
+        const useViewportPriority = totalImages >= 100;
+        let prioritizedImages = images;
+        
+        if (useViewportPriority) {
+            // Prioritize images that will be visible first
+            const { priority, deferred } = prioritizeByViewport(
+                images, 
+                grid.gridContainer.parentElement || grid.gridContainer,
+                150 // Approximate thumbnail height
+            );
+            // Render priority items first, then deferred items
+            prioritizedImages = [...priority, ...deferred];
+            console.debug(`Gallery: Prioritized ${priority.length} visible items, ${deferred.length} deferred`);
+        }
+        
+        if (useSkeletons) {
+            // Calculate how many skeletons to show (up to 50 for very large folders)
+            const skeletonCount = Math.min(50, totalImages);
+            const skeletons = createSkeletonGrid(skeletonCount);
             
-            // Create placeholders for this batch
-            const batchItems = [];
-            batch.forEach(image => {
-                const imageItem = createImageItem(image, showFullImage, showImageContextMenu);
-                batchItems.push(imageItem);
-                grid.gridContainer.appendChild(imageItem);
+            // Insert skeletons into the grid
+            skeletons.forEach(skeleton => {
+                grid.gridContainer.appendChild(skeleton);
             });
             
-            // Update progress
-            processedCount += batch.length;
             updateProgress();
+        }
+
+        // Render a small first batch immediately to avoid "0/n" stalls
+        if (!incremental && totalImages > 0) {
+            // Increase immediate count for viewport-prioritized items
+            const immediateCount = useViewportPriority ? Math.min(24, totalImages) : Math.min(12, totalImages);
             
-            // Small delay between batches to keep UI responsive
-            await new Promise(resolve => setTimeout(resolve, 100));
+            for (let i = 0; i < immediateCount; i++) {
+                const image = prioritizedImages[i];
+                const imageItem = createImageItem(image, showFullImage, showImageContextMenu);
+                
+                // If using skeletons, replace the first skeleton with actual content
+                if (useSkeletons) {
+                    const firstSkeleton = grid.gridContainer.querySelector('[data-skeleton="true"]');
+                    if (firstSkeleton) {
+                        replaceSkeletonWithContent(firstSkeleton, imageItem, true);
+                    } else {
+                        grid.gridContainer.appendChild(imageItem);
+                    }
+                } else {
+                    grid.gridContainer.appendChild(imageItem);
+                }
+            }
+            
+            processedCount = immediateCount;
+            renderedCount = immediateCount;
+            updateProgress();
+        }
+        
+        // Process images in batches using requestIdleCallback for better performance
+        const renderBatch = (startIndex) => {
+            let nextIndex = startIndex;
+            return new Promise((resolve) => {
+                const renderNextBatch = (deadline) => {
+                    const endIndex = Math.min(nextIndex + batchSize, images.length);
+                    
+                    // Render items in this batch
+                    for (let i = nextIndex; i < endIndex; i++) {
+                        // Skip if already rendered (in incremental mode)
+                        if (incremental && i < renderedCount) {
+                            continue;
+                        }
+                        
+                        const image = prioritizedImages[i];
+                        const imageItem = createImageItem(image, showFullImage, showImageContextMenu);
+                        
+                        // If using skeletons, replace skeleton with actual content
+                        if (useSkeletons) {
+                            const firstSkeleton = grid.gridContainer.querySelector('[data-skeleton="true"]');
+                            if (firstSkeleton) {
+                                replaceSkeletonWithContent(firstSkeleton, imageItem, true);
+                            } else {
+                                grid.gridContainer.appendChild(imageItem);
+                            }
+                        } else {
+                            grid.gridContainer.appendChild(imageItem);
+                        }
+                    }
+                    
+                    // Update progress
+                    processedCount = endIndex;
+                    updateProgress();
+                    
+                    // Check if done
+                    if (endIndex >= images.length) {
+                        // Clean up any remaining skeletons
+                        if (useSkeletons) {
+                            removeAllSkeletons(grid.gridContainer);
+                        }
+                        resolve();
+                    } else {
+                        // Advance index and schedule next batch
+                        nextIndex = endIndex;
+                        if (typeof requestIdleCallback === 'function') {
+                            requestIdleCallback(renderNextBatch, { timeout: 100 });
+                        } else {
+                            // Fallback for browsers without requestIdleCallback
+                            setTimeout(() => renderNextBatch({}), 0);
+                        }
+                    }
+                };
+                
+                // Start rendering
+                if (typeof requestIdleCallback === 'function') {
+                    requestIdleCallback(renderNextBatch, { timeout: 100 });
+                } else {
+                    setTimeout(() => renderNextBatch({}), 0);
+                }
+            });
+        };
+        
+        // Start rendering from the first unrendered item
+    // Start after any thumbnails we may have already rendered immediately
+    await renderBatch(renderedCount);
+        
+        // Safety fallback: if nothing rendered but images exist, render a tiny batch synchronously
+        if (grid.gridContainer.querySelectorAll('.gallery-image-item').length === 0 && totalImages > 0) {
+            const fallbackCount = Math.min(8, totalImages);
+            console.warn('Gallery: Fallback render triggered, rendering first', fallbackCount, 'thumbnails');
+            for (let i = 0; i < fallbackCount; i++) {
+                const image = images[i];
+                const imageItem = createImageItem(image, showFullImage, showImageContextMenu);
+                grid.gridContainer.appendChild(imageItem);
+            }
         }
         
         // Remove progress indicator when done
@@ -815,10 +1063,17 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
         const currentPath = selectors.currentPath();
         
         if (currentFolder) {
-            // Clear cache for this folder
-            const cacheKey = currentFolder === 'custom' && currentPath ? `custom:${currentPath}` : currentFolder;
-            folderCache.delete(cacheKey);
-            console.log('Gallery: Cleared cache for:', cacheKey);
+            // Clear local cache for this folder
+            const localCacheKey = currentFolder === 'custom' && currentPath ? `custom:${currentPath}` : currentFolder;
+            folderCache.delete(localCacheKey);
+            
+            // Clear global cache for this folder
+            const globalCacheKey = currentFolder === 'custom' && currentPath 
+                ? `galleryImages:custom:${currentPath}` 
+                : `galleryImages:${currentFolder}`;
+            DataCache.invalidate(globalCacheKey);
+            
+            if (debugGallery) console.log('Gallery: Cleared cache for:', localCacheKey);
             
             setStatus('Refreshing folder...');
             
@@ -869,6 +1124,7 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
 }
 
 export function createImageGalleryTab(container) {
+    const debugGallery = isDebugGalleryEnabled();
     // Create all components
     const header = createGalleryHeader();
     const folderAndControls = createFolderSelectorAndControls(); // Combined section
@@ -908,26 +1164,22 @@ export function createImageGalleryTab(container) {
         eventHandlers.updateGridLayout();
     }
 
-    // Restore previously selected folder
-    const savedFolder = selectors.selectedFolder();
-    if (savedFolder && savedFolder !== 'notes') {
-        folderAndControls.folderDropdown.value = savedFolder;
-    }
-
-    // Initialize with default state
-    
     // Auto-load from saved folder selection
     setTimeout(() => {
         try {
+            // Get saved folder and ensure dropdown is synced
             const savedFolder = selectors.selectedFolder() || 'notes';
-            const existingImages = selectors.galleryImages();
+            folderAndControls.folderDropdown.value = savedFolder;
             
-            // Check if we already have images loaded (from background preload)
-            if (existingImages && existingImages.length > 0) {
-                console.log('Gallery: Images already preloaded, rendering existing data');
-                const existingFolders = selectors.galleryFolders() || [];
+            // Prefer cached data for the selected folder (ignore background-preloaded "notes")
+                const globalCacheKey = `galleryImages:${savedFolder}`;
+                const cachedData = DataCache.get(globalCacheKey);
+            
+                if (cachedData && cachedData.images && cachedData.images.length > 0) {
+                if (debugGallery) console.log('Gallery: Images already preloaded, rendering existing data');
+                    const existingFolders = cachedData.folders || [];
                 if (eventHandlers && eventHandlers.renderImageGrid) {
-                    eventHandlers.renderImageGrid(existingImages, existingFolders);
+                        eventHandlers.renderImageGrid(cachedData.images, existingFolders);
                 }
                 return;
             }
@@ -936,7 +1188,7 @@ export function createImageGalleryTab(container) {
             if (savedFolder === 'custom') {
                 const savedPath = selectors.currentPath();
                 if (!savedPath || savedPath.trim() === '') {
-                    console.log('Gallery: Skipping auto-load of custom folder without path. Defaulting to notes.');
+                    if (debugGallery) console.log('Gallery: Skipping auto-load of custom folder without path. Defaulting to notes.');
                     actions.setSelectedFolder('notes');
                     folderAndControls.folderDropdown.value = 'notes';
                     if (eventHandlers && eventHandlers.loadImagesFromFolder) {
