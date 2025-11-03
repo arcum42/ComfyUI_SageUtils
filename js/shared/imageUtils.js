@@ -3,8 +3,9 @@
  * Handles image loading, thumbnail generation, metadata, and clipboard operations
  */
 
-import { API_ENDPOINTS } from "./config.js";
-import { actions } from "./stateManager.js";
+import { API_ENDPOINTS } from './config.js';
+import { actions } from './stateManager.js';
+import { MetadataCache } from './metadataCache.js';
 
 /**
  * Load images from a specified folder
@@ -117,25 +118,65 @@ export async function copyImageToClipboard(imagePath) {
  * @param {Object} image - Image object with path
  * @returns {Promise<Object>} Metadata object
  */
-export async function loadImageMetadata(image) {
+export async function loadImageMetadata(image, options = {}) {
+    const { useCache = true, forceRefresh = false } = options;
     try {
+        // Serve from cache when available and not forcing refresh
+        if (useCache && !forceRefresh) {
+            const cached = MetadataCache.get(image);
+            if (cached) {
+                return cached;
+            }
+        }
+
         const response = await fetch('/sage_utils/image_metadata', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ image_path: image.path })
         });
-        
+
         const result = await response.json();
-        if (result.success) {
-            return result.metadata || {};
+        if (result && result.success) {
+            const metadata = result.metadata || {};
+            // Persist in cache for future sessions
+            MetadataCache.set(image, metadata);
+            return metadata;
         } else {
-            console.error('Metadata loading failed:', result.error);
+            console.error('Metadata loading failed:', result ? result.error : 'unknown error');
+            // Fall back to cached if available
+            if (useCache) {
+                const cached = MetadataCache.get(image);
+                if (cached) return cached;
+            }
             return {};
         }
     } catch (error) {
         console.error('Error loading metadata:', error);
+        // Fall back to cached if available
+        if (useCache) {
+            const cached = MetadataCache.get(image);
+            if (cached) return cached;
+        }
         return {};
     }
+}
+
+/**
+ * Get cached metadata without network access
+ * @param {Object} image - Image object with path
+ * @returns {Object|null}
+ */
+export function getCachedImageMetadata(image) {
+    return MetadataCache.get(image);
+}
+
+/**
+ * Check if cached metadata is stale by TTL
+ * @param {Object} image - Image object with path
+ * @returns {boolean}
+ */
+export function isCachedMetadataStale(image) {
+    return MetadataCache.isStale(image);
 }
 
 /**

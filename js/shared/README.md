@@ -309,6 +309,25 @@ All modules are designed to be independently testable while maintaining tight in
 
 **Usage**: Provides foundational utilities for ComfyUI node integration and dynamic input management.
 
+### 12. metadataCache.js
+
+**Purpose**: Persistent local cache for image metadata (LRU + localStorage)
+
+**Key Functions:**
+
+- `MetadataCache.get(imageOrPath)`: Returns cached metadata or null
+- `MetadataCache.set(imageOrPath, metadata)`: Stores metadata and persists between sessions
+- `MetadataCache.isStale(imageOrPath)`: TTL-based staleness check
+- `MetadataCache.getStats()`: Cache metrics (hits, misses, evictions)
+
+**Features:**
+
+- LRU eviction to cap storage size
+- 30-day TTL by default
+- Transparent integration in `imageUtils.loadImageMetadata()` so consumers get caching automatically
+
+**Usage**: Typically accessed through `imageUtils.loadImageMetadata(image, { useCache: true })` and `imageUtils.getCachedImageMetadata(image)` when you want instant display followed by revalidation.
+
 ## Integration Architecture
 
 ### Dependency Graph

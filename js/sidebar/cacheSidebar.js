@@ -52,6 +52,9 @@ import { TabManager } from "../components/tabs.js";
 // Import API for settings
 import { api } from '../../../../scripts/api.js';
 
+// Import performance timing utilities for telemetry persistence
+import { startTimer, endTimer, javascriptTimer } from "../shared/performanceTimer.js";
+
 // Feature flag for Models Tab V2 (set to true to use new implementation)
 const USE_MODELS_TAB_V2 = true;
 
@@ -64,19 +67,40 @@ let currentSidebarElement = null;
  */
 async function loadTabVisibilitySettings() {
     try {
+        startTimer('Sidebar.Settings.Total');
+        startTimer('Sidebar.Settings.Fetch');
+        const t0 = performance.now();
         const response = await api.fetchApi('/sage_utils/settings');
+        endTimer('Sidebar.Settings.Fetch');
+        const t1 = performance.now();
         if (response.ok) {
+            startTimer('Sidebar.Settings.Parse');
+            const jsonStart = performance.now();
             const data = await response.json();
+            endTimer('Sidebar.Settings.Parse');
+            const jsonEnd = performance.now();
             if (data.success && data.settings) {
                 const settings = data.settings;
-                return {
+                startTimer('Sidebar.Settings.Map');
+                const mappedStart = performance.now();
+                const result = {
                     show_models_tab: settings.show_models_tab?.current_value !== false,
                     show_files_tab: settings.show_files_tab?.current_value !== false,
                     show_search_tab: settings.show_search_tab?.current_value !== false,
                     show_gallery_tab: settings.show_gallery_tab?.current_value !== false,
                     show_prompts_tab: settings.show_prompts_tab?.current_value !== false,
-                    show_llm_tab: settings.show_llm_tab?.current_value !== false
+                    show_llm_tab: settings.show_llm_tab?.current_value !== false,
+                    _timing: {
+                        fetch_ms: +(t1 - t0).toFixed(2),
+                        parse_ms: +(jsonEnd - jsonStart).toFixed(2),
+                        map_ms: +(performance.now() - mappedStart).toFixed(2),
+                        total_ms: +(performance.now() - t0).toFixed(2)
+                    }
                 };
+                endTimer('Sidebar.Settings.Map');
+                console.info('[Sidebar] Settings loaded', result._timing);
+                endTimer('Sidebar.Settings.Total');
+                return result;
             }
         }
     } catch (error) {
@@ -84,14 +108,18 @@ async function loadTabVisibilitySettings() {
     }
     
     // Return all tabs visible by default
-    return {
+    const fallback = {
         show_models_tab: true,
         show_files_tab: true,
         show_search_tab: true,
         show_gallery_tab: true,
         show_prompts_tab: true,
-        show_llm_tab: true
+        show_llm_tab: true,
+        _timing: { fallback: true }
     };
+    console.info('[Sidebar] Using default visibility settings');
+    endTimer('Sidebar.Settings.Total');
+    return fallback;
 }
 
 /**
@@ -381,12 +409,20 @@ async function initializeSidebarData() {
  * Main function to create the cache sidebar with tabs
  * @param {HTMLElement} el - Element to populate with the sidebar
  */
-export async function createCacheSidebar(el) {
+export function createCacheSidebar(el) {
     // Store reference for potential reload
     currentSidebarElement = el;
     
-    // Load tab visibility settings
-    const tabVisibility = await loadTabVisibilitySettings();
+    // Start with safe defaults (all tabs visible) to avoid blank UI on slow startup
+    const defaultVisibility = {
+        show_models_tab: true,
+        show_files_tab: true,
+        show_search_tab: true,
+        show_gallery_tab: true,
+        show_prompts_tab: true,
+        show_llm_tab: true
+    };
+    let tabVisibility = defaultVisibility;
     
     // Create main container
     const mainContainer = createMainContainer();
@@ -407,11 +443,114 @@ export async function createCacheSidebar(el) {
     // Add to provided element
     el.appendChild(mainContainer);
     
+    // Add a lightweight settings loading indicator in the tab header
+    const settingsIndicator = document.createElement('div');
+    settingsIndicator.textContent = 'Loading settings…';
+    settingsIndicator.className = 'sidebar-settings-indicator';
+    settingsIndicator.style.cssText = `
+        position: absolute;
+        right: 60px;
+        top: 50%;
+        transform: translateY(-50%);
+        background: #2a2a2a;
+        border: 1px solid #444;
+        border-radius: 4px;
+        color: #ddd;
+        padding: 4px 8px;
+        font-size: 12px;
+        opacity: 0.9;
+        z-index: 9;
+    `;
+    // The tabHeader exists post-init inside TabManager
+    try { tabManager.tabHeader.appendChild(settingsIndicator); } catch { /* no-op */ }
+
     // Initialize sidebar data and state
     initializeSidebarData();
     
     // Activate the first visible tab
     tabManager.activateFirstTab();
+
+    // Load tab visibility settings asynchronously and apply when ready
+    // This prevents a blank sidebar if the settings endpoint is slow or unavailable at startup
+    const settingsLoadStart = performance.now();
+    loadTabVisibilitySettings().then((settings) => {
+        try {
+            tabVisibility = settings || defaultVisibility;
+            const mapStart = performance.now();
+            const visibilityMap = {
+                models: tabVisibility.show_models_tab !== false,
+                notes: tabVisibility.show_files_tab !== false,
+                civitai: tabVisibility.show_search_tab !== false,
+                gallery: tabVisibility.show_gallery_tab !== false,
+                promptBuilder: tabVisibility.show_prompts_tab !== false,
+                llm: tabVisibility.show_llm_tab !== false
+            };
+
+            // Ensure at least one tab remains visible to avoid a blank sidebar
+            const anyVisible = Object.values(visibilityMap).some(v => v);
+            if (!anyVisible) {
+                console.warn('[Sidebar] All tabs were configured hidden; forcing Models tab visible to avoid blank UI.');
+                visibilityMap.models = true;
+            }
+            const mapEnd = performance.now();
+            const updateStart = performance.now();
+            startTimer('Sidebar.Visibility.Update');
+            tabManager.updateVisibility(visibilityMap);
+            endTimer('Sidebar.Visibility.Update');
+            const updateEnd = performance.now();
+
+            // If current active tab became hidden, activate the first visible tab
+            const activeId = tabManager.getActiveTab();
+            const activateStart = performance.now();
+            startTimer('Sidebar.Visibility.Activate');
+            if (!activeId || !visibilityMap[activeId]) {
+                tabManager.activateFirstTab();
+            }
+            endTimer('Sidebar.Visibility.Activate');
+            const activateEnd = performance.now();
+
+            // Log a breakdown of where time was spent
+            const totalMs = +(performance.now() - settingsLoadStart).toFixed(2);
+            const fetchMs = settings?._timing?.fetch_ms ?? null;
+            const parseMs = settings?._timing?.parse_ms ?? null;
+            const mapMs = settings?._timing?.map_ms ?? +(mapEnd - mapStart).toFixed(2);
+            const updateMs = +(updateEnd - updateStart).toFixed(2);
+            const activateMs = +(activateEnd - activateStart).toFixed(2);
+            console.info('[Sidebar] Visibility settings applied', {
+                total_ms: totalMs,
+                fetch_ms: fetchMs,
+                parse_ms: parseMs,
+                map_ms: mapMs,
+                update_visibility_ms: updateMs,
+                activate_ms: activateMs
+            });
+
+            // Optionally persist timing immediately if telemetry is enabled
+            const shouldSendTiming = localStorage.getItem('sageutils_send_timing') === 'true' || 
+                                     new URLSearchParams(window.location.search).get('sageutils_timing') === '1';
+            if (shouldSendTiming) {
+                javascriptTimer.sendTimingDataToServer?.().catch(() => {});
+            }
+
+            // Remove or update the indicator
+            if (settingsIndicator?.parentNode) {
+                settingsIndicator.textContent = `Settings applied in ${totalMs} ms`;
+                setTimeout(() => {
+                    try { settingsIndicator.parentNode.removeChild(settingsIndicator); } catch { /* no-op */ }
+                }, 1200);
+            }
+        } catch (e) {
+            console.warn('[Sidebar] Failed applying visibility settings, continuing with defaults:', e);
+            if (settingsIndicator?.parentNode) {
+                try { settingsIndicator.parentNode.removeChild(settingsIndicator); } catch { /* no-op */ }
+            }
+        }
+    }).catch((e) => {
+        console.warn('[Sidebar] Visibility settings load failed, using defaults:', e);
+        if (settingsIndicator?.parentNode) {
+            try { settingsIndicator.parentNode.removeChild(settingsIndicator); } catch { /* no-op */ }
+        }
+    });
     
     // Start background preloading of other tabs during idle time
     // Priority order: commonly used tabs first

@@ -5,7 +5,7 @@
 
 import { selectors, actions } from "../shared/stateManager.js";
 import { GALLERY_CONFIG, getThumbnailSize } from "../shared/config.js";
-import { generateThumbnail, loadFullImage, copyImageToClipboard } from "../shared/imageUtils.js";
+import { generateThumbnail, loadFullImage, copyImageToClipboard, loadImageMetadata, getCachedImageMetadata } from "../shared/imageUtils.js";
 import { handleDatasetText } from "../shared/datasetTextManager.js";
 import { createResponsiveGrid, createScrollContainer } from "../components/layout.js";
 
@@ -638,22 +638,28 @@ export async function showImageMetadata(image) {
     overlay.appendChild(modal);
     document.body.appendChild(overlay);
     
-    // Load metadata
+    // First, try to show cached metadata immediately (if available)
     try {
-        const response = await fetch('/sage_utils/image_metadata', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ image_path: image.path })
-        });
-        
-        const result = await response.json();
-        if (result.success && result.metadata) {
-            content.textContent = JSON.stringify(result.metadata, null, 2);
-        } else {
+        const cached = getCachedImageMetadata(image);
+        if (cached) {
+            content.textContent = JSON.stringify(cached, null, 2);
+        }
+    } catch (_) {
+        // ignore cache errors, will fallback to network
+    }
+
+    // Then fetch fresh metadata (revalidate) and update the modal when it arrives
+    try {
+        const fresh = await loadImageMetadata(image, { useCache: true, forceRefresh: true });
+        if (fresh && typeof fresh === 'object') {
+            content.textContent = JSON.stringify(fresh, null, 2);
+        } else if (!content.textContent || content.textContent === 'Loading metadata...') {
             content.textContent = 'No metadata available';
         }
     } catch (error) {
-        content.textContent = `Error loading metadata: ${error.message}`;
+        if (!content.textContent || content.textContent === 'Loading metadata...') {
+            content.textContent = `Error loading metadata: ${error.message}`;
+        }
     }
     
     // Close handlers

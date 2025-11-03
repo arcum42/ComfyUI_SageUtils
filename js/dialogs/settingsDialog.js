@@ -10,6 +10,7 @@ import { handleError } from '../shared/errorHandler.js';
 import { notifications } from '../shared/notifications.js';
 import { app } from '../../../../scripts/app.js';
 import { createCheckbox, createRadioGroup, createInput } from '../components/formElements.js';
+import { javascriptTimer, uiTimer, printTimingReport } from '../shared/performanceTimer.js';
 
 /**
  * Mapping between backend setting keys and ComfyUI setting IDs
@@ -113,6 +114,10 @@ function buildSettingsUI(container, settings, dialog) {
   // Tab Visibility Section
   const tabVisibilitySection = createTabVisibilitySection(settings);
   settingsContainer.appendChild(tabVisibilitySection);
+
+  // Performance & Telemetry Section (frontend-only)
+  const perfSection = createPerformanceSection();
+  settingsContainer.appendChild(perfSection);
 
   container.appendChild(settingsContainer);
 
@@ -531,6 +536,45 @@ async function saveSettings(dialog, container, originalSettings) {
     // Close dialog
     dialog.close();
 
+    // Apply local-only performance settings (handled after dialog close for snappy UI)
+    try {
+      const localInputs = container.querySelectorAll('[data-local-setting]');
+      const localUpdates = {};
+      localInputs.forEach(input => {
+        const key = input.dataset.localSetting;
+        if (!key) return;
+        const value = input.type === 'checkbox' ? !!input.checked : input.value;
+        localUpdates[key] = value;
+      });
+
+      // Persist to localStorage and apply immediately
+      if (Object.keys(localUpdates).length > 0) {
+        if (typeof localUpdates.perf_monitoring === 'boolean') {
+          localStorage.setItem('sageutils_perf_monitoring', String(localUpdates.perf_monitoring));
+          if (localUpdates.perf_monitoring) {
+            javascriptTimer.enable?.();
+            uiTimer.enable?.();
+          } else {
+            javascriptTimer.disable?.();
+            uiTimer.disable?.();
+          }
+        }
+        if (typeof localUpdates.send_timing === 'boolean') {
+          localStorage.setItem('sageutils_send_timing', String(localUpdates.send_timing));
+        }
+        if (typeof localUpdates.print_timing === 'boolean') {
+          localStorage.setItem('sageutils_print_timing', String(localUpdates.print_timing));
+          if (localUpdates.print_timing) {
+            // Optional: print a short report immediately for confirmation
+            try { printTimingReport(javascriptTimer); } catch {}
+          }
+        }
+        console.log('[Settings] Updated local performance settings:', localUpdates);
+      }
+    } catch (e) {
+      console.warn('[Settings] Failed to apply local performance settings:', e);
+    }
+
   } catch (error) {
     console.error('Error saving settings:', error);
     handleError(error, 'Failed to save settings');
@@ -538,6 +582,144 @@ async function saveSettings(dialog, container, originalSettings) {
       notifications.show('Failed to save settings: ' + error.message, 'error');
     }
   }
+}
+
+/**
+ * Create Performance & Telemetry settings section (frontend-only)
+ * Uses localStorage flags and immediate runtime toggles; does not hit backend
+ */
+function createPerformanceSection() {
+  const section = document.createElement('div');
+  section.style.cssText = `
+    padding: 15px;
+    background: #1e1e1e;
+    border-radius: 6px;
+    border: 1px solid #444;
+  `;
+
+  const title = document.createElement('h3');
+  title.textContent = 'Performance & Telemetry';
+  title.style.cssText = `
+    margin: 0 0 10px 0;
+    color: #4CAF50;
+    font-size: 16px;
+    font-weight: 600;
+  `;
+  section.appendChild(title);
+
+  const note = document.createElement('div');
+  note.textContent = 'These options affect local performance monitoring and telemetry upload.';
+  note.style.cssText = `
+    margin: 0 0 12px 0;
+    color: #888;
+    font-size: 12px;
+    font-style: italic;
+  `;
+  section.appendChild(note);
+
+  const grid = document.createElement('div');
+  grid.style.cssText = `
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px 16px;
+    align-items: center;
+  `;
+
+  // Current values from localStorage
+  const perfMonitoring = localStorage.getItem('sageutils_perf_monitoring') === 'true';
+  const sendTiming = localStorage.getItem('sageutils_send_timing') === 'true';
+  const printTiming = localStorage.getItem('sageutils_print_timing') === 'true';
+
+  // Enable performance monitoring
+  {
+    const { container, checkbox } = createCheckbox('Enable performance monitoring', {
+      checked: perfMonitoring,
+      id: 'perf-monitoring-checkbox'
+    });
+    checkbox.dataset.localSetting = 'perf_monitoring';
+    grid.appendChild(container);
+  }
+
+  // Send timing to server
+  {
+    const { container, checkbox } = createCheckbox('Send timing telemetry to server', {
+      checked: sendTiming,
+      id: 'perf-sendtiming-checkbox'
+    });
+    checkbox.dataset.localSetting = 'send_timing';
+    grid.appendChild(container);
+  }
+
+  // Print timing to console
+  {
+    const { container, checkbox } = createCheckbox('Print timing report to console', {
+      checked: printTiming,
+      id: 'perf-printtiming-checkbox'
+    });
+    checkbox.dataset.localSetting = 'print_timing';
+    grid.appendChild(container);
+  }
+
+  section.appendChild(grid);
+
+  // Action buttons row
+  const actions = document.createElement('div');
+  actions.style.cssText = `
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+    flex-wrap: wrap;
+  `;
+
+  const btn = (label, onClick, variant = 'default') => {
+    const b = document.createElement('button');
+    b.textContent = label;
+    b.style.cssText = `
+      padding: 6px 10px;
+      background: ${variant === 'primary' ? '#4CAF50' : '#2a2a2a'};
+      color: #fff;
+      border: 1px solid #444;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+    `;
+    b.addEventListener('click', onClick);
+    return b;
+  };
+
+  // Send timing now
+  actions.appendChild(btn('Send timing now', async () => {
+    try {
+      await javascriptTimer.sendTimingDataToServer?.();
+      notifications?.show?.('Timing data sent', 'success');
+    } catch (e) {
+      notifications?.show?.('Failed to send timing data', 'error');
+    }
+  }, 'primary'));
+
+  // Reset collected timing
+  actions.appendChild(btn('Reset collected timing', () => {
+    try {
+      javascriptTimer.reset?.();
+      uiTimer.reset?.();
+      notifications?.show?.('Timing data reset', 'info');
+    } catch (e) {
+      notifications?.show?.('Failed to reset timing data', 'error');
+    }
+  }));
+
+  // Print report now
+  actions.appendChild(btn('Print timing report', () => {
+    try {
+      printTimingReport(javascriptTimer);
+    } catch (e) {
+      console.warn('Failed to print timing report', e);
+    }
+  }));
+
+  section.appendChild(actions);
+
+  return section;
 }
 
 /**
