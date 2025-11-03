@@ -402,11 +402,13 @@ class Sage_ModelLoraStackLoader(Sage_LoadModelFromInfo):
         # If there is one lora, it will be a list with one tuple.
 
         if lora_stack is not None and len(lora_stack) == 1:
+            print("Unwrapping single-item lora_stack")
             lora_stack = lora_stack[0]
             # If lora_stack was [None], it will now be None.
 
         if lora_stack is not None and len(lora_stack) > 0:
             if len(lora_stack) == 1 and isinstance(lora_stack[0], list):
+                print("Unwrapping single-item lora_stack inside lora_stack")
                 lora_stack = lora_stack[0]
 
             logging.info(f"Applying LoRA stack: {lora_stack}")
@@ -416,6 +418,7 @@ class Sage_ModelLoraStackLoader(Sage_LoadModelFromInfo):
 
             unet_out, clip_out = create_lora_nodes_v2(graph, unet_out, clip_out, lora_stack)
             keywords = get_lora_stack_keywords(lora_stack)
+            print(f"Graph after LoRA application: {graph}")
 
         return {
             "result": (unet_out, clip_out, vae_out, lora_stack, keywords),

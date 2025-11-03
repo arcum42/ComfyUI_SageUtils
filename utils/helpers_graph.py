@@ -112,7 +112,7 @@ def create_lora_nodes_v2(graph: GraphBuilder, unet_in, clip_in, lora_stack=None)
         return unet_out, clip_out
 
     for lora in lora_stack:
-        lora_node = graph.node("LoraLoader", model=unet_in, clip=clip_in, lora_name=lora[0], strength_model=lora[1], strength_clip=lora[2])
+        lora_node = graph.node("LoraLoader", model=unet_out, clip=clip_out, lora_name=lora[0], strength_model=lora[1], strength_clip=lora[2])
         unet_out = lora_node.out(0)
         clip_out = lora_node.out(1)
     return unet_out, clip_out
