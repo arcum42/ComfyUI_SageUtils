@@ -4,6 +4,7 @@ from .helpers import (
     get_file_extension
     )
 
+import logging
 
 def add_ckpt_node_from_info(graph: GraphBuilder, ckpt_info):
     ckpt_node = None
@@ -92,76 +93,63 @@ def add_vae_node_from_info(graph: GraphBuilder, vae_info):
         vae_node = graph.node("VAELoader", vae_name=vae_fixed_name)
     return vae_node
 
-
-
-def create_lora_nodes(graph: GraphBuilder, model_in, clip_in, lora_stack):
-    lora_node = None
-    print(f"Creating Lora nodes with lora_stack: {lora_stack}")
-    for lora in lora_stack:
-        lora_node = graph.node("LoraLoader", model=model_in, clip=clip_in, lora_name=lora[0], strength_model=lora[1], strength_clip=lora[2])
-        model_in = lora_node.out(0)
-        clip_in = lora_node.out(1)
-    return lora_node
-
-def create_lora_nodes_v2(graph: GraphBuilder, unet_in, clip_in, lora_stack=None):
-    unet_out = unet_in
-    clip_out = clip_in
-    print(f"Creating Lora nodes with lora_stack: {lora_stack}")
-
+# Write one fucntion that combines all three variations of LoRA node creation.
+def create_lora_nodes_redux(graph: GraphBuilder, unet_in, clip_in=None, lora_stack=None):
+    exit_unet = unet_in
+    exit_clip = clip_in
+    exit_node = None
+    
     if lora_stack is None:
-        return unet_out, clip_out
+        logging.info("No loras in stack.")
+        return exit_node, exit_unet, exit_clip
 
+    if exit_clip is not None:
+        logging.info("Using CLIP with loras.")
+        for lora in lora_stack:
+            logging.info(f"Applying lora: {lora[0]}, unet: {lora[1]}, clip: {lora[2]}")
+            exit_node = graph.node("LoraLoader", model=exit_unet, clip=exit_clip, lora_name=lora[0], strength_model=lora[1], strength_clip=lora[2])
+            exit_unet = exit_node.out(0)
+            exit_clip = exit_node.out(1)
+        return exit_node, exit_unet, exit_clip
+
+    logging.info("Using Model Only loras.")
     for lora in lora_stack:
-        lora_node = graph.node("LoraLoader", model=unet_out, clip=clip_out, lora_name=lora[0], strength_model=lora[1], strength_clip=lora[2])
-        unet_out = lora_node.out(0)
-        clip_out = lora_node.out(1)
-    return unet_out, clip_out
+        logging.info(f"Applying lora: {lora[0]}, unet: {lora[1]}")
+        exit_node = graph.node("LoraLoaderModelOnly", model=exit_unet, lora_name=lora[0], strength_model=lora[1])
+        exit_unet = exit_node.out(0)
+    return exit_node, exit_unet, exit_clip
 
-def create_lora_nodes_model_only(graph: GraphBuilder, model_in, lora_stack):
-    lora_node = None
-    print(f"Creating Lora nodes with lora_stack: {lora_stack}")
-    for lora in lora_stack:
-        lora_node = graph.node("LoraLoaderModelOnly", model=model_in, lora_name=lora[0], strength_model=lora[1])
-        model_in = lora_node.out(0)
-    return lora_node
+def create_lora_nodes_shift_redux(graph: GraphBuilder, unet_in, clip_in=None, lora_stack=None, model_shifts=None):
+    exit_node, exit_unet, exit_clip = create_lora_nodes_redux(graph, unet_in, clip_in, lora_stack)
 
-def create_model_shift_nodes(graph: GraphBuilder, lora_node, model, model_shifts):
-    exit_node = lora_node
     if model_shifts is None:
-        return exit_node
+        logging.info("No model shifts to apply.")
+        return exit_node, exit_unet, exit_clip
+
     if model_shifts["shift_type"] != "None":
+        temp_unet = exit_unet if exit_node is None else exit_node.out(0)
         if model_shifts["shift_type"] == "x1":
-            print("Applying x1 shift - AuraFlow/Lumina2")
-            if lora_node is None:
-                exit_node = graph.node("ModelSamplingAuraFlow", model=model, shift=model_shifts["shift"])
-            else:
-                exit_node = graph.node("ModelSamplingAuraFlow", model=lora_node.out(0), shift=model_shifts["shift"])
-        elif model_shifts["shift_type"] == "x1000":
-            print("Applying x1000 shift - SD3")
-            if lora_node is None:
-                exit_node = graph.node("ModelSamplingSD3", model=model, shift=model_shifts["shift"])
-            else:
-                exit_node = graph.node("ModelSamplingSD3", model=lora_node.out(0), shift=model_shifts["shift"])
+            logging.info(f"Applying x1 shift - AuraFlow/Lumina2. Shift: {model_shifts['shift']}")
+            exit_node = graph.node("ModelSamplingAuraFlow", model=temp_unet, shift=model_shifts["shift"])
+        else:
+            # Assume x1000
+            logging.info(f"Applying x1000 shift - SD3. Shift: {model_shifts['shift']}")
+            exit_node = graph.node("ModelSamplingSD3", model=temp_unet, shift=model_shifts["shift"])
+        exit_unet = exit_node.out(0)
 
     if model_shifts["freeu_v2"] == True:
-        print("FreeU v2 is enabled, applying to model.")
-        if exit_node is None:
-            exit_node = graph.node("FreeU_V2",
-                model=model,
-                b1=model_shifts["b1"],
-                b2=model_shifts["b2"],
-                s1=model_shifts["s1"],
-                s2=model_shifts["s2"]
-            )
-        else:
-            exit_node = graph.node("FreeU_V2",
-                model=exit_node.out(0),
-                b1=model_shifts["b1"],
-                b2=model_shifts["b2"],
-                s1=model_shifts["s1"],
+        logging.info(f"FreeU v2 is enabled, applying to model. b1: {model_shifts['b1']}, b2: {model_shifts['b2']}, s1: {model_shifts['s1']}, s2: {model_shifts['s2']}")
+        
+        temp_unet = exit_unet if exit_node is None else exit_node.out(0)
+        exit_node = graph.node("FreeU_V2",
+            model=temp_unet,
+            b1=model_shifts["b1"],
+            b2=model_shifts["b2"],
+            s1=model_shifts["s1"],
             s2=model_shifts["s2"]
         )
-    return exit_node
+        exit_unet = exit_node.out(0)
+    return exit_node, exit_unet, exit_clip
 
 def create_model_shift_nodes_v2(graph, unet_in, model_shifts):
     unet_out = unet_in

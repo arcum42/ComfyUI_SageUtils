@@ -22,11 +22,9 @@ from ..utils.helpers_graph import (
     add_unet_node_from_info,
     add_clip_node_from_info,
     add_vae_node_from_info,
-    create_lora_nodes,
-    create_lora_nodes_model_only,
-    create_lora_nodes_v2,
-    create_model_shift_nodes,
-    create_model_shift_nodes_v2
+    create_model_shift_nodes_v2,
+    create_lora_nodes_redux,
+    create_lora_nodes_shift_redux
 )
 
 from comfy_execution.graph_utils import GraphBuilder

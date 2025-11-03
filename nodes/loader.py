@@ -13,11 +13,9 @@ from ..utils.helpers_graph import (
     add_unet_node_from_info,
     add_clip_node_from_info,
     add_vae_node_from_info,
-    create_lora_nodes,
-    create_lora_nodes_model_only,
-    create_lora_nodes_v2,
-    create_model_shift_nodes,
-    create_model_shift_nodes_v2
+    create_model_shift_nodes_v2,
+    create_lora_nodes_redux,
+    create_lora_nodes_shift_redux
 )
 
 from comfy_execution.graph_utils import GraphBuilder
@@ -204,45 +202,12 @@ class Sage_LoraStackLoader(ComfyNodeABC):
     DESCRIPTION = "Accept a lora_stack with Model and Clip, and apply all the loras in the stack at once."
 
     def load_lora(self, model, clip, lora_stack=None, model_shifts=None) -> dict:
-        # Use graph expansion to build a graph with lora loaders for each lora in the stack.
-        if lora_stack is None and model_shifts is None:
-            return {
-                "result": (model, clip, None, ""),
-            }
-
         graph = GraphBuilder()
-        lora_node = exit_node = None
-
-        if lora_stack is not None:
-            lora_paths = [folder_paths.get_full_path_or_raise("loras", lora[0]) for lora in lora_stack]
-            pull_and_update_model_timestamp(lora_paths, model_type="lora")
-            lora_node = create_lora_nodes(graph, model, clip, lora_stack)
-        
-        if model_shifts is not None:
-            exit_node = create_model_shift_nodes(graph, lora_node, model, model_shifts)
-
-        keywords = get_lora_stack_keywords(lora_stack)
-
-        if exit_node is None:
-            if lora_node is None:
-                logging.info("No loras in stack, returning original model and clip.")
-                model_out = model
-            else:
-                logging.info("No model shifts applied, returning original model.")
-                model_out = lora_node.out(0)
-        else:
-            logging.info("Model shifts applied, returning modified model.")
-            model_out = exit_node.out(0)
-        
-        if lora_node is None:
-            logging.info("No loras in stack, returning original clip.")
-            clip_out = clip
-        else:
-            logging.info("Returning modified clip.")
-            clip_out = lora_node.out(1)
+        exit_node, exit_unet, exit_clip = create_lora_nodes_shift_redux(graph, model, clip, lora_stack, model_shifts)
+        keywords = get_lora_stack_keywords(lora_stack) if lora_stack is not None else ""
 
         return {
-            "result": (model_out, clip_out, lora_stack, keywords),
+            "result": (exit_unet, exit_clip, lora_stack, keywords),
             "expand": graph.finalize()
         }
 
@@ -389,39 +354,25 @@ class Sage_ModelLoraStackLoader(Sage_LoadModelFromInfo):
     CATEGORY = "Sage Utils/model"
     DESCRIPTION = "Load model components from model info using GraphBuilder."
 
-    def load_model_and_loras(self, model_info, model_shifts=None, lora_stack=None) -> dict:
+    def load_model_and_loras(self, model_info, lora_stack=None, model_shifts=None) -> dict:
         keywords = ""
-        graph, unet_out, clip_out, vae_out = self.prepare_model_graph(model_info)
+        graph, exit_unet, exit_clip, exit_vae = self.prepare_model_graph(model_info)
+        print(f"Model info input: {model_info}")
+        print(f"Lora stack input: {lora_stack}")
+        print(f"Model shifts input: {model_shifts}")
+        model_shifts = model_shifts[0] if model_shifts is not None else None
+        lora_stack = lora_stack[0] if lora_stack is not None else None
 
-        if model_shifts is not None:
-            logging.info(f"Applying model shifts: {model_shifts}")
-            unet_out = create_model_shift_nodes_v2(graph, unet_out, model_shifts[0])
+        exit_node, exit_unet, exit_clip = create_lora_nodes_shift_redux(graph, exit_unet, exit_clip, lora_stack, model_shifts)
 
-        # The lora_stack is supposed to be a list of tuples. INPUT_IS_LIST means it will be passed as a list.
-        ## It's possible there could be no loras, in which case it will be an empty list.
-        # If there is one lora, it will be a list with one tuple.
-
-        if lora_stack is not None and len(lora_stack) == 1:
-            print("Unwrapping single-item lora_stack")
-            lora_stack = lora_stack[0]
-            # If lora_stack was [None], it will now be None.
-
-        if lora_stack is not None and len(lora_stack) > 0:
-            if len(lora_stack) == 1 and isinstance(lora_stack[0], list):
-                print("Unwrapping single-item lora_stack inside lora_stack")
-                lora_stack = lora_stack[0]
-
-            logging.info(f"Applying LoRA stack: {lora_stack}")
-
+        if lora_stack is not None and exit_unet is not None:
             lora_paths = [folder_paths.get_full_path_or_raise("loras", lora[0]) for lora in lora_stack]
             pull_and_update_model_timestamp(lora_paths, model_type="lora")
 
-            unet_out, clip_out = create_lora_nodes_v2(graph, unet_out, clip_out, lora_stack)
-            keywords = get_lora_stack_keywords(lora_stack)
-            print(f"Graph after LoRA application: {graph}")
+        keywords = get_lora_stack_keywords(lora_stack) if lora_stack is not None else ""
 
         return {
-            "result": (unet_out, clip_out, vae_out, lora_stack, keywords),
+            "result": (exit_unet, exit_clip, exit_vae, lora_stack, keywords),
             "expand": graph.finalize()
         }
 
@@ -458,21 +409,16 @@ class Sage_UNETLoRALoader(ComfyNodeABC):
         else:
             pull_and_update_model_timestamp(unet_info["path"], model_type="unet")
 
-        if model_shifts is not None and unet_out is not None:
-            unet_out = create_model_shift_nodes_v2(graph, unet_out, model_shifts)
+        exit_node, exit_unet, exit_clip = create_lora_nodes_shift_redux(graph, unet_out, None, lora_stack, model_shifts)
 
         if lora_stack is not None and unet_out is not None:
             lora_paths = [folder_paths.get_full_path_or_raise("loras", lora[0]) for lora in lora_stack]
             pull_and_update_model_timestamp(lora_paths, model_type="lora")
 
-            unet_node = create_lora_nodes_model_only(graph, unet_out, lora_stack)
-            unet_out = unet_node.out(0) if unet_node else None
-            keywords = get_lora_stack_keywords(lora_stack)
-        else:
-            keywords = ""
+        keywords = get_lora_stack_keywords(lora_stack) if lora_stack is not None else ""
 
         return {
-            "result": (unet_out, lora_stack, keywords),
+            "result": (exit_unet, lora_stack, keywords),
             "expand": graph.finalize()
         }
 
