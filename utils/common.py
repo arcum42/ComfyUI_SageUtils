@@ -58,13 +58,13 @@ from .helpers_civitai import (
 )
 
 from .helpers_graph import (
-    add_ckpt_node_from_info,
-    add_unet_node_from_info,
-    add_clip_node_from_info,
-    add_vae_node_from_info,
-    create_model_shift_nodes_v2,
-    create_lora_nodes_redux,
-    create_lora_nodes_shift_redux,
+    add_ckpt_node,
+    add_unet_node,
+    add_clip_node,
+    add_vae_node,
+    create_model_shift_nodes,
+    create_lora_nodes,
+    create_lora_shift_nodes,
     add_lora_stack_node,
     create_model_loader_nodes
 )
@@ -140,8 +140,8 @@ __all__ = [
     'pull_lora_image_urls', 'civitai_sampler_name',
     
     # Graph utilities
-    'add_ckpt_node_from_info', 'add_unet_node_from_info', 'add_clip_node_from_info', 'add_vae_node_from_info',
-    'create_lora_nodes_redux', 'create_lora_nodes_shift_redux', 'create_model_shift_nodes_v2',
+    'add_ckpt_node', 'add_unet_node', 'add_clip_node', 'add_vae_node',
+    'create_lora_nodes', 'create_lora_shift_nodes', 'create_model_shift_nodes',
     'add_lora_stack_node', 'create_model_loader_nodes',
 
     # LoRA utilities

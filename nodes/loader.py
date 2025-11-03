@@ -9,13 +9,13 @@ from ..utils.helpers import pull_metadata, update_model_timestamp, pull_and_upda
 from ..utils import get_lora_stack_keywords
 from ..utils import model_info as mi
 from ..utils.helpers_graph import (
-    add_ckpt_node_from_info,
-    add_unet_node_from_info,
-    add_clip_node_from_info,
-    add_vae_node_from_info,
-    create_model_shift_nodes_v2,
-    create_lora_nodes_redux,
-    create_lora_nodes_shift_redux,
+    add_ckpt_node,
+    add_unet_node,
+    add_clip_node,
+    add_vae_node,
+    create_model_shift_nodes,
+    create_lora_nodes,
+    create_lora_shift_nodes,
     create_model_loader_nodes
 )
 
@@ -48,7 +48,7 @@ class Sage_UNETLoaderFromInfo(ComfyNodeABC):
         """Load UNET from model info."""
         #logging.info("Loading UNET...")
         graph = GraphBuilder()
-        unet_node = add_unet_node_from_info(graph, unet_info)
+        unet_node = add_unet_node(graph, unet_info)
         if unet_node is None:
             raise ValueError("UNET info is missing or invalid.")
         else:
@@ -88,7 +88,7 @@ class Sage_CLIPLoaderFromInfo(ComfyNodeABC):
         """Load CLIP from model info."""
         #logging.info("Loading CLIP...")
         graph = GraphBuilder()
-        clip_node = add_clip_node_from_info(graph, clip_info)
+        clip_node = add_clip_node(graph, clip_info)
         if clip_node is None:
             raise ValueError("CLIP info is missing or invalid.")
         else:
@@ -128,7 +128,7 @@ class Sage_ChromaCLIPLoaderFromInfo(ComfyNodeABC):
         """Load Chroma CLIP from model info."""
         #logging.info("Loading CLIP...")
         graph = GraphBuilder()
-        clip_node = add_clip_node_from_info(graph, clip_info)
+        clip_node = add_clip_node(graph, clip_info)
         if clip_node is None:
             raise ValueError("CLIP info is missing or invalid.")
         else:
@@ -167,7 +167,7 @@ class Sage_VAELoaderFromInfo(ComfyNodeABC):
         """Load VAE from model info."""
         #logging.info("Loading VAE...")
         graph = GraphBuilder()
-        vae_node = add_vae_node_from_info(graph, vae_info)
+        vae_node = add_vae_node(graph, vae_info)
         if vae_node is None:
             raise ValueError("VAE info is missing or invalid.")
         else:
@@ -204,7 +204,7 @@ class Sage_LoraStackLoader(ComfyNodeABC):
 
     def load_lora(self, model, clip, lora_stack=None, model_shifts=None) -> dict:
         graph = GraphBuilder()
-        exit_node, exit_unet, exit_clip = create_lora_nodes_shift_redux(graph, model, clip, lora_stack, model_shifts)
+        exit_node, exit_unet, exit_clip = create_lora_shift_nodes(graph, model, clip, lora_stack, model_shifts)
         keywords = get_lora_stack_keywords(lora_stack) if lora_stack is not None else ""
 
         return {
@@ -239,7 +239,7 @@ class Sage_LoadModelFromInfo(ComfyNodeABC):
         unet_out, clip_out, vae_out = create_model_loader_nodes(graph, model_info)
 
         if model_shifts is not None:
-            unet_out = create_model_shift_nodes_v2(graph, unet_out, model_shifts[0])
+            unet_out = create_model_shift_nodes(graph, unet_out, model_shifts[0])
 
         return {
             "result": (unet_out, clip_out, vae_out),
@@ -279,7 +279,7 @@ class Sage_ModelLoraStackLoader(Sage_LoadModelFromInfo):
         model_shifts = model_shifts[0] if model_shifts is not None else None
         lora_stack = lora_stack[0] if lora_stack is not None else None
 
-        exit_node, exit_unet, exit_clip = create_lora_nodes_shift_redux(graph, exit_unet, exit_clip, lora_stack, model_shifts)
+        exit_node, exit_unet, exit_clip = create_lora_shift_nodes(graph, exit_unet, exit_clip, lora_stack, model_shifts)
 
         if lora_stack is not None and exit_unet is not None:
             lora_paths = [folder_paths.get_full_path_or_raise("loras", lora[0]) for lora in lora_stack]
@@ -318,14 +318,14 @@ class Sage_UNETLoRALoader(ComfyNodeABC):
 
     def load_unet_lora(self, unet_info, model_shifts=None, lora_stack=None) -> dict:
         graph = GraphBuilder()
-        unet_node = add_unet_node_from_info(graph, unet_info)
+        unet_node = add_unet_node(graph, unet_info)
         unet_out = unet_node.out(0) if unet_node else None
         if unet_node is None:
             raise ValueError("UNET info is missing or invalid.")
         else:
             pull_and_update_model_timestamp(unet_info["path"], model_type="unet")
 
-        exit_node, exit_unet, exit_clip = create_lora_nodes_shift_redux(graph, unet_out, None, lora_stack, model_shifts)
+        exit_node, exit_unet, exit_clip = create_lora_shift_nodes(graph, unet_out, None, lora_stack, model_shifts)
 
         if lora_stack is not None and unet_out is not None:
             lora_paths = [folder_paths.get_full_path_or_raise("loras", lora[0]) for lora in lora_stack]

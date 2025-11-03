@@ -7,7 +7,24 @@ from .helpers import (
 
 import logging
 
-def add_ckpt_node_from_info(graph: GraphBuilder, ckpt_info):
+# Utility function
+def flatten_model_info(model_info):
+    """Flatten model_info to a list of dictionaries."""
+    if isinstance(model_info, list):
+        flattened_info = []
+        for item in model_info:
+            if isinstance(item, tuple):
+                # Unpack the tuple and add all dictionaries to the flattened list
+                flattened_info.extend(item)
+            else:
+                flattened_info.append(item)
+    else:
+        # If model_info is not a list, we need to convert it to a list.
+        flattened_info = [model_info]
+    return flattened_info
+
+# Add individual model loader nodes
+def add_ckpt_node(graph: GraphBuilder, ckpt_info):
     ckpt_node = None
     if ckpt_info is not None:
         ckpt_name = ckpt_info["path"]
@@ -19,7 +36,7 @@ def add_ckpt_node_from_info(graph: GraphBuilder, ckpt_info):
         print("No checkpoint found in model info, skipping checkpoint loading.")
     return ckpt_node
 
-def add_unet_node_from_info(graph: GraphBuilder, unet_info):
+def add_unet_node(graph: GraphBuilder, unet_info):
     unet_node = None
     if unet_info is not None:
         unet_name = unet_info["path"]
@@ -38,7 +55,7 @@ def add_unet_node_from_info(graph: GraphBuilder, unet_info):
             unet_node = graph.node("UNETLoader", unet_name=unet_fixed_name, weight_dtype=unet_weight_dtype)
     return unet_node
 
-def add_clip_node_from_info(graph: GraphBuilder, clip_info):
+def add_clip_node(graph: GraphBuilder, clip_info):
     clip_node = None
     if clip_info is not None:
         print(f"Adding CLIP node with info: {clip_info}")
@@ -84,7 +101,7 @@ def add_clip_node_from_info(graph: GraphBuilder, clip_info):
                 clip_node = graph.node("QuadrupleCLIPLoader", clip_name1=clip_path[0], clip_name2=clip_path[1], clip_name3=clip_path[2], clip_name4=clip_path[3])
     return clip_node
 
-def add_vae_node_from_info(graph: GraphBuilder, vae_info):
+def add_vae_node(graph: GraphBuilder, vae_info):
     vae_node = None
     if vae_info is not None:
         vae_name = vae_info["path"]
@@ -94,21 +111,7 @@ def add_vae_node_from_info(graph: GraphBuilder, vae_info):
         vae_node = graph.node("VAELoader", vae_name=vae_fixed_name)
     return vae_node
 
-def flatten_model_info(model_info):
-    """Flatten model_info to a list of dictionaries."""
-    if isinstance(model_info, list):
-        flattened_info = []
-        for item in model_info:
-            if isinstance(item, tuple):
-                # Unpack the tuple and add all dictionaries to the flattened list
-                flattened_info.extend(item)
-            else:
-                flattened_info.append(item)
-    else:
-        # If model_info is not a list, we need to convert it to a list.
-        flattened_info = [model_info]
-    return flattened_info
-
+# Add model loader nodes for checkpoints, unet, clip, or vae.
 def create_model_loader_nodes(graph: GraphBuilder, model_info):
     ckpt_node = unet_node = clip_node = vae_node = None
     unet_out = clip_out = vae_out = None
@@ -121,7 +124,7 @@ def create_model_loader_nodes(graph: GraphBuilder, model_info):
         model_present[item["type"]] = item
 
     if model_present["CKPT"] is not None:
-        ckpt_node = add_ckpt_node_from_info(graph, model_present["CKPT"])
+        ckpt_node = add_ckpt_node(graph, model_present["CKPT"])
         if ckpt_node is None:
             raise ValueError("Checkpoint info is missing or invalid.")
         else:
@@ -132,7 +135,7 @@ def create_model_loader_nodes(graph: GraphBuilder, model_info):
 
     # If we have a UNET, load it with the UNETLoader node.
     if model_present["UNET"] is not None:
-        unet_node = add_unet_node_from_info(graph, model_present["UNET"])
+        unet_node = add_unet_node(graph, model_present["UNET"])
 
         if unet_node is None:
             raise ValueError("UNET info is missing or invalid.")
@@ -142,7 +145,7 @@ def create_model_loader_nodes(graph: GraphBuilder, model_info):
 
     # If we have a CLIP, load it with the appropriate CLIPLoader node.
     if model_present["CLIP"] is not None:
-        clip_node = add_clip_node_from_info(graph, model_present["CLIP"])
+        clip_node = add_clip_node(graph, model_present["CLIP"])
         if clip_node is None:
             raise ValueError("CLIP info is missing or invalid.")
         else:
@@ -151,7 +154,7 @@ def create_model_loader_nodes(graph: GraphBuilder, model_info):
 
     # If we have a VAE, load it with the VAELoader node.
     if model_present["VAE"] is not None:
-        vae_node = add_vae_node_from_info(graph, model_present["VAE"])
+        vae_node = add_vae_node(graph, model_present["VAE"])
         if vae_node is None:
             raise ValueError("VAE info is missing or invalid.")
         else:
@@ -159,8 +162,8 @@ def create_model_loader_nodes(graph: GraphBuilder, model_info):
             vae_out = vae_node.out(0)
     return unet_out, clip_out, vae_out
 
-# Write one function that combines all three variations of LoRA node creation.
-def create_lora_nodes_redux(graph: GraphBuilder, unet_in, clip_in=None, lora_stack=None):
+# Add lora nodes for a lora stack.
+def create_lora_nodes(graph: GraphBuilder, unet_in, clip_in=None, lora_stack=None):
     exit_unet = unet_in
     exit_clip = clip_in
     exit_node = None
@@ -185,54 +188,30 @@ def create_lora_nodes_redux(graph: GraphBuilder, unet_in, clip_in=None, lora_sta
         exit_unet = exit_node.out(0)
     return exit_node, exit_unet, exit_clip
 
-def create_lora_nodes_shift_redux(graph: GraphBuilder, unet_in, clip_in=None, lora_stack=None, model_shifts=None):
-    exit_node, exit_unet, exit_clip = create_lora_nodes_redux(graph, unet_in, clip_in, lora_stack)
+# Add an actual model shift node.
+def create_shift_node(graph: GraphBuilder, unet_in, model_shifts):
+    exit_node = None
+    unet_out = unet_in
 
-    if model_shifts is None:
-        logging.info("No model shifts to apply.")
-        return exit_node, exit_unet, exit_clip
-
-    if model_shifts["shift_type"] != "None":
-        temp_unet = exit_unet if exit_node is None else exit_node.out(0)
+    if model_shifts is not None and model_shifts["shift_type"] != "None":
         if model_shifts["shift_type"] == "x1":
             logging.info(f"Applying x1 shift - AuraFlow/Lumina2. Shift: {model_shifts['shift']}")
-            exit_node = graph.node("ModelSamplingAuraFlow", model=temp_unet, shift=model_shifts["shift"])
-        else:
-            # Assume x1000
-            logging.info(f"Applying x1000 shift - SD3. Shift: {model_shifts['shift']}")
-            exit_node = graph.node("ModelSamplingSD3", model=temp_unet, shift=model_shifts["shift"])
-        exit_unet = exit_node.out(0)
-
-    if model_shifts["freeu_v2"] == True:
-        logging.info(f"FreeU v2 is enabled, applying to model. b1: {model_shifts['b1']}, b2: {model_shifts['b2']}, s1: {model_shifts['s1']}, s2: {model_shifts['s2']}")
-        
-        temp_unet = exit_unet if exit_node is None else exit_node.out(0)
-        exit_node = graph.node("FreeU_V2",
-            model=temp_unet,
-            b1=model_shifts["b1"],
-            b2=model_shifts["b2"],
-            s1=model_shifts["s1"],
-            s2=model_shifts["s2"]
-        )
-        exit_unet = exit_node.out(0)
-    return exit_node, exit_unet, exit_clip
-
-def create_model_shift_nodes_v2(graph, unet_in, model_shifts):
-    unet_out = unet_in
-    if model_shifts is None:
-        return unet_out
-    if model_shifts["shift_type"] != "None":
-        if model_shifts["shift_type"] == "x1":
-            print("Applying x1 shift - AuraFlow/Lumina2")
             exit_node = graph.node("ModelSamplingAuraFlow", model=unet_out, shift=model_shifts["shift"])
             unet_out = exit_node.out(0)
         elif model_shifts["shift_type"] == "x1000":
-            print("Applying x1000 shift - SD3")
+            logging.info(f"Applying x1000 shift - SD3. Shift: {model_shifts['shift']}")
             exit_node = graph.node("ModelSamplingSD3", model=unet_out, shift=model_shifts["shift"])
             unet_out = exit_node.out(0)
 
-    if model_shifts["freeu_v2"] == True:
-        print("FreeU v2 is enabled, applying to model.")
+    return exit_node, unet_out
+
+# Add FreeU v2 node if specified.
+def create_freeu_v2_node(graph: GraphBuilder, unet_in, model_shifts):
+    exit_node = None
+    unet_out = unet_in
+
+    if model_shifts is not None and model_shifts.get("freeu_v2", False) == True:
+        logging.info(f"FreeU v2 is enabled, applying to model. b1: {model_shifts['b1']}, b2: {model_shifts['b2']}, s1: {model_shifts['s1']}, s2: {model_shifts['s2']}")
         exit_node = graph.node("FreeU_V2",
             model=unet_out,
             b1=model_shifts["b1"],
@@ -241,15 +220,34 @@ def create_model_shift_nodes_v2(graph, unet_in, model_shifts):
             s2=model_shifts["s2"]
         )
         unet_out = exit_node.out(0)
-    return unet_out
 
+    return exit_node, unet_out
+
+# Add model shift nodes, which I'm including FreeU v2 in.
+def create_model_shift_nodes(graph, unet_in, model_shifts):
+    unet_out = unet_in
+    if model_shifts is None:
+        logging.info("No model shifts to apply.")
+        return unet_out
+
+    exit_node, unet_out = create_shift_node(graph, unet_out, model_shifts)
+    exit_node, unet_out = create_freeu_v2_node(graph, unet_out, model_shifts)
+    return exit_node, unet_out
+
+# Add lora nodes as well as model shift nodes.
+def create_lora_shift_nodes(graph: GraphBuilder, unet_in, clip_in=None, lora_stack=None, model_shifts=None):
+    exit_node, exit_unet, exit_clip = create_lora_nodes(graph, unet_in, clip_in, lora_stack)
+    exit_node, exit_unet = create_model_shift_nodes(graph, exit_unet, model_shifts)
+    return exit_node, exit_unet, exit_clip
+
+# Add nodes to add to a lora stack.
 def add_lora_stack_node(graph: GraphBuilder, args, idx, lora_stack = None):
     lora_enabled = args[f"enabled_{idx}"]
     lora_name = args[f"lora_{idx}_name"]
     model_weight = args[f"model_{idx}_weight"]
     # If clip weight is not provided, it defaults to 1.0
     clip_weight = args.get(f"clip_{idx}_weight", 1.0)
-    print(f"Creating Lora stack node: {lora_name}, enabled: {lora_enabled}, model_weight: {model_weight}, clip_weight: {clip_weight}")
+    logging.info(f"Creating Lora stack node: {lora_name}, enabled: {lora_enabled}, model_weight: {model_weight}, clip_weight: {clip_weight}")
 
     return graph.node("Sage_LoraStack",
             enabled = lora_enabled,
