@@ -15,7 +15,8 @@ from ..utils.helpers_graph import (
     add_vae_node_from_info,
     create_model_shift_nodes_v2,
     create_lora_nodes_redux,
-    create_lora_nodes_shift_redux
+    create_lora_nodes_shift_redux,
+    create_model_loader_nodes
 )
 
 from comfy_execution.graph_utils import GraphBuilder
@@ -231,97 +232,11 @@ class Sage_LoadModelFromInfo(ComfyNodeABC):
 
     FUNCTION = "load_model"
     CATEGORY = "Sage Utils/model"
-    DESCRIPTION = "Load model components from model info using GraphBuilder."
-
-    def prepare_model_graph(self, model_info):
-        graph = GraphBuilder()
-        nodes = []
-        ckpt_node = unet_node = clip_node = vae_node = None
-        clip_out = unet_out = vae_out = None
-        ckpt_info = unet_info = clip_info = vae_info = None
-        # model_info is either a list of dicts, or a list of tuples with dicts inside. Either way, we need to go over each dict, and check the "type" key.
-
-        if isinstance(model_info, list):
-            flattened_info = []
-            for item in model_info:
-                if isinstance(item, tuple):
-                    # Unpack the tuple and add all dictionaries to the flattened list
-                    flattened_info.extend(item)
-                else:
-                    flattened_info.append(item)
-            model_info = flattened_info
-        else:
-            # If model_info is not a list, we need to convert it to a list.
-            model_info = [model_info]
-
-        for idx, item in enumerate(model_info):
-            # Remove the tuple check since we've already flattened the structure
-            key = item["type"]
-            if key == "CKPT":
-                ckpt_info = item
-            elif key == "UNET":
-                unet_info = item
-            elif key == "CLIP":
-                clip_info = item
-            elif key == "VAE":
-                vae_info = item
-
-        if ckpt_info is not None:
-            ckpt_node = add_ckpt_node_from_info(graph, ckpt_info)
-            if ckpt_node is None:
-                raise ValueError("Checkpoint info is missing or invalid.")
-            else:
-                pull_and_update_model_timestamp(ckpt_info["path"], model_type="ckpt")
-
-        # If we have a UNET, load it with the UNETLoader node.
-        if unet_info is not None:
-            unet_node = add_unet_node_from_info(graph, unet_info)
-            if unet_node is None:
-                raise ValueError("UNET info is missing or invalid.")
-            else:
-                pull_and_update_model_timestamp(unet_info["path"], model_type="unet")
-
-        # If we have a CLIP, load it with the appropriate CLIPLoader node.
-        if clip_info is not None:
-            clip_node = add_clip_node_from_info(graph, clip_info)
-            if clip_node is None:
-                raise ValueError("CLIP info is missing or invalid.")
-            else:
-                pull_and_update_model_timestamp(clip_info["path"], model_type="clip")
-
-        # If we have a VAE, load it with the VAELoader node.
-        if vae_info is not None:
-            vae_node = add_vae_node_from_info(graph, vae_info)
-            if vae_node is None:
-                raise ValueError("VAE info is missing or invalid.")
-            else:
-                pull_and_update_model_timestamp(vae_info["path"], model_type="vae")
-
-        # We need to determine which outputs to return from the nodes.
-        # If there's a checkpoint, set all the outputs to use its outputs initially.
-        # Then override with UNET, CLIP, and VAE outputs if they exist.
-        if ckpt_node is not None:
-            nodes.append(ckpt_node)
-            unet_out = ckpt_node.out(0)
-            clip_out = ckpt_node.out(1)
-            vae_out = ckpt_node.out(2)
-
-        if unet_node is not None:
-            nodes.append(unet_node)
-            unet_out = unet_node.out(0)
-
-        if clip_node is not None:
-            nodes.append(clip_node)
-            clip_out = clip_node.out(0)
-
-        if vae_node is not None:
-            nodes.append(vae_node)
-            vae_out = vae_node.out(0)
-        
-        return graph, unet_out, clip_out, vae_out
+    DESCRIPTION = "Load model components."
 
     def load_model(self, model_info, model_shifts=None) -> dict:
-        graph, unet_out, clip_out, vae_out = self.prepare_model_graph(model_info)
+        graph = GraphBuilder()
+        unet_out, clip_out, vae_out = create_model_loader_nodes(graph, model_info)
 
         if model_shifts is not None:
             unet_out = create_model_shift_nodes_v2(graph, unet_out, model_shifts[0])
@@ -356,7 +271,8 @@ class Sage_ModelLoraStackLoader(Sage_LoadModelFromInfo):
 
     def load_model_and_loras(self, model_info, lora_stack=None, model_shifts=None) -> dict:
         keywords = ""
-        graph, exit_unet, exit_clip, exit_vae = self.prepare_model_graph(model_info)
+        graph = GraphBuilder()
+        exit_unet, exit_clip, exit_vae = create_model_loader_nodes(graph, model_info)
         print(f"Model info input: {model_info}")
         print(f"Lora stack input: {lora_stack}")
         print(f"Model shifts input: {model_shifts}")

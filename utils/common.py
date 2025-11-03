@@ -65,7 +65,8 @@ from .helpers_graph import (
     create_model_shift_nodes_v2,
     create_lora_nodes_redux,
     create_lora_nodes_shift_redux,
-    add_lora_stack_node
+    add_lora_stack_node,
+    create_model_loader_nodes
 )
 
 # LoRA utilities
@@ -141,7 +142,7 @@ __all__ = [
     # Graph utilities
     'add_ckpt_node_from_info', 'add_unet_node_from_info', 'add_clip_node_from_info', 'add_vae_node_from_info',
     'create_lora_nodes_redux', 'create_lora_nodes_shift_redux', 'create_model_shift_nodes_v2',
-    'add_lora_stack_node',
+    'add_lora_stack_node', 'create_model_loader_nodes',
 
     # LoRA utilities
     'get_lora_keywords', 'get_lora_stack_keywords', 'add_lora_to_stack',

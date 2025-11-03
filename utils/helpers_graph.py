@@ -1,7 +1,8 @@
 from comfy_execution.graph_utils import GraphBuilder
 from .helpers import (
     get_path_without_base,
-    get_file_extension
+    get_file_extension,
+    pull_and_update_model_timestamp
     )
 
 import logging
@@ -93,7 +94,72 @@ def add_vae_node_from_info(graph: GraphBuilder, vae_info):
         vae_node = graph.node("VAELoader", vae_name=vae_fixed_name)
     return vae_node
 
-# Write one fucntion that combines all three variations of LoRA node creation.
+def flatten_model_info(model_info):
+    """Flatten model_info to a list of dictionaries."""
+    if isinstance(model_info, list):
+        flattened_info = []
+        for item in model_info:
+            if isinstance(item, tuple):
+                # Unpack the tuple and add all dictionaries to the flattened list
+                flattened_info.extend(item)
+            else:
+                flattened_info.append(item)
+    else:
+        # If model_info is not a list, we need to convert it to a list.
+        flattened_info = [model_info]
+    return flattened_info
+
+def create_model_loader_nodes(graph: GraphBuilder, model_info):
+    ckpt_node = unet_node = clip_node = vae_node = None
+    unet_out = clip_out = vae_out = None
+    model_present = {"CKPT": None, "UNET": None, "CLIP": None, "VAE": None}
+
+    # model_info is either a list of dicts, or a list of tuples with dicts inside. Either way, we need to go over each dict, and check the "type" key.
+    model_info = flatten_model_info(model_info)
+
+    for idx, item in enumerate(model_info):
+        model_present[item["type"]] = item
+
+    if model_present["CKPT"] is not None:
+        ckpt_node = add_ckpt_node_from_info(graph, model_present["CKPT"])
+        if ckpt_node is None:
+            raise ValueError("Checkpoint info is missing or invalid.")
+        else:
+            pull_and_update_model_timestamp(model_present["CKPT"]["path"], model_type="ckpt")
+            unet_out = ckpt_node.out(0)
+            clip_out = ckpt_node.out(1)
+            vae_out = ckpt_node.out(2)
+
+    # If we have a UNET, load it with the UNETLoader node.
+    if model_present["UNET"] is not None:
+        unet_node = add_unet_node_from_info(graph, model_present["UNET"])
+
+        if unet_node is None:
+            raise ValueError("UNET info is missing or invalid.")
+        else:
+            pull_and_update_model_timestamp(model_present["UNET"]["path"], model_type="unet")
+        unet_out = unet_node.out(0)
+
+    # If we have a CLIP, load it with the appropriate CLIPLoader node.
+    if model_present["CLIP"] is not None:
+        clip_node = add_clip_node_from_info(graph, model_present["CLIP"])
+        if clip_node is None:
+            raise ValueError("CLIP info is missing or invalid.")
+        else:
+            pull_and_update_model_timestamp(model_present["CLIP"]["path"], model_type="clip")
+            clip_out = clip_node.out(0)
+
+    # If we have a VAE, load it with the VAELoader node.
+    if model_present["VAE"] is not None:
+        vae_node = add_vae_node_from_info(graph, model_present["VAE"])
+        if vae_node is None:
+            raise ValueError("VAE info is missing or invalid.")
+        else:
+            pull_and_update_model_timestamp(model_present["VAE"]["path"], model_type="vae")
+            vae_out = vae_node.out(0)
+    return unet_out, clip_out, vae_out
+
+# Write one function that combines all three variations of LoRA node creation.
 def create_lora_nodes_redux(graph: GraphBuilder, unet_in, clip_in=None, lora_stack=None):
     exit_unet = unet_in
     exit_clip = clip_in
