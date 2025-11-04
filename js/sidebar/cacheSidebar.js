@@ -19,7 +19,7 @@ import {
 } from "../shared/errorHandler.js";
 
 // Import decomposed tab modules
-import { createModelsTab } from "./modelsTab.js";
+// import { createModelsTab } from "./modelsTab.js";
 import { createModelsTabV2 } from "./modelsTabV2.js";
 import { createFilesTab } from "./filesTab.js";
 import { createCivitaiSearchTab } from "./civitaiSearchTab.js";
@@ -55,8 +55,7 @@ import { api } from '../../../../scripts/api.js';
 // Import performance timing utilities for telemetry persistence
 import { startTimer, endTimer, javascriptTimer } from "../shared/performanceTimer.js";
 
-// Feature flag for Models Tab V2 (set to true to use new implementation)
-const USE_MODELS_TAB_V2 = true;
+// Always use Models Tab V2
 
 // Track the current sidebar element for reloading
 let currentSidebarElement = null;
@@ -429,7 +428,7 @@ export function createCacheSidebar(el) {
     
     // Create tab content factories for lazy loading
     const tabContentFactories = {
-        models: USE_MODELS_TAB_V2 ? createModelsTabV2 : createModelsTab,
+        models: createModelsTabV2,
         notes: createFilesTab,
         civitai: createCivitaiSearchTab,
         gallery: createImageGalleryTab,
