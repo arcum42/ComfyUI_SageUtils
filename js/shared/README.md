@@ -405,3 +405,14 @@ When adding new shared functionality:
 - **UI Consistency**: Use cacheUI.js for new interface elements
 
 This shared directory represents the foundation of the SageUtils extension, providing robust, reusable infrastructure that ensures consistent behavior, error handling, and user experience across all components of the system.
+
+### Recently Added Modules
+
+- `datasetTextGeneration.js`: UI factory that builds the LLM generation panel (preset selector, append/overwrite mode, actions). Consumed by `datasetTextManager.js` to keep the main editor lean and maintainable.
+- `datasetTextBatchOps.js`: UI factory for batch operations (create missing text files, prepend/append text, find/replace) with callbacks for actions. Used by `datasetTextManager.js` to reduce size and improve reuse.
+- `datasetTextOps.js`: Shared operational helper(s) for dataset text flows, including `processImagesInCurrentFolder(onItem)` to uniformly iterate images and aggregate counters + errors.
+
+Notes:
+- Both `datasetTextGeneration.js` and `datasetTextBatchOps.js` expose their content inside a collapsible panel via `components/collapsiblePanel.js`.
+- We intentionally use Unicode caret glyphs (▾/▸) in these headers by explicit override of the repository's ASCII-only rule for better visual affordance. Be careful working near these characters; some search tools may not function properly around them.
+- Batch Ops no longer uses a separate "Advanced" toggle; replace options (case sensitive, whole word, regex, dry run) are visible whenever the panel is expanded.

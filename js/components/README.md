@@ -78,6 +78,34 @@ const deleteBtn = createConfigButton('delete', {
 
 **See Also:** `docs/BUTTON_COMPONENT_GUIDE.md` for complete API reference
 
+### collapsiblePanel.js
+
+**Purpose**: Small utility to create a header with a caret toggle and a collapsible content container
+**Complexity**: Low
+
+**Dependencies:**
+- No external dependencies - standalone component
+
+**Key Functions:**
+
+- `createCollapsiblePanel({ titleText, defaultExpanded = true, useUnicodeCarets = false })`
+  - **Parameters**: Title text, optional defaults (expanded state, caret style)
+  - **Returns**: `{ container, header, titleEl, caretEl, contentEl, setExpanded, isExpanded }`
+  - **Features**: Reusable caret+header pattern; toggles any content placed in `contentEl`
+
+**Notes:**
+- When `useUnicodeCarets` is true, Unicode caret glyphs (▾/▸) are used by explicit override of the repository's ASCII-only rule. Some search tools may not work properly around these characters; edit with care.
+
+**Usage Example:**
+
+```javascript
+import { createCollapsiblePanel } from '../components/collapsiblePanel.js';
+
+const section = createCollapsiblePanel({ titleText: 'Advanced Settings', defaultExpanded: false, useUnicodeCarets: true });
+section.contentEl.appendChild(document.createTextNode('Hello world'));
+container.appendChild(section.container);
+```
+
 ### clipboard.js
 
 **Purpose**: Centralized clipboard operations with fallback support  
