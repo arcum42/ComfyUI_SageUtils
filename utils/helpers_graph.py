@@ -225,10 +225,11 @@ def create_freeu_v2_node(graph: GraphBuilder, unet_in, model_shifts):
 
 # Add model shift nodes, which I'm including FreeU v2 in.
 def create_model_shift_nodes(graph, unet_in, model_shifts):
+    exit_node = None
     unet_out = unet_in
     if model_shifts is None:
         logging.info("No model shifts to apply.")
-        return unet_out
+        return exit_node, unet_out
 
     exit_node, unet_out = create_shift_node(graph, unet_out, model_shifts)
     exit_node, unet_out = create_freeu_v2_node(graph, unet_out, model_shifts)
