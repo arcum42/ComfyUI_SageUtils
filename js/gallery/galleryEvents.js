@@ -1535,9 +1535,18 @@ async function showImageInfoFromPath(imagePath) {
 
 /**
  * Browse and load custom folder
+ * @param {Object} context - Context object containing callbacks and utilities
+ * @param {Function} context.renderImageGrid - Callback to render image grid
+ * @param {HTMLSelectElement} context.folderDropdown - Folder dropdown element
+ * @param {Function} context.populateFolderDropdown - Function to populate dropdown
  */
-export async function browseCustomFolder(renderImageGrid) {
+export async function browseCustomFolder(context) {
     try {
+        // Support both old signature (just renderImageGrid) and new signature (context object)
+        const renderImageGrid = typeof context === 'function' ? context : context.renderImageGrid;
+        const folderDropdown = context.folderDropdown || document.querySelector('#gallery-folder-selector');
+        const populateFolderDropdown = context.populateFolderDropdown;
+        
         console.log('Gallery: Opening folder browser...');
         
         // Show the modern folder browser dialog
@@ -1571,32 +1580,57 @@ export async function browseCustomFolder(renderImageGrid) {
                 return;
             }
             
-            // Add to folder selector if it's a valid custom folder
-            const folderDropdown = document.querySelector('#gallery-folder-dropdown');
-            if (folderDropdown) {
-                // Remove any existing custom options to avoid duplicates
-                const existingCustomOptions = Array.from(folderDropdown.options).filter(opt => 
-                    opt.textContent.startsWith('Custom:')
-                );
-                existingCustomOptions.forEach(opt => opt.remove());
-                
-                const customOption = document.createElement('option');
-                customOption.value = 'custom';
-                customOption.textContent = `Custom: ${folderPath}`;
-                folderDropdown.appendChild(customOption);
-                
-                // Select the new folder
-                folderDropdown.value = 'custom';
-            }
-            
-            // Update state
-            actions.selectFolder('custom');
+            // Update state first
+            const customValue = `custom:${folderPath}`;
+            actions.selectFolder(customValue);
             actions.setCurrentPath(folderPath);
             actions.setImages(images);
             actions.setFolders(folders);
             
+            // Update dropdown to include the new custom folder
+            if (folderDropdown) {
+                if (populateFolderDropdown) {
+                    // Use the provided function to repopulate the dropdown
+                    populateFolderDropdown(folderDropdown, folderPath);
+                    folderDropdown.value = customValue;
+                } else {
+                    // Fallback: manually update if function not available
+                    // Check if option already exists
+                    let optionExists = false;
+                    for (let i = 0; i < folderDropdown.options.length; i++) {
+                        if (folderDropdown.options[i].value === customValue) {
+                            optionExists = true;
+                            break;
+                        }
+                    }
+                    
+                    if (!optionExists) {
+                        // Add new option before the browse option
+                        const browseOption = Array.from(folderDropdown.options).find(opt => opt.value === 'browse');
+                        const newOption = document.createElement('option');
+                        newOption.value = customValue;
+                        
+                        // Create a display name for the path
+                        const parts = folderPath.split('/').filter(p => p.length > 0);
+                        const folderName = parts[parts.length - 1] || 'root';
+                        newOption.textContent = `📁 ${folderName} (${folderPath})`;
+                        newOption.dataset.customPath = folderPath;
+                        
+                        if (browseOption) {
+                            folderDropdown.insertBefore(newOption, browseOption.previousSibling);
+                        } else {
+                            folderDropdown.appendChild(newOption);
+                        }
+                    }
+                    
+                    folderDropdown.value = customValue;
+                }
+            }
+            
             // Render images
-            renderImageGrid(images, folders).catch(console.error);
+            if (renderImageGrid) {
+                renderImageGrid(images, folders).catch(console.error);
+            }
             
             console.log(`Gallery: Loaded ${images.length} images and ${folders.length} folders from custom folder: ${folderPath}`);
             

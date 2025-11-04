@@ -84,11 +84,11 @@ class Sage_LoadImage(ComfyNodeABC):
                 # ComfyUI, why are you like this?
                 # INPUT_TYPES is called multiple times during workflow loading, so cache the results for 20 seconds to avoid rescanning the input directory repeatedly.
                 input_files = cls.input_cache
-                logging.info("Last called within 20 seconds. Using cached input files.")
-            else:
-                logging.info("Grabbing input files for Sage_LoadImage node...")
-        else:
-            logging.info("Grabbing input files for Sage_LoadImage node...")
+                # logging.info("Last called within 20 seconds. Using cached input files.")
+            #else:
+                # logging.info("Grabbing input files for Sage_LoadImage node...")
+        #else:
+            # logging.info("Grabbing input files for Sage_LoadImage node...")
 
         if not input_files:
             input_files = get_files_in_dir(

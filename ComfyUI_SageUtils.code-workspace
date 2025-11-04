@@ -57,6 +57,7 @@
 			}
 		],
 		"lineCountExplorer.selectedPreset": "llm-context",
-		"lineCountExplorer.indicatorSymbolSet": "Colored Circles"
+		"lineCountExplorer.indicatorSymbolSet": "Colored Circles",
+		"lineCountExplorer.enabled": true
 	}
 }

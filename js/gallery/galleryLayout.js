@@ -10,6 +10,113 @@ import { createThumbnailGrid } from "./gallery.js";
 import { selectors } from "../shared/stateManager.js";
 
 /**
+ * Helper function to get folder favorites from localStorage
+ * @returns {Array} Array of favorite folder paths
+ */
+function getFolderFavorites() {
+    try {
+        const stored = localStorage.getItem('sageutils_folder_favorites');
+        if (stored) {
+            const favorites = JSON.parse(stored);
+            return Array.isArray(favorites) ? favorites : [];
+        }
+    } catch (error) {
+        console.error('Error loading folder favorites:', error);
+    }
+    return [];
+}
+
+/**
+ * Helper function to get a display name for a custom folder path
+ * @param {string} path - Full folder path
+ * @returns {string} Display name for the folder
+ */
+function getCustomFolderDisplayName(path) {
+    // Handle null, undefined, or non-string values
+    if (!path || typeof path !== 'string') return 'Custom Folder';
+    
+    // Get the last part of the path as the folder name
+    const parts = path.split('/').filter(p => p.length > 0);
+    const folderName = parts[parts.length - 1] || 'root';
+    
+    // Truncate path if too long, showing start and end
+    if (path.length > 50) {
+        const start = path.substring(0, 20);
+        const end = path.substring(path.length - 25);
+        return `📁 ${folderName} (${start}...${end})`;
+    }
+    
+    return `📁 ${folderName} (${path})`;
+}
+
+/**
+ * Populates the folder dropdown with default folders, favorites, and browse option
+ * @param {HTMLSelectElement} dropdown - The dropdown element to populate
+ * @param {string|null} currentCustomPath - Current custom folder path if any
+ */
+export function populateFolderDropdown(dropdown, currentCustomPath = null) {
+    // Clear existing options
+    dropdown.innerHTML = '';
+    
+    // Default folder options
+    const defaultOptions = [
+        { value: 'notes', text: '📝 Notes Folder' },
+        { value: 'input', text: '📥 Input Folder' },
+        { value: 'output', text: '📤 Output Folder' }
+    ];
+    
+    defaultOptions.forEach(option => {
+        const opt = document.createElement('option');
+        opt.value = option.value;
+        opt.textContent = option.text;
+        dropdown.appendChild(opt);
+    });
+    
+    // Add separator if we have custom folders
+    const favorites = getFolderFavorites();
+    // Ensure currentCustomPath is a string or null
+    const validCustomPath = (currentCustomPath && typeof currentCustomPath === 'string') ? currentCustomPath : null;
+    const hasCustomFolders = favorites.length > 0 || validCustomPath;
+    
+    if (hasCustomFolders) {
+        const separator = document.createElement('option');
+        separator.disabled = true;
+        separator.textContent = '──────────';
+        dropdown.appendChild(separator);
+    }
+    
+    // Add current custom path if it exists and isn't in favorites
+    if (validCustomPath && !favorites.includes(validCustomPath)) {
+        const opt = document.createElement('option');
+        opt.value = `custom:${validCustomPath}`;
+        opt.textContent = getCustomFolderDisplayName(validCustomPath);
+        opt.dataset.customPath = validCustomPath;
+        dropdown.appendChild(opt);
+    }
+    
+    // Add favorite folders - filter out invalid entries
+    favorites.filter(favPath => favPath && typeof favPath === 'string').forEach(favPath => {
+        const opt = document.createElement('option');
+        opt.value = `custom:${favPath}`;
+        opt.textContent = getCustomFolderDisplayName(favPath);
+        opt.dataset.customPath = favPath;
+        dropdown.appendChild(opt);
+    });
+    
+    // Add separator before browse option
+    const separator2 = document.createElement('option');
+    separator2.disabled = true;
+    separator2.textContent = '──────────';
+    dropdown.appendChild(separator2);
+    
+    // Add browse option at the end
+    const browseOpt = document.createElement('option');
+    browseOpt.value = 'browse';
+    browseOpt.textContent = '📁 Browse Custom Folder...';
+    dropdown.appendChild(browseOpt);
+}
+
+/**
  * Creates the Gallery tab header section with status display
  * @returns {HTMLElement} Header element with status display
  */
@@ -70,41 +177,15 @@ export function createFolderSelectorAndControls() {
         cursor: pointer;
     `;
     
-    // Default folder options
-    const defaultOptions = [
-        { value: 'notes', text: '📝 Notes Folder', icon: '📝' },
-        { value: 'input', text: '📥 Input Folder', icon: '📥' },
-        { value: 'output', text: '📤 Output Folder', icon: '📤' },
-        { value: 'custom', text: '📁 Browse Custom Folder...', icon: '📁' }
-    ];
-    
-    defaultOptions.forEach(option => {
-        const optionElement = document.createElement('option');
-        optionElement.value = option.value;
-        optionElement.textContent = option.text;
-        folderDropdown.appendChild(optionElement);
-    });
+    // Populate dropdown with current state
+    const currentPath = selectors.currentPath();
+    populateFolderDropdown(folderDropdown, currentPath);
     
     // Set default selection to notes
     folderDropdown.value = 'notes';
-    
-    const browseButton = document.createElement('button');
-    browseButton.textContent = 'Browse...';
-    browseButton.style.cssText = `
-        background: #2196F3;
-        color: white;
-        border: none;
-        padding: 6px 12px;
-        border-radius: 4px;
-        cursor: pointer;
-        font-size: 12px;
-        margin-top: 8px;
-        display: none;
-    `;
 
     folderSection.appendChild(folderHeader);
     folderSection.appendChild(folderDropdown);
-    folderSection.appendChild(browseButton);
 
     // Add controls to the same section
     // Sort controls
@@ -327,9 +408,25 @@ export function createFolderSelectorAndControls() {
     const savedSearch = selectors.gallerySearchQuery();
     const savedViewMode = selectors.galleryViewMode();
     const savedThumbnailSize = selectors.thumbnailSize();
+    const savedCurrentPath = selectors.currentPath();
     
+    // Handle custom folder restoration
     if (savedFolder) {
-        folderDropdown.value = savedFolder;
+        // Check if it's a custom folder path
+        if (savedFolder.startsWith('custom:')) {
+            // Extract the path from the value
+            const customPath = savedFolder.substring(7);
+            // Update dropdown with the current custom path
+            populateFolderDropdown(folderDropdown, customPath);
+            folderDropdown.value = savedFolder;
+        } else if (savedCurrentPath && savedFolder === 'custom') {
+            // Legacy format: folder is 'custom' and path is in currentPath
+            populateFolderDropdown(folderDropdown, savedCurrentPath);
+            folderDropdown.value = `custom:${savedCurrentPath}`;
+        } else {
+            // Standard folder (notes, input, output)
+            folderDropdown.value = savedFolder;
+        }
     }
     
     if (savedSort) {
@@ -361,6 +458,7 @@ export function createFolderSelectorAndControls() {
     
     console.debug('[GalleryTab] Restored gallery values from state:', {
         folder: savedFolder,
+        currentPath: savedCurrentPath,
         sort: savedSort,
         search: savedSearch,
         viewMode: savedViewMode,
@@ -372,7 +470,6 @@ export function createFolderSelectorAndControls() {
         folderSection,
         folderHeader,
         folderDropdown,
-        browseButton,
         // Controls components
         searchContainer,
         searchInput,

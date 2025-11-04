@@ -43,7 +43,8 @@ import {
     createFolderSelectorAndControls,
     createWrappedThumbnailGrid,
     createMetadataPanel,
-    assembleGalleryTabLayout
+    assembleGalleryTabLayout,
+    populateFolderDropdown
 } from "../gallery/galleryLayout.js";
 
 // Import dataset text management
@@ -898,31 +899,46 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
 
     // Set up event listeners
     folderAndControls.folderDropdown.addEventListener('change', (e) => {
-        const selectedFolder = e.target.value;
-        actions.selectFolder(selectedFolder);
+        const selectedValue = e.target.value;
         
-        if (selectedFolder === 'custom') {
-            const currentPath = selectors.currentPath();
-            if (currentPath && currentPath !== '') {
-                // We have a previously browsed custom folder, load it
-                folderAndControls.browseButton.style.display = 'block';
-                loadImagesWrapper('custom', currentPath);
-                setStatus(`Loading custom folder: ${currentPath}`);
-            } else {
-                // No custom path set, user needs to browse
-                folderAndControls.browseButton.style.display = 'block';
-                setStatus('Please click Browse to select a custom folder');
+        if (selectedValue === 'browse') {
+            // User selected the browse option - show folder browser
+            const renderGridWithCallback = (images, folders) => renderImageGrid(images, folders, loadImagesWrapper);
+            
+            // Pass the dropdown and populate function to browseCustomFolder
+            const browseContext = {
+                renderImageGrid: renderGridWithCallback,
+                folderDropdown: folderAndControls.folderDropdown,
+                populateFolderDropdown
+            };
+            
+            browseCustomFolder(browseContext);
+            
+            // After browse dialog closes, the dropdown will be updated by browseCustomFolder
+            // For now, keep the previous selection
+            const savedFolder = selectors.selectedFolder();
+            if (savedFolder) {
+                setTimeout(() => {
+                    e.target.value = savedFolder;
+                }, 100);
             }
+        } else if (selectedValue.startsWith('custom:')) {
+            // User selected a custom folder from the list
+            const customPath = selectedValue.substring(7); // Remove 'custom:' prefix
+            
+            // Update state
+            actions.selectFolder(selectedValue);
+            actions.setCurrentPath(customPath);
+            
+            // Load the custom folder
+            loadImagesWrapper('custom', customPath);
+            setStatus(`Loading custom folder: ${customPath}`);
         } else {
-            folderAndControls.browseButton.style.display = 'none';
-            loadImagesWrapper(selectedFolder);
+            // Standard folder (notes, input, output)
+            actions.selectFolder(selectedValue);
+            actions.setCurrentPath(''); // Clear custom path for standard folders
+            loadImagesWrapper(selectedValue);
         }
-    });
-
-    folderAndControls.browseButton.addEventListener('click', () => {
-        // Create wrapper that provides the callback to renderImageGrid
-        const renderGridWithCallback = (images, folders) => renderImageGrid(images, folders, loadImagesWrapper);
-        browseCustomFolder(renderGridWithCallback);
     });
 
     folderAndControls.searchInput.addEventListener('input', (e) => {
@@ -1139,6 +1155,7 @@ export function createImageGalleryTab(container) {
         toggleViewMode,
         handleDatasetText,
         showCombinedImageTextEditor,
+        populateFolderDropdown,
         datasetTextManager: {
             editDatasetText,
             createDatasetText,
@@ -1169,27 +1186,50 @@ export function createImageGalleryTab(container) {
         try {
             // Get saved folder and ensure dropdown is synced
             const savedFolder = selectors.selectedFolder() || 'notes';
-            folderAndControls.folderDropdown.value = savedFolder;
+            const savedPath = selectors.currentPath();
             
-            // Prefer cached data for the selected folder (ignore background-preloaded "notes")
-                const globalCacheKey = `galleryImages:${savedFolder}`;
-                const cachedData = DataCache.get(globalCacheKey);
+            // Handle different folder types
+            let folderToLoad = savedFolder;
+            let customPath = null;
             
-                if (cachedData && cachedData.images && cachedData.images.length > 0) {
+            if (savedFolder.startsWith('custom:')) {
+                // New format: folder value contains the custom path
+                customPath = savedFolder.substring(7);
+                folderToLoad = 'custom';
+                folderAndControls.folderDropdown.value = savedFolder;
+            } else if (savedFolder === 'custom' && savedPath) {
+                // Legacy format: folder is 'custom' and path is in currentPath
+                customPath = savedPath;
+                folderToLoad = 'custom';
+                // Update to new format
+                const newValue = `custom:${customPath}`;
+                actions.selectFolder(newValue);
+                folderAndControls.folderDropdown.value = newValue;
+            } else {
+                // Standard folder (notes, input, output)
+                folderAndControls.folderDropdown.value = savedFolder;
+            }
+            
+            // Check for cached data
+            const globalCacheKey = customPath 
+                ? `galleryImages:custom:${customPath}` 
+                : `galleryImages:${savedFolder}`;
+            const cachedData = DataCache.get(globalCacheKey);
+            
+            if (cachedData && cachedData.images && cachedData.images.length > 0) {
                 if (debugGallery) console.log('Gallery: Images already preloaded, rendering existing data');
-                    const existingFolders = cachedData.folders || [];
+                const existingFolders = cachedData.folders || [];
                 if (eventHandlers && eventHandlers.renderImageGrid) {
-                        eventHandlers.renderImageGrid(cachedData.images, existingFolders);
+                    eventHandlers.renderImageGrid(cachedData.images, existingFolders);
                 }
                 return;
             }
             
             // Don't auto-load custom folders without a path
-            if (savedFolder === 'custom') {
-                const savedPath = selectors.currentPath();
-                if (!savedPath || savedPath.trim() === '') {
+            if (folderToLoad === 'custom') {
+                if (!customPath || customPath.trim() === '') {
                     if (debugGallery) console.log('Gallery: Skipping auto-load of custom folder without path. Defaulting to notes.');
-                    actions.setSelectedFolder('notes');
+                    actions.selectFolder('notes');
                     folderAndControls.folderDropdown.value = 'notes';
                     if (eventHandlers && eventHandlers.loadImagesFromFolder) {
                         eventHandlers.loadImagesFromFolder('notes');
@@ -1198,12 +1238,12 @@ export function createImageGalleryTab(container) {
                 }
                 // If we have a valid path, proceed with custom folder
                 if (eventHandlers && eventHandlers.loadImagesFromFolder) {
-                    eventHandlers.loadImagesFromFolder(savedFolder, savedPath);
+                    eventHandlers.loadImagesFromFolder(folderToLoad, customPath);
                 }
             } else {
                 // Standard folder (notes, input, output)
                 if (eventHandlers && eventHandlers.loadImagesFromFolder) {
-                    eventHandlers.loadImagesFromFolder(savedFolder);
+                    eventHandlers.loadImagesFromFolder(folderToLoad);
                 } else {
                     console.warn('Gallery event handlers not available for auto-initialization');
                 }
