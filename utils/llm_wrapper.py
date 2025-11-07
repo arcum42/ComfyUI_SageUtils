@@ -841,7 +841,7 @@ def init_ollama():
         custom_url = get_setting("custom_ollama_url", "http://localhost:11434")
         if custom_url and custom_url.strip():
             ollama_client = ollama.Client(host=custom_url)
-            logging.info(f"Ollama client initialized with custom URL: {custom_url}")
+            logging.info(f"Ollama client initialized with custom URL.")
         else:
             ollama_client = ollama.Client()
             logging.info("Ollama client initialized with default URL")
@@ -876,7 +876,7 @@ def init_lmstudio():
         
         if custom_url and custom_url.strip():
             lm_client = lms.get_default_client(custom_url)
-            logging.info(f"LM Studio client configured with custom URL: {custom_url}")
+            logging.info(f"LM Studio client configured with custom URL.")
         else:
             logging.info("LM Studio using default configuration.")
         
