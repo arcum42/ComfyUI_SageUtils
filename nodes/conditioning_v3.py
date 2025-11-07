@@ -18,6 +18,7 @@ from ..utils.constants import LUMINA2_SYSTEM_PROMPT, LUMINA2_SYSTEM_PROMPT_TIP
 # Import specific utilities instead of wildcard import
 from ..utils import condition_text, clean_text, clean_if_needed
 
+from ..utils.constants import LUMINA2_SYSTEM_PROMPT, LUMINA2_SYSTEM_PROMPT_TIP
 import torch
 
 #Sage_ConditioningZeroOut
@@ -130,24 +131,6 @@ class Sage_DualCLIPTextEncode(io.ComfyNode):
         return io.NodeOutput(pos_cond, neg_cond, pos or "", neg or "")
 
 class Sage_DualCLIPTextEncodeLumina2(io.ComfyNode):
-    SYSTEM_PROMPT = {
-        "superior": (
-            "You are an assistant designed to generate superior images with the superior "
-            "degree of image-text alignment based on textual prompts or user prompts."
-        ),
-        "alignment": (
-            "You are an assistant designed to generate high-quality images with the "
-            "highest degree of image-text alignment based on textual prompts."
-        )
-    }
-    SYSTEM_PROMPT_TIP = (
-        "Lumina2 provide two types of system prompts: "
-        "Superior: You are an assistant designed to generate superior images with the superior "
-        "degree of image-text alignment based on textual prompts or user prompts. "
-        "Alignment: You are an assistant designed to generate high-quality images with the highest "
-        "degree of image-text alignment based on textual prompts."
-    )
-
     @classmethod
     def define_schema(cls):
         return io.Schema(
@@ -157,7 +140,7 @@ class Sage_DualCLIPTextEncodeLumina2(io.ComfyNode):
             category="Sage Utils/clip",
             inputs=[
                 io.Clip.Input(id="clip", display_name="clip", tooltip="The CLIP model used for encoding the text."),
-                io.Combo.Input(id="system_prompt", display_name="system_prompt", options=list(LUMINA2_SYSTEM_PROMPT.keys()), default="superior", tooltip=cls.SYSTEM_PROMPT_TIP),
+                io.Combo.Input(id="system_prompt", display_name="system_prompt", options=list(LUMINA2_SYSTEM_PROMPT.keys()), default="superior", tooltip=LUMINA2_SYSTEM_PROMPT_TIP),
                 io.Boolean.Input(id="clean", display_name="clean", default=True, tooltip="Clean up the text, getting rid of extra spaces, commas, etc."),
                 io.String.Input(id="pos", display_name="pos", optional=True, force_input=True, multiline=True, dynamic_prompts=True, tooltip="The positive prompt's text."),
                 io.String.Input(id="neg", display_name="neg", optional=True, force_input=True, multiline=True, dynamic_prompts=True, tooltip="The negative prompt's text."),
@@ -179,7 +162,7 @@ class Sage_DualCLIPTextEncodeLumina2(io.ComfyNode):
         neg = kwargs.get("neg", "")
 
         pbar = ProgressBar(2)
-        sys_prompt = cls.SYSTEM_PROMPT[system_prompt]
+        sys_prompt = LUMINA2_SYSTEM_PROMPT[system_prompt]
         pos = f'{sys_prompt} <Prompt Start> {pos}' if pos is not None else None
         neg = f'{sys_prompt} <Prompt Start> {neg}' if neg is not None else None
         pos = clean_if_needed(pos, clean)

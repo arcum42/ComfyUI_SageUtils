@@ -316,6 +316,10 @@ def pull_metadata(file_paths, timestamp = True, force_all = False, pbar = None, 
     metadata_days_recheck = 7
     
     cache.load()
+    cache.backup_counter += 1
+    if cache.backup_counter >= cache.num_of_backups_to_keep:
+        cache.prune_all_backups()
+        cache.backup_counter = 0
     
     if isinstance(file_paths, str):
         file_paths = [file_paths]

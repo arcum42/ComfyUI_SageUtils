@@ -14,6 +14,7 @@ from ..utils import condition_text, clean_text, clean_if_needed
 import torch
 
 from comfy.utils import ProgressBar
+from ..utils.constants import LUMINA2_SYSTEM_PROMPT, LUMINA2_SYSTEM_PROMPT_TIP
 
 class Sage_ConditioningZeroOut(ComfyNodeABC):
     @classmethod
@@ -104,30 +105,12 @@ class Sage_DualCLIPTextEncode(ComfyNodeABC):
         )
 
 class Sage_DualCLIPTextEncodeLumina2(ComfyNodeABC):
-    SYSTEM_PROMPT = {
-        "superior": (
-            "You are an assistant designed to generate superior images with the superior "
-            "degree of image-text alignment based on textual prompts or user prompts."
-        ),
-        "alignment": (
-            "You are an assistant designed to generate high-quality images with the "
-            "highest degree of image-text alignment based on textual prompts."
-        )
-    }
-    SYSTEM_PROMPT_TIP = (
-        "Lumina2 provide two types of system prompts: "
-        "Superior: You are an assistant designed to generate superior images with the superior "
-        "degree of image-text alignment based on textual prompts or user prompts. "
-        "Alignment: You are an assistant designed to generate high-quality images with the highest "
-        "degree of image-text alignment based on textual prompts."
-    )
-
     @classmethod
     def INPUT_TYPES(cls) -> InputTypeDict:
         return {
             "required": {
                 "clip": (IO.CLIP, {"tooltip": "The CLIP model used for encoding the text."}),
-                "system_prompt": (IO.STRING, {"tooltip": cls.SYSTEM_PROMPT_TIP}),
+                "system_prompt": (IO.COMBO, {"tooltip": LUMINA2_SYSTEM_PROMPT_TIP, "options": list(LUMINA2_SYSTEM_PROMPT.keys()), "default": "superior"}),
                 "clean": (IO.BOOLEAN, {"tooltip": "Clean up the text, getting rid of extra spaces, commas, etc."}),
             },
             "optional": {
@@ -147,7 +130,7 @@ class Sage_DualCLIPTextEncodeLumina2(ComfyNodeABC):
 
     def encode(self, clip, system_prompt, clean, pos=None, neg=None) -> tuple:
         pbar = ProgressBar(2)
-        sys_prompt = self.SYSTEM_PROMPT[system_prompt]
+        sys_prompt = LUMINA2_SYSTEM_PROMPT[system_prompt]
         pos = f'{sys_prompt} <Prompt Start> {pos}' if pos is not None else None
         neg = f'{sys_prompt} <Prompt Start> {neg}' if neg is not None else None
         pos = clean_if_needed(pos, clean)

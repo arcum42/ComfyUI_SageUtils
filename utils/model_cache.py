@@ -56,10 +56,12 @@ class SageCache:
         self.last_hash: Dict[str, str] = {}
         self.last_info: Dict[str, Any] = {}
         self.last_ollama_models: Dict[str, Any] = {}
+        self.num_of_backups_to_keep = 7
+        self.backup_counter = 0
 
-        self.prune_all_backups_on_init()
+        self.prune_all_backups()
 
-    def prune_all_backups_on_init(self) -> None:
+    def prune_all_backups(self) -> None:
         """Prune all backup files for known prefixes on initialization, printing only once."""
         logging.info("Pruning old backups for all known prefixes...")
         prefixes = [
@@ -107,8 +109,8 @@ class SageCache:
             if current_hash and in_civitai:
                 self.info[current_hash] = val
 
-    def prune_old_backups(self, prefix: str, max_backups: int = 7) -> None:
-        """Prune old backup files, keeping only the most recent max_backups by creation time, and deduplicate by file content."""
+    def prune_old_backups(self, prefix: str) -> None:
+        """Prune old backup files, keeping only the most recent <num_of_backups_to_keep> by creation time, and deduplicate by file content."""
         backups = []
         for f in path_manager.backup_path.iterdir():
             if f.is_file() and f.name.startswith(prefix) and f.suffix == ".json":
@@ -134,9 +136,9 @@ class SageCache:
             except Exception:
                 continue
         deduped_backups.sort(reverse=True)
-        keep = deduped_backups[:max_backups]
+        keep = deduped_backups[:self.num_of_backups_to_keep]
         keep_files = set(f for _, f in keep)
-        for _, f in deduped_backups[max_backups:]:
+        for _, f in deduped_backups[self.num_of_backups_to_keep:]:
             try:
                 f.unlink(missing_ok=True)
             except Exception:

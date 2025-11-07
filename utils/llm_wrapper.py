@@ -11,6 +11,9 @@ try:
     import ollama
     OLLAMA_AVAILABLE = True
     ollama_client = None  # Will be initialized in init_ollama
+    ollama_logger = logging.getLogger('ollama')
+    ollama_logger.setLevel(logging.ERROR)
+
 except ImportError:
     ollama = None
     OLLAMA_AVAILABLE = False
@@ -20,6 +23,8 @@ except ImportError:
 try:
     import lmstudio as lms
     LMSTUDIO_AVAILABLE = True
+    lms_logger = logging.getLogger('lmstudio')
+    lms_logger.setLevel(logging.ERROR)
 except ImportError:
     lms = None
     LMSTUDIO_AVAILABLE = False
