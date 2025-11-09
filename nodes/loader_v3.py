@@ -31,6 +31,30 @@ from comfy_execution.graph_utils import GraphBuilder
 import folder_paths
 import logging
 
+"""
+    class Sage_NodeTest(io.ComfyNode):
+    @classmethod
+    def define_schema(cls):
+        return io.Schema(
+            node_id="Sage_NodeTest",
+            display_name="Node Test",
+            description="A template for how to make a v3 node.",
+            category="Sage Utils/test",
+            inputs=[
+                io.Clip.Input(id="clip", display_name="clip", tooltip="The CLIP model used for encoding.")
+            ],
+            outputs=[
+                io.Conditioning.Output(id="conditioning", display_name="conditioning", tooltip="A conditioning containing all zeros.")
+            ]
+        )
+
+    @classmethod
+    def execute(cls, **kwargs) -> NodeOutput:
+        clip = kwargs.get("clip")
+        conditioning = torch.zeros((1, 77, 768))  # Example zeroed conditioning
+
+        return io.NodeOutput([conditioning])
+"""
 # Nodes to implement
 # Sage_UNETLoaderFromInfo
 # Sage_ClipLoaderFromInfo

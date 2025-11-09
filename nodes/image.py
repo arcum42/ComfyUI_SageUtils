@@ -28,6 +28,7 @@ import comfy.cli_args
 from ..utils.common import get_files_in_dir
 import datetime
 import logging
+from ..utils.constants import QUICK_ASPECT_RATIOS
 
 class Sage_EmptyLatentImagePassthrough(ComfyNodeABC):
     def __init__(self):
@@ -79,16 +80,11 @@ class Sage_LoadImage(ComfyNodeABC):
     @classmethod
     def INPUT_TYPES(cls) -> InputTypeDict:
         input_files = []
-        if hasattr(cls, 'input_cache') and cls.input_cache is not None:
-            if hasattr(cls, 'input_cache_creation_time') and (datetime.datetime.now() - cls.input_cache_creation_time).total_seconds() < 20:
-                # ComfyUI, why are you like this?
-                # INPUT_TYPES is called multiple times during workflow loading, so cache the results for 20 seconds to avoid rescanning the input directory repeatedly.
+        # INPUT_TYPES is called multiple times during workflow loading, 
+        # so cache the results for 20 seconds to avoid rescanning the input directory repeatedly.
+        if hasattr(cls, 'input_cache') and hasattr(cls, 'input_cache_creation_time') and cls.input_cache is not None:
+            if (datetime.datetime.now() - cls.input_cache_creation_time).total_seconds() < 20:
                 input_files = cls.input_cache
-                # logging.info("Last called within 20 seconds. Using cached input files.")
-            #else:
-                # logging.info("Grabbing input files for Sage_LoadImage node...")
-        #else:
-            # logging.info("Grabbing input files for Sage_LoadImage node...")
 
         if not input_files:
             input_files = get_files_in_dir(
@@ -294,19 +290,6 @@ class Sage_GuessResolutionByRatio(ComfyNodeABC):
     DESCRIPTION = "Based on the input width and height, guess a resolution that matches one of the common aspect ratios. The output is rounded to the nearest multiple of 64."
 
     def guess_resolution(self, width: int, height: int) -> tuple[int, int]:
-        aspect_ratios = {
-            "1:1": (1024, 1024),
-            "5:12": (512, 1216),
-            "9:16": (720, 1280),
-            "10:16": (640, 1024),
-            "5:7": (1280, 1792),
-            "2:3": (768, 1152),
-            "3:4": (768, 1024),
-            "4:7": (768, 1344),
-            "7:9": (896, 1152),
-            "8:10": (1024, 1280),
-            "13:19": (832, 1216)
-        }
         # Calculate the aspect ratio of the input dimensions, and pick dimensions that are closest to it.
         landscape = width > height
         if landscape:
@@ -315,7 +298,7 @@ class Sage_GuessResolutionByRatio(ComfyNodeABC):
         input_aspect_ratio = width / height
         closest_ratio = None
         closest_diff = float('inf')
-        for ratio, (w, h) in aspect_ratios.items():
+        for ratio, (w, h) in QUICK_ASPECT_RATIOS.items():
             ratio_aspect = w / h
             diff = abs(input_aspect_ratio - ratio_aspect)
             if diff < closest_diff:
@@ -338,25 +321,11 @@ class Sage_GuessResolutionByRatio(ComfyNodeABC):
 class Sage_QuickResPicker(ComfyNodeABC):
     @classmethod
     def INPUT_TYPES(cls) -> InputTypeDict:
-        aspect_ratios = [
-            "1:1", # Square - 1024 x 1024
-            "5:12", # Portrait - 512 x 1216
-            "9:16", # Portrait - 720 x 1280
-            "10:16", # Portrait - 640 x 1024
-            "5:7", # Portrait - 1280 x 1792
-            "2:3", # Portrait - 768 x 1152
-            "3:4", # Portrait - 768 x 1024
-            "4:7", # Portrait - 768 x 1344
-            "7:9", # Portrait - 896 x 1152
-            "8:10", # Portrait - 1024 x 1280
-            "13:19" # Portrait - 832 x 1216
-            ]
-        orientations = ["Portrait", "Landscape"]
 
         return {
             "required": {
-                "aspect_ratio": (IO.COMBO, {"options": aspect_ratios}),
-                "orientation": (IO.COMBO, {"options": orientations}),
+                "aspect_ratio": (IO.COMBO, {"options": list(QUICK_ASPECT_RATIOS.keys())}),
+                "orientation": (IO.COMBO, {"options": ["Portrait", "Landscape"]}),
                 "multiplier": (IO.FLOAT, {"default": 1.0, "min": 0.1, "max": 10.0, "step": 0.1, "round": 0.001})
             }
         }
@@ -369,24 +338,11 @@ class Sage_QuickResPicker(ComfyNodeABC):
     DESCRIPTION = "Pick a resolution from a list of common aspect ratios. The multiplier can be used to scale the resolution up or down, rounded to the nearest unit of 64."
 
     def get_resolution(self, aspect_ratio, orientation, multiplier) -> tuple[int, int]:
-        aspect_ratios = {
-            "1:1": (1024, 1024),
-            "5:12": (512, 1216),
-            "9:16": (720, 1280),
-            "10:16": (640, 1024),
-            "5:7": (1280, 1792),
-            "2:3": (768, 1152),
-            "3:4": (768, 1024),
-            "4:7": (768, 1344),
-            "7:9": (896, 1152),
-            "8:10": (1024, 1280),
-            "13:19": (832, 1216)
-        }
-        if aspect_ratio not in aspect_ratios:
+        if aspect_ratio not in QUICK_ASPECT_RATIOS:
             aspect_ratio = "1:1"  # Default to 1:1 if not found
             logging.info(f"Aspect ratio '{aspect_ratio}' not found, defaulting to 1:1.")
 
-        width, height = aspect_ratios[aspect_ratio]
+        width, height = QUICK_ASPECT_RATIOS[aspect_ratio]
         if orientation == "Landscape":
             width, height = height, width
 

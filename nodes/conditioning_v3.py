@@ -3,29 +3,18 @@
 # See ref_docs/v3_migration.md for info on migrating to v3 nodes.
 
 from __future__ import annotations
-from comfy_api.latest import io, ComfyExtension
 from typing_extensions import override
 
+from comfy_api.latest import io, ComfyExtension
 from comfy.comfy_types.node_typing import ComfyNodeABC, InputTypeDict, IO
-
-
 from comfy_api.latest._io import NodeOutput, Schema
 from comfy_execution.graph_utils import GraphBuilder
-
 from comfy.utils import ProgressBar
-from ..utils.constants import LUMINA2_SYSTEM_PROMPT, LUMINA2_SYSTEM_PROMPT_TIP
 
 # Import specific utilities instead of wildcard import
 from ..utils import condition_text, clean_text, clean_if_needed
-
-from ..utils.constants import LUMINA2_SYSTEM_PROMPT, LUMINA2_SYSTEM_PROMPT_TIP
+from ..utils.constants import LUMINA2_SYSTEM_PROMPT, LUMINA2_SYSTEM_PROMPT_TIP, PROMPT_START
 import torch
-
-#Sage_ConditioningZeroOut
-#Sage_SingleCLIPTextEncode
-#Sage_DualCLIPTextEncode
-#Sage_DualCLIPTextEncodeLumina2
-#Sage_DualCLIPTextEncodeQwen
 
 class Sage_ZeroConditioning(io.ComfyNode):
     @classmethod
@@ -163,8 +152,8 @@ class Sage_DualCLIPTextEncodeLumina2(io.ComfyNode):
 
         pbar = ProgressBar(2)
         sys_prompt = LUMINA2_SYSTEM_PROMPT[system_prompt]
-        pos = f'{sys_prompt} <Prompt Start> {pos}' if pos is not None else None
-        neg = f'{sys_prompt} <Prompt Start> {neg}' if neg is not None else None
+        pos = f'{sys_prompt}{PROMPT_START}{pos}' if pos is not None else None
+        neg = f'{sys_prompt}{PROMPT_START}{neg}' if neg is not None else None
         pos = clean_if_needed(pos, clean)
         neg = clean_if_needed(neg, clean)
         if isinstance(clip, tuple):
@@ -245,5 +234,4 @@ CONDITIONING_NODES = [
     Sage_DualCLIPTextEncode,
     Sage_DualCLIPTextEncodeLumina2,
     Sage_DualCLIPTextEncodeQwen
-    # Add other conditioning nodes here as they are implemented
 ]

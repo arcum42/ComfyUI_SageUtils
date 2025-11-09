@@ -57,3 +57,23 @@ import logging
 # Sage_LMStudioLLMPromptVisionRefine
 
 LLM_NODES = []
+
+"""
+OLLAMA_CLASS_MAPPINGS = {
+    "Sage_OllamaAdvancedOptions": Sage_OllamaAdvancedOptions,
+    "Sage_OllamaLLMPromptText": Sage_OllamaLLMPromptText,
+    "Sage_OllamaLLMPromptVision": Sage_OllamaLLMPromptVision,
+    "Sage_OllamaLLMPromptVisionRefine": Sage_OllamaLLMPromptVisionRefine
+}
+
+LMSTUDIO_CLASS_MAPPINGS = {
+    "Sage_LMStudioLLMPromptVision": Sage_LMStudioLLMPromptVision,
+    "Sage_LMStudioLLMPromptText": Sage_LMStudioLLMPromptText,
+    "Sage_LMStudioLLMPromptVisionRefine": Sage_LMStudioLLMPromptVisionRefine
+}
+
+LLM_CLASS_MAPPINGS = {
+    "Sage_ConstructLLMPrompt": Sage_ConstructLLMPrompt,
+    "Sage_ConstructLLMPromptExtra": Sage_ConstructLLMPromptExtra
+}
+"""

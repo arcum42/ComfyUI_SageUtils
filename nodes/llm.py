@@ -21,19 +21,7 @@ from ..utils.performance_fix import (
     get_cached_lmstudio_vision_models_for_input_types
 )
 
-# Attempt to import ollama, if available. Set a flag if it is not available.
-try:
-    import ollama
-    OLLAMA_AVAILABLE = True
-except ImportError:
-    OLLAMA_AVAILABLE = False
-
-# Default vision prompt for LLMs.
-DEFAULT_VISION_PROMPT = "Write a detailed description for this image. Use precise, unambiguous language. Avoid vague or general terms. This is going to be used as input for an AI image generator, so do not include anything other than the description, and do not break things into sections or use markdown."
-
-# Default text prompt for LLMs.
-DEFAULT_TEXT_PROMPT = "Write a detailed and coherent description of an image based on the provided list of tags."
-
+from ..utils.constants import DEFAULT_VISION_PROMPT, DEFAULT_TEXT_PROMPT
 import logging
 
 # Nodes to construct prompts for LLMs, including extra instructions and advanced options.
