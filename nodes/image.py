@@ -239,7 +239,7 @@ class Sage_SaveImageWithMetadata(ComfyNodeABC):
                     elif save_text == "Extra to Text":
                         f.write(f"{extra_metadata}")
                     elif save_text == "All to Text":
-                        f.write(f"{final_metadata}")
+                        f.write(f"{param_metadata}\n{extra_metadata}")
             results.append(
                 {"filename": file, "subfolder": subfolder, "type": self.type}
             )
