@@ -130,6 +130,13 @@ When a model is selected, action buttons appear below the info panel:
 - **Copy Hash** - Copy SHA256 hash
 - **Copy Path** - Copy full file path
 
+#### Trigger Words (Keywords)
+
+When the model shows Trigger Words, you'll see two quick actions next to the header:
+
+- Copy — Copies all trigger words to your clipboard
+- Append to Prompt — Appends the trigger words to the end of the positive prompt in the Prompt Builder tab (and switches to it)
+
 ---
 
 ## Collection Actions

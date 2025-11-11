@@ -3,8 +3,10 @@
  * Handles detailed model information display with images and metadata
  */
 
-import { selectors } from "../shared/stateManager.js";
-import { extractCivitaiInfo } from "../shared/civitai.js";
+import { selectors } from '../shared/stateManager.js';
+import { extractCivitaiInfo } from '../shared/civitai.js';
+import { copyToClipboard } from './clipboard.js';
+import { sendTextToPromptBuilder, showNotification } from '../shared/crossTabMessaging.js';
 
 /**
  * Find all versions of the same model (including current version and undownloaded versions from Civitai)
@@ -373,13 +375,19 @@ export async function createDetailedInfoDisplay(hash, info, showNsfw = false) {
         `);
     }
 
-    // Trigger words
+    // Trigger words (keywords)
     if (enhancedInfo.trainedWords && enhancedInfo.trainedWords.length > 0) {
         const triggers = enhancedInfo.trainedWords.join(', ');
         sections.push(`
-            <div style="margin-bottom: 12px;">
-                <strong style="color: #E91E63;">Trigger Words:</strong><br>
-                <div style="color: #F8BBD9; background: #2a1a2a; padding: 6px; border-radius: 4px; margin-top: 5px; font-family: monospace;">
+            <div class="trigger-words-block" style="margin-bottom: 12px;">
+                <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+                    <strong style="color: #E91E63;">Trigger Words:</strong>
+                    <div class="trigger-words-actions" style="display: flex; gap: 6px;">
+                        <button type="button" class="trigger-copy-btn" style="padding: 2px 6px; font-size: 11px; border: 1px solid #555; background: #2a2a2a; color: #ddd; border-radius: 3px; cursor: pointer;">Copy</button>
+                        <button type="button" class="trigger-append-btn" style="padding: 2px 6px; font-size: 11px; border: 1px solid #555; background: #2a2a2a; color: #ddd; border-radius: 3px; cursor: pointer;">Append to Prompt</button>
+                    </div>
+                </div>
+                <div class="trigger-words-text" style="color: #F8BBD9; background: #2a1a2a; padding: 6px; border-radius: 4px; margin-top: 5px; font-family: monospace;">
                     ${escapeHtml(triggers)}
                 </div>
             </div>
@@ -641,6 +649,38 @@ export async function createDetailedInfoDisplay(hash, info, showNsfw = false) {
         } catch (error) {
             console.error('Error creating image gallery:', error);
         }
+    }
+
+    // Wire up trigger word actions if present
+    try {
+        const copyBtn = container.querySelector('.trigger-copy-btn');
+        const appendBtn = container.querySelector('.trigger-append-btn');
+        const textEl = container.querySelector('.trigger-words-text');
+
+        if (copyBtn && appendBtn && textEl) {
+            const triggersText = (textEl.textContent || '').trim();
+
+            copyBtn.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                const ok = await copyToClipboard(triggersText);
+                if (ok) {
+                    showNotification('Keywords copied to clipboard', 'success', { duration: 2000, source: 'models-tab' });
+                } else {
+                    showNotification('Failed to copy keywords', 'error', { duration: 2500, source: 'models-tab' });
+                }
+            });
+
+            appendBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (triggersText) {
+                    // Append to Prompt Builder's positive prompt
+                    sendTextToPromptBuilder(triggersText, { source: 'models-tab', autoSwitch: true, append: true });
+                    showNotification('Keywords appended to Prompt Builder', 'success', { duration: 2000, source: 'models-tab' });
+                }
+            });
+        }
+    } catch (err) {
+        console.warn('Failed to initialize trigger word actions:', err);
     }
 
     return container;
