@@ -463,7 +463,7 @@ export const promptGenerationComponent = {
         const section = document.createElement('div');
         section.className = 'results-section';
 
-        const header = document.createElement('div');
+    const header = document.createElement('div');
         header.className = 'results-header';
 
         const title = document.createElement('h4');
@@ -474,8 +474,23 @@ export const promptGenerationComponent = {
         this.elements.loadingIndicator.className = 'loading-indicator hidden';
         this.elements.loadingIndicator.innerHTML = '<div class="spinner"></div> Generating...';
 
-        header.appendChild(title);
-        header.appendChild(this.elements.loadingIndicator);
+    // Header right-side controls container
+    const headerControls = document.createElement('div');
+    headerControls.className = 'results-header-controls';
+
+    // Clear-all button in results header
+    const headerClearBtn = document.createElement('button');
+    headerClearBtn.className = 'results-clear-button secondary-button';
+    headerClearBtn.textContent = 'Clear All';
+    headerClearBtn.title = 'Clear all generated prompts';
+    headerClearBtn.setAttribute('aria-label', 'Clear all generated prompts');
+    headerClearBtn.addEventListener('click', () => this.clearResults());
+
+    headerControls.appendChild(this.elements.loadingIndicator);
+    headerControls.appendChild(headerClearBtn);
+
+    header.appendChild(title);
+    header.appendChild(headerControls);
 
         this.elements.resultsContainer = document.createElement('div');
         this.elements.resultsContainer.className = 'results-container';
@@ -554,9 +569,16 @@ export const promptGenerationComponent = {
      * Clear all results
      */
     clearResults() {
+        const existing = selectors.promptResults();
+        if (!existing || existing.length === 0) {
+            return; // Nothing to clear
+        }
+        if (!window.confirm('Clear all generated prompts? This cannot be undone.')) {
+            return;
+        }
         actions.clearPromptResults();
         this.renderResults();
-        this.showMessage('Results cleared', 'info');
+        this.showMessage('All generated prompts cleared', 'info');
     },
 
     /**
@@ -659,6 +681,28 @@ export const promptGenerationComponent = {
             this.loadResult(result);
         });
         headerActions.appendChild(loadBtn);
+
+        // Delete (close) button
+        const deleteBtn = document.createElement('button');
+        deleteBtn.textContent = 'X'; // ASCII per project guidelines
+        deleteBtn.className = 'delete-result-button';
+        deleteBtn.title = 'Remove this generated prompt';
+        deleteBtn.setAttribute('aria-label', 'Remove generated prompt');
+        deleteBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (!window.confirm('Remove this generated prompt from the list?')) {
+                return;
+            }
+            const currentResults = [...(selectors.promptResults() || [])];
+            // Guard index bounds
+            if (index >= 0 && index < currentResults.length) {
+                currentResults.splice(index, 1);
+                actions.setPromptResults(currentResults);
+                this.renderResults();
+                this.showMessage('Prompt removed', 'info');
+            }
+        });
+        headerActions.appendChild(deleteBtn);
 
         header.appendChild(title);
         header.appendChild(headerActions);
@@ -1080,6 +1124,26 @@ export const promptGenerationComponent = {
                 margin-bottom: 16px;
             }
 
+            .results-header-controls {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+            }
+
+            .results-clear-button {
+                padding: 6px 10px;
+                border: 1px solid var(--border-color, #444);
+                border-radius: 4px;
+                background: var(--bg-color-secondary, #2a2a2a);
+                color: var(--fg-color, #ffffff);
+                cursor: pointer;
+                font-size: 12px;
+            }
+            .results-clear-button:hover {
+                background: var(--hover-color, #3a3a3a);
+                color: #ff6464;
+            }
+
             .results-title {
                 margin: 0;
                 font-size: 16px;
@@ -1152,6 +1216,20 @@ export const promptGenerationComponent = {
             .result-header-actions {
                 display: flex;
                 gap: 8px;
+            }
+
+            .delete-result-button {
+                padding: 4px 8px;
+                border: 1px solid var(--border-color, #444);
+                border-radius: 4px;
+                background: var(--bg-color, #1a1a1a);
+                color: var(--fg-color, #ffffff);
+                font-size: 12px;
+                cursor: pointer;
+            }
+            .delete-result-button:hover {
+                background: var(--hover-color, #3a3a3a);
+                color: #ff6464;
             }
 
             .result-actions {
