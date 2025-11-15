@@ -59,6 +59,18 @@ class SageCache:
         self.num_of_backups_to_keep = 7
         self.backup_counter = 0
 
+        # Batch mode attributes for deferred saves/backups
+        self.batch_mode = False
+        self.pending_changes = 0
+        self.batch_start_changes = 0
+        self.save_count_since_backup = 0
+        self.last_backup_time = datetime.datetime.now()
+        
+        # Configuration thresholds
+        self.save_threshold = 10  # Save after N changes in batch mode (safety)
+        self.backup_threshold = 50  # Backup after N saves
+        self.backup_interval_seconds = 300  # 5 minutes between backups
+
         self.prune_all_backups()
 
     def prune_all_backups(self) -> None:
@@ -286,7 +298,11 @@ class SageCache:
             logging.error(f"Unable to load cache: {e}")
 
     def save(self) -> None:
-        """Save cache to disk."""
+        """Save cache to disk. Skipped if batch_mode is True."""
+        # Skip save if in batch mode
+        if self.batch_mode:
+            return
+        
         saved = False
         if self.hash and self.hash != self.last_hash:
             self._save_json(self.hash_path, self.hash, "hash cache")
@@ -301,7 +317,100 @@ class SageCache:
             self.last_ollama_models = copy.deepcopy(self.ollama_models)
             saved = True
         if saved:
+            self.save_count_since_backup += 1
             logging.info("Saved cache to disk.")
+    
+    def begin_batch(self) -> None:
+        """
+        Start a batch operation - suppress saves and backups until end_batch() is called.
+        Use this when performing bulk operations to avoid excessive I/O.
+        
+        Example:
+            cache.begin_batch()
+            try:
+                for model in models:
+                    process_model(model)
+            finally:
+                cache.end_batch(force_save=True)
+        """
+        if self.batch_mode:
+            logging.warning("Batch mode already active - ignoring begin_batch() call")
+            return
+        
+        self.batch_mode = True
+        self.batch_start_changes = self.pending_changes
+        logging.info("Batch mode started - saves and backups deferred")
+    
+    def end_batch(self, force_save: bool = True) -> None:
+        """
+        End a batch operation - perform a single save and create backup if needed.
+        
+        Args:
+            force_save: If True, save even if no changes detected. Default True for safety.
+        """
+        if not self.batch_mode:
+            logging.warning("Batch mode not active - ignoring end_batch() call")
+            return
+        
+        self.batch_mode = False
+        changes_in_batch = self.pending_changes - self.batch_start_changes
+        
+        if force_save or changes_in_batch > 0:
+            # Perform the deferred save
+            saved = False
+            if self.hash and self.hash != self.last_hash:
+                self._save_json(self.hash_path, self.hash, "hash cache")
+                self.last_hash = copy.deepcopy(self.hash)
+                saved = True
+            if self.info and self.info != self.last_info:
+                self._save_json(self.info_path, self.info, "info cache")
+                self.last_info = copy.deepcopy(self.info)
+                saved = True
+            if self.ollama_models and self.ollama_models != self.last_ollama_models:
+                self._save_json(self.ollama_models_path, self.ollama_models, "Ollama models cache")
+                self.last_ollama_models = copy.deepcopy(self.ollama_models)
+                saved = True
+            
+            if saved:
+                self.save_count_since_backup += 1
+                logging.info(f"Batch save complete ({changes_in_batch} changes)")
+                
+                # Check if backup is needed
+                self._create_backups_if_needed()
+        else:
+            logging.info("Batch mode ended with no changes - no save needed")
+    
+    def _create_backups_if_needed(self) -> None:
+        """
+        Create backups based on thresholds (count and time).
+        Only creates backup if:
+        - save_count_since_backup >= backup_threshold OR
+        - time since last backup >= backup_interval_seconds
+        """
+        current_time = datetime.datetime.now()
+        time_since_backup = (current_time - self.last_backup_time).total_seconds()
+        
+        should_backup = (
+            self.save_count_since_backup >= self.backup_threshold or
+            time_since_backup >= self.backup_interval_seconds
+        )
+        
+        if should_backup:
+            current_date = current_time.strftime("%Y-%m-%dT%H-%M-%S")
+            
+            # Create backups
+            if self.hash:
+                self.backup_json("sage_cache_hash", self.hash, current_date)
+            if self.info:
+                self.backup_json("sage_cache_info", self.info, current_date)
+            if self.ollama_models:
+                self.backup_json("sage_cache_ollama", self.ollama_models, current_date)
+            
+            # Reset counters
+            self.save_count_since_backup = 0
+            self.last_backup_time = current_time
+            
+            logging.info(f"Backups created (saves: {self.save_count_since_backup}, time: {time_since_backup:.0f}s)")
 
     def add_entry(self, file_path: str, file_hash: str) -> None:
         self.hash[file_path] = file_hash

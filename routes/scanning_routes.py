@@ -277,6 +277,9 @@ try:
         
         return len(_route_list)
 
+    # Configuration constant for checkpoint interval
+    SCAN_CHECKPOINT_INTERVAL = 100  # Save every N files during scan
+
     async def background_scan_task(folders, force, include_cached):
         """Background task that performs the actual scanning with progress updates"""
         try:
@@ -323,9 +326,10 @@ try:
             # Start manual scanning with progress tracking
             scan_progress_store['status'] = 'scanning_files'
             
-            # Dynamic import of helpers and constants
+            # Dynamic import of helpers, constants, and cache
             from ..utils.helpers import pull_metadata
             from ..utils.constants import MODEL_FILE_EXTENSIONS
+            from ..utils.model_cache import cache
             
             # First pass: count all model files
             model_list = []
@@ -343,32 +347,48 @@ try:
             
             logging.info(f"Found {len(model_list)} models to process")
             
-            # Process files with progress updates
-            processed_count = 0
-            for file_path in model_list:
-                if not scan_progress_store['active']:  # Check if cancelled
-                    logging.info(f"Scan cancelled, stopping at {processed_count}/{len(model_list)} files")
-                    break
+            # Enable batch mode for reduced I/O during bulk operations
+            cache.begin_batch()
+            
+            try:
+                # Process files with progress updates and checkpoint saves
+                processed_count = 0
+                for file_path in model_list:
+                    if not scan_progress_store['active']:  # Check if cancelled
+                        logging.info(f"Scan cancelled, stopping at {processed_count}/{len(model_list)} files")
+                        break
+                        
+                    file_name = os.path.basename(file_path)
+                    scan_progress_store['current_file'] = file_name
+                    scan_progress_store['current'] = processed_count
                     
-                file_name = os.path.basename(file_path)
-                scan_progress_store['current_file'] = file_name
-                scan_progress_store['current'] = processed_count
+                    # Debug progress update
+                    if processed_count % 10 == 0:  # Log every 10 files
+                        logging.debug(f"Progress: {processed_count}/{len(model_list)} files processed ({(processed_count/len(model_list)*100):.1f}%)")
+                    
+                    try:
+                        # Process single file without updating timestamp
+                        pull_metadata(file_path, timestamp=False, force_all=force)
+                        processed_count += 1
+                    except Exception as file_error:
+                        logging.error(f"Error processing {file_path}: {file_error}")
+                        # Continue with other files
+                        processed_count += 1
+                    
+                    # Checkpoint save: Save every N files to prevent data loss
+                    if processed_count % SCAN_CHECKPOINT_INTERVAL == 0:
+                        cache.end_batch(force_save=True)
+                        scan_progress_store['current_file'] = f"Checkpoint save ({processed_count} files)..."
+                        logging.info(f"Checkpoint save at {processed_count}/{len(model_list)} files")
+                        cache.begin_batch()
+                    
+                    # Allow other async tasks to run (important for progress updates)
+                    await asyncio.sleep(0.01)
                 
-                # Debug progress update
-                if processed_count % 10 == 0:  # Log every 10 files
-                    logging.debug(f"Progress: {processed_count}/{len(model_list)} files processed ({(processed_count/len(model_list)*100):.1f}%)")
-                
-                try:
-                    # Process single file without updating timestamp
-                    pull_metadata(file_path, timestamp=False, force_all=force)
-                    processed_count += 1
-                except Exception as file_error:
-                    logging.error(f"Error processing {file_path}: {file_error}")
-                    # Continue with other files
-                    processed_count += 1
-                
-                # Allow other async tasks to run (important for progress updates)
-                await asyncio.sleep(0.01)
+            finally:
+                # Always end batch mode and perform final save, even on cancellation or error
+                cache.end_batch(force_save=True)
+                logging.info(f"Final batch save completed")
             
             # Mark scan as complete
             scan_progress_store.update({
