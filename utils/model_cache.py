@@ -70,8 +70,52 @@ class SageCache:
         self.save_threshold = 10  # Save after N changes in batch mode (safety)
         self.backup_threshold = 50  # Backup after N saves
         self.backup_interval_seconds = 300  # 5 minutes between backups
+        
+        # Backup manifest for fast comparison
+        self.backup_manifest_path = path_manager.get_backup_file_path("backup_manifest.json")
+        self.backup_manifest: Dict[str, Dict[str, Any]] = {}
+        self._load_backup_manifest()
 
         self.prune_all_backups()
+
+    def _load_backup_manifest(self) -> None:
+        """Load the backup manifest from disk."""
+        if self.backup_manifest_path.exists():
+            try:
+                with self.backup_manifest_path.open('r') as f:
+                    self.backup_manifest = json.load(f)
+                logging.debug(f"Loaded backup manifest with {len(self.backup_manifest)} entries")
+            except Exception as e:
+                logging.warning(f"Failed to load backup manifest: {e}")
+                self.backup_manifest = {}
+        else:
+            self.backup_manifest = {}
+    
+    def _save_backup_manifest(self) -> None:
+        """Save the backup manifest to disk."""
+        try:
+            with self.backup_manifest_path.open('w') as f:
+                json.dump(self.backup_manifest, f, indent=2)
+        except Exception as e:
+            logging.warning(f"Failed to save backup manifest: {e}")
+    
+    def _update_manifest_for_backup(self, backup_path: pathlib.Path, data: Any) -> None:
+        """Update manifest entry for a backup file."""
+        try:
+            data_json = json.dumps(data, separators=(",", ":"), sort_keys=True)
+            entry_count = len(data) if isinstance(data, dict) else 0
+            file_size = len(data_json)
+            content_hash = hashlib.sha256(data_json.encode("utf-8")).hexdigest()
+            
+            self.backup_manifest[backup_path.name] = {
+                "timestamp": datetime.datetime.now().isoformat(),
+                "entry_count": entry_count,
+                "file_size": file_size,
+                "content_hash": content_hash
+            }
+            self._save_backup_manifest()
+        except Exception as e:
+            logging.warning(f"Failed to update manifest for {backup_path.name}: {e}")
 
     def prune_all_backups(self) -> None:
         """Prune all backup files for known prefixes on initialization, printing only once."""
@@ -122,39 +166,118 @@ class SageCache:
                 self.info[current_hash] = val
 
     def prune_old_backups(self, prefix: str) -> None:
-        """Prune old backup files, keeping only the most recent <num_of_backups_to_keep> by creation time, and deduplicate by file content."""
+        """
+        Prune old backup files with smart deduplication.
+        
+        Strategy:
+        1. Group backups by content hash (exact duplicates)
+        2. For each group, keep only the newest file
+        3. Group remaining backups by entry count (similar backups)
+        4. For similar backups, keep the one with most data
+        5. Keep only num_of_backups_to_keep most recent unique backups
+        """
         backups = []
         for f in path_manager.backup_path.iterdir():
             if f.is_file() and f.name.startswith(prefix) and f.suffix == ".json":
                 try:
                     ctime = f.stat().st_ctime
-                    backups.append((ctime, f))
+                    file_size = f.stat().st_size
+                    backups.append((ctime, file_size, f))
                 except Exception:
                     continue
+        
+        if not backups:
+            return
+        
         backups.sort(reverse=True)  # Newest first
-        # Deduplicate by file content hash
-        hash_to_file = {}
-        deduped_backups = []
-        for ctime, f in backups:
+        
+        # Phase 1: Deduplicate exact duplicates (by content hash)
+        # Keep newest file from each duplicate group
+        hash_to_best = {}
+        for ctime, file_size, f in backups:
             try:
                 with f.open('rb') as file_obj:
                     file_bytes = file_obj.read()
                     file_hash = hashlib.sha256(file_bytes).hexdigest()
-                if file_hash not in hash_to_file:
-                    hash_to_file[file_hash] = (ctime, f)
-                    deduped_backups.append((ctime, f))
+                
+                if file_hash not in hash_to_best:
+                    # First file with this hash, keep it
+                    hash_to_best[file_hash] = (ctime, file_size, f, file_bytes)
                 else:
+                    # Duplicate found, delete it (we keep the newer one already stored)
                     f.unlink(missing_ok=True)
-            except Exception:
+                    if f.name in self.backup_manifest:
+                        del self.backup_manifest[f.name]
+                    logging.debug(f"Deleted duplicate backup: {f.name}")
+            except Exception as e:
+                logging.warning(f"Error processing backup {f.name}: {e}")
                 continue
-        deduped_backups.sort(reverse=True)
-        keep = deduped_backups[:self.num_of_backups_to_keep]
+        
+        # Phase 2: Smart similarity deduplication
+        # Compare backups by entry count, keep the one with most data
+        remaining_backups = []
+        for file_hash, (ctime, file_size, f, file_bytes) in hash_to_best.items():
+            try:
+                data = json.loads(file_bytes.decode('utf-8'))
+                entry_count = len(data) if isinstance(data, dict) else 0
+                remaining_backups.append((ctime, file_size, entry_count, f, file_hash))
+            except Exception as e:
+                logging.warning(f"Error parsing backup {f.name}: {e}")
+                # Keep it anyway, use file size as proxy for entry count
+                remaining_backups.append((ctime, file_size, file_size, f, file_hash))
+        
+        # Sort by entry count (descending) then time (descending)
+        remaining_backups.sort(key=lambda x: (x[2], x[0]), reverse=True)
+        
+        # Phase 3: Group by similar entry counts and keep best from each group
+        # Two backups are "similar" if their entry counts are within 5% of each other
+        similarity_threshold = 0.05
+        unique_backups = []
+        seen_entry_ranges = []
+        
+        for ctime, file_size, entry_count, f, file_hash in remaining_backups:
+            # Check if this backup is similar to any we've already kept
+            is_similar = False
+            for kept_count in seen_entry_ranges:
+                if kept_count == 0 and entry_count == 0:
+                    is_similar = True
+                    break
+                elif kept_count > 0:
+                    ratio = abs(entry_count - kept_count) / kept_count
+                    if ratio <= similarity_threshold:
+                        is_similar = True
+                        break
+            
+            if not is_similar:
+                # This backup is sufficiently different, keep it
+                unique_backups.append((ctime, f))
+                seen_entry_ranges.append(entry_count)
+            else:
+                # Similar to one we already kept, delete it
+                try:
+                    f.unlink(missing_ok=True)
+                    if f.name in self.backup_manifest:
+                        del self.backup_manifest[f.name]
+                    logging.debug(f"Deleted similar backup: {f.name} ({entry_count} entries)")
+                except Exception:
+                    pass
+        
+        # Phase 4: Keep only num_of_backups_to_keep most recent
+        unique_backups.sort(reverse=True)  # Sort by time, newest first
+        keep = unique_backups[:self.num_of_backups_to_keep]
         keep_files = set(f for _, f in keep)
-        for _, f in deduped_backups[self.num_of_backups_to_keep:]:
+        
+        for _, f in unique_backups[self.num_of_backups_to_keep:]:
             try:
                 f.unlink(missing_ok=True)
+                if f.name in self.backup_manifest:
+                    del self.backup_manifest[f.name]
+                logging.debug(f"Deleted old backup (exceeded limit): {f.name}")
             except Exception:
                 pass
+        
+        # Save manifest after pruning
+        self._save_backup_manifest()
 
     def _atomic_write_json(self, path: pathlib.Path, data: Any) -> None:
         """Write JSON data to a file atomically."""
@@ -178,19 +301,59 @@ class SageCache:
                     logging.error(f"Unable to backup error file {path} to {error_backup_path}: {backup_e}")
 
     def backup_json(self, backup_prefix: str, data: Any, current_date: str) -> None:
-        """Backup data to a JSON file atomically, pruning old backups. Skip if identical backup already exists."""
+        """
+        Backup data to a JSON file atomically, with smart deduplication.
+        
+        Strategy:
+        1. Check manifest first for fast comparison (avoids reading files)
+        2. If similar backup exists (within 5% entry count), compare which has more data
+        3. Keep the backup with more entries, delete the smaller one
+        4. Skip if exact duplicate exists
+        """
         data_json = json.dumps(data, separators=(",", ":"), sort_keys=True, indent=4)
         data_hash = hashlib.sha256(data_json.encode("utf-8")).hexdigest()
-        for f in path_manager.backup_path.iterdir():
-            if f.is_file() and f.name.startswith(backup_prefix) and f.suffix == ".json":
-                try:
-                    with f.open("rb") as file_obj:
-                        file_bytes = file_obj.read()
-                        file_hash = hashlib.sha256(file_bytes).hexdigest()
-                    if file_hash == data_hash:
-                        return
-                except Exception:
-                    continue
+        entry_count = len(data) if isinstance(data, dict) else 0
+        
+        # Check manifest first for fast comparison
+        similar_backup = None
+        similar_entry_count = 0
+        
+        for backup_name, manifest_entry in self.backup_manifest.items():
+            if not backup_name.startswith(backup_prefix):
+                continue
+                
+            # Check for exact duplicate
+            if manifest_entry.get("content_hash") == data_hash:
+                logging.debug(f"Skipping backup - exact duplicate exists: {backup_name}")
+                return
+            
+            # Check for similar backup (within 5% entry count)
+            backup_entry_count = manifest_entry.get("entry_count", 0)
+            if entry_count > 0 and backup_entry_count > 0:
+                ratio = abs(entry_count - backup_entry_count) / max(entry_count, backup_entry_count)
+                if ratio <= 0.05:
+                    # Similar backup found
+                    if backup_entry_count > similar_entry_count:
+                        similar_backup = backup_name
+                        similar_entry_count = backup_entry_count
+        
+        # If similar backup exists with more data, skip creating new backup
+        if similar_backup and similar_entry_count >= entry_count:
+            logging.debug(f"Skipping backup - similar backup with more data exists: {similar_backup} ({similar_entry_count} vs {entry_count} entries)")
+            return
+        
+        # If similar backup exists with less data, delete it and create new one
+        if similar_backup and similar_entry_count < entry_count:
+            similar_path = path_manager.get_backup_file_path(similar_backup)
+            try:
+                if similar_path.exists():
+                    similar_path.unlink()
+                    del self.backup_manifest[similar_backup]
+                    logging.info(f"Replaced smaller backup {similar_backup} ({similar_entry_count} entries) with larger backup ({entry_count} entries)")
+            except Exception as e:
+                logging.warning(f"Failed to delete smaller backup {similar_backup}: {e}")
+        
+        # Create new backup
         safe_date = current_date.replace(":", "-")
         backup_path = path_manager.get_backup_file_path(f"{backup_prefix}-{safe_date}.json")
         try:
@@ -201,6 +364,11 @@ class SageCache:
                 os.fsync(tf.fileno())
                 tempname = tf.name
             os.replace(tempname, backup_path)
+            
+            # Update manifest
+            self._update_manifest_for_backup(backup_path, data)
+            
+            logging.debug(f"Created backup: {backup_path.name} ({entry_count} entries)")
         except Exception as e:
             logging.error(f"Unable to backup {backup_prefix} to {backup_path}: {e}")
 
