@@ -321,7 +321,16 @@ class Sage_ReferenceImage(io.ComfyNode):
 
         return io.NodeOutput(conditioning, latent)
 
-IMAGE_NODES = []
+IMAGE_NODES = [
+    Sage_EmptyLatentImagePassthrough,
+    Sage_LoadImage,
+    Sage_SaveImageWithMetadata,
+    Sage_CropImage,
+    Sage_GuessResolutionByRatio,
+    Sage_QuickResPicker,
+    Sage_CubiqImageResize,
+    Sage_ReferenceImage
+]
 
 """ IMAGE_CLASS_MAPPINGS = {
     "Sage_LoadImage": Sage_LoadImage,
