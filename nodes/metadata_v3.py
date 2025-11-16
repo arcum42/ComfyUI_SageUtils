@@ -28,7 +28,47 @@ from ..utils import (
 from ..utils.model_info import collect_resource_hashes, model_name_and_hash_as_str, _get_model_name_from_info, _get_model_hash_from_info
 from ..utils.config_manager import metadata_templates
 
-# Nodes to implement:
-# Sage_ConstructMetadataFlexible
+# ============================================================================
+# PLACEHOLDER NODES - NOT YET FULLY IMPLEMENTED
+# ============================================================================
+# These are placeholder implementations. The inputs/outputs match the original
+# v1 nodes, but the execute methods need proper implementation.
 
-METADATA_NODES = []
+class Sage_ConstructMetadataFlexible(io.ComfyNode):
+    """PLACEHOLDER: Flexible metadata constructor with multiple style options."""
+    @classmethod
+    def define_schema(cls):
+        return io.Schema(
+            node_id="Sage_ConstructMetadataFlexible",
+            display_name="Construct Metadata Flexible",
+            description="PLACEHOLDER: Flexible metadata constructor supporting multiple styles: A1111 Full (with LoRA hashes), A1111 Lite (simplified, only includes models on Civitai), and Simple (No models or LoRAs).",
+            category="Sage Utils/metadata",
+            inputs=[
+                io.Custom("MODEL_INFO").Input("model_info"),
+                io.String.Input("positive_string", default=""),
+                io.String.Input("negative_string", default=""),
+                io.Custom("SAMPLER_INFO").Input("sampler_info"),
+                io.Int.Input("width", default=1024),
+                io.Int.Input("height", default=1024),
+                io.Combo.Input("metadata_style", 
+                             options=["A1111 Full", "A1111 Lite", "Simple"],
+                             default="A1111 Full"),
+                io.Custom("LORA_STACK").Input("lora_stack", optional=True)
+            ],
+            outputs=[
+                io.String.Output("param_metadata")
+            ]
+        )
+    
+    @classmethod
+    def execute(cls, **kwargs):
+        # TODO: Implement full logic from metadata.py
+        # Should collect model info, sampler settings, LoRA info, and format
+        # according to the selected metadata style template
+        return io.NodeOutput("")
+
+# ============================================================================
+
+METADATA_NODES = [
+    Sage_ConstructMetadataFlexible
+]

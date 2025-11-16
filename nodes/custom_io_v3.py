@@ -38,6 +38,7 @@ class ClipInfo(ModelInfo):
     """
     pass
 
+@io.comfytype(io_type="MODEL_SHIFTS")
 class ModelShiftInfo(io.ComfyTypeIO):
     """
     Model info type specifically for model shifting.
@@ -53,7 +54,8 @@ class ModelShiftInfo(io.ComfyTypeIO):
     # "s1": s1,
     # "s2": s2
 
-class LoraStackInfo(io.ComfyTypeIO):
+@io.comfytype(io_type="LORA_STACK")
+class LoraStack(io.ComfyTypeIO):
     """
     Lora stack information type for SageUtils LoraStack nodes.
     Contains metadata about a lora stack without loading the actual lora models.
@@ -61,4 +63,17 @@ class LoraStackInfo(io.ComfyTypeIO):
     Type = tuple  # Lora stack info is stored as a tuple.
     # It contains the lora path, model weight, and clip weight for each lora in the stack.
     # This uses this structure for compatibility with existing LoraStack nodes.
+
+@io.comfytype(io_type="TILING_INFO")
+class TilingInfo(io.ComfyTypeIO):
+    """
+    Tiling information type for KSampler nodes.
+    Contains tile size, overlap, and temporal parameters for tiled decoding.
+    """
+    Type = dict  # Tiling info is stored as a dictionary
+    # Keys are:
+    # "tile_size": int
+    # "overlap": int
+    # "temporal_size": int
+    # "temporal_overlap": int
 

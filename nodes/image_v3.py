@@ -52,8 +52,8 @@ class Sage_EmptyLatentImagePassthrough(io.ComfyNode):
             ],
             outputs=[
                 io.Latent.Output("latent"),
-                io.Int.Output("width"),
-                io.Int.Output("height"),
+                io.Int.Output("out_width"),
+                io.Int.Output("out_height"),
             ]
         )
 
@@ -91,8 +91,8 @@ class Sage_LoadImage(io.ComfyNode):
             ],
             outputs=[
                 io.Image.Output("image"),
-                io.Int.Output("width"),
-                io.Int.Output("height"),
+                io.Int.Output("out_width"),
+                io.Int.Output("out_height"),
                 io.String.Output("metadata"),
             ]
         )
@@ -113,11 +113,11 @@ class Sage_SaveImageWithMetadata(io.ComfyNode):
             description="Saves images to disk with embedded metadata.",
             category="Sage Utils/image",
             inputs=[
-                io.List.Input("images", subtype=io.Image, tooltip="The images to save."),
+                io.Image.Input("images", tooltip="The images to save."),
                 io.String.Input("filename_prefix", default="image_", tooltip="The prefix for the saved image filenames."),
-                io.Bool.Input("include_node_metadata", default=True, tooltip="Whether to include node metadata in the saved image."),
-                io.Bool.Input("include_extra_pnginfo_metadata", default=False, tooltip="Whether to include extra PNG info metadata."),
-                io.Bool.Input("save_text", default=False, tooltip="Whether to save accompanying text files with metadata."),
+                io.Boolean.Input("include_node_metadata", default=True, tooltip="Whether to include node metadata in the saved image."),
+                io.Boolean.Input("include_extra_pnginfo_metadata", default=False, tooltip="Whether to include extra PNG info metadata."),
+                io.Boolean.Input("save_text", default=False, tooltip="Whether to save accompanying text files with metadata."),
             ],
             outputs=[]
         )
@@ -149,7 +149,7 @@ class Sage_CropImage(io.ComfyNode):
                 io.Int.Input("bottom", default=0, tooltip="The bottom coordinate for cropping."),
             ],
             outputs=[
-                io.Image.Output("image", tooltip="The cropped image."),
+                io.Image.Output("out_image", tooltip="The cropped image."),
             ]
         )
 
@@ -264,9 +264,9 @@ class Sage_CubiqImageResize(io.ComfyNode):
                 io.Int.Input("multiple_of", default=8, tooltip="Ensure dimensions are multiples of this value."),
             ],
             outputs=[
-                io.Image.Output("image", tooltip="The resized image."),
-                io.Int.Output("width", tooltip="The new width."),
-                io.Int.Output("height", tooltip="The new height."),
+                io.Image.Output("out_image", tooltip="The resized image."),
+                io.Int.Output("out_width", tooltip="The new width."),
+                io.Int.Output("out_height", tooltip="The new height."),
             ]
         )
 
@@ -299,10 +299,10 @@ class Sage_ReferenceImage(io.ComfyNode):
             inputs=[
                 io.Conditioning.Input("conditioning", tooltip="The input conditioning."),
                 io.Image.Input("image", tooltip="The reference image."),
-                io.VAE.Input("vae", tooltip="The VAE model for encoding the image."),
+                io.Vae.Input("vae", tooltip="The VAE model for encoding the image."),
             ],
             outputs=[
-                io.Conditioning.Output("conditioning", tooltip="The output conditioning."),
+                io.Conditioning.Output("out_conditioning", tooltip="The output conditioning."),
                 io.Latent.Output("latent", tooltip="The encoded latent."),
             ]
         )

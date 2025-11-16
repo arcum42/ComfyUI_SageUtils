@@ -18,6 +18,14 @@ from ..utils import (
 
 from dynamicprompts.generators import RandomPromptGenerator
 from dynamicprompts.wildcards.wildcard_manager import WildcardManager
+from ..utils.constants import (
+    LUMINA2_SYSTEM_PROMPTS_V2,
+    PROMPT_START,
+    LUMINA2_SYSTEM_PROMPT_TIP,
+    PONY_V6_RATING,
+    PONY_V7_RATING,
+    PONY_SOURCE
+)
 
 # To implement:
 # Sage_PromptText - Lumina 2 prompt node
@@ -626,6 +634,200 @@ class Sage_TextWeight(io.ComfyNode):
         
         return io.NodeOutput(f"({text}:{weight:.2g}){separator}")
 
+# ============================================================================
+# PLACEHOLDER NODES - NOT YET FULLY IMPLEMENTED
+# ============================================================================
+# These are placeholder implementations. The inputs/outputs match the original
+# v1 nodes, but the execute methods need proper implementation.
+
+class Sage_PromptText(io.ComfyNode):
+    """PLACEHOLDER: Combines a system prompt and a user prompt into a single prompt."""
+    @classmethod
+    def define_schema(cls):
+        return io.Schema(
+            node_id="Sage_PromptText",
+            display_name="Prompt Text (Lumina 2)",
+            description="PLACEHOLDER: Combines a system prompt and a user prompt into a single prompt, with <Prompt Start> between them.",
+            category="Sage Utils/text/specialized",
+            inputs=[
+                io.String.Input("system", force_input=True, multiline=True),
+                io.String.Input("prompt", force_input=True, multiline=True)
+            ],
+            outputs=[
+                io.String.Output("combined_prompt")
+            ]
+        )
+    
+    @classmethod
+    def execute(cls, **kwargs):
+        # TODO: Implement full logic from text.py
+        system = kwargs.get("system", "")
+        prompt = kwargs.get("prompt", "")
+        combined_prompt = f"{system}{PROMPT_START}{prompt}"
+        return io.NodeOutput(combined_prompt)
+
+class Sage_SystemPrompt(io.ComfyNode):
+    """PLACEHOLDER: Picks the system prompt based on the selected option."""
+    @classmethod
+    def define_schema(cls):
+        return io.Schema(
+            node_id="Sage_SystemPrompt",
+            display_name="System Prompt (Lumina 2)",
+            description="PLACEHOLDER: Picks the system prompt based on the selected option.",
+            category="Sage Utils/text/specialized",
+            inputs=[
+                io.Combo.Input("system", options=list(LUMINA2_SYSTEM_PROMPTS_V2.keys()), default="superior", tooltip=LUMINA2_SYSTEM_PROMPT_TIP)
+            ],
+            outputs=[
+                io.String.Output("system_prompt")
+            ]
+        )
+    
+    @classmethod
+    def execute(cls, **kwargs):
+        # TODO: Implement full logic from text.py
+        system = kwargs.get("system", "superior")
+        ret = LUMINA2_SYSTEM_PROMPTS_V2.get(system, "")
+        return io.NodeOutput(ret)
+
+class Sage_PonyStyleCluster(io.ComfyNode):
+    """PLACEHOLDER: Creates a style cluster string for pony prompts."""
+    @classmethod
+    def define_schema(cls):
+        return io.Schema(
+            node_id="Sage_PonyStyleCluster",
+            display_name="Pony Style Cluster",
+            description="PLACEHOLDER: Creates a style cluster string for pony prompts based on the given style cluster number.",
+            category="Sage Utils/text/pony",
+            inputs=[
+                io.Int.Input("style_cluster", default=1, min=1, max=2048, step=1)
+            ],
+            outputs=[
+                io.String.Output("style_cluster_text")
+            ]
+        )
+    
+    @classmethod
+    def execute(cls, **kwargs):
+        # TODO: Implement full logic from text.py
+        style_cluster = kwargs.get("style_cluster", 1)
+        return io.NodeOutput(f"style_cluster_{style_cluster}, ")
+
+class Sage_PonySource(io.ComfyNode):
+    """PLACEHOLDER: Creates a source string for pony prompts."""
+    @classmethod
+    def define_schema(cls):
+        return io.Schema(
+            node_id="Sage_PonySource",
+            display_name="Pony Source",
+            description="PLACEHOLDER: Creates a source string for pony prompts based on the given source.",
+            category="Sage Utils/text/pony",
+            inputs=[
+                io.Combo.Input("source", options=PONY_SOURCE, default="none")
+            ],
+            outputs=[
+                io.String.Output("source_text")
+            ]
+        )
+    
+    @classmethod
+    def execute(cls, **kwargs):
+        # TODO: Implement full logic from text.py
+        source = kwargs.get("source", "none")
+        if source == "none":
+            return io.NodeOutput("")
+        else:
+            return io.NodeOutput(f"source_{source}, ")
+
+class Sage_PonyRatingv7(io.ComfyNode):
+    """PLACEHOLDER: Creates a rating string for pony prompts (v7 style)."""
+    @classmethod
+    def define_schema(cls):
+        return io.Schema(
+            node_id="Sage_PonyRatingv7",
+            display_name="Pony Rating (v7)",
+            description="PLACEHOLDER: Creates a rating string for pony prompts based on the given rating. (v7 style)",
+            category="Sage Utils/text/pony",
+            inputs=[
+                io.Combo.Input("rating", options=PONY_V7_RATING, default="none")
+            ],
+            outputs=[
+                io.String.Output("rating_text")
+            ]
+        )
+    
+    @classmethod
+    def execute(cls, **kwargs):
+        # TODO: Implement full logic from text.py
+        rating = kwargs.get("rating", "none")
+        if rating == "none":
+            return io.NodeOutput("")
+        else:
+            return io.NodeOutput(f"rating_{rating}, ")
+
+class Sage_PonyRatingv6(io.ComfyNode):
+    """PLACEHOLDER: Creates a rating string for pony prompts (v6 style)."""
+    @classmethod
+    def define_schema(cls):
+        return io.Schema(
+            node_id="Sage_PonyRatingv6",
+            display_name="Pony Rating (v6)",
+            description="PLACEHOLDER: Creates a rating string for pony prompts based on the given rating. (v6 style)",
+            category="Sage Utils/text/pony",
+            inputs=[
+                io.Combo.Input("rating", options=PONY_V6_RATING, default="none")
+            ],
+            outputs=[
+                io.String.Output("rating_text")
+            ]
+        )
+    
+    @classmethod
+    def execute(cls, **kwargs):
+        # TODO: Implement full logic from text.py
+        rating = kwargs.get("rating", "none")
+        if rating == "none":
+            return io.NodeOutput("")
+        else:
+            return io.NodeOutput(f"rating_{rating}, ")
+
+class Sage_PonyScore(io.ComfyNode):
+    """PLACEHOLDER: Creates a score string for pony prompts."""
+    @classmethod
+    def define_schema(cls):
+        return io.Schema(
+            node_id="Sage_PonyScore",
+            display_name="Pony Score",
+            description="PLACEHOLDER: Creates a score string for pony prompts based on the given start and end scores.",
+            category="Sage Utils/text/pony",
+            inputs=[
+                io.Int.Input("score_start", default=9, min=0, max=9, step=1),
+                io.Int.Input("score_end", default=4, min=0, max=9, step=1),
+                io.Boolean.Input("up_to", default=False, tooltip="If true, adds '_up' to the score string, except for score_9. (v6 uses up, v7 doesn't)")
+            ],
+            outputs=[
+                io.String.Output("score_text")
+            ]
+        )
+    
+    @classmethod
+    def execute(cls, **kwargs):
+        # TODO: Implement full logic from text.py
+        score_start = kwargs.get("score_start", 9)
+        score_end = kwargs.get("score_end", 4)
+        up_to = kwargs.get("up_to", False)
+        
+        score_range = range(score_start, score_end - 1, -1)
+        score_text = ""
+        for s in score_range:
+            if s == 9:
+                score_text += f"score_{s}, "
+            elif s < 9:
+                score_text += f"score_{s}{'_up' if up_to else ''}, "
+        return io.NodeOutput(score_text)
+
+# ============================================================================
+
 class Sage_HiDreamE1_Instruction(io.ComfyNode):
     @classmethod
     def define_schema(cls):
@@ -683,5 +885,13 @@ TEXT_NODES = [
     Sage_TextSubstitution,
     Sage_TextWeight,
     Sage_HiDreamE1_Instruction,
-    Sage_ViewNotes
+    Sage_ViewNotes,
+    # Placeholder nodes (not fully implemented)
+    Sage_PromptText,
+    Sage_SystemPrompt,
+    Sage_PonyStyleCluster,
+    Sage_PonySource,
+    Sage_PonyRatingv7,
+    Sage_PonyRatingv6,
+    Sage_PonyScore
 ]
