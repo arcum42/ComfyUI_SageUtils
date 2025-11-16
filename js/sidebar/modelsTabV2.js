@@ -506,6 +506,13 @@ async function openEditDialog(modelHash, modelInfo, filePath, onSave) {
                     <span>Mark as Favorite</span>
                 </label>
             </div>
+            
+            <div style="margin-top: 15px;">
+                <label style="display: flex; align-items: center; gap: 8px;">
+                    <input type="checkbox" id="edit-blacklist" ${modelInfo.blacklist ? 'checked' : ''}>
+                    <span>Blacklist (hide from model lists)</span>
+                </label>
+            </div>
         </div>
     `;
     
@@ -527,6 +534,7 @@ async function openEditDialog(modelHash, modelInfo, filePath, onSave) {
             const notes = document.getElementById('edit-notes').value.trim();
             const nsfw = document.getElementById('edit-nsfw').checked;
             const favorite = document.getElementById('edit-favorite').checked;
+            const blacklist = document.getElementById('edit-blacklist').checked;
             
             const triggers = triggerText ? triggerText.split(',').map(t => t.trim()).filter(t => t.length > 0) : [];
             
@@ -538,7 +546,8 @@ async function openEditDialog(modelHash, modelInfo, filePath, onSave) {
                 notes: notes,
                 nsfw: nsfw,
                 favorite: favorite,
-                is_favorite: favorite
+                is_favorite: favorite,
+                blacklist: blacklist
             };
             
             // Update model information
@@ -556,6 +565,15 @@ async function openEditDialog(modelHash, modelInfo, filePath, onSave) {
             }
             
             await updateCacheInfo(modelHash, updatedInfo);
+
+            // Update sidebar state cache so subsequent edits reflect saved changes immediately
+            try {
+                const currentCache = selectors.cacheData() || { hash: {}, info: {} };
+                const newInfo = { ...(currentCache.info || {}), [modelHash]: updatedInfo };
+                actions.setCacheData({ hash: currentCache.hash || {}, info: newInfo });
+            } catch (e) {
+                console.warn('State cache update after save failed (non-fatal):', e);
+            }
             
             dialog.close();
             

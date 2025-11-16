@@ -359,6 +359,11 @@ def pull_metadata(file_paths, timestamp = True, force_all = False, pbar = None, 
                 num_not_pulled += 1
                 pull_json = False
 
+        if file_cache.get('blacklist'):
+            if not force:
+                print(f"File {file_path} is blacklisted (previously not found). Skipping metadata pull.")
+            pull_json = False
+
         # If force, recalculate hash before any API call
         if force:
             print(f"Force flag is set. Recalculating hash for {file_path}.")
@@ -370,17 +375,25 @@ def pull_metadata(file_paths, timestamp = True, force_all = False, pbar = None, 
 
             if 'error' in json:
                 retried = False
+                dead_model = False
+                if 'civitai_error' in json:
+                    if 'Model not found' in json['civitai_error'] or 'No model with id' in json['civitai_error']:
+                        dead_model = True
+
                 # Try fallback with modelId if available
-                if 'modelId' in file_cache:
-                    print(f"Using cached model id {file_cache.get('id', None)}")
-                    json = get_civitai_model_version_json_by_id(file_cache['id'])
-                    retried = True
-                else:
-                    print(f"No cached model id.")
+                if dead_model is False:
+                    if 'modelId' in file_cache:
+                        print(f"Using cached model id {file_cache.get('id', None)}")
+                        json = get_civitai_model_version_json_by_id(file_cache['id'])
+                        retried = True
+                    else:
+                        print(f"No cached model id.")
 
                 if 'error' in json:
                     if retried:
                         print(f"Error: {json['error']}")
+                    if dead_model:
+                        file_cache['blacklist'] = True
                     print(f"Unable to find on civitai.")
                     file_cache['civitai'] = "False"
                     file_cache['civitai_failed_count'] = file_cache.get('civitai_failed_count', 0) + 1

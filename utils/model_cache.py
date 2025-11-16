@@ -339,7 +339,7 @@ class SageCache:
         
         # If similar backup exists with more data, skip creating new backup
         if similar_backup and similar_entry_count >= entry_count:
-            logging.debug(f"Skipping backup - similar backup with more data exists: {similar_backup} ({similar_entry_count} vs {entry_count} entries)")
+            # logging.debug(f"Skipping backup - similar backup with more data exists: {similar_backup} ({similar_entry_count} vs {entry_count} entries)")
             return
         
         # If similar backup exists with less data, delete it and create new one
@@ -349,7 +349,7 @@ class SageCache:
                 if similar_path.exists():
                     similar_path.unlink()
                     del self.backup_manifest[similar_backup]
-                    logging.info(f"Replaced smaller backup {similar_backup} ({similar_entry_count} entries) with larger backup ({entry_count} entries)")
+                    # logging.info(f"Replaced smaller backup {similar_backup} ({similar_entry_count} entries) with larger backup ({entry_count} entries)")
             except Exception as e:
                 logging.warning(f"Failed to delete smaller backup {similar_backup}: {e}")
         

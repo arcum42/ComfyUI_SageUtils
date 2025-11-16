@@ -342,6 +342,26 @@ try:
 
             model_list = list(set(model_list))
             model_list = [str(x) for x in model_list]
+
+            # Exclude blacklisted models unless force is enabled
+            if not force:
+                try:
+                    cache.load()
+                except Exception:
+                    pass
+                filtered = []
+                for fp in model_list:
+                    try:
+                        h = cache.hash.get(fp)
+                        info = cache.info.get(h, {}) if h else {}
+                        if info.get('blacklist', False):
+                            continue
+                    except Exception:
+                        # On any error, keep the item rather than over-filtering
+                        pass
+                    filtered.append(fp)
+                model_list = filtered
+
             scan_progress_store['total'] = len(model_list)
             scan_progress_store['status'] = 'processing_metadata'
             
@@ -367,6 +387,21 @@ try:
                         logging.debug(f"Progress: {processed_count}/{len(model_list)} files processed ({(processed_count/len(model_list)*100):.1f}%)")
                     
                     try:
+                        # If this file has no cached hash, indicate hashing in progress
+                        try:
+                            existing_hash = cache.hash.get(file_path)
+                        except Exception:
+                            existing_hash = None
+                        needs_hashing = (force is True) or (not existing_hash)
+                        if needs_hashing:
+                            # Update status so frontend can log a message
+                            scan_progress_store['status'] = 'hashing'
+                            scan_progress_store['current_file'] = file_name
+                            if force and existing_hash:
+                                logging.info(f"Recalculating hash (forced) for {file_path}")
+                            else:
+                                logging.info(f"Calculating hash for {file_path}")
+
                         # Process single file without updating timestamp
                         pull_metadata(file_path, timestamp=False, force_all=force)
                         processed_count += 1
@@ -382,6 +417,10 @@ try:
                         logging.info(f"Checkpoint save at {processed_count}/{len(model_list)} files")
                         cache.begin_batch()
                     
+                    # Restore general status after any hashing indicator
+                    if scan_progress_store['active']:
+                        scan_progress_store['status'] = 'processing_metadata'
+
                     # Allow other async tasks to run (important for progress updates)
                     await asyncio.sleep(0.01)
                 

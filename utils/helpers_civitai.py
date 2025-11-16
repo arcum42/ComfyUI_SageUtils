@@ -9,18 +9,24 @@ from .model_cache import cache
 
 def _get_civitai_json(url):
     """Helper to fetch JSON from Civitai API with error handling."""
+    r_json = None
+    r_json_error = ""
     try:
         r = requests.get(url)
+        r_json = r.json()
+        r_json_error = r_json.get("error", "")
+        if r_json_error:
+            logging.error(f"Civitai error: {r_json_error}")
         r.raise_for_status()
     except HTTPError as http_err:
         logging.error(f"HTTP error occurred: {http_err}")
-        return {"error": f"HTTP error occurred: {http_err}"}
+        return {"error": f"HTTP error occurred: {http_err}", "civitai_error": r_json_error}
     except Exception as err:
         logging.error(f"Other error occurred: {err}")
-        return {"error": f"Other error occurred: {err}"}
+        return {"error": f"Other error occurred: {err}", "civitai_error": r_json_error}
     else:
         logging.debug(f"Retrieved JSON from {url}")
-        return r.json()
+        return r_json
 
 def get_civitai_model_version_json_by_hash(hash_):
     """Get model version JSON by hash from Civitai API."""

@@ -11,6 +11,7 @@
 
 import { createDialog } from '../components/dialogManager.js';
 import { notifications } from '../shared/notifications.js';
+import { selectors } from '../shared/stateManager.js';
 
 class ModelScanDialog {
     constructor(options = {}) {
@@ -124,7 +125,7 @@ class ModelScanDialog {
         const forceRefreshGroup = this.createCheckboxOption(
             'forceRefresh',
             'Force metadata refresh (ignore cache)',
-            'Check to re-download metadata even if recently cached',
+            'Check to re-download metadata even if recently cached. Blacklisted models are skipped unless forced.',
             false
         );
         section.appendChild(forceRefreshGroup);
@@ -470,7 +471,8 @@ class ModelScanDialog {
             }
 
             const data = await response.json();
-            this.renderFolderList(data.folders || []);
+            this._allFolders = data.folders || [];
+            this.renderFolderList(this._allFolders);
         } catch (error) {
             console.error('Error loading folders:', error);
             this.renderFolderList([], 'Failed to load folders');
@@ -522,6 +524,12 @@ class ModelScanDialog {
             checkbox.addEventListener('change', () => this.updateFolderSummary(folders));
         });
         
+        // Update summary when force toggle changes (exclude blacklisted unless forced)
+        const forceToggle = this.contentArea.querySelector('#forceRefresh');
+        if (forceToggle) {
+            forceToggle.addEventListener('change', () => this.updateFolderSummary(this._allFolders || folders));
+        }
+
         this.updateFolderSummary(folders);
     }
 
@@ -551,7 +559,41 @@ class ModelScanDialog {
             const folderPaths = folder.paths || [folder.path];
             return folderPaths.some(path => selectedFolders.includes(path));
         });
-        const totalFiles = selectedFolderData.reduce((sum, folder) => sum + (folder.count || 0), 0);
+
+        // Compute filtered count using cached hash/info and blacklist flag
+        let totalFiles = 0;
+        try {
+            const force = !!(this.contentArea.querySelector('#forceRefresh')?.checked);
+            const cache = selectors.cacheData() || { hash: {}, info: {} };
+            const filePaths = Object.keys(cache.hash || {});
+
+            // Build a lookup of selected base paths for quick startsWith checks
+            const selectedPaths = new Set(selectedFolders);
+
+            const hasModelExtension = (p) => {
+                const lower = p.toLowerCase();
+                return lower.endsWith('.safetensors') || lower.endsWith('.ckpt') || lower.endsWith('.pt') || lower.endsWith('.bin');
+            };
+
+            for (const fp of filePaths) {
+                if (!hasModelExtension(fp)) continue;
+                // Check if file path is within any selected folder path
+                let inSelected = false;
+                for (const base of selectedPaths) {
+                    if (fp.startsWith(base)) { inSelected = true; break; }
+                }
+                if (!inSelected) continue;
+
+                const h = cache.hash[fp];
+                const info = (cache.info || {})[h] || {};
+                const isBlacklisted = info && info.blacklist === true;
+                if (!force && isBlacklisted) continue; // skip blacklisted unless forced
+                totalFiles += 1;
+            }
+        } catch (e) {
+            // Fallback to server-reported counts if anything goes wrong
+            totalFiles = selectedFolderData.reduce((sum, folder) => sum + (folder.count || 0), 0);
+        }
         
         const summaryElement = this.contentArea.querySelector('#folderSummary');
         const selectedCountElement = this.contentArea.querySelector('#selectedFolderCount');
@@ -720,6 +762,9 @@ class ModelScanDialog {
                             this.addLogEntry('Discovering model folders...', 'info');
                         } else if (progress.status === 'scanning_files') {
                             this.addLogEntry(`Found ${progress.total} files to process`, 'info');
+                        } else if (progress.status === 'hashing' && progress.current_file) {
+                            // Always log when hashing begins as it can take a while
+                            this.addLogEntry(`Calculating hash for ${progress.current_file}...`, 'info');
                         } else if (progress.status === 'processing_metadata' && progress.current_file) {
                             // Only log every 10th file to avoid spam
                             if (progress.current % 10 === 0 || progress.current === progress.total) {
