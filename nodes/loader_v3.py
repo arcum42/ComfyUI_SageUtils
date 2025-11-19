@@ -190,9 +190,9 @@ class Sage_LoraStackLoader(io.ComfyNode):
                 io.Custom("MODEL_SHIFTS").Input("model_shifts", optional=True)
             ],
             outputs=[
-                io.Model.Output("out_model"),
-                io.Clip.Output("out_clip"),
-                io.Custom("LORA_STACK").Output("out_lora_stack"),
+                io.Model.Output("out_model", display_name="model"),
+                io.Clip.Output("out_clip", display_name="clip"),
+                io.Custom("LORA_STACK").Output("out_lora_stack", display_name="lora_stack"),
                 io.String.Output("keywords")
             ]
         )
@@ -224,7 +224,7 @@ class Sage_ModelLoraStackLoader(io.ComfyNode):
                 io.Model.Output("model"),
                 io.Clip.Output("clip"),
                 io.Vae.Output("vae"),
-                io.Custom("LORA_STACK").Output("out_lora_stack"),
+                io.Custom("LORA_STACK").Output("out_lora_stack", display_name="lora_stack"),
                 io.String.Output("keywords")
             ]
         )
@@ -250,8 +250,8 @@ class Sage_UNETLoRALoader(io.ComfyNode):
                 io.Custom("MODEL_SHIFTS").Input("model_shifts", optional=True)
             ],
             outputs=[
-                io.Model.Output("out_model"),
-                io.Custom("LORA_STACK").Output("out_lora_stack"),
+                io.Model.Output("out_model", display_name="model"),
+                io.Custom("LORA_STACK").Output("out_lora_stack", display_name="lora_stack"),
                 io.String.Output("keywords")
             ]
         )

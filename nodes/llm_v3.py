@@ -73,7 +73,7 @@ class Sage_ConstructLLMPrompt(io.ComfyNode):
                 # TODO: Add dynamic boolean inputs for llm_prompts["extra"] options
             ],
             outputs=[
-                io.String.Output("out_prompt")
+                io.String.Output("out_prompt", display_name="prompt")
             ]
         )
     

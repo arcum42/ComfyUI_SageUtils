@@ -13,7 +13,6 @@ from comfy_extras.nodes_images import ImageCrop
 from ..utils import load_image_from_path
 
 import torch
-import torch.nn.functional as F
 import numpy as np
 from PIL import Image
 from PIL.PngImagePlugin import PngInfo
@@ -28,7 +27,9 @@ import comfy.cli_args
 from ..utils.common import get_files_in_dir
 import datetime
 import logging
-from ..utils.constants import QUICK_ASPECT_RATIOS
+from ..utils.constants import QUICK_ASPECT_RATIOS, MAX_RESOLUTION
+
+from ..utils.common import calc_padding, image_manipulate, resize_needed
 
 class Sage_EmptyLatentImagePassthrough(ComfyNodeABC):
     def __init__(self):
@@ -38,8 +39,8 @@ class Sage_EmptyLatentImagePassthrough(ComfyNodeABC):
     def INPUT_TYPES(cls) -> InputTypeDict:
         return {
             "required": {
-                "width": (IO.INT, {"default": 1024, "min": 16, "max": nodes.MAX_RESOLUTION, "step": 8, "tooltip": "The width of the latent images in pixels.", }),
-                "height": (IO.INT, {"default": 1024, "min": 16, "max": nodes.MAX_RESOLUTION, "step": 8, "tooltip": "The height of the latent images in pixels."}),
+                "width": (IO.INT, {"default": 1024, "min": 16, "max": MAX_RESOLUTION, "step": 8, "tooltip": "The width of the latent images in pixels.", }),
+                "height": (IO.INT, {"default": 1024, "min": 16, "max": MAX_RESOLUTION, "step": 8, "tooltip": "The height of the latent images in pixels."}),
                 "batch_size": (IO.INT, { "default": 1, "min": 1, "max": 4096, "tooltip": "The number of latent images in the batch."}),
                 "type": (IO.COMBO, {"default": "4_channel", "options": ["4_channel", "16_channel", "radiance"], "tooltip": "The type of latent to create. 4_channel is for standard latent diffusion models, 16_channel is for SD3 models, and radiance is for Chroma Radiance models."})
             }
@@ -360,8 +361,8 @@ class Sage_CubiqImageResize:
         return {
             "required": {
                 "image": ("IMAGE",),
-                "width": ("INT", { "default": 1024, "min": 0, "max": nodes.MAX_RESOLUTION, "step": 1, }),
-                "height": ("INT", { "default": 1024, "min": 0, "max": nodes.MAX_RESOLUTION, "step": 1, }),
+                "width": ("INT", { "default": 1024, "min": 0, "max": MAX_RESOLUTION, "step": 1, }),
+                "height": ("INT", { "default": 1024, "min": 0, "max": MAX_RESOLUTION, "step": 1, }),
                 "interpolation": (["nearest", "bilinear", "bicubic", "area", "nearest-exact", "lanczos", "bislerp"],),
                 "method": (["stretch", "keep proportion", "fill / crop", "pad"],),
                 "condition": (["always", "downscale if bigger", "upscale if smaller", "if bigger area", "if smaller area"],),
@@ -373,25 +374,6 @@ class Sage_CubiqImageResize:
     RETURN_NAMES = ("IMAGE", "width", "height",)
     FUNCTION = "execute"
     CATEGORY = "Sage Utils/image"
-    
-    def padding(self, width, height, new_width, new_height):
-        """
-        Calculate the padding values for left, right, top, and bottom.
-        """
-        pad_left = (width - new_width) // 2
-        pad_right = width - new_width - pad_left
-        pad_top = (height - new_height) // 2
-        pad_bottom = height - new_height - pad_top
-        return pad_left, pad_right, pad_top, pad_bottom
-    
-    def resize_needed(self, condition, width, height, ow, oh):
-        if "always" in condition \
-            or ("downscale if bigger" == condition and (oh > height or ow > width)) \
-            or ("upscale if smaller" == condition and (oh < height or ow < width)) \
-            or ("bigger area" in condition and (oh * ow > height * width)) \
-            or ("smaller area" in condition and (oh * ow < height * width)):
-            return True
-        return False
 
     def execute(self, image, width, height, method="stretch", interpolation="lanczos", condition="always", multiple_of=64, keep_proportion=False):
         _, oh, ow, _ = image.shape
@@ -407,22 +389,24 @@ class Sage_CubiqImageResize:
             height = height - (height % multiple_of)
 
         if method == 'keep proportion' or method == 'pad':
-            if width == 0 and oh < height:
-                width = nodes.MAX_RESOLUTION
-            elif width == 0 and oh >= height:
-                width = ow
+            if width == 0:
+                if oh < height:
+                    width = MAX_RESOLUTION
+                else:
+                    width = ow
 
-            if height == 0 and ow < width:
-                height = nodes.MAX_RESOLUTION
-            elif height == 0 and ow >= width:
-                height = oh
+            if height == 0:
+                if ow < width:
+                    height = MAX_RESOLUTION
+                else:
+                    height = oh
 
             ratio = min(width / ow, height / oh)
             new_width = round(ow*ratio)
             new_height = round(oh*ratio)
 
             if method == 'pad':
-                pad_left, pad_right, pad_top, pad_bottom = self.padding(width, height, new_width, new_height)
+                pad_left, pad_right, pad_top, pad_bottom = calc_padding(width, height, new_width, new_height)
                 if pad_left > 0 or pad_right > 0 or pad_top > 0 or pad_bottom > 0:
                     padding = True
 
@@ -452,37 +436,13 @@ class Sage_CubiqImageResize:
             width = width if width > 0 else ow
             height = height if height > 0 else oh
 
-        if self.resize_needed(condition, width, height, ow, oh):
-            outputs = image.permute(0,3,1,2)
+        fill = method.startswith('fill')
+        resize = resize_needed(condition, width, height, ow, oh)
 
-            if interpolation == "lanczos":
-                outputs = comfy.utils.lanczos(outputs, width, height)
-            elif interpolation == "bislerp":
-                outputs = comfy.utils.bislerp(outputs, width, height)
-            else:
-                outputs = F.interpolate(outputs, size=(height, width), mode=interpolation)
-
-            if padding:
-                outputs = F.pad(outputs, (pad_left, pad_right, pad_top, pad_bottom), value=0)
-
-            outputs = outputs.permute(0,2,3,1)
-
-            if method.startswith('fill'):
-                if x > 0 or y > 0 or x2 > 0 or y2 > 0:
-                    outputs = outputs[:, y:y2, x:x2, :]
-        else:
-            outputs = image
-
-        if multiple_of > 1 and (outputs.shape[2] % multiple_of != 0 or outputs.shape[1] % multiple_of != 0):
-            width = outputs.shape[2]
-            height = outputs.shape[1]
-            x = (width % multiple_of) // 2
-            y = (height % multiple_of) // 2
-            x2 = width - ((width % multiple_of) - x)
-            y2 = height - ((height % multiple_of) - y)
-            outputs = outputs[:, y:y2, x:x2, :]
-        
-        outputs = torch.clamp(outputs, 0, 1)
+        outputs = image_manipulate(image, width, height, interpolation, multiple_of,
+                 padding, fill, resize,
+                 pad_left, pad_right, pad_top, pad_bottom,
+                 x, y, x2, y2)
 
         return(outputs, outputs.shape[2], outputs.shape[1],)
 

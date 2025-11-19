@@ -59,7 +59,7 @@ class Sage_SchedulerSelector(io.ComfyNode):
                 io.Combo.Input("scheduler_name", options=list(comfy.samplers.KSampler.SCHEDULERS), default="beta")
             ],
             outputs=[
-                io.Int.Output("out_steps"),
+                io.Int.Output("out_steps", display_name="steps"),
                 io.String.Output("scheduler")
             ]
         )

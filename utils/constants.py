@@ -4,6 +4,8 @@ This module contains common constants used throughout the SageUtils project.
 These constants help maintain consistency and avoid hardcoded values in multiple files.
 """
 
+import nodes
+
 # Supported model file extensions (based on ComfyUI's supported_pt_extensions)
 # These are the file types that ComfyUI can load as models
 # Additional extensions (.gguf, .nf4) supported via custom extensions
@@ -124,3 +126,5 @@ QUICK_ASPECT_RATIOS = {
             "8:10": (1024, 1280),
             "13:19": (832, 1216)
         }
+
+MAX_RESOLUTION = nodes.MAX_RESOLUTION

@@ -52,8 +52,8 @@ class Sage_EmptyLatentImagePassthrough(io.ComfyNode):
             ],
             outputs=[
                 io.Latent.Output("latent"),
-                io.Int.Output("out_width"),
-                io.Int.Output("out_height"),
+                io.Int.Output("out_width", display_name="width"),
+                io.Int.Output("out_height", display_name="height"),
             ]
         )
 
@@ -91,8 +91,8 @@ class Sage_LoadImage(io.ComfyNode):
             ],
             outputs=[
                 io.Image.Output("image"),
-                io.Int.Output("out_width"),
-                io.Int.Output("out_height"),
+                io.Int.Output("out_width", display_name="width"),
+                io.Int.Output("out_height", display_name="height"),
                 io.String.Output("metadata"),
             ]
         )
@@ -149,7 +149,7 @@ class Sage_CropImage(io.ComfyNode):
                 io.Int.Input("bottom", default=0, tooltip="The bottom coordinate for cropping."),
             ],
             outputs=[
-                io.Image.Output("out_image", tooltip="The cropped image."),
+                io.Image.Output("out_image", tooltip="The cropped image.", display_name="image"),
             ]
         )
 
@@ -264,9 +264,9 @@ class Sage_CubiqImageResize(io.ComfyNode):
                 io.Int.Input("multiple_of", default=8, tooltip="Ensure dimensions are multiples of this value."),
             ],
             outputs=[
-                io.Image.Output("out_image", tooltip="The resized image."),
-                io.Int.Output("out_width", tooltip="The new width."),
-                io.Int.Output("out_height", tooltip="The new height."),
+                io.Image.Output("out_image", tooltip="The resized image.", display_name="image"),
+                io.Int.Output("out_width", tooltip="The new width.", display_name="width"),
+                io.Int.Output("out_height", tooltip="The new height.", display_name="height"),
             ]
         )
 
@@ -302,7 +302,7 @@ class Sage_ReferenceImage(io.ComfyNode):
                 io.Vae.Input("vae", tooltip="The VAE model for encoding the image."),
             ],
             outputs=[
-                io.Conditioning.Output("out_conditioning", tooltip="The output conditioning."),
+                io.Conditioning.Output("out_conditioning", tooltip="The output conditioning.", display_name="conditioning"),
                 io.Latent.Output("latent", tooltip="The encoded latent."),
             ]
         )

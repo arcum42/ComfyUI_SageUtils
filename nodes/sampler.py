@@ -8,6 +8,12 @@ import torch
 
 import comfy
 import nodes
+from ..utils.common import (
+    vae_decode,
+    vae_decode_tiled,
+    load_upscaler,
+    upscale_with_model
+)
 
 class Sage_SamplerSelector(ComfyNodeABC):
     def __init__(self):
@@ -189,7 +195,17 @@ class Sage_KSamplerTiledDecoder(ComfyNodeABC):
             if advanced_info["add_noise"] == False:
                 disable_noise = True
             latent_result = nodes.common_ksampler(model, sampler_info["seed"], sampler_info["steps"], sampler_info["cfg"], sampler_info["sampler"],  sampler_info["scheduler"], positive, negative, latent_image, denoise=denoise, disable_noise=disable_noise, start_step=advanced_info['start_at_step'], last_step=advanced_info['end_at_step'], force_full_denoise=force_full_denoise)
-        
+
+        if tiling_info is not None:
+            images = vae_decode_tiled(
+                latent_result, 
+                vae, 
+                tiling_info["tile_size"], tiling_info["overlap"], 
+                tiling_info["temporal_size"], tiling_info["temporal_overlap"])
+        else:
+            images = vae_decode(latent_result, vae)
+        return (latent_result[0], images)
+"""
         if tiling_info is not None:
             t_info_tile_size = tiling_info["tile_size"]
             t_info_overlap = tiling_info["overlap"]
@@ -226,6 +242,8 @@ class Sage_KSamplerTiledDecoder(ComfyNodeABC):
             images = images.reshape(-1, images.shape[-3], images.shape[-2], images.shape[-1])
         
         return (latent_result[0], images)
+"""
+
 
 class Sage_KSamplerAudioDecoder(ComfyNodeABC):
     @classmethod

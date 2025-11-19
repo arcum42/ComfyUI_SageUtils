@@ -36,7 +36,7 @@ class Sage_FreeMemory(io.ComfyNode):
                 io.AnyType.Input("value")
             ],
             outputs=[
-                io.AnyType.Output("out_value")
+                io.AnyType.Output("out_value", display_name="value")
             ]
         )
     
@@ -60,7 +60,7 @@ class Sage_Halt(io.ComfyNode):
                 io.AnyType.Input("value")
             ],
             outputs=[
-                io.AnyType.Output("out_value")
+                io.AnyType.Output("out_value", display_name="value")
             ]
         )
     

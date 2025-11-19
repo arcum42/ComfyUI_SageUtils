@@ -372,20 +372,14 @@ class Sage_MultiSelectorQuadClip(io.ComfyNode):
         ret = (unet_info[0], clip_info[0], vae_info[0])
         return io.NodeOutput(ret,)
 
-# ============================================================================
-# PLACEHOLDER NODES - NOT YET FULLY IMPLEMENTED
-# ============================================================================
-# These are placeholder implementations. The inputs/outputs match the original
-# v1 nodes, but the execute methods need proper implementation.
-
 class Sage_ModelShifts(io.ComfyNode):
-    """PLACEHOLDER: Get the model shifts and free_u2 settings to apply to the model."""
+    """Get the model shifts and free_u2 settings to apply to the model."""
     @classmethod
     def define_schema(cls):
         return io.Schema(
             node_id="Sage_ModelShifts",
             display_name="Model Shifts",
-            description="PLACEHOLDER: Get the model shifts and free_u2 settings to apply to the model. This is used by the model loader node.",
+            description="Get the model shifts and free_u2 settings to apply to the model. This is used by the model loader node.",
             category="Sage Utils/model",
             inputs=[
                 io.Combo.Input("shift_type", options=["None", "x1", "x1000"], default="None"),
@@ -403,7 +397,6 @@ class Sage_ModelShifts(io.ComfyNode):
     
     @classmethod
     def execute(cls, **kwargs):
-        # TODO: Implement full logic from selector.py
         return io.NodeOutput({
             "shift_type": kwargs.get("shift_type", "None"),
             "shift": kwargs.get("shift", 3.0),
@@ -415,13 +408,13 @@ class Sage_ModelShifts(io.ComfyNode):
         })
 
 class Sage_ModelShiftOnly(io.ComfyNode):
-    """PLACEHOLDER: Get the model shifts to apply to the model."""
+    """Get the model shifts to apply to the model."""
     @classmethod
     def define_schema(cls):
         return io.Schema(
             node_id="Sage_ModelShiftOnly",
             display_name="Model Shift Only",
-            description="PLACEHOLDER: Get the model shifts to apply to the model. This is used by the model loader node.",
+            description="Get the model shifts to apply to the model. This is used by the model loader node.",
             category="Sage Utils/model",
             inputs=[
                 io.Combo.Input("shift_type", options=["None", "x1", "x1000"], default="None"),
@@ -434,7 +427,6 @@ class Sage_ModelShiftOnly(io.ComfyNode):
     
     @classmethod
     def execute(cls, **kwargs):
-        # TODO: Implement full logic from selector.py
         return io.NodeOutput({
             "shift_type": kwargs.get("shift_type", "None"),
             "shift": kwargs.get("shift", 3.0),
@@ -446,13 +438,13 @@ class Sage_ModelShiftOnly(io.ComfyNode):
         })
 
 class Sage_FreeU2(io.ComfyNode):
-    """PLACEHOLDER: Get the free_u2 settings to apply to the model."""
+    """Get the free_u2 settings to apply to the model."""
     @classmethod
     def define_schema(cls):
         return io.Schema(
             node_id="Sage_FreeU2",
             display_name="FreeU v2",
-            description="PLACEHOLDER: Get the free_u2 settings to apply to the model.",
+            description="Get the free_u2 settings to apply to the model.",
             category="Sage Utils/model",
             inputs=[
                 io.Boolean.Input("freeu_v2", default=False),
@@ -468,7 +460,6 @@ class Sage_FreeU2(io.ComfyNode):
     
     @classmethod
     def execute(cls, **kwargs):
-        # TODO: Implement full logic from selector.py
         return io.NodeOutput({
             "shift_type": "None",
             "shift": 0,
@@ -479,14 +470,49 @@ class Sage_FreeU2(io.ComfyNode):
             "s2": kwargs.get("s2", 0.2)
         })
 
+class Sage_TilingInfo(io.ComfyNode):
+    """Adds tiling information to the KSampler."""
+    @classmethod
+    def define_schema(cls):
+        return io.Schema(
+            node_id="Sage_TilingInfo",
+            display_name="Tiling Info",
+            description="Adds tiling information to the KSampler.",
+            category="Sage Utils/sampler",
+            inputs=[
+                io.Int.Input("tile_size", default=512, min=64, max=4096, step=32),
+                io.Int.Input("overlap", default=64, min=0, max=4096, step=32),
+                io.Int.Input("temporal_size", default=64, min=8, max=4096, step=4, tooltip="Only used for video VAEs: Amount of frames to decode at a time."),
+                io.Int.Input("temporal_overlap", default=8, min=4, max=4096, step=4, tooltip="Only used for video VAEs: Amount of frames to overlap.")
+            ],
+            outputs=[
+                TilingInfo.Output("tiling_info")
+            ]
+        )
+    
+    @classmethod
+    def execute(cls, **kwargs):
+        tile_size = kwargs.get("tile_size", 512)
+        overlap = kwargs.get("overlap", 64)
+        temporal_size = kwargs.get("temporal_size", 64)
+        temporal_overlap = kwargs.get("temporal_overlap", 8)
+        
+        t_info = {
+            "tile_size": tile_size,
+            "overlap": overlap,
+            "temporal_size": temporal_size,
+            "temporal_overlap": temporal_overlap
+        }
+        return io.NodeOutput(t_info)
+
 class Sage_UnetClipVaeToModelInfo(io.ComfyNode):
-    """PLACEHOLDER: Convert UNET, CLIP, and VAE model info to a single model info output."""
+    """Convert UNET, CLIP, and VAE model info to a single model info output."""
     @classmethod
     def define_schema(cls):
         return io.Schema(
             node_id="Sage_UnetClipVaeToModelInfo",
             display_name="UNET CLIP VAE To Model Info",
-            description="PLACEHOLDER: Returns a list with the unets, clips, and vae in it to be loaded.",
+            description="Returns a list with the unets, clips, and vae in it to be loaded.",
             category="Sage Utils/model",
             inputs=[
                 UnetInfo.Input("unet_info"),
@@ -500,20 +526,19 @@ class Sage_UnetClipVaeToModelInfo(io.ComfyNode):
     
     @classmethod
     def execute(cls, **kwargs):
-        # TODO: Implement full logic from selector.py
         unet_info = kwargs.get("unet_info", None)
         clip_info = kwargs.get("clip_info", None)
         vae_info = kwargs.get("vae_info", None)
         return io.NodeOutput((unet_info, clip_info, vae_info))
 
 class Sage_LoraStack(io.ComfyNode):
-    """PLACEHOLDER: Choose a lora with weights, and add it to a lora_stack."""
+    """Choose a lora with weights, and add it to a lora_stack."""
     @classmethod
     def define_schema(cls):
         return io.Schema(
             node_id="Sage_LoraStack",
             display_name="Lora Stack",
-            description="PLACEHOLDER: Choose a lora with weights, and add it to a lora_stack. Compatible with other node packs that have lora_stacks.",
+            description="Choose a lora with weights, and add it to a lora_stack. Compatible with other node packs that have lora_stacks.",
             category="Sage Utils/lora",
             inputs=[
                 io.Boolean.Input("enabled", default=False),
@@ -523,13 +548,12 @@ class Sage_LoraStack(io.ComfyNode):
                 LoraStack.Input("lora_stack", optional=True)
             ],
             outputs=[
-                LoraStack.Output("out_lora_stack")
+                LoraStack.Output("out_lora_stack", display_name="lora_stack")
             ]
         )
     
     @classmethod
     def execute(cls, **kwargs):
-        # TODO: Implement full logic from selector.py
         lora_stack = kwargs.get("lora_stack", None)
         enabled = kwargs.get("enabled", False)
         
@@ -541,6 +565,13 @@ class Sage_LoraStack(io.ComfyNode):
             return io.NodeOutput(stack)
         
         return io.NodeOutput(lora_stack)
+
+# ============================================================================
+# PLACEHOLDER NODES - NOT YET FULLY IMPLEMENTED
+# ============================================================================
+# These are placeholder implementations. The inputs/outputs match the original
+# v1 nodes, but the execute methods need proper implementation.
+
 
 class Sage_QuickLoraStack(io.ComfyNode):
     """PLACEHOLDER: Simplified lora stack node without clip_weight."""
@@ -558,7 +589,7 @@ class Sage_QuickLoraStack(io.ComfyNode):
                 LoraStack.Input("lora_stack", optional=True)
             ],
             outputs=[
-                LoraStack.Output("out_lora_stack")
+                LoraStack.Output("out_lora_stack", display_name="lora_stack")
             ]
         )
     
@@ -604,7 +635,7 @@ class Sage_TripleLoraStack(io.ComfyNode):
                 LoraStack.Input("lora_stack", optional=True)
             ],
             outputs=[
-                LoraStack.Output("out_lora_stack")
+                LoraStack.Output("out_lora_stack", display_name="lora_stack")
             ]
         )
     
@@ -638,7 +669,7 @@ class Sage_SixLoraStack(io.ComfyNode):
             category="Sage Utils/lora",
             inputs=inputs,
             outputs=[
-                LoraStack.Output("out_lora_stack")
+                LoraStack.Output("out_lora_stack", display_name="lora_stack")
             ]
         )
     
@@ -672,7 +703,7 @@ class Sage_TripleQuickLoraStack(io.ComfyNode):
                 LoraStack.Input("lora_stack", optional=True)
             ],
             outputs=[
-                LoraStack.Output("out_lora_stack")
+                LoraStack.Output("out_lora_stack", display_name="lora_stack")
             ]
         )
     
@@ -704,7 +735,7 @@ class Sage_QuickSixLoraStack(io.ComfyNode):
             category="Sage Utils/lora",
             inputs=inputs,
             outputs=[
-                LoraStack.Output("out_lora_stack")
+                LoraStack.Output("out_lora_stack", display_name="lora_stack")
             ]
         )
     
@@ -736,7 +767,7 @@ class Sage_QuickNineLoraStack(io.ComfyNode):
             category="Sage Utils/lora",
             inputs=inputs,
             outputs=[
-                LoraStack.Output("out_lora_stack")
+                LoraStack.Output("out_lora_stack", display_name="lora_stack")
             ]
         )
     
@@ -745,42 +776,6 @@ class Sage_QuickNineLoraStack(io.ComfyNode):
         # TODO: Implement full logic from selector.py
         lora_stack = kwargs.get("lora_stack", None)
         return io.NodeOutput(lora_stack)
-
-class Sage_TilingInfo(io.ComfyNode):
-    """PLACEHOLDER: Adds tiling information to the KSampler."""
-    @classmethod
-    def define_schema(cls):
-        return io.Schema(
-            node_id="Sage_TilingInfo",
-            display_name="Tiling Info",
-            description="PLACEHOLDER: Adds tiling information to the KSampler.",
-            category="Sage Utils/sampler",
-            inputs=[
-                io.Int.Input("tile_size", default=512, min=64, max=4096, step=32),
-                io.Int.Input("overlap", default=64, min=0, max=4096, step=32),
-                io.Int.Input("temporal_size", default=64, min=8, max=4096, step=4, tooltip="Only used for video VAEs: Amount of frames to decode at a time."),
-                io.Int.Input("temporal_overlap", default=8, min=4, max=4096, step=4, tooltip="Only used for video VAEs: Amount of frames to overlap.")
-            ],
-            outputs=[
-                TilingInfo.Output("tiling_info")
-            ]
-        )
-    
-    @classmethod
-    def execute(cls, **kwargs):
-        # TODO: Implement full logic from selector.py
-        tile_size = kwargs.get("tile_size", 512)
-        overlap = kwargs.get("overlap", 64)
-        temporal_size = kwargs.get("temporal_size", 64)
-        temporal_overlap = kwargs.get("temporal_overlap", 8)
-        
-        t_info = {
-            "tile_size": tile_size,
-            "overlap": overlap,
-            "temporal_size": temporal_size,
-            "temporal_overlap": temporal_overlap
-        }
-        return io.NodeOutput(t_info)
 
 # ============================================================================
 

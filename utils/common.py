@@ -43,7 +43,14 @@ from .helpers_image import (
     tensor_to_base64,
     tensor_to_temp_image,
     load_image_from_path,
-    load_image_from_url
+    load_image_from_url,
+    vae_decode,
+    vae_decode_tiled,
+    load_upscaler,
+    upscale_with_model,
+    calc_padding,
+    image_manipulate,
+    resize_needed
 )
 
 # CivitAI utilities
@@ -132,7 +139,8 @@ __all__ = [
     
     # Image utilities
     'blank_image', 'url_to_torch_image', 'tensor_to_base64', 'tensor_to_temp_image',
-    'load_image_from_path', 'load_image_from_url',
+    'load_image_from_path', 'load_image_from_url', 'vae_decode', 'vae_decode_tiled',
+    'load_upscaler', 'upscale_with_model', 'calc_padding', 'image_manipulate', 'resize_needed',
     
     # CivitAI utilities
     'get_civitai_model_version_json_by_hash', 'get_civitai_model_version_json_by_id',
