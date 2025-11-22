@@ -250,7 +250,7 @@ def upscale_with_model(upscale_model, image, tile = 512, overlap = 32):
 
     upscale_model.to("cpu")
     image = None
-    if scaled:
+    if scaled is not None:
         image = torch.clamp(scaled.movedim(-3,-1), min=0, max=1.0)
     return image
 

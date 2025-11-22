@@ -24,12 +24,12 @@ import os
 import comfy.model_management
 import comfy.utils
 import comfy.cli_args
-from ..utils.common import get_files_in_dir
 import datetime
 import logging
 from ..utils.constants import QUICK_ASPECT_RATIOS, MAX_RESOLUTION
 
-from ..utils.common import calc_padding, image_manipulate, resize_needed
+from ..utils.common import get_files_in_dir, calc_padding, image_manipulate, resize_needed, load_upscaler, \
+    upscale_with_model, get_model_list
 
 class Sage_EmptyLatentImagePassthrough(ComfyNodeABC):
     def __init__(self):
@@ -475,6 +475,31 @@ class Sage_ReferenceImage(ComfyNodeABC):
             "expand": graph.finalize(),
             }
 
+class Sage_UpscaleImageWithModel(ComfyNodeABC):
+    @classmethod
+    def INPUT_TYPES(cls):
+        model_list = folder_paths.get_filename_list("upscale_models")
+        print("Upscale model list:", model_list)
+        return {
+            "required": {
+                "model": (model_list, {"tooltip": "The upscale model to use."}),
+                "image": (IO.IMAGE, {"tooltip": "The image to upscale."}),
+                "tile": (IO.INT, {"default": 512, "min": 1}),
+                "overlap": (IO.INT, {"default": 64, "min": 0})
+            }
+        }
+
+    RETURN_TYPES = (IO.IMAGE,)
+    RETURN_NAMES = ("upscaled_image",)
+    FUNCTION = "execute"
+    CATEGORY = "Sage Utils/image"
+
+    def execute(self, image, model, tile = 512, overlap = 64):
+        model_path = folder_paths.get_full_path_or_raise("upscale_models", model)
+        upscale_model = load_upscaler(model_path)
+        upscaled_image = upscale_with_model(upscale_model, image, tile, overlap)
+        return (upscaled_image,)
+
 IMAGE_CLASS_MAPPINGS = {
     "Sage_LoadImage": Sage_LoadImage,
     "Sage_EmptyLatentImagePassthrough": Sage_EmptyLatentImagePassthrough,
@@ -483,7 +508,8 @@ IMAGE_CLASS_MAPPINGS = {
     "Sage_GuessResolutionByRatio": Sage_GuessResolutionByRatio,
     "Sage_CubiqImageResize": Sage_CubiqImageResize,
     "Sage_CropImage": Sage_CropImage,
-    "Sage_ReferenceImage": Sage_ReferenceImage
+    "Sage_ReferenceImage": Sage_ReferenceImage,
+    "Sage_UpscaleImageWithModel": Sage_UpscaleImageWithModel
 }
 
 IMAGE_NAME_MAPPINGS = {
@@ -494,5 +520,6 @@ IMAGE_NAME_MAPPINGS = {
     "Sage_GuessResolutionByRatio": "Guess Close Resolution by Ratio",
     "Sage_CubiqImageResize": "Image Resize (from Essentials)",
     "Sage_CropImage": "Sage Image Crop",
-    "Sage_ReferenceImage": "Reference Image"
+    "Sage_ReferenceImage": "Reference Image",
+    "Sage_UpscaleImageWithModel": "Upscale Image w/ Model"
 }
