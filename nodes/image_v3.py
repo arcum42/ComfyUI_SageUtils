@@ -36,6 +36,17 @@ import datetime
 import logging
 from ..utils.constants import QUICK_ASPECT_RATIOS
 
+# Current status - Empty latent only.
+# Test results here:
+# Sage_EmptyLatentImagePassthrough - Untested.
+# Sage_LoadImage - Needs implementing.
+# Sage_SaveImageWithMetadata - Needs implementing.
+# Sage_CropImage - Needs implementing. Original is a subclass.
+# Sage_GuessResolutionByRatio - Different logic, needs work.
+# Sage_QuickResPicker - Different logic, needs work.
+# Sage_CubiqImageResize - Not implemented yet.
+# Sage_ReferenceImage - Not implemented yet.
+
 class Sage_EmptyLatentImagePassthrough(io.ComfyNode):
     @classmethod
     def define_schema(cls):

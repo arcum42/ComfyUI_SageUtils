@@ -45,6 +45,8 @@ DEFAULT_TEXT_PROMPT = "Write a detailed and coherent description of an image bas
 
 import logging
 
+# Current status: Placeholder nodes only. Full implementations to be done.
+
 # ============================================================================
 # PLACEHOLDER NODES - NOT YET FULLY IMPLEMENTED
 # ============================================================================

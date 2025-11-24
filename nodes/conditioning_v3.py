@@ -16,6 +16,13 @@ from ..utils import condition_text, clean_text, clean_if_needed
 from ..utils.constants import LUMINA2_SYSTEM_PROMPT, LUMINA2_SYSTEM_PROMPT_TIP, PROMPT_START
 import torch
 
+# In a quick onceover, looks good. Needs testing. Check off here:
+# Sage_ZeroConditioning - 
+# Sage_SingleCLIPTextEncode -
+# Sage_DualCLIPTextEncode - 
+# Sage_DualCLIPTextEncodeLumina2 - 
+# Sage_DualCLIPTextEncodeQwen - 
+
 class Sage_ZeroConditioning(io.ComfyNode):
     @classmethod
     def define_schema(cls):

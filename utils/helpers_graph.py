@@ -10,6 +10,13 @@ import logging
 # Utility function
 def flatten_model_info(model_info):
     """Flatten model_info to a list of dictionaries."""
+    if isinstance(model_info, tuple):
+        # Unpack the tuple and convert to a list
+        flattened_info = []
+        for item in model_info:
+            flattened_info.append(item)
+        model_info = flattened_info
+
     if isinstance(model_info, list):
         flattened_info = []
         for item in model_info:
@@ -119,8 +126,10 @@ def create_model_loader_nodes(graph: GraphBuilder, model_info):
 
     # model_info is either a list of dicts, or a list of tuples with dicts inside. Either way, we need to go over each dict, and check the "type" key.
     model_info = flatten_model_info(model_info)
+    print(f"Flattened model_info: {model_info}")
 
     for idx, item in enumerate(model_info):
+        print(f"Processing model_info item {idx}: {item}")
         model_present[item["type"]] = item
 
     if model_present["CKPT"] is not None:

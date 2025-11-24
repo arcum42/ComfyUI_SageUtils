@@ -238,8 +238,11 @@ class Sage_LoadModelFromInfo(ComfyNodeABC):
         graph = GraphBuilder()
         unet_out, clip_out, vae_out = create_model_loader_nodes(graph, model_info)
 
+        if isinstance(model_shifts, tuple) or isinstance(model_shifts, list):
+            model_shifts = model_shifts[0]
+
         if model_shifts is not None:
-            unet_out = create_model_shift_nodes(graph, unet_out, model_shifts[0])
+            exit, unet_out = create_model_shift_nodes(graph, unet_out, model_shifts)
 
         return {
             "result": (unet_out, clip_out, vae_out),

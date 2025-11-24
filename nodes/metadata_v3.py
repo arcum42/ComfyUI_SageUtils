@@ -28,6 +28,9 @@ from ..utils import (
 from ..utils.model_info import collect_resource_hashes, model_name_and_hash_as_str, _get_model_name_from_info, _get_model_hash_from_info
 from ..utils.config_manager import metadata_templates
 
+# Current status: Placeholder nodes only. Full implementations to be done.
+# Should be easy to implement based on the original v1 nodes.
+
 # ============================================================================
 # PLACEHOLDER NODES - NOT YET FULLY IMPLEMENTED
 # ============================================================================

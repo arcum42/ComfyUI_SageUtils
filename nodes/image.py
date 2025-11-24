@@ -77,7 +77,6 @@ class Sage_EmptyLatentImagePassthrough(ComfyNodeABC):
         return ({"samples": latent}, width, height)
 
 class Sage_LoadImage(ComfyNodeABC):
-
     @classmethod
     def INPUT_TYPES(cls) -> InputTypeDict:
         input_files = []

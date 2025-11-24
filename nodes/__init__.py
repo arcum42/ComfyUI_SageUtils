@@ -11,3 +11,5 @@ from .text import *
 from .util import *
 from .llm import *
 from .training import *
+
+import nodes

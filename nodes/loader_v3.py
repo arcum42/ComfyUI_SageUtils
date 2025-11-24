@@ -24,12 +24,21 @@ from ..utils.helpers_graph import (
     add_vae_node,
     create_model_shift_nodes,
     create_lora_nodes,
-    create_lora_shift_nodes
+    create_lora_shift_nodes,
+    create_model_loader_nodes
 )
 
 from comfy_execution.graph_utils import GraphBuilder
 import folder_paths
 import logging
+
+# Current status: Placeholder nodes only. Full implementations to be done.
+# High priority nodes for implementation.
+
+# Probably focus on these first:
+# - Sage_LoadModelFromInfo
+# - Sage_LoraStackLoader
+# - Sage_ModelLoraStackLoader
 
 """
     class Sage_NodeTest(io.ComfyNode):
@@ -55,21 +64,17 @@ import logging
 
         return io.NodeOutput([conditioning])
 """
-# ============================================================================
-# PLACEHOLDER NODES - NOT YET FULLY IMPLEMENTED
-# ============================================================================
-# These are placeholder implementations. The inputs/outputs match the original
-# v1 nodes, but the execute methods need proper implementation.
 
 class Sage_LoadModelFromInfo(io.ComfyNode):
-    """PLACEHOLDER: Load model components from model info."""
+    """Load model components from model info."""
     @classmethod
     def define_schema(cls):
         return io.Schema(
             node_id="Sage_LoadModelFromInfo",
             display_name="Load Models",
-            description="PLACEHOLDER: Load model components from model info using GraphBuilder.",
+            description="Load model components from model info using GraphBuilder.",
             category="Sage Utils/model",
+            enable_expand=True,
             inputs=[
                 io.Custom("MODEL_INFO").Input("model_info"),
                 io.Custom("MODEL_SHIFTS").Input("model_shifts", optional=True)
@@ -83,8 +88,27 @@ class Sage_LoadModelFromInfo(io.ComfyNode):
     
     @classmethod
     def execute(cls, **kwargs):
-        # TODO: Implement full logic from loader.py using GraphBuilder
-        return io.NodeOutput(None, None, None)
+        graph = GraphBuilder()
+        model_info = kwargs.get("model_info", None)
+        model_shifts = kwargs.get("model_shifts", None)
+        print(f"model_info = {model_info}")
+        print(f"model_shifts = {model_shifts}")
+        unet_out, clip_out, vae_out = create_model_loader_nodes(graph, model_info)
+
+        if isinstance(model_shifts, tuple) or isinstance(model_shifts, list):
+            model_shifts = model_shifts[0]
+        print(f"model_shifts (again) = {model_shifts}")
+        if model_shifts is not None:
+            exit_node, unet_out = create_model_shift_nodes(graph, unet_out, model_shifts)
+
+        return io.NodeOutput(unet_out, clip_out, vae_out, expand = graph.finalize())
+
+# ============================================================================
+# PLACEHOLDER NODES - NOT YET FULLY IMPLEMENTED
+# ============================================================================
+# These are placeholder implementations. The inputs/outputs match the original
+# v1 nodes, but the execute methods need proper implementation.
+
 
 class Sage_UNETLoaderFromInfo(io.ComfyNode):
     """PLACEHOLDER: Load UNET model component from model info."""
