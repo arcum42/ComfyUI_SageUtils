@@ -521,7 +521,7 @@ class Sage_QuickLoraStack(Sage_LoraStack):
 class Sage_TripleLoraStack(ComfyNodeABC):
     NUM_OF_ENTRIES = 3
     def __init__(self):
-        self.NUM_OF_ENTRIES = Sage_TripleQuickLoraStack.NUM_OF_ENTRIES
+        self.NUM_OF_ENTRIES = Sage_TripleLoraStack.NUM_OF_ENTRIES
         super().__init__()
 
     @classmethod

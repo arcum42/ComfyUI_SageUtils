@@ -12,6 +12,7 @@ from comfy_api.latest._io import NodeOutput, Schema
 from comfy_execution.graph_utils import GraphBuilder
 from comfy_execution.graph import ExecutionBlocker
 
+from .custom_io_v3 import ModelInfo, UnetInfo, VaeInfo, ClipInfo, ModelShiftInfo, LoraStack
 from ..utils.helpers import pull_metadata, update_model_timestamp, pull_and_update_model_timestamp
 
 # Import specific utilities instead of wildcard import
@@ -32,38 +33,7 @@ from comfy_execution.graph_utils import GraphBuilder
 import folder_paths
 import logging
 
-# Current status: Placeholder nodes only. Full implementations to be done.
-# High priority nodes for implementation.
-
-# Probably focus on these first:
-# - Sage_LoadModelFromInfo
-# - Sage_LoraStackLoader
-# - Sage_ModelLoraStackLoader
-
-"""
-    class Sage_NodeTest(io.ComfyNode):
-    @classmethod
-    def define_schema(cls):
-        return io.Schema(
-            node_id="Sage_NodeTest",
-            display_name="Node Test",
-            description="A template for how to make a v3 node.",
-            category="Sage Utils/test",
-            inputs=[
-                io.Clip.Input(id="clip", display_name="clip", tooltip="The CLIP model used for encoding.")
-            ],
-            outputs=[
-                io.Conditioning.Output(id="conditioning", display_name="conditioning", tooltip="A conditioning containing all zeros.")
-            ]
-        )
-
-    @classmethod
-    def execute(cls, **kwargs) -> NodeOutput:
-        clip = kwargs.get("clip")
-        conditioning = torch.zeros((1, 77, 768))  # Example zeroed conditioning
-
-        return io.NodeOutput([conditioning])
-"""
+# Sage_LoadModelFromInfo & Sage_UNETLoaderFromInfo implemented manually. Others need checking.
 
 class Sage_LoadModelFromInfo(io.ComfyNode):
     """Load model components from model info."""
@@ -76,8 +46,8 @@ class Sage_LoadModelFromInfo(io.ComfyNode):
             category="Sage Utils/model",
             enable_expand=True,
             inputs=[
-                io.Custom("MODEL_INFO").Input("model_info"),
-                io.Custom("MODEL_SHIFTS").Input("model_shifts", optional=True)
+                ModelInfo.Input("model_info"),
+                ModelShiftInfo.Input("model_shifts", optional=True)
             ],
             outputs=[
                 io.Model.Output("model"),
@@ -103,24 +73,18 @@ class Sage_LoadModelFromInfo(io.ComfyNode):
 
         return io.NodeOutput(unet_out, clip_out, vae_out, expand = graph.finalize())
 
-# ============================================================================
-# PLACEHOLDER NODES - NOT YET FULLY IMPLEMENTED
-# ============================================================================
-# These are placeholder implementations. The inputs/outputs match the original
-# v1 nodes, but the execute methods need proper implementation.
-
-
 class Sage_UNETLoaderFromInfo(io.ComfyNode):
-    """PLACEHOLDER: Load UNET model component from model info."""
+    """Load UNET model component from model info."""
     @classmethod
     def define_schema(cls):
         return io.Schema(
             node_id="Sage_UNETLoaderFromInfo",
             display_name="Load UNET Model <- Info",
-            description="PLACEHOLDER: Load the UNET model component from unet_info.",
+            description="Load the UNET model component from unet_info.",
             category="Sage Utils/model",
+            enable_expand=True,
             inputs=[
-                io.Custom("UNET_INFO").Input("unet_info")
+                UnetInfo.Input("unet_info")
             ],
             outputs=[
                 io.Model.Output("model")
@@ -129,20 +93,31 @@ class Sage_UNETLoaderFromInfo(io.ComfyNode):
     
     @classmethod
     def execute(cls, **kwargs):
-        # TODO: Implement full logic from loader.py using GraphBuilder
-        return io.NodeOutput(None)
+        unet_info = kwargs.get("unet_info", None)
+        
+        graph = GraphBuilder()
+        unet_node = add_unet_node(graph, unet_info)
+        if unet_node is None or unet_info is None:
+            raise ValueError("Failed to create UNET node from unet_info.")
+        else:
+            pull_and_update_model_timestamp(unet_info.get("path",""), model_type="unet")
+        logging.info(f"Sage_UNETLoaderFromInfo: Loaded UNET from {unet_info.get('path','')}")
+
+        unet_out = unet_node.out(0) if unet_node else None
+        return io.NodeOutput(unet_out, expand = graph.finalize())
 
 class Sage_CLIPLoaderFromInfo(io.ComfyNode):
-    """PLACEHOLDER: Load CLIP model component from model info."""
+    """Load CLIP model component from model info."""
     @classmethod
     def define_schema(cls):
         return io.Schema(
             node_id="Sage_CLIPLoaderFromInfo",
             display_name="Load CLIP Model <- Info",
-            description="PLACEHOLDER: Load the CLIP model component from clip_info.",
+            description="Load the CLIP model component from clip_info.",
             category="Sage Utils/model",
+            enable_expand=True,
             inputs=[
-                io.Custom("CLIP_INFO").Input("clip_info")
+                ClipInfo.Input("clip_info")
             ],
             outputs=[
                 io.Clip.Output("clip")
@@ -151,20 +126,29 @@ class Sage_CLIPLoaderFromInfo(io.ComfyNode):
     
     @classmethod
     def execute(cls, **kwargs):
-        # TODO: Implement full logic from loader.py using GraphBuilder
-        return io.NodeOutput(None)
+        clip_info = kwargs.get("clip_info", None)
+        graph = GraphBuilder()
+        clip_node = add_clip_node(graph, clip_info)
+        if clip_node is None or clip_info is None:
+            raise ValueError("Failed to create CLIP node from clip_info.")
+        else:
+            pull_and_update_model_timestamp(clip_info.get("path",""), model_type="clip")
+        logging.info(f"Sage_CLIPLoaderFromInfo: Loaded CLIP from {clip_info.get('path','')}")
+        clip_out = clip_node.out(0) if clip_node else None
+        return io.NodeOutput(clip_out, expand=graph.finalize())
 
 class Sage_ChromaCLIPLoaderFromInfo(io.ComfyNode):
-    """PLACEHOLDER: Load Chroma CLIP model component from model info."""
+    """Load Chroma CLIP model component from model info (adds T5 tokenizer options)."""
     @classmethod
     def define_schema(cls):
         return io.Schema(
             node_id="Sage_ChromaCLIPLoaderFromInfo",
             display_name="Load CLIP (w/ Chroma T5 Options)",
-            description="PLACEHOLDER: Load the CLIP model component from clip_info, and apply T5 tokenizer options with min padding of 1, and min length of 0.",
+            description="Load the CLIP model component from clip_info, and apply T5 tokenizer options with min padding of 1, and min length of 0.",
             category="Sage Utils/model",
+            enable_expand=True,
             inputs=[
-                io.Custom("CLIP_INFO").Input("clip_info")
+                ClipInfo.Input("clip_info")
             ],
             outputs=[
                 io.Clip.Output("clip")
@@ -173,20 +157,29 @@ class Sage_ChromaCLIPLoaderFromInfo(io.ComfyNode):
     
     @classmethod
     def execute(cls, **kwargs):
-        # TODO: Implement full logic from loader.py using GraphBuilder
-        return io.NodeOutput(None)
+        clip_info = kwargs.get("clip_info", None)
+        graph = GraphBuilder()
+        clip_node = add_clip_node(graph, clip_info)
+        if clip_node is None or clip_info is None:
+            raise ValueError("Failed to create CLIP node from clip_info.")
+        else:
+            pull_and_update_model_timestamp(clip_info.get("path",""), model_type="clip")
+        chroma_node = graph.node("T5TokenizerOptions", clip=clip_node.out(0), min_padding=1, min_length=0)
+        logging.info(f"Sage_ChromaCLIPLoaderFromInfo: Loaded Chroma CLIP from {clip_info.get('path','')}")
+        return io.NodeOutput(chroma_node.out(0), expand=graph.finalize())
 
 class Sage_VAELoaderFromInfo(io.ComfyNode):
-    """PLACEHOLDER: Load VAE model component from model info."""
+    """Load VAE model component from model info."""
     @classmethod
     def define_schema(cls):
         return io.Schema(
             node_id="Sage_VAELoaderFromInfo",
             display_name="Load VAE Model <- Info",
-            description="PLACEHOLDER: Load the VAE model component from vae_info.",
+            description="Load the VAE model component from vae_info.",
             category="Sage Utils/model",
+            enable_expand=True,
             inputs=[
-                io.Custom("VAE_INFO").Input("vae_info")
+                VaeInfo.Input("vae_info")
             ],
             outputs=[
                 io.Vae.Output("vae")
@@ -195,96 +188,147 @@ class Sage_VAELoaderFromInfo(io.ComfyNode):
     
     @classmethod
     def execute(cls, **kwargs):
-        # TODO: Implement full logic from loader.py using GraphBuilder
-        return io.NodeOutput(None)
+        vae_info = kwargs.get("vae_info", None)
+        graph = GraphBuilder()
+        vae_node = add_vae_node(graph, vae_info)
+        if vae_node is None or vae_info is None:
+            raise ValueError("Failed to create VAE node from vae_info.")
+        else:
+            pull_and_update_model_timestamp(vae_info.get("path",""), model_type="vae")
+        logging.info(f"Sage_VAELoaderFromInfo: Loaded VAE from {vae_info.get('path','')}")
+        vae_out = vae_node.out(0) if vae_node else None
+        return io.NodeOutput(vae_out, expand=graph.finalize())
 
 class Sage_LoraStackLoader(io.ComfyNode):
-    """PLACEHOLDER: Accept a lora_stack with Model and Clip, and apply all the loras in the stack at once."""
+    """Accept a lora_stack with Model and Clip, and apply all the loras in the stack at once."""
     @classmethod
     def define_schema(cls):
         return io.Schema(
             node_id="Sage_LoraStackLoader",
             display_name="Lora Stack Loader",
-            description="PLACEHOLDER: Accept a lora_stack with Model and Clip, and apply all the loras in the stack at once.",
+            description="Accept a lora_stack with Model and Clip, and apply all the loras in the stack at once.",
             category="Sage Utils/lora",
+            enable_expand=True,
             inputs=[
                 io.Model.Input("model"),
                 io.Clip.Input("clip"),
-                io.Custom("LORA_STACK").Input("lora_stack", optional=True),
-                io.Custom("MODEL_SHIFTS").Input("model_shifts", optional=True)
+                LoraStack.Input("lora_stack", optional=True),
+                ModelShiftInfo.Input("model_shifts", optional=True)
             ],
             outputs=[
                 io.Model.Output("out_model", display_name="model"),
                 io.Clip.Output("out_clip", display_name="clip"),
-                io.Custom("LORA_STACK").Output("out_lora_stack", display_name="lora_stack"),
-                io.String.Output("keywords")
+                LoraStack.Output("out_lora_stack", display_name="lora_stack"),
+                io.String.Output("keywords", display_name="keywords")
             ]
         )
     
     @classmethod
     def execute(cls, **kwargs):
-        # TODO: Implement full logic from loader.py using GraphBuilder
         model = kwargs.get("model", None)
         clip = kwargs.get("clip", None)
         lora_stack = kwargs.get("lora_stack", None)
-        # Returns to out_model, out_clip, out_lora_stack, keywords
-        return io.NodeOutput(model, clip, lora_stack, "")
+        model_shifts = kwargs.get("model_shifts", None)
+        if isinstance(model_shifts, (list, tuple)):
+            model_shifts = model_shifts[0]
+        if isinstance(lora_stack, (list, tuple)):
+            lora_stack = lora_stack[0]
+        graph = GraphBuilder()
+        exit_node, exit_unet, exit_clip = create_lora_shift_nodes(graph, model, clip, lora_stack, model_shifts)
+        if lora_stack is not None and exit_unet is not None:
+            try:
+                lora_paths = [folder_paths.get_full_path_or_raise("loras", lora[0]) for lora in lora_stack]
+                pull_and_update_model_timestamp(lora_paths, model_type="lora")
+            except Exception as e:
+                logging.warning(f"Timestamp update failed for loras: {e}")
+        keywords = get_lora_stack_keywords(lora_stack) if lora_stack is not None else ""
+        return io.NodeOutput(exit_unet, exit_clip, lora_stack, keywords, expand=graph.finalize())
 
 class Sage_ModelLoraStackLoader(io.ComfyNode):
-    """PLACEHOLDER: Load model components from model info and apply LoRA stack."""
+    """Load model components from model info and apply LoRA stack."""
     @classmethod
     def define_schema(cls):
         return io.Schema(
             node_id="Sage_ModelLoraStackLoader",
             display_name="Load Models + Loras",
-            description="PLACEHOLDER: Load model components from model info using GraphBuilder and apply LoRA stack.",
+            description="Load model components from model info using GraphBuilder and apply LoRA stack.",
             category="Sage Utils/model",
+            enable_expand=True,
             inputs=[
-                io.Custom("MODEL_INFO").Input("model_info"),
-                io.Custom("LORA_STACK").Input("lora_stack", optional=True),
-                io.Custom("MODEL_SHIFTS").Input("model_shifts", optional=True)
+                ModelInfo.Input("model_info"),
+                LoraStack.Input("lora_stack", optional=True),
+                ModelShiftInfo.Input("model_shifts", optional=True)
             ],
             outputs=[
                 io.Model.Output("model"),
                 io.Clip.Output("clip"),
                 io.Vae.Output("vae"),
-                io.Custom("LORA_STACK").Output("out_lora_stack", display_name="lora_stack"),
-                io.String.Output("keywords")
+                LoraStack.Output("out_lora_stack", display_name="lora_stack"),
+                io.String.Output("keywords", display_name="keywords")
             ]
         )
     
     @classmethod
     def execute(cls, **kwargs):
-        # TODO: Implement full logic from loader.py using GraphBuilder
+        model_info = kwargs.get("model_info", None)
         lora_stack = kwargs.get("lora_stack", None)
-        return io.NodeOutput(None, None, None, lora_stack, "")
+        model_shifts = kwargs.get("model_shifts", None)
+        if isinstance(model_shifts, (list, tuple)):
+            model_shifts = model_shifts[0]
+        graph = GraphBuilder()
+
+        unet_out, clip_out, vae_out = create_model_loader_nodes(graph, model_info)
+        exit_node, exit_unet, exit_clip = create_lora_shift_nodes(graph, unet_out, clip_out, lora_stack, model_shifts)
+        if lora_stack is not None and exit_unet is not None:
+            try:
+                lora_paths = [folder_paths.get_full_path_or_raise("loras", lora[0]) for lora in lora_stack]
+                pull_and_update_model_timestamp(lora_paths, model_type="lora")
+            except Exception as e:
+                logging.warning(f"Timestamp update failed for loras: {e}")
+        keywords = get_lora_stack_keywords(lora_stack) if lora_stack is not None else ""
+        return io.NodeOutput(exit_unet, exit_clip, vae_out, lora_stack, keywords, expand=graph.finalize())
 
 class Sage_UNETLoRALoader(io.ComfyNode):
-    """PLACEHOLDER: Load UNET and apply LoRA stack (model only, no clip)."""
+    """Load UNET (already provided as model) and apply LoRA stack (model only, no clip)."""
     @classmethod
     def define_schema(cls):
         return io.Schema(
             node_id="Sage_UNETLoRALoader",
             display_name="Load UNET + LoRA (Model Only)",
-            description="PLACEHOLDER: Load UNET and apply LoRA stack. This loads the LoRA as model only, no clip.",
+            description="Apply LoRA stack and model shifts to an already loaded UNET model. No clip modifications.",
             category="Sage Utils/model",
+            enable_expand=True,
             inputs=[
                 io.Model.Input("model"),
-                io.Custom("LORA_STACK").Input("lora_stack", optional=True),
-                io.Custom("MODEL_SHIFTS").Input("model_shifts", optional=True)
+                LoraStack.Input("lora_stack", optional=True),
+                ModelShiftInfo.Input("model_shifts", optional=True)
             ],
             outputs=[
                 io.Model.Output("out_model", display_name="model"),
-                io.Custom("LORA_STACK").Output("out_lora_stack", display_name="lora_stack"),
-                io.String.Output("keywords")
+                LoraStack.Output("out_lora_stack", display_name="lora_stack"),
+                io.String.Output("keywords", display_name="keywords")
             ]
         )
     
     @classmethod
     def execute(cls, **kwargs):
-        # TODO: Implement full logic from loader.py using GraphBuilder
+        model = kwargs.get("model", None)
         lora_stack = kwargs.get("lora_stack", None)
-        return io.NodeOutput(None, lora_stack, "")
+        model_shifts = kwargs.get("model_shifts", None)
+        if isinstance(model_shifts, (list, tuple)):
+            model_shifts = model_shifts[0]
+        if isinstance(lora_stack, (list, tuple)):
+            lora_stack = lora_stack[0]
+        graph = GraphBuilder()
+        exit_node, exit_unet, _ = create_lora_shift_nodes(graph, model, None, lora_stack, model_shifts)
+        if lora_stack is not None and exit_unet is not None:
+            try:
+                lora_paths = [folder_paths.get_full_path_or_raise("loras", lora[0]) for lora in lora_stack]
+                pull_and_update_model_timestamp(lora_paths, model_type="lora")
+            except Exception as e:
+                logging.warning(f"Timestamp update failed for loras: {e}")
+        keywords = get_lora_stack_keywords(lora_stack) if lora_stack is not None else ""
+        return io.NodeOutput(exit_unet, lora_stack, keywords, expand=graph.finalize())
 
 # ============================================================================
 

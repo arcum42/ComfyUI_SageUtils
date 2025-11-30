@@ -60,7 +60,8 @@ class LoraStack(io.ComfyTypeIO):
     Lora stack information type for SageUtils LoraStack nodes.
     Contains metadata about a lora stack without loading the actual lora models.
     """
-    Type = tuple  # Lora stack info is stored as a tuple.
+    # lora_stack = [(path,weight,weight),(path,weight,weight),...]
+    Type = list  # Lora stack info is stored as a list of tuples.
     # It contains the lora path, model weight, and clip weight for each lora in the stack.
     # This uses this structure for compatibility with existing LoraStack nodes.
 

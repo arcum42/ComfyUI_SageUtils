@@ -560,28 +560,23 @@ class Sage_LoraStack(io.ComfyNode):
         
         if enabled:
             lora_name = kwargs.get("lora_name", "")
+            enabled = kwargs.get("enabled", True)
             model_weight = kwargs.get("model_weight", 1.0)
             clip_weight = kwargs.get("clip_weight", 1.0)
+
             stack = add_lora_to_stack(lora_name, model_weight, clip_weight, lora_stack)
             return io.NodeOutput(stack)
         
         return io.NodeOutput(lora_stack)
 
-# ============================================================================
-# PLACEHOLDER NODES - NOT YET FULLY IMPLEMENTED
-# ============================================================================
-# These are placeholder implementations. The inputs/outputs match the original
-# v1 nodes, but the execute methods need proper implementation.
-
-
 class Sage_QuickLoraStack(io.ComfyNode):
-    """PLACEHOLDER: Simplified lora stack node without clip_weight."""
+    """ Simplified lora stack node without clip_weight."""
     @classmethod
     def define_schema(cls):
         return io.Schema(
             node_id="Sage_QuickLoraStack",
             display_name="Quick Lora Stack",
-            description="PLACEHOLDER: A simplified version of the lora stack node, without the clip_weight.",
+            description="A simplified version of the lora stack node, without the clip_weight.",
             category="Sage Utils/lora",
             inputs=[
                 io.Boolean.Input("enabled", default=True),
@@ -596,7 +591,6 @@ class Sage_QuickLoraStack(io.ComfyNode):
     
     @classmethod
     def execute(cls, **kwargs):
-        # TODO: Implement full logic from selector.py
         lora_stack = kwargs.get("lora_stack", None)
         enabled = kwargs.get("enabled", True)
         
@@ -610,173 +604,220 @@ class Sage_QuickLoraStack(io.ComfyNode):
         return io.NodeOutput(lora_stack)
 
 class Sage_TripleLoraStack(io.ComfyNode):
-    """PLACEHOLDER: Choose three loras with weights, and add them to a lora_stack."""
+    """Choose three loras with weights, and add them to a lora_stack."""
     NUM_OF_ENTRIES = 3
-    
+    def __init__(self):
+        self.NUM_OF_ENTRIES = Sage_TripleLoraStack.NUM_OF_ENTRIES
+        super().__init__()
+
     @classmethod
     def define_schema(cls):
-        return io.Schema(
+        lora_list = get_model_list("loras")
+        required_list = {}
+
+        schema = io.Schema(
             node_id="Sage_TripleLoraStack",
             display_name="Lora Stack (x3)",
-            description="PLACEHOLDER: Choose three loras with weights, and add them to a lora_stack.",
+            description="Choose three loras with weights, and add them to a lora_stack.",
             category="Sage Utils/lora",
-            inputs=[
-                io.Boolean.Input("enabled_1", default=True),
-                io.Combo.Input("lora_1_name", options=get_model_list("loras")),
-                io.Float.Input("model_1_weight", default=1.0, min=-100.0, max=100.0, step=0.01),
-                io.Float.Input("clip_1_weight", default=1.0, min=-100.0, max=100.0, step=0.01),
-                io.Boolean.Input("enabled_2", default=True),
-                io.Combo.Input("lora_2_name", options=get_model_list("loras")),
-                io.Float.Input("model_2_weight", default=1.0, min=-100.0, max=100.0, step=0.01),
-                io.Float.Input("clip_2_weight", default=1.0, min=-100.0, max=100.0, step=0.01),
-                io.Boolean.Input("enabled_3", default=True),
-                io.Combo.Input("lora_3_name", options=get_model_list("loras")),
-                io.Float.Input("model_3_weight", default=1.0, min=-100.0, max=100.0, step=0.01),
-                io.Float.Input("clip_3_weight", default=1.0, min=-100.0, max=100.0, step=0.01),
-                LoraStack.Input("lora_stack", optional=True)
-            ],
+            inputs=[],
             outputs=[
                 LoraStack.Output("out_lora_stack", display_name="lora_stack")
             ]
         )
+        for i in range(1, cls.NUM_OF_ENTRIES + 1):
+            schema.inputs.append(io.Boolean.Input(f"enabled_{i}", default=True))
+            schema.inputs.append(io.Combo.Input(f"lora_{i}_name", options=lora_list))
+            schema.inputs.append(io.Float.Input(f"model_{i}_weight", default=1.0, min=-100.0, max=100.0, step=0.01))
+            schema.inputs.append(io.Float.Input(f"clip_{i}_weight", default=1.0, min=-100.0, max=100.0, step=0.01))
+        schema.inputs.append(LoraStack.Input("lora_stack", optional=True))
+        
+        return schema
     
     @classmethod
     def execute(cls, **kwargs):
-        # TODO: Implement full logic from selector.py
         lora_stack = kwargs.get("lora_stack", None)
-        # Simplified logic - needs full graph implementation
+        #lora_stack = [(path,weight,weight),(path,weight,weight),...]
+        node = []
+        
+        for i in range(1, cls.NUM_OF_ENTRIES + 1):
+            enabled = kwargs.get(f"enabled_{i}", True)
+            if enabled:
+                lora_name = kwargs.get(f"lora_{i}_name", "")
+                model_weight = kwargs.get(f"model_{i}_weight", 1.0)
+                clip_weight = kwargs.get(f"clip_{i}_weight", 1.0)
+                
+                lora_stack = add_lora_to_stack(lora_name, model_weight, clip_weight, lora_stack)
         return io.NodeOutput(lora_stack)
 
-class Sage_SixLoraStack(io.ComfyNode):
-    """PLACEHOLDER: Choose six loras with weights, and add them to a lora_stack."""
+# Based on Sage_TripleLoraStack, but with six entries.
+class Sage_SixLoraStack(Sage_TripleLoraStack):
+    """Choose six loras with weights, and add them to a lora_stack."""
     NUM_OF_ENTRIES = 6
+    def __init__(self):
+        self.NUM_OF_ENTRIES = Sage_SixLoraStack.NUM_OF_ENTRIES
+        super().__init__()
     
     @classmethod
     def define_schema(cls):
-        inputs = []
-        for i in range(1, 7):
-            inputs.extend([
-                io.Boolean.Input(f"enabled_{i}", default=True),
-                io.Combo.Input(f"lora_{i}_name", options=get_model_list("loras")),
-                io.Float.Input(f"model_{i}_weight", default=1.0, min=-100.0, max=100.0, step=0.01),
-                io.Float.Input(f"clip_{i}_weight", default=1.0, min=-100.0, max=100.0, step=0.01)
-            ])
-        inputs.append(LoraStack.Input("lora_stack", optional=True))
-        
-        return io.Schema(
+        lora_list = get_model_list("loras")
+        required_list = {}
+
+        schema = io.Schema(
             node_id="Sage_SixLoraStack",
             display_name="Lora Stack (x6)",
-            description="PLACEHOLDER: Choose six loras with weights, and add them to a lora_stack.",
+            description="Choose six loras with weights, and add them to a lora_stack.",
             category="Sage Utils/lora",
-            inputs=inputs,
+            inputs=[],
             outputs=[
                 LoraStack.Output("out_lora_stack", display_name="lora_stack")
             ]
         )
-    
-    @classmethod
-    def execute(cls, **kwargs):
-        # TODO: Implement full logic from selector.py
-        lora_stack = kwargs.get("lora_stack", None)
-        return io.NodeOutput(lora_stack)
+        for i in range(1, cls.NUM_OF_ENTRIES + 1):
+            schema.inputs.append(io.Boolean.Input(f"enabled_{i}", default=True))
+            schema.inputs.append(io.Combo.Input(f"lora_{i}_name", options=lora_list))
+            schema.inputs.append(io.Float.Input(f"model_{i}_weight", default=1.0, min=-100.0, max=100.0, step=0.01))
+            schema.inputs.append(io.Float.Input(f"clip_{i}_weight", default=1.0, min=-100.0, max=100.0, step=0.01))
+        schema.inputs.append(LoraStack.Input("lora_stack", optional=True))
+        
+        return schema
 
-class Sage_TripleQuickLoraStack(io.ComfyNode):
-    """PLACEHOLDER: Choose three loras with model weights only."""
-    NUM_OF_ENTRIES = 3
+class Sage_NineLoraStack(Sage_TripleLoraStack):
+    """Choose nine loras with weights, and add them to a lora_stack."""
+    NUM_OF_ENTRIES = 9
+    def __init__(self):
+        self.NUM_OF_ENTRIES = Sage_NineLoraStack.NUM_OF_ENTRIES
+        super().__init__()
     
     @classmethod
     def define_schema(cls):
-        return io.Schema(
+        lora_list = get_model_list("loras")
+        required_list = {}
+
+        schema = io.Schema(
+            node_id="Sage_NineLoraStack",
+            display_name="Lora Stack (x9)",
+            description="Choose nine loras with weights, and add them to a lora_stack.",
+            category="Sage Utils/lora",
+            inputs=[],
+            outputs=[
+                LoraStack.Output("out_lora_stack", display_name="lora_stack")
+            ]
+        )
+        for i in range(1, cls.NUM_OF_ENTRIES + 1):
+            schema.inputs.append(io.Boolean.Input(f"enabled_{i}", default=True))
+            schema.inputs.append(io.Combo.Input(f"lora_{i}_name", options=lora_list))
+            schema.inputs.append(io.Float.Input(f"model_{i}_weight", default=1.0, min=-100.0, max=100.0, step=0.01))
+            schema.inputs.append(io.Float.Input(f"clip_{i}_weight", default=1.0, min=-100.0, max=100.0, step=0.01))
+        schema.inputs.append(LoraStack.Input("lora_stack", optional=True))
+        
+        return schema
+
+# Same as Sage_TripleLoraStack, but as a Quick lora (model weight only) version.
+class Sage_TripleQuickLoraStack(io.ComfyNode):
+    """Choose three loras with model weights only."""
+    NUM_OF_ENTRIES = 3
+    def __init__(self):
+        self.NUM_OF_ENTRIES = Sage_TripleQuickLoraStack.NUM_OF_ENTRIES
+        super().__init__()
+
+    @classmethod
+    def define_schema(cls):
+        lora_list = get_model_list("loras")
+        required_list = {}
+
+        schema = io.Schema(
             node_id="Sage_TripleQuickLoraStack",
             display_name="Quick Lora Stack (x3)",
-            description="PLACEHOLDER: Choose three loras with model weight only, and add them to a lora_stack.",
+            description="Choose three loras with model weight only, and add them to a lora_stack.",
             category="Sage Utils/lora",
-            inputs=[
-                io.Boolean.Input("enabled_1", default=True),
-                io.Combo.Input("lora_1_name", options=get_model_list("loras")),
-                io.Float.Input("model_1_weight", default=1.0, min=-100.0, max=100.0, step=0.01),
-                io.Boolean.Input("enabled_2", default=True),
-                io.Combo.Input("lora_2_name", options=get_model_list("loras")),
-                io.Float.Input("model_2_weight", default=1.0, min=-100.0, max=100.0, step=0.01),
-                io.Boolean.Input("enabled_3", default=True),
-                io.Combo.Input("lora_3_name", options=get_model_list("loras")),
-                io.Float.Input("model_3_weight", default=1.0, min=-100.0, max=100.0, step=0.01),
-                LoraStack.Input("lora_stack", optional=True)
-            ],
+            inputs=[],
             outputs=[
                 LoraStack.Output("out_lora_stack", display_name="lora_stack")
             ]
         )
+        for i in range(1, cls.NUM_OF_ENTRIES + 1):
+            schema.inputs.append(io.Boolean.Input(f"enabled_{i}", default=True))
+            schema.inputs.append(io.Combo.Input(f"lora_{i}_name", options=lora_list))
+            schema.inputs.append(io.Float.Input(f"model_{i}_weight", default=1.0, min=-100.0, max=100.0, step=0.01))
+        schema.inputs.append(LoraStack.Input("lora_stack", optional=True))
+        
+        return schema
     
     @classmethod
     def execute(cls, **kwargs):
-        # TODO: Implement full logic from selector.py
         lora_stack = kwargs.get("lora_stack", None)
+        #lora_stack = [(path,weight,weight),(path,weight,weight),...]
+        node = []
+        
+        for i in range(1, cls.NUM_OF_ENTRIES + 1):
+            enabled = kwargs.get(f"enabled_{i}", True)
+            if enabled:
+                lora_name = kwargs.get(f"lora_{i}_name", "")
+                model_weight = kwargs.get(f"model_{i}_weight", 1.0)
+                # Quick stack uses same weight for both model and clip
+                lora_stack = add_lora_to_stack(lora_name, model_weight, model_weight, lora_stack)
         return io.NodeOutput(lora_stack)
 
-class Sage_QuickSixLoraStack(io.ComfyNode):
-    """PLACEHOLDER: Choose six loras with model weights only."""
+class Sage_QuickSixLoraStack(Sage_TripleQuickLoraStack):
+    """Choose six loras with model weights only."""
     NUM_OF_ENTRIES = 6
+    def __init__(self):
+        self.NUM_OF_ENTRIES = Sage_QuickSixLoraStack.NUM_OF_ENTRIES
+        super().__init__()
     
     @classmethod
     def define_schema(cls):
-        inputs = []
-        for i in range(1, 7):
-            inputs.extend([
-                io.Boolean.Input(f"enabled_{i}", default=True),
-                io.Combo.Input(f"lora_{i}_name", options=get_model_list("loras")),
-                io.Float.Input(f"model_{i}_weight", default=1.0, min=-100.0, max=100.0, step=0.01)
-            ])
-        inputs.append(LoraStack.Input("lora_stack", optional=True))
-        
-        return io.Schema(
+        lora_list = get_model_list("loras")
+        required_list = {}
+
+        schema = io.Schema(
             node_id="Sage_QuickSixLoraStack",
             display_name="Quick Lora Stack (x6)",
-            description="PLACEHOLDER: Choose six loras with model weight only, and add them to a lora_stack.",
+            description="Choose six loras with model weight only, and add them to a lora_stack.",
             category="Sage Utils/lora",
-            inputs=inputs,
+            inputs=[],
             outputs=[
                 LoraStack.Output("out_lora_stack", display_name="lora_stack")
             ]
         )
-    
-    @classmethod
-    def execute(cls, **kwargs):
-        # TODO: Implement full logic from selector.py
-        lora_stack = kwargs.get("lora_stack", None)
-        return io.NodeOutput(lora_stack)
+        for i in range(1, cls.NUM_OF_ENTRIES + 1):
+            schema.inputs.append(io.Boolean.Input(f"enabled_{i}", default=True))
+            schema.inputs.append(io.Combo.Input(f"lora_{i}_name", options=lora_list))
+            schema.inputs.append(io.Float.Input(f"model_{i}_weight", default=1.0, min=-100.0, max=100.0, step=0.01))
+        schema.inputs.append(LoraStack.Input("lora_stack", optional=True))
+        
+        return schema
 
-class Sage_QuickNineLoraStack(io.ComfyNode):
-    """PLACEHOLDER: Choose nine loras with model weights only."""
+class Sage_QuickNineLoraStack(Sage_TripleQuickLoraStack):
+    """Choose nine loras with model weights only."""
     NUM_OF_ENTRIES = 9
+    def __init__(self):
+        self.NUM_OF_ENTRIES = Sage_QuickNineLoraStack.NUM_OF_ENTRIES
+        super().__init__()
     
     @classmethod
     def define_schema(cls):
-        inputs = []
-        for i in range(1, 10):
-            inputs.extend([
-                io.Boolean.Input(f"enabled_{i}", default=True),
-                io.Combo.Input(f"lora_{i}_name", options=get_model_list("loras")),
-                io.Float.Input(f"model_{i}_weight", default=1.0, min=-100.0, max=100.0, step=0.01)
-            ])
-        inputs.append(LoraStack.Input("lora_stack", optional=True))
-        
-        return io.Schema(
+        lora_list = get_model_list("loras")
+        required_list = {}
+
+        schema = io.Schema(
             node_id="Sage_QuickNineLoraStack",
             display_name="Quick Lora Stack (x9)",
-            description="PLACEHOLDER: Choose nine loras with model weight only, and add them to a lora_stack.",
+            description="Choose nine loras with model weight only, and add them to a lora_stack.",
             category="Sage Utils/lora",
-            inputs=inputs,
+            inputs=[],
             outputs=[
                 LoraStack.Output("out_lora_stack", display_name="lora_stack")
             ]
         )
-    
-    @classmethod
-    def execute(cls, **kwargs):
-        # TODO: Implement full logic from selector.py
-        lora_stack = kwargs.get("lora_stack", None)
-        return io.NodeOutput(lora_stack)
+        for i in range(1, cls.NUM_OF_ENTRIES + 1):
+            schema.inputs.append(io.Boolean.Input(f"enabled_{i}", default=True))
+            schema.inputs.append(io.Combo.Input(f"lora_{i}_name", options=lora_list))
+            schema.inputs.append(io.Float.Input(f"model_{i}_weight", default=1.0, min=-100.0, max=100.0, step=0.01))
+        schema.inputs.append(LoraStack.Input("lora_stack", optional=True))
+        
+        return schema
 
 # ============================================================================
 
@@ -798,7 +839,6 @@ SELECTOR_NODES = [
     Sage_UnetClipVaeToModelInfo,
     Sage_LoraStack,
     Sage_QuickLoraStack,
-    # Placeholder nodes (not fully implemented)
     Sage_TripleLoraStack,
     Sage_SixLoraStack,
     Sage_TripleQuickLoraStack,
