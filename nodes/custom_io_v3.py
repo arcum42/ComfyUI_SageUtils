@@ -78,3 +78,16 @@ class TilingInfo(io.ComfyTypeIO):
     # "temporal_size": int
     # "temporal_overlap": int
 
+@io.comfytype(io_type="SAMPLER_INFO")
+class SamplerInfo(io.ComfyTypeIO):
+    """
+    Sampler information type for SageUtils metadata nodes.
+    Contains metadata about the sampler settings without loading the actual sampler.
+    """
+    Type = dict  # Sampler info is stored as a dictionary
+    # Keys are:
+    # "sampler": str
+    # "scheduler": str
+    # "steps": int
+    # "cfg": float
+    # "seed": int
