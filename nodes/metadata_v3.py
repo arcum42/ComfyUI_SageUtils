@@ -37,9 +37,6 @@ try:
 except ImportError:
     COMFYUI_VERSION = "v1.10-RC-6-comfyui"
 
-# Current status: Placeholder nodes only. Full implementations to be done.
-# Should be easy to implement based on the original v1 nodes.
-
 class Sage_ConstructMetadataFlexible(io.ComfyNode):
     """PLACEHOLDER: Flexible metadata constructor with multiple style options."""
     @classmethod

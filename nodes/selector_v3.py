@@ -36,8 +36,6 @@ import logging
 # - Sage_MultiSelectorDoubleClip
 # - Sage_MultiSelectorTripleClip
 # - Sage_MultiSelectorQuadClip
-
-# Placeholder nodes (inputs/outputs defined, logic needs implementation):
 # - Sage_ModelShifts
 # - Sage_ModelShiftOnly
 # - Sage_FreeU2
@@ -50,8 +48,6 @@ import logging
 # - Sage_QuickNineLoraStack
 # - Sage_SixLoraStack
 # - Sage_TilingInfo
-
-# Sage_LoraStack, Sage_TilingInfo, and Sage_ModelShifts are high priority for implementation.
 
 class Sage_CheckpointSelector(io.ComfyNode):
     @classmethod

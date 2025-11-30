@@ -97,6 +97,7 @@ class Sage_LoadImage(io.ComfyNode):
             display_name="Load Image",
             description="Loads an image from a specified file path.",
             category="Sage Utils/image",
+            is_output_node=True,
             inputs=[
                 io.String.Input("file_path", default="", tooltip="The file path of the image to load."),
             ],
@@ -117,6 +118,13 @@ class Sage_LoadImage(io.ComfyNode):
 
 class Sage_SaveImageWithMetadata(io.ComfyNode):
     @classmethod
+    def __init__(cls):
+        cls.output_dir = folder_paths.get_output_directory()
+        cls.type = "output"
+        cls.prefix_append = ""
+        cls.compress_level = 4
+
+    @classmethod
     def define_schema(cls):
         return io.Schema(
             node_id="Sage_SaveImageWithMetadata",
@@ -129,20 +137,102 @@ class Sage_SaveImageWithMetadata(io.ComfyNode):
                 io.Boolean.Input("include_node_metadata", default=True, tooltip="Whether to include node metadata in the saved image."),
                 io.Boolean.Input("include_extra_pnginfo_metadata", default=False, tooltip="Whether to include extra PNG info metadata."),
                 io.Boolean.Input("save_text", default=False, tooltip="Whether to save accompanying text files with metadata."),
+                io.String.Input("param_metadata", default="", tooltip="The metadata to embed in the image."),
+                io.String.Input("extra_metadata", default="", tooltip="Any extra metadata to include."),
             ],
-            outputs=[]
+            outputs=[],
+            hidden=[io.Hidden.prompt, io.Hidden.extra_pnginfo]
         )
 
     @classmethod
+    def set_metadata(
+        cls,
+        include_node_metadata,
+        include_extra_pnginfo_metadata,
+        param_metadata=None,
+        extra_metadata=None,
+        prompt=None,
+        extra_pnginfo=None,
+    ):
+        result = None
+        if not comfy.cli_args.args.disable_metadata:
+            result = PngInfo()
+            if param_metadata is not None:
+                result.add_text("parameters", param_metadata)
+            if include_node_metadata == True:
+                if prompt is not None:
+                    result.add_text("prompt", json.dumps(prompt))
+            if include_extra_pnginfo_metadata == True:
+                if extra_pnginfo is not None:
+                    for x in extra_pnginfo:
+                        result.add_text(x, json.dumps(extra_pnginfo[x]))
+            if extra_metadata is not None:
+                result.add_text("Extra", extra_metadata)
+        return result
+
+    @classmethod
     def execute(cls, **kwargs):
+        logging.info(f"Executing Sage_SaveImageWithMetadata with kwargs: {kwargs}")  # Debug print
         images = kwargs.get("images", [])
         filename_prefix = kwargs.get("filename_prefix", "image_")
         include_node_metadata = kwargs.get("include_node_metadata", True)
         include_extra_pnginfo_metadata = kwargs.get("include_extra_pnginfo_metadata", False)
         save_text = kwargs.get("save_text", False)
-        
-        # Implement the rest of the saving logic here.
-        return io.NodeOutput()
+        param_metadata = kwargs.get("param_metadata", "")
+        extra_metadata = kwargs.get("extra_metadata", "")
+        prompt = kwargs.get("prompt", "")
+        extra_pnginfo = kwargs.get("extra_pnginfo", {})
+        logging.info(f"Prompt: {prompt}")  # Debug print
+        logging.info(f"Extra PNG Info: {extra_pnginfo}")  # Debug print
+
+        save_to_text = True
+        if save_text == "Image Only":
+            save_to_text = False
+        if '\n' in filename_prefix:
+            filename_prefix_lines = filename_prefix.splitlines()
+            filename_prefix = ''.join(filename_prefix_lines)
+        filename_prefix += cls.prefix_append
+        full_output_folder, filename, counter, subfolder, filename_prefix = (
+            folder_paths.get_save_image_path(
+                filename_prefix, cls.output_dir, images[0].shape[1], images[0].shape[0]
+            )
+        )
+        results = list()
+        for batch_number, image in enumerate(images):
+            i = 255.0 * image.cpu().numpy()
+            img = Image.fromarray(np.clip(i, 0, 255).astype(np.uint8))
+            final_metadata = cls.set_metadata(
+                include_node_metadata,
+                include_extra_pnginfo_metadata,
+                param_metadata,
+                extra_metadata,
+                prompt,
+                extra_pnginfo,
+            )
+
+            filename_with_batch_num = filename.replace("%batch_num%", str(batch_number))
+            file = f"{filename_with_batch_num}_{counter:05}_.png"
+            text_file = f"{filename_with_batch_num}_{counter:05}_.txt"
+
+            img.save(
+                os.path.join(full_output_folder, file),
+                pnginfo=final_metadata,
+                compress_level=cls.compress_level,
+            )
+            if save_to_text:
+                with open(os.path.join(full_output_folder, text_file), 'w', encoding='utf-8') as f:
+                    if save_text == "Param to Text":
+                        f.write(f"{param_metadata}")
+                    elif save_text == "Extra to Text":
+                        f.write(f"{extra_metadata}")
+                    elif save_text == "All to Text":
+                        f.write(f"{param_metadata}\n{extra_metadata}")
+            results.append(
+                {"filename": file, "subfolder": subfolder, "type": cls.type}
+            )
+            counter += 1
+
+        return io.NodeOutput(ui={"images": results})
 
 class Sage_CropImage(io.ComfyNode):
     @classmethod
