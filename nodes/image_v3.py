@@ -14,7 +14,6 @@ from comfy_execution.graph import ExecutionBlocker
 import comfy
 import nodes
 from comfy_extras.nodes_images import ImageCrop
-from openai import images
 
 # Import specific utilities instead of wildcard import  
 from ..utils import load_image_from_path
