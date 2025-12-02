@@ -172,7 +172,6 @@ class Sage_SaveImageWithMetadata(io.ComfyNode):
 
     @classmethod
     def execute(cls, **kwargs):
-        logging.info(f"Executing Sage_SaveImageWithMetadata with kwargs: {kwargs}")  # Debug print
         images = kwargs.get("images", [])
         filename_prefix = kwargs.get("filename_prefix", "image_")
         include_node_metadata = kwargs.get("include_node_metadata", True)
@@ -182,8 +181,6 @@ class Sage_SaveImageWithMetadata(io.ComfyNode):
         extra_metadata = kwargs.get("extra_metadata", "")
         prompt = kwargs.get("prompt", "")
         extra_pnginfo = kwargs.get("extra_pnginfo", {})
-        logging.info(f"Prompt: {prompt}")  # Debug print
-        logging.info(f"Extra PNG Info: {extra_pnginfo}")  # Debug print
 
         save_to_text = True
         if save_text == "Image Only":
