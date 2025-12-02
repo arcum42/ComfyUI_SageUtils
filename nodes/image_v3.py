@@ -40,9 +40,9 @@ from ..utils.constants import QUICK_ASPECT_RATIOS
 # Sage_EmptyLatentImagePassthrough - Works.
 # Sage_SaveImageWithMetadata - Works.
 # Sage_LoadImage - Works.
+# Sage_CropImage - Works.
 
 # Test results here:
-# Sage_CropImage - Needs implementing. Original is a subclass.
 # Sage_GuessResolutionByRatio - Different logic, needs work.
 # Sage_QuickResPicker - Different logic, needs work.
 # Sage_CubiqImageResize - Not implemented yet.
@@ -86,7 +86,6 @@ class Sage_EmptyLatentImagePassthrough(io.ComfyNode):
             latent = torch.zeros([batch_size, 3, height, width], device=device)
 
         return io.NodeOutput({"samples":latent}, width, height)
-
 
 class Sage_SaveImageWithMetadata(io.ComfyNode):
     @classmethod
@@ -204,10 +203,6 @@ class Sage_SaveImageWithMetadata(io.ComfyNode):
 
         return io.NodeOutput(results, ui=ui.PreviewImage(images, cls=cls))
 
-
-# Sketch out node skeletons and implement later.
-# All of these have to be looked at and re-implemented to some degree.
-
 class Sage_LoadImage(io.ComfyNode):
     @classmethod
     def define_schema(cls):
@@ -289,11 +284,11 @@ class Sage_CropImage(io.ComfyNode):
             description="Crops an image based on specified coordinates.",
             category="Sage Utils/image",
             inputs=[
-                io.Image.Input("image", tooltip="The image to crop."),
-                io.Int.Input("left", default=0, tooltip="The left coordinate for cropping."),
-                io.Int.Input("top", default=0, tooltip="The top coordinate for cropping."),
-                io.Int.Input("right", default=0, tooltip="The right coordinate for cropping."),
-                io.Int.Input("bottom", default=0, tooltip="The bottom coordinate for cropping."),
+                io.Image.Input("image", display_name="image", tooltip="The image to crop."),
+                io.Int.Input("left", display_name="left", default=0, tooltip="The left coordinate for cropping."),
+                io.Int.Input("top", display_name="top", default=0, tooltip="The top coordinate for cropping."),
+                io.Int.Input("right", display_name="right", default=0, tooltip="The right coordinate for cropping."),
+                io.Int.Input("bottom", display_name="bottom", default=0, tooltip="The bottom coordinate for cropping."),
             ],
             outputs=[
                 io.Image.Output("out_image", tooltip="The cropped image.", display_name="image"),
@@ -301,8 +296,43 @@ class Sage_CropImage(io.ComfyNode):
         )
 
     @classmethod
+    def crop(cls, image, left, top, right, bottom):
+        # Ensure non-negative crop margins
+        left = max(int(left), 0)
+        top = max(int(top), 0)
+        right = max(int(right), 0)
+        bottom = max(int(bottom), 0)
+
+        # Image tensor shape: [batch, H, W, C]
+        H = image.shape[1]
+        W = image.shape[2]
+
+        # Clamp margins so we don't exceed bounds
+        if left + right >= W:
+            # Collapse to 1px width at the rightmost valid column
+            left = min(W - 1, left)
+            right = W - 1 - left
+        if top + bottom >= H:
+            # Collapse to 1px height at the bottommost valid row
+            top = min(H - 1, top)
+            bottom = H - 1 - top
+
+        x = left
+        y = top
+        to_x = W - right
+        to_y = H - bottom
+
+        # Final safety clamps
+        x = max(0, min(x, W - 1))
+        y = max(0, min(y, H - 1))
+        to_x = max(x + 1, min(to_x, W))
+        to_y = max(y + 1, min(to_y, H))
+
+        return image[:, y:to_y, x:to_x, :]
+
+    @classmethod
     def execute(cls, **kwargs):
-        image = kwargs.get("image")
+        image = kwargs.get("image", None)
         left = kwargs.get("left", 0)
         top = kwargs.get("top", 0)
         right = kwargs.get("right", 0)
@@ -310,9 +340,13 @@ class Sage_CropImage(io.ComfyNode):
 
         if image is None:
             return io.NodeOutput(None)
-
-        cropped_image = image.crop((left, top, right, bottom))
+        
+        cropped_image = cls.crop(image, left, top, right, bottom)
         return io.NodeOutput(cropped_image)
+
+# Sketch out node skeletons and implement later.
+# All of these have to be looked at and re-implemented to some degree.
+
 
 class Sage_GuessResolutionByRatio(io.ComfyNode):
     @classmethod
