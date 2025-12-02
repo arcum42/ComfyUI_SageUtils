@@ -37,10 +37,11 @@ import logging
 from ..utils.constants import QUICK_ASPECT_RATIOS
 
 # Current status - Empty latent only.
+# Sage_EmptyLatentImagePassthrough - Works.
+# Sage_SaveImageWithMetadata - Works.
+# Sage_LoadImage - Works.
+
 # Test results here:
-# Sage_EmptyLatentImagePassthrough - Untested.
-# Sage_LoadImage - Needs implementing.
-# Sage_SaveImageWithMetadata - Needs implementing.
 # Sage_CropImage - Needs implementing. Original is a subclass.
 # Sage_GuessResolutionByRatio - Different logic, needs work.
 # Sage_QuickResPicker - Different logic, needs work.
@@ -86,34 +87,6 @@ class Sage_EmptyLatentImagePassthrough(io.ComfyNode):
 
         return io.NodeOutput({"samples":latent}, width, height)
 
-# Sketch out node skeletons and implement later.
-# All of these have to be looked at and re-implemented to some degree.
-
-class Sage_LoadImage(io.ComfyNode):
-    @classmethod
-    def define_schema(cls):
-        return io.Schema(
-            node_id="Sage_LoadImage",
-            display_name="Load Image",
-            description="Loads an image from a specified file path.",
-            category="Sage Utils/image",
-            inputs=[
-                io.String.Input("file_path", default="", tooltip="The file path of the image to load."),
-            ],
-            outputs=[
-                io.Image.Output("image"),
-                io.Int.Output("out_width", display_name="width"),
-                io.Int.Output("out_height", display_name="height"),
-                io.String.Output("metadata"),
-            ]
-        )
-
-    @classmethod
-    def execute(cls, **kwargs):
-        file_path = kwargs.get("file_path", "")
-        image, metadata = load_image_from_path(file_path)
-        width, height = image.size
-        return io.NodeOutput(image, width, height, metadata)
 
 class Sage_SaveImageWithMetadata(io.ComfyNode):
     @classmethod
@@ -230,6 +203,82 @@ class Sage_SaveImageWithMetadata(io.ComfyNode):
             counter += 1
 
         return io.NodeOutput(results, ui=ui.PreviewImage(images, cls=cls))
+
+
+# Sketch out node skeletons and implement later.
+# All of these have to be looked at and re-implemented to some degree.
+
+class Sage_LoadImage(io.ComfyNode):
+    @classmethod
+    def define_schema(cls):
+        input_files = []
+        # INPUT_TYPES is called multiple times during workflow loading, 
+        # so cache the results for 20 seconds to avoid rescanning the input directory repeatedly.
+        if hasattr(cls, 'input_cache') and hasattr(cls, 'input_cache_creation_time') and cls.input_cache is not None:
+            if (datetime.datetime.now() - cls.input_cache_creation_time).total_seconds() < 20:
+                input_files = cls.input_cache
+
+        if not input_files:
+            input_files = get_files_in_dir(
+                input_dirs=folder_paths.get_input_directory(),
+                extensions=[".png", ".jpg", ".jpeg", ".bmp", ".tiff", ".tif", ".webp"]
+            )
+            cls.input_cache = input_files  # Cache the list to avoid re-scanning on every call
+            cls.input_cache_creation_time = datetime.datetime.now()
+
+        schema = io.Schema(
+            node_id="Sage_LoadImage",
+            display_name="Load Image",
+            description="Loads an image from a specified file path.",
+            category="Sage Utils/image",
+            is_output_node=True,
+            inputs=[],
+            outputs=[
+                io.Image.Output("image", display_name="image"),
+                io.Image.Output("mask", display_name="mask"),
+                io.Int.Output("out_width", display_name="width"),
+                io.Int.Output("out_height", display_name="height"),
+                io.String.Output("metadata", display_name="metadata"),
+            ]
+        )
+        schema.inputs.append(
+            io.Combo.Input(
+                "image_name",
+                default=input_files[0] if input_files else "",
+                options=input_files,
+                image_folder=io.FolderType.input,
+                upload=io.UploadType.image,
+                tooltip="The file path of the image to load."
+            )
+        )
+        return schema
+
+    @classmethod
+    def execute(cls, **kwargs):
+        image_name = kwargs.get("image_name", "")
+        image_path = folder_paths.get_annotated_filepath(image_name)
+        output_image, output_mask, w, h, info = load_image_from_path(image_path)
+
+        return io.NodeOutput(output_image, output_mask, w, h, info, ui=ui.PreviewImage(output_image, cls=cls))
+
+    @classmethod
+    def validate_inputs(cls, **kwargs):
+        image_name = kwargs.get("image_name", "")
+        # Return True if valid, error string if not
+        if not folder_paths.exists_annotated_filepath(image_name):
+            logging.info("Invalid image file: {}".format(image_name))
+            return False
+
+        return True
+
+    @classmethod
+    def fingerprint_inputs(cls, **kwargs):
+        image_name = kwargs.get("image_name", "")
+        image_path = folder_paths.get_annotated_filepath(image_name)
+        m = hashlib.sha256()
+        with open(image_path, "rb") as f:
+            m.update(f.read())
+        return m.digest().hex()
 
 class Sage_CropImage(io.ComfyNode):
     @classmethod
