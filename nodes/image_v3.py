@@ -4,7 +4,7 @@
 
 from __future__ import annotations
 from comfy.comfy_types.node_typing import ComfyNodeABC, InputTypeDict, IO
-from comfy_api.latest import io, ComfyExtension
+from comfy_api.latest import io, ComfyExtension, ui
 from typing_extensions import override
 
 from comfy_api.latest._io import NodeOutput, Schema
@@ -14,6 +14,7 @@ from comfy_execution.graph import ExecutionBlocker
 import comfy
 import nodes
 from comfy_extras.nodes_images import ImageCrop
+from openai import images
 
 # Import specific utilities instead of wildcard import  
 from ..utils import load_image_from_path
@@ -97,7 +98,6 @@ class Sage_LoadImage(io.ComfyNode):
             display_name="Load Image",
             description="Loads an image from a specified file path.",
             category="Sage Utils/image",
-            is_output_node=True,
             inputs=[
                 io.String.Input("file_path", default="", tooltip="The file path of the image to load."),
             ],
@@ -131,6 +131,7 @@ class Sage_SaveImageWithMetadata(io.ComfyNode):
             display_name="Save Image With Metadata",
             description="Saves images to disk with embedded metadata.",
             category="Sage Utils/image",
+            is_output_node=True,
             inputs=[
                 io.Image.Input("images", tooltip="The images to save."),
                 io.String.Input("filename_prefix", default="image_", tooltip="The prefix for the saved image filenames."),
@@ -232,7 +233,7 @@ class Sage_SaveImageWithMetadata(io.ComfyNode):
             )
             counter += 1
 
-        return io.NodeOutput(ui={"images": results})
+        return io.NodeOutput(results, ui=ui.PreviewImage(images, cls=cls))
 
 class Sage_CropImage(io.ComfyNode):
     @classmethod
