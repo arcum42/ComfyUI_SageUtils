@@ -41,9 +41,9 @@ from ..utils.constants import QUICK_ASPECT_RATIOS
 # Sage_SaveImageWithMetadata - Works.
 # Sage_LoadImage - Works.
 # Sage_CropImage - Works.
+# Sage_GuessResolutionByRatio - Seems to work.
 
 # Test results here:
-# Sage_GuessResolutionByRatio - Different logic, needs work.
 # Sage_QuickResPicker - Different logic, needs work.
 # Sage_CubiqImageResize - Not implemented yet.
 # Sage_ReferenceImage - Not implemented yet.
@@ -344,9 +344,6 @@ class Sage_CropImage(io.ComfyNode):
         cropped_image = cls.crop(image, left, top, right, bottom)
         return io.NodeOutput(cropped_image)
 
-# Sketch out node skeletons and implement later.
-# All of these have to be looked at and re-implemented to some degree.
-
 
 class Sage_GuessResolutionByRatio(io.ComfyNode):
     @classmethod
@@ -354,41 +351,55 @@ class Sage_GuessResolutionByRatio(io.ComfyNode):
         return io.Schema(
             node_id="Sage_GuessResolutionByRatio",
             display_name="Guess Resolution By Ratio",
-            description="Guesses image resolution based on target aspect ratio.",
+            description="Based on the input width and height, guess a resolution that matches one of the common aspect ratios. The output is rounded to the nearest multiple of 64.",
             category="Sage Utils/image",
             inputs=[
-                io.Image.Input("image", tooltip="The image to analyze."),
-                io.Combo.Input("target_ratio", default="1:1", options=["1:1", "3:4", "4:3", "9:16", "16:9", "2:3", "3:2"], tooltip="The target aspect ratio."),
-            ],
+                io.Int.Input("width", min = 64, max = 8192, default=1024, step = 1, tooltip="The input width."),
+                io.Int.Input("height", min = 64, max = 8192, default=1024, step = 1, tooltip="The input height."),
+                ],
             outputs=[
-                io.Int.Output("width", tooltip="The guessed width."),
-                io.Int.Output("height", tooltip="The guessed height."),
+                io.Int.Output("new_width", tooltip="The guessed width."),
+                io.Int.Output("new_height", tooltip="The guessed height."),
             ]
         )
 
     @classmethod
     def execute(cls, **kwargs):
-        image = kwargs.get("image")
-        target_ratio = kwargs.get("target_ratio", "1:1")
+        width = kwargs.get("width", 1024)
+        height = kwargs.get("height", 1024)
 
-        if image is None:
-            return io.NodeOutput(0, 0)
+        # Calculate the aspect ratio of the input dimensions, and pick dimensions that are closest to it.
+        landscape = width > height
+        if landscape:
+            width, height = height, width
 
-        width, height = image.size
+        input_aspect_ratio = width / height
+        closest_ratio = None
+        closest_diff = float('inf')
+        for ratio, (w, h) in QUICK_ASPECT_RATIOS.items():
+            ratio_aspect = w / h
+            diff = abs(input_aspect_ratio - ratio_aspect)
+            if diff < closest_diff:
+                closest_diff = diff
+                closest_ratio = (w, h)
+        if closest_ratio is None:
+            logging.info("No close resolution found, defaulting to 1024x1024.")
+            return io.NodeOutput(1024, 1024)
+        width, height = closest_ratio
+
+        # Round to the nearest multiple of 64
+        width = int(round(width / 64) * 64)
+        height = int(round(height / 64) * 64)
         
-        # Since target aspect ratio is x:y, we can pull x and y directly from the string.
-        x_str, y_str = target_ratio.split(":")
-        target_aspect = float(x_str) / float(y_str)
-        current_aspect = width / height
+        if landscape:
+            width, height = height, width
 
-        if current_aspect > target_aspect:
-            new_width = int(height * target_aspect)
-            new_height = height
-        else:
-            new_width = width
-            new_height = int(width / target_aspect)
+        logging.info(f"Guessed resolution: {width}x{height}")
 
-        return io.NodeOutput(new_width, new_height)
+        return io.NodeOutput(width, height)
+
+# Sketch out node skeletons and implement later.
+# All of these have to be looked at and re-implemented to some degree.
 
 class Sage_QuickResPicker(io.ComfyNode):
     @classmethod
