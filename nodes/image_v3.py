@@ -42,9 +42,9 @@ from ..utils.constants import QUICK_ASPECT_RATIOS
 # Sage_LoadImage - Works.
 # Sage_CropImage - Works.
 # Sage_GuessResolutionByRatio - Seems to work.
+# Sage_QuickResPicker - Seems to work.
 
 # Test results here:
-# Sage_QuickResPicker - Different logic, needs work.
 # Sage_CubiqImageResize - Not implemented yet.
 # Sage_ReferenceImage - Not implemented yet.
 
@@ -310,17 +310,12 @@ class Sage_CropImage(io.ComfyNode):
         # Clamp margins so we don't exceed bounds
         if left + right >= W:
             # Collapse to 1px width at the rightmost valid column
-            left = min(W - 1, left)
-            right = W - 1 - left
+            left, right = min(W - 1, left), W - 1 - min(W - 1, left)
         if top + bottom >= H:
             # Collapse to 1px height at the bottommost valid row
-            top = min(H - 1, top)
-            bottom = H - 1 - top
+            top, bottom = min(H - 1, top), H - 1 - min(H - 1, top)
 
-        x = left
-        y = top
-        to_x = W - right
-        to_y = H - bottom
+        x, y, to_x, to_y = left, top, W - right, H - bottom
 
         # Final safety clamps
         x = max(0, min(x, W - 1))
@@ -343,7 +338,6 @@ class Sage_CropImage(io.ComfyNode):
         
         cropped_image = cls.crop(image, left, top, right, bottom)
         return io.NodeOutput(cropped_image)
-
 
 class Sage_GuessResolutionByRatio(io.ComfyNode):
     @classmethod
@@ -398,9 +392,6 @@ class Sage_GuessResolutionByRatio(io.ComfyNode):
 
         return io.NodeOutput(width, height)
 
-# Sketch out node skeletons and implement later.
-# All of these have to be looked at and re-implemented to some degree.
-
 class Sage_QuickResPicker(io.ComfyNode):
     @classmethod
     def define_schema(cls):
@@ -410,33 +401,37 @@ class Sage_QuickResPicker(io.ComfyNode):
             description="Quickly pick image resolution based on aspect ratio and orientation.",
             category="Sage Utils/image",
             inputs=[
-                io.Combo.Input("aspect_ratio", default="1:1", options=["1:1", "3:4", "4:3", "9:16", "16:9", "2:3", "3:2"], tooltip="The aspect ratio."),
-                io.Combo.Input("orientation", default="landscape", options=["landscape", "portrait", "square"], tooltip="The orientation of the image."),
-                io.Int.Input("multiplier", default=1, tooltip="The multiplier for the base resolution."),
+                io.Combo.Input("aspect_ratio", display_name="Aspect Ratio", default="1:1", options=list(QUICK_ASPECT_RATIOS.keys()), tooltip="The aspect ratio."),
+                io.Combo.Input("orientation", display_name="Orientation", default="Landscape", options=["Portrait", "Landscape"], tooltip="The orientation of the image."),
+                io.Float.Input("multiplier", display_name="Multiplier", default=1.0, min = 0.1, max = 10.0, step = 0.1, round = 0.001, tooltip="The multiplier for the base resolution."),
             ],
             outputs=[
-                io.Int.Output("width", tooltip="The selected width."),
-                io.Int.Output("height", tooltip="The selected height."),
+                io.Int.Output("width", display_name="Width", tooltip="The selected width."),
+                io.Int.Output("height", display_name="Height", tooltip="The selected height."),
             ]
         )
 
     @classmethod
     def execute(cls, **kwargs):
         aspect_ratio = kwargs.get("aspect_ratio", "1:1")
-        orientation = kwargs.get("orientation", "landscape")
-        multiplier = kwargs.get("multiplier", 1)
+        orientation = kwargs.get("orientation", "Landscape")
+        multiplier = kwargs.get("multiplier", 1.0)
 
-        width, height = QUICK_ASPECT_RATIOS.get(aspect_ratio, (512, 512))
+        if aspect_ratio not in QUICK_ASPECT_RATIOS:
+            aspect_ratio = "1:1"  # Default to 1:1 if not found
+            logging.info(f"Aspect ratio '{aspect_ratio}' not found, defaulting to 1:1.")
 
-        if orientation == "portrait" and width > height:
+        width, height = QUICK_ASPECT_RATIOS[aspect_ratio]
+        if orientation == "Landscape":
             width, height = height, width
-        elif orientation == "landscape" and height > width:
-            width, height = height, width
 
-        width *= multiplier
-        height *= multiplier
+        width = int(round(width * multiplier / 64) * 64)
+        height = int(round(height * multiplier / 64) * 64)
 
         return io.NodeOutput(width, height)
+
+# Sketch out node skeletons and implement later.
+# All of these have to be looked at and re-implemented to some degree.
 
 class Sage_CubiqImageResize(io.ComfyNode):
     @classmethod
