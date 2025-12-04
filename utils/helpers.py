@@ -455,6 +455,24 @@ def model_scan(the_path, force = False):
     pbar = comfy.utils.ProgressBar(len(model_list))
     pull_metadata(model_list, force_all=force, pbar=pbar)
 
+def grab_model_list(model_type: str, extra_models: list[str] | None = None) -> list[str]:
+    """Get a list of model names based on the model type, including extra models."""
+    model_list = folder_paths.get_filename_list(model_type)
+    if extra_models is None:
+        return model_list
+    
+    for extra_model in extra_models:
+        extra = []
+        try:
+            extra = [x for x in folder_paths.get_filename_list(extra_model)]
+        except Exception as e:
+            extra = []
+        #print(f"Extra models for {extra_model}: {extra}")
+        model_list += extra
+        model_list = list(set(model_list))
+    model_list.sort()  # Remove duplicates
+    #print(f"Final model list for {model_type}: {model_list}")
+    return model_list
 
 # Module-level cache for get_model_list
 _model_list_cache = {}
@@ -472,54 +490,20 @@ def get_model_list(model_type: str) -> list[str]:
 
     # Not cached or cache expired, fetch fresh
     if model_type == "checkpoints":
-        result = folder_paths.get_filename_list("checkpoints")
+        result = grab_model_list("checkpoints")
     elif model_type == "unet":
-        unet_names = []
-        try:
-            unet_names = [x for x in folder_paths.get_filename_list("unet_gguf")]
-        except Exception as e:
-            unet_names = []
-        unet_names += folder_paths.get_filename_list("diffusion_models")
-        unet_names = list(set(unet_names))
-        unet_names.sort()  # Remove duplicates
-        result = unet_names
+        result = grab_model_list("unet", ["diffusion_models", "unet_gguf"])
     elif model_type == "vae":
-        result = folder_paths.get_filename_list("vae")
+        result = grab_model_list("vae")
     elif model_type == "clip":
-        model_list = []
-        try:
-            model_list = [x for x in folder_paths.get_filename_list("clip_gguf")]
-        except Exception as e:
-            model_list = []
-        model_list += folder_paths.get_filename_list("text_encoders")
-        model_list = list(set(model_list))
-        model_list.sort()  # Remove duplicates
-        result = model_list
+        result = grab_model_list("clip", ["text_encoders", "clip_gguf"])
     elif model_type == "loras":
-        result = folder_paths.get_filename_list("loras")
+        result = grab_model_list("loras")
     else:
         result = []
 
     _model_list_cache[model_type] = (now, result)
     return result
-
-def get_recently_used_models(model_type):
-    model_list = list()
-    full_model_list = folder_paths.get_filename_list(model_type)
-    for item in full_model_list:
-        model_path = folder_paths.get_full_path_or_raise(model_type, item)
-        if model_path not in cache.hash.keys():
-            continue
-        
-        if 'lastUsed' not in cache.by_path(model_path):
-            continue
-
-        last = cache.by_path(model_path)['lastUsed']
-        last_used = datetime.datetime.fromisoformat(last)
-        #print(f"{model_path} - last: {last} last_used: {last_used}")
-        if (datetime.datetime.now() - last_used).days <= 7:
-            model_list.append(item)
-    return model_list
 
 def clean_keywords(keywords):
     keywords = set(filter(None, (x.strip() for x in keywords)))

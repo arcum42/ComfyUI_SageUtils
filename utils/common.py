@@ -27,7 +27,6 @@ from .helpers import (
     get_lora_hash,
     model_scan,
     get_model_list,
-    get_recently_used_models,
     clean_keywords,
     clean_text,
     clean_if_needed,
@@ -134,7 +133,7 @@ __all__ = [
     'update_cache_from_civitai_json', 'update_cache_without_civitai_json',
     'add_file_to_cache', 'recheck_hash', 'pull_metadata', 'update_model_timestamp', 'pull_and_update_model_timestamp',
     'lora_to_string', 'lora_to_prompt', 'get_lora_hash', 'model_scan', 'get_model_list',
-    'get_recently_used_models', 'clean_keywords', 'clean_text', 'clean_if_needed', 'condition_text',
+    'clean_keywords', 'clean_text', 'clean_if_needed', 'condition_text',
     'get_save_file_path', 'unwrap_tuple',
     
     # Image utilities

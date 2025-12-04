@@ -34,7 +34,8 @@ import comfy.cli_args
 from ..utils.common import get_files_in_dir
 import datetime
 import logging
-from ..utils.constants import QUICK_ASPECT_RATIOS
+from ..utils.constants import QUICK_ASPECT_RATIOS, MAX_RESOLUTION
+from ..utils.helpers_image import calc_padding, resize_needed, image_manipulate
 
 # Current status - Empty latent only.
 # Sage_EmptyLatentImagePassthrough - Works.
@@ -442,38 +443,94 @@ class Sage_CubiqImageResize(io.ComfyNode):
             description="Resizes an image using Cubiq interpolation.",
             category="Sage Utils/image",
             inputs=[
-                io.Image.Input("image", tooltip="The image to resize."),
-                io.Int.Input("width", default=512, tooltip="The target width."),
-                io.Int.Input("height", default=512, tooltip="The target height."),
-                io.Combo.Input("interpolation", default="bicubic", options=["nearest", "bilinear", "bicubic", "lanczos", "cubic"], tooltip="The interpolation method."),
-                io.Combo.Input("method", default="direct", options=["direct", "conditioned"], tooltip="The resizing method."),
-                io.String.Input("condition", default="", tooltip="The condition for conditioned resizing."),
-                io.Int.Input("multiple_of", default=8, tooltip="Ensure dimensions are multiples of this value."),
+                io.Image.Input("image", display_name="Image", tooltip="The image to resize."),
+                io.Int.Input("width", display_name="Width", default=1024, min = 0, max = MAX_RESOLUTION, step = 1, tooltip="The target width."),
+                io.Int.Input("height", display_name="Height", default=1024, min = 0, max = MAX_RESOLUTION, step = 1, tooltip="The target height."),
+                io.Combo.Input("interpolation", display_name="Interpolation", default="bicubic", options=["nearest", "bilinear", "bicubic", "area", "nearest-exact", "lanczos", "bislerp"], tooltip="The interpolation method."),
+                io.Combo.Input("method", display_name="Method", default="keep proportion", options=["stretch", "keep proportion", "fill / crop", "pad"], tooltip="The resizing method."),
+                io.Combo.Input("condition", display_name="Condition", default="always", options = ["always", "downscale if bigger", "upscale if smaller", "if bigger area", "if smaller area"], tooltip="The condition for conditioned resizing."),
+                io.Int.Input("multiple_of", display_name="Multiple Of", default=0, min = 0, max = 1024,  step = 1, tooltip="Ensure dimensions are multiples of this value."),
             ],
             outputs=[
-                io.Image.Output("out_image", tooltip="The resized image.", display_name="image"),
-                io.Int.Output("out_width", tooltip="The new width.", display_name="width"),
-                io.Int.Output("out_height", tooltip="The new height.", display_name="height"),
+                io.Image.Output("out_image", tooltip="The resized image.", display_name="Image"),
+                io.Int.Output("out_width", tooltip="The new width.", display_name="Width"),
+                io.Int.Output("out_height", tooltip="The new height.", display_name="Height"),
             ]
         )
 
     @classmethod
     def execute(cls, **kwargs):
-        image = kwargs.get("image")
-        width = kwargs.get("width", 512)
-        height = kwargs.get("height", 512)
+        image = kwargs.get("image", None)
+        width = kwargs.get("width", 1024)
+        height = kwargs.get("height", 1024)
         interpolation = kwargs.get("interpolation", "bicubic")
-        method = kwargs.get("method", "direct")
-        condition = kwargs.get("condition", "")
-        multiple_of = kwargs.get("multiple_of", 8)
+        method = kwargs.get("method", "keep proportion")
+        condition = kwargs.get("condition", "always")
+        multiple_of = kwargs.get("multiple_of", 1)
 
         if image is None:
             return io.NodeOutput(None, 0, 0)
 
-        # Implement resizing logic here.
-        resized_image = image.resize((width, height), resample=Image.BICUBIC)
+        _, oh, ow, _ = image.shape
+        x = y = x2 = y2 = 0
+        pad_left = pad_right = pad_top = pad_bottom = 0
+        padding = False
 
-        return io.NodeOutput(resized_image, width, height)
+        if multiple_of > 1:
+            width, height = width - (width % multiple_of), height - (height % multiple_of)
+
+        if method == 'keep proportion' or method == 'pad':
+            if width == 0:
+                if oh < height:
+                    width = MAX_RESOLUTION
+                else:
+                    width = ow
+
+            if height == 0:
+                if ow < width:
+                    height = MAX_RESOLUTION
+                else:
+                    height = oh
+
+            ratio = min(width / ow, height / oh)
+            new_width = round(ow*ratio)
+            new_height = round(oh*ratio)
+
+            if method == 'pad':
+                pad_left, pad_right, pad_top, pad_bottom = calc_padding(width, height, new_width, new_height)
+                if pad_left > 0 or pad_right > 0 or pad_top > 0 or pad_bottom > 0:
+                    padding = True
+
+            width, height = new_width, new_height
+        elif method.startswith('fill'):
+            width = width if width > 0 else ow
+            height = height if height > 0 else oh
+
+            ratio = max(width / ow, height / oh)
+            new_width, new_height = round(ow*ratio), round(oh*ratio)
+
+            x, y = (new_width - width) // 2, (new_height - height) // 2
+            x2, y2 = x + width, y + height
+
+            if x2 > new_width: x -= (x2 - new_width)
+            if x < 0: x = 0
+            if y2 > new_height: y -= (y2 - new_height)
+            if y < 0: y = 0
+
+            width, height = new_width, new_height
+        else:
+            width = width if width > 0 else ow
+            height = height if height > 0 else oh
+
+        fill = method.startswith('fill')
+        resize = resize_needed(condition, width, height, ow, oh)
+
+        outputs = image_manipulate(image, width, height, interpolation, multiple_of,
+                 padding, fill, resize,
+                 pad_left, pad_right, pad_top, pad_bottom,
+                 x, y, x2, y2)
+
+        return io.NodeOutput(outputs, width, height)
 
 class Sage_ReferenceImage(io.ComfyNode):
     @classmethod
