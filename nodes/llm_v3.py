@@ -60,10 +60,16 @@ class Sage_ConstructLLMPrompt(io.ComfyNode):
             prompt_list.append(f"{category}/{key}")
         
         # Dynamic extras: add boolean inputs for llm_prompts["extra"] keys
+        # Only include extras in (style, quality, content_focus) categories
         extra_inputs = []
         try:
             for ekey in llm_prompts.get("extra", {}).keys():
-                extra_inputs.append(io.Boolean.Input(ekey, default=False))
+                cfg = llm_prompts["extra"][ekey]
+                if cfg.get("category") in ("style", "quality", "content_focus"):
+                    if cfg.get("type") == "boolean":
+                        default_value = cfg.get("default", False)
+                        tooltip = cfg.get("name", ekey)
+                        extra_inputs.append(io.Boolean.Input(ekey, default=default_value, tooltip=tooltip))
         except Exception:
             extra_inputs = []
         return io.Schema(
@@ -127,10 +133,16 @@ class Sage_ConstructLLMPromptExtra(io.ComfyNode):
     @classmethod
     def define_schema(cls):
         # Dynamic extras: add boolean inputs for llm_prompts["extra"] keys
+        # Only include extras NOT in (style, quality, content_focus) categories
         extra_inputs = []
         try:
             for ekey in llm_prompts.get("extra", {}).keys():
-                extra_inputs.append(io.Boolean.Input(ekey, default=False))
+                cfg = llm_prompts["extra"][ekey]
+                if cfg.get("category") not in ("style", "quality", "content_focus"):
+                    if cfg.get("type") == "boolean":
+                        default_value = cfg.get("default", False)
+                        tooltip = cfg.get("name", ekey)
+                        extra_inputs.append(io.Boolean.Input(ekey, default=default_value, tooltip=tooltip))
         except Exception:
             extra_inputs = []
         return io.Schema(
