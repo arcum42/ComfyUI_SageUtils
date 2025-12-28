@@ -18,7 +18,7 @@ from ..utils.common import (
     vae_decode_tiled
 )
 
-# Think I've got things working now.
+from .custom_io_v3 import *
 
 class Sage_SamplerSelector(io.ComfyNode):
     """Selects a sampler for use in the pipeline."""
@@ -84,7 +84,7 @@ class Sage_SamplerInfo(io.ComfyNode):
                 io.Combo.Input("scheduler", options=list(SCHEDULERS), default="beta")
             ],
             outputs=[
-                io.Custom("SAMPLER_INFO").Output("sampler_info")
+                SamplerInfo.Output("sampler_info")
             ]
         )
     
@@ -121,7 +121,7 @@ class Sage_AdvSamplerInfo(io.ComfyNode):
                 io.Boolean.Input("return_with_leftover_noise", default=False)
             ],
             outputs=[
-                io.Custom("ADV_SAMPLER_INFO").Output("adv_sampler_info")
+                AdvSamplerInfo.Output("adv_sampler_info")
             ]
         )
     
@@ -151,12 +151,12 @@ class Sage_KSampler(io.ComfyNode):
             category="Sage Utils/sampler",
             inputs=[
                 io.Model.Input("model"),
-                io.Custom("SAMPLER_INFO").Input("sampler_info"),
+                SamplerInfo.Input("sampler_info"),
                 io.Conditioning.Input("positive"),
                 io.Conditioning.Input("negative"),
                 io.Latent.Input("latent_image"),
                 io.Float.Input("denoise", default=1.0, min=0.0, max=1.0, step=0.01),
-                io.Custom("ADV_SAMPLER_INFO").Input("advanced_info", optional=True)
+                AdvSamplerInfo.Input("advanced_info", optional=True)
             ],
             outputs=[
                 io.Latent.Output("latent")
@@ -217,14 +217,14 @@ class Sage_KSamplerTiledDecoder(io.ComfyNode):
             category="Sage Utils/sampler",
             inputs=[
                 io.Model.Input("model"),
-                io.Custom("SAMPLER_INFO").Input("sampler_info"),
+                SamplerInfo.Input("sampler_info"),
                 io.Conditioning.Input("positive"),
                 io.Conditioning.Input("negative"),
                 io.Latent.Input("latent_image"),
                 io.Vae.Input("vae"),
                 io.Float.Input("denoise", default=1.0, min=0.0, max=1.0, step=0.01),
-                io.Custom("TILING_INFO").Input("tiling_info", optional=True),
-                io.Custom("ADV_SAMPLER_INFO").Input("advanced_info", optional=True)
+                TilingInfo.Input("tiling_info", optional=True),
+                AdvSamplerInfo.Input("advanced_info", optional=True)
             ],
             outputs=[
                 io.Latent.Output("latent"),
@@ -303,13 +303,13 @@ class Sage_KSamplerAudioDecoder(io.ComfyNode):
             category="Sage Utils/sampler",
             inputs=[
                 io.Model.Input("model"),
-                io.Custom("SAMPLER_INFO").Input("sampler_info"),
+                SamplerInfo.Input("sampler_info"),
                 io.Conditioning.Input("positive"),
                 io.Conditioning.Input("negative"),
                 io.Latent.Input("latent_audio"),
                 io.Vae.Input("vae"),
                 io.Float.Input("denoise", default=1.0, min=0.0, max=1.0, step=0.01),
-                io.Custom("ADV_SAMPLER_INFO").Input("advanced_info", optional=True)
+                AdvSamplerInfo.Input("advanced_info", optional=True)
             ],
             outputs=[
                 io.Latent.Output("latent"),

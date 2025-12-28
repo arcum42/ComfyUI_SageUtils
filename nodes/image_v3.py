@@ -85,6 +85,9 @@ class Sage_EmptyLatentImagePassthrough(io.ComfyNode):
             latent = torch.zeros([batch_size, 16, height // 8, width // 8], device=device)
         elif type == "radiance":
             latent = torch.zeros([batch_size, 3, height, width], device=device)
+        else:
+            logging.info(f"Unknown latent type '{type}', defaulting to 4_channel.")
+            latent = torch.zeros([batch_size, 4, height // 8, width // 8], device=device)
 
         return io.NodeOutput({"samples":latent}, width, height)
 

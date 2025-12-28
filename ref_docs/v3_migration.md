@@ -400,6 +400,7 @@ def define_schema(cls) -> io.Schema:
     )
 ```
 
+
 ### Custom Types
 
 Create custom input/output types either via class definition of `Custom` helper function.

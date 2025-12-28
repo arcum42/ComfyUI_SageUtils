@@ -91,3 +91,26 @@ class SamplerInfo(io.ComfyTypeIO):
     # "steps": int
     # "cfg": float
     # "seed": int
+
+@io.comfytype(io_type="ADV_SAMPLER_INFO")
+class AdvSamplerInfo(io.ComfyTypeIO):
+    """
+    Advanced sampler information type for SageUtils metadata nodes.
+    Contains metadata about the advanced sampler settings without loading the actual sampler.
+    """
+    Type = dict  # Advanced sampler info is stored as a dictionary
+
+@io.comfytype(io_type="OLLAMA_OPTIONS")
+class OllamaOptions(io.ComfyTypeIO):
+    """
+    Ollama options type for SageUtils LLM nodes.
+    Contains options for configuring Ollama LLM calls.
+    """
+    Type = dict  # Ollama options are stored as a dictionary
+    # Keys are:
+    # "model": str
+    # "temperature": float
+    # "max_tokens": int
+    # "top_p": float
+    # "frequency_penalty": float
+    # "presence_penalty": float

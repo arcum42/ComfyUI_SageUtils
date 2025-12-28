@@ -380,9 +380,6 @@ class Sage_CubiqImageResize:
         pad_left = pad_right = pad_top = pad_bottom = 0
         padding = False
 
-        if keep_proportion:
-            method = "keep proportion"
-
         if multiple_of > 1:
             width = width - (width % multiple_of)
             height = height - (height % multiple_of)
