@@ -289,7 +289,7 @@ class Sage_KSamplerTiledDecoder(io.ComfyNode):
         else:
             images = vae_decode(latent_result, vae)
 
-        return io.NodeOutput(latent_result, images)
+        return io.NodeOutput(latent_result[0], images)
 
 # Not really tested, as I haven't done anything audio for a while.
 class Sage_KSamplerAudioDecoder(io.ComfyNode):
