@@ -40,10 +40,10 @@ class Sage_IntToStr(io.ComfyNode):
             description="Converts a number to a string.",
             category="Sage Utils/text",
             inputs=[
-                io.Int.Input("num", default=0)
+                io.Int.Input("num", display_name="num", default=0)
             ],
             outputs=[
-                io.String.Output("str")
+                io.String.Output("str", display_name="str")
             ]
         )
     
@@ -61,10 +61,10 @@ class Sage_FloatToStr(io.ComfyNode):
             description="Converts a float to a string.",
             category="Sage Utils/text",
             inputs=[
-                io.Float.Input("num", default=0.0)
+                io.Float.Input("num", display_name="num", default=0.0)
             ],
             outputs=[
-                io.String.Output("str")
+                io.String.Output("str", display_name="str")
             ]
         )
     
@@ -83,10 +83,10 @@ class SageSetWildcardText(io.ComfyNode):
             category="Sage Utils/text",
             inputs=[
                 io.String.Input("str_input", display_name="str", force_input=False, dynamic_prompts=True, multiline=True),
-                io.Int.Input("seed", default=0, min=0, max=2**32-1, step=1),
-                io.Boolean.Input("clean", default=False),
-                io.String.Input("prefix", force_input=True, multiline=True, optional=True),
-                io.String.Input("suffix", force_input=True, multiline=True, optional=True)
+                io.Int.Input("seed", display_name="seed", default=0, min=0, max=2**32-1, step=1),
+                io.Boolean.Input("clean", display_name="clean", default=False),
+                io.String.Input("prefix", display_name="prefix", force_input=True, multiline=True, optional=True),
+                io.String.Input("suffix", display_name="suffix", force_input=True, multiline=True, optional=True)
             ],
             outputs=[
                 io.String.Output("str_output", display_name="str")
@@ -134,10 +134,10 @@ class Sage_ViewAnything(io.ComfyNode):
             category="Sage Utils/text",
             is_output_node=True,
             inputs=[
-                io.AnyType.Input("any")
+                io.AnyType.Input("any", display_name="any")
             ],
             outputs=[
-                io.String.Output("str")
+                io.String.Output("str", display_name="str")
             ]
         )
     
@@ -165,13 +165,13 @@ class Sage_TextSubstitution(io.ComfyNode):
             description="Substitutes the placeholders in the text with the provided strings. The placeholders use the specified delimiter (default $) followed by str_1, str_2, etc. based on the number of connected inputs. The prefix and suffix are added to the final result.",
             category="Sage Utils/text",
             inputs=[
-                io.String.Input("text", default="", multiline=True),
-                io.String.Input("delimiter", default="$"),
-                io.String.Input("prefix", force_input=True, multiline=True, optional=True),
-                io.String.Input("suffix", force_input=True, multiline=True, optional=True)
+                io.String.Input("text", display_name="text", default="", multiline=True),
+                io.String.Input("delimiter", display_name="delimiter", default="$"),
+                io.String.Input("prefix", display_name="prefix", force_input=True, multiline=True, optional=True),
+                io.String.Input("suffix", display_name="suffix", force_input=True, multiline=True, optional=True)
             ],
             outputs=[
-                io.String.Output("result")
+                io.String.Output("result", display_name="result")
             ]
         )
     
@@ -245,10 +245,10 @@ class Sage_ViewNotes(io.ComfyNode):
             category="Sage Utils/text",
             is_output_node=True,
             inputs=[
-                io.Combo.Input("filename", options=notes_files)
+                io.Combo.Input("filename", display_name="filename", options=notes_files)
             ],
             outputs=[
-                io.String.Output("content")
+                io.String.Output("content", display_name="content")
             ]
         )
     
@@ -280,12 +280,12 @@ class Sage_SetText(io.ComfyNode):
             description="Sets some text.",
             category="Sage Utils/text",
             inputs = [
-                io.String.Input("str", force_input = False, dynamic_prompts = False, multiline = True),
-                io.String.Input("prefix", force_input = True, multiline = True, optional=True),
-                io.String.Input("suffix", force_input = True, multiline = True, optional=True)
+                io.String.Input("str", display_name="str", force_input = False, dynamic_prompts = False, multiline = True),
+                io.String.Input("prefix", display_name="prefix", force_input = True, multiline = True, optional=True),
+                io.String.Input("suffix", display_name="suffix", force_input = True, multiline = True, optional=True)
             ],
             outputs = [
-                io.String.Output("str_out")
+                io.String.Output("str_out", display_name="str")
             ],
         )
     @classmethod
@@ -305,10 +305,10 @@ class Sage_SetTextWithInt(io.ComfyNode):
             description="Sets some text and adds a number at the end.",
             category="Sage Utils/text",
             inputs = [
-                io.String.Input("str", force_input = False, dynamic_prompts = False, multiline = True),
-                io.String.Input("prefix", force_input = True, multiline = True, optional=True),
-                io.String.Input("suffix", force_input = True, multiline = True, optional=True),
-                io.Int.Input("number", force_input = False)
+                io.String.Input("str", display_name="str", force_input = False, dynamic_prompts = False, multiline = True),
+                io.String.Input("prefix", display_name="prefix", force_input = True, multiline = True, optional=True),
+                io.String.Input("suffix", display_name="suffix", force_input = True, multiline = True, optional=True),
+                io.Int.Input("number", display_name="number", force_input = False)
             ],
             outputs = [
                 io.String.Output("str_out", display_name="str")
@@ -332,8 +332,8 @@ class Sage_TextSwitch(io.ComfyNode):
             description="Passes the text if active is true, otherwise passes an empty string.",
             category="Sage Utils/text",
             inputs=[
-                io.String.Input("str", force_input=True, multiline=True),
-                io.Boolean.Input("active", default=True)
+                io.String.Input("str", display_name="str", force_input=True, multiline=True),
+                io.Boolean.Input("active", display_name="active", default=True)
             ],
             outputs=[
                 io.String.Output("str_out", display_name="str")
@@ -355,7 +355,7 @@ class Sage_CleanText(io.ComfyNode):
             description="Cleans up the string given.",
             category="Sage Utils/text",
             inputs=[
-                io.String.Input("str", force_input=True, multiline=True)
+                io.String.Input("str", display_name="str", force_input=True, multiline=True)
             ],
             outputs=[
                 io.String.Output("cleaned_string", display_name="cleaned string")
@@ -376,11 +376,11 @@ class Sage_PonyPrefix(io.ComfyNode):
             description="Generates a prefix for pony-related content.",
             category="Sage Utils/text",
             inputs=[
-                io.Boolean.Input("add_score", default=False),
+                io.Boolean.Input("add_score", display_name="add_score", default=False),
                 io.Int.Input("score_start", display_name="Score Start", default=9),
                 io.Int.Input("score_end", display_name="Score End", default=4),
-                io.Combo.Input("rating", default="none", options=["none", "safe", "questionable", "explicit"]),
-                io.Combo.Input("source", default="none", options=["none", "pony", "furry", "anime", "cartoon", "3d", "western", "comic", "monster"])
+                io.Combo.Input("rating", display_name="rating", default="none", options=["none", "safe", "questionable", "explicit"]),
+                io.Combo.Input("source", display_name="source", default="none", options=["none", "pony", "furry", "anime", "cartoon", "3d", "western", "comic", "monster"])
             ],
             outputs=[
                 io.String.Output("str_out", display_name="string")
@@ -423,10 +423,10 @@ class Sage_PonyStyle(io.ComfyNode):
             category="Sage Utils/text",
             
             inputs=[
-                io.MultiCombo.Input("style", pony_strings, chip=True, placeholder="Pony Style")
+                io.MultiCombo.Input("style", display_name="style", options=pony_strings, chip=True, placeholder="Pony Style")
             ],
             outputs=[
-                io.String.Output("styled_text")
+                io.String.Output("styled_text", display_name="styled_text")
             ]
         )
     
@@ -444,13 +444,13 @@ class Sage_SaveText(io.ComfyNode):
             description="Saves the text to a file.",
             category="Sage Utils/text",
             inputs=[
-                io.String.Input("filename_prefix", default="ComfyUI_Text", tooltip="The prefix for the file to save. This may include formatting information such as %date:yyyy-MM-dd% to include values from nodes."),
-                io.String.Input("file_extension", default="txt", tooltip="The file extension to use for the saved file."),
-                io.String.Input("text", force_input=True, multiline=True),
-                io.Int.Input("batch_size", default=1, tooltip="The number of files to save.")
+                io.String.Input("filename_prefix", display_name="filename_prefix", default="ComfyUI_Text", tooltip="The prefix for the file to save. This may include formatting information such as %date:yyyy-MM-dd% to include values from nodes."),
+                io.String.Input("file_extension", display_name="file_extension", default="txt", tooltip="The file extension to use for the saved file."),
+                io.String.Input("text", display_name="text", force_input=True, multiline=True),
+                io.Int.Input("batch_size", display_name="batch_size", default=1, tooltip="The number of files to save.")
             ],
             outputs=[
-                io.String.Output("filepath")
+                io.String.Output("filepath", display_name="filepath")
             ]
         )
     
@@ -487,13 +487,13 @@ class Sage_JoinText(io.ComfyNode):
             description="Joins two strings with a separator.",
             category="Sage Utils/text",
             inputs=[
-                io.String.Input("separator", default=", "),
-                io.Boolean.Input("add_separator_to_end", default=False, tooltip="Add separator to the end of the joined string."),
-                io.String.Input("str1", multiline=True),
-                io.String.Input("str2", multiline=True)
+                io.String.Input("separator", display_name="separator", default=", "),
+                io.Boolean.Input("add_separator_to_end", display_name="add_separator_to_end", default=False, tooltip="Add separator to the end of the joined string."),
+                io.String.Input("str1", display_name="str1", multiline=True),
+                io.String.Input("str2", display_name="str2", multiline=True)
             ],
             outputs=[
-                io.String.Output("str")
+                io.String.Output("str", display_name="str")
             ]
         )
     
@@ -519,14 +519,14 @@ class Sage_TripleJoinText(io.ComfyNode):
             description="Joins three strings with a separator.",
             category="Sage Utils/text",
             inputs=[
-                io.String.Input("separator", default=", "),
-                io.Boolean.Input("add_separator_to_end", default=False, tooltip="Add separator to the end of the joined string."),
-                io.String.Input("str1", multiline=True),
-                io.String.Input("str2", multiline=True),
-                io.String.Input("str3", multiline=True)
+                io.String.Input("separator", display_name="separator", default=", "),
+                io.Boolean.Input("add_separator_to_end", display_name="add_separator_to_end", default=False, tooltip="Add separator to the end of the joined string."),
+                io.String.Input("str1", display_name="str1", multiline=True),
+                io.String.Input("str2", display_name="str2", multiline=True),
+                io.String.Input("str3", display_name="str3", multiline=True)
             ],
             outputs=[
-                io.String.Output("str")
+                io.String.Output("str", display_name="str")
             ]
         )
     
@@ -553,11 +553,11 @@ class Sage_TextRandomLine(io.ComfyNode):
             description="Returns a random line from the given text.",
             category="Sage Utils/text",
             inputs=[
-                io.String.Input("text", multiline=True),
-                io.Int.Input("seed", default=0)
+                io.String.Input("text", display_name="text", multiline=True),
+                io.Int.Input("seed", display_name="seed", default=0)
             ],
             outputs=[
-                io.String.Output("random_line")
+                io.String.Output("random_line", display_name="random_line")
             ]
         )
     
@@ -585,11 +585,11 @@ class Sage_TextSelectLine(io.ComfyNode):
             description="Selects a specific line from the given text based on the line number. Line numbers start from 0.",
             category="Sage Utils/text",
             inputs=[
-                io.String.Input("text", multiline=True),
-                io.Int.Input("line_number", default=0, min=0)
+                io.String.Input("text", display_name="text", multiline=True),
+                io.Int.Input("line_number", display_name="line_number", default=0, min=0)
             ],
             outputs=[
-                io.String.Output("selected_line")
+                io.String.Output("selected_line", display_name="selected_line")
             ]
         )
     
@@ -617,12 +617,12 @@ class Sage_TextWeight(io.ComfyNode):
             description="Applies a weight to a text string.",
             category="Sage Utils/text",
             inputs=[
-                io.String.Input("text", multiline=True),
-                io.Float.Input("weight", default=1.0, min=-10.0, max=10.0, step=0.05),
-                io.String.Input("separator", default=", ")
+                io.String.Input("text", display_name="text", multiline=True),
+                io.Float.Input("weight", display_name="weight", default=1.0, min=-10.0, max=10.0, step=0.05),
+                io.String.Input("separator", display_name="separator", default=", ")
             ],
             outputs=[
-                io.String.Output("weighted_text")
+                io.String.Output("weighted_text", display_name="weighted_text")
             ]
         )
     
@@ -648,11 +648,11 @@ class Sage_PromptText(io.ComfyNode):
             description="Combines a system prompt and a user prompt into a single prompt, with <Prompt Start> between them.",
             category="Sage Utils/text/specialized",
             inputs=[
-                io.String.Input("system", force_input=True, multiline=True),
-                io.String.Input("prompt", force_input=True, multiline=True)
+                io.String.Input("system", display_name="system", force_input=True, multiline=True),
+                io.String.Input("prompt", display_name="prompt", force_input=True, multiline=True)
             ],
             outputs=[
-                io.String.Output("combined_prompt")
+                io.String.Output("combined_prompt", display_name="combined_prompt")
             ]
         )
     
@@ -673,10 +673,10 @@ class Sage_SystemPrompt(io.ComfyNode):
             description="Picks the system prompt based on the selected option.",
             category="Sage Utils/text/specialized",
             inputs=[
-                io.Combo.Input("system", options=list(LUMINA2_SYSTEM_PROMPTS_V2.keys()), default="superior", tooltip=LUMINA2_SYSTEM_PROMPT_TIP)
+                io.Combo.Input("system", display_name="system", options=list(LUMINA2_SYSTEM_PROMPTS_V2.keys()), default="superior", tooltip=LUMINA2_SYSTEM_PROMPT_TIP)
             ],
             outputs=[
-                io.String.Output("system_prompt")
+                io.String.Output("system_prompt", display_name="system_prompt")
             ]
         )
     
@@ -696,10 +696,10 @@ class Sage_PonyStyleCluster(io.ComfyNode):
             description="Creates a style cluster string for pony prompts based on the given style cluster number.",
             category="Sage Utils/text/pony",
             inputs=[
-                io.Int.Input("style_cluster", default=1, min=1, max=2048, step=1)
+                io.Int.Input("style_cluster", display_name="style_cluster", default=1, min=1, max=2048, step=1)
             ],
             outputs=[
-                io.String.Output("style_cluster_text")
+                io.String.Output("style_cluster_text", display_name="style_cluster_text")
             ]
         )
     
@@ -718,10 +718,10 @@ class Sage_PonySource(io.ComfyNode):
             description="Creates a source string for pony prompts based on the given source.",
             category="Sage Utils/text/pony",
             inputs=[
-                io.Combo.Input("source", options=PONY_SOURCE, default="none")
+                io.Combo.Input("source", display_name="source", options=PONY_SOURCE, default="none")
             ],
             outputs=[
-                io.String.Output("source_text")
+                io.String.Output("source_text", display_name="source_text")
             ]
         )
     
@@ -743,10 +743,10 @@ class Sage_PonyRatingv7(io.ComfyNode):
             description="Creates a rating string for pony prompts based on the given rating. (v7 style)",
             category="Sage Utils/text/pony",
             inputs=[
-                io.Combo.Input("rating", options=PONY_V7_RATING, default="none")
+                io.Combo.Input("rating", display_name="rating", options=PONY_V7_RATING, default="none")
             ],
             outputs=[
-                io.String.Output("rating_text")
+                io.String.Output("rating_text", display_name="rating_text")
             ]
         )
     
@@ -768,10 +768,10 @@ class Sage_PonyRatingv6(io.ComfyNode):
             description="Creates a rating string for pony prompts based on the given rating. (v6 style)",
             category="Sage Utils/text/pony",
             inputs=[
-                io.Combo.Input("rating", options=PONY_V6_RATING, default="none")
+                io.Combo.Input("rating", display_name="rating", options=PONY_V6_RATING, default="none")
             ],
             outputs=[
-                io.String.Output("rating_text")
+                io.String.Output("rating_text", display_name="rating_text")
             ]
         )
     
@@ -793,12 +793,12 @@ class Sage_PonyScore(io.ComfyNode):
             description="Creates a score string for pony prompts based on the given start and end scores.",
             category="Sage Utils/text/pony",
             inputs=[
-                io.Int.Input("score_start", default=9, min=0, max=9, step=1),
-                io.Int.Input("score_end", default=4, min=0, max=9, step=1),
-                io.Boolean.Input("up_to", default=False, tooltip="If true, adds '_up' to the score string, except for score_9. (v6 uses up, v7 doesn't)")
+                io.Int.Input("score_start", display_name="score_start", default=9, min=0, max=9, step=1),
+                io.Int.Input("score_end", display_name="score_end", default=4, min=0, max=9, step=1),
+                io.Boolean.Input("up_to", display_name="up_to", default=False, tooltip="If true, adds '_up' to the score string, except for score_9. (v6 uses up, v7 doesn't)")
             ],
             outputs=[
-                io.String.Output("score_text")
+                io.String.Output("score_text", display_name="score_text")
             ]
         )
     
@@ -828,11 +828,11 @@ class Sage_HiDreamE1_Instruction(io.ComfyNode):
             description="Generates a prompt for HiDream E1 based on the given instruction and description.",
             category="Sage Utils/text",
             inputs=[
-                io.String.Input("instruction", multiline=True),
-                io.String.Input("description", multiline=True)
+                io.String.Input("instruction", display_name="instruction", multiline=True),
+                io.String.Input("description", display_name="description", multiline=True)
             ],
             outputs=[
-                io.String.Output("prompt")
+                io.String.Output("prompt", display_name="prompt")
             ]
         )
     

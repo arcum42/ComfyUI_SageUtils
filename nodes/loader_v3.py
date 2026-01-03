@@ -46,13 +46,13 @@ class Sage_LoadModelFromInfo(io.ComfyNode):
             category="Sage Utils/model",
             enable_expand=True,
             inputs=[
-                ModelInfo.Input("model_info"),
-                ModelShiftInfo.Input("model_shifts", optional=True)
+                ModelInfo.Input("model_info", display_name="model_info"),
+                ModelShiftInfo.Input("model_shifts", display_name="model_shifts", optional=True)
             ],
             outputs=[
-                io.Model.Output("model"),
-                io.Clip.Output("clip"),
-                io.Vae.Output("vae")
+                io.Model.Output("model", display_name="model"),
+                io.Clip.Output("clip", display_name="clip"),
+                io.Vae.Output("vae", display_name="vae")
             ]
         )
     
@@ -84,10 +84,10 @@ class Sage_UNETLoaderFromInfo(io.ComfyNode):
             category="Sage Utils/model",
             enable_expand=True,
             inputs=[
-                UnetInfo.Input("unet_info")
+                UnetInfo.Input("unet_info", display_name="unet_info")
             ],
             outputs=[
-                io.Model.Output("model")
+                io.Model.Output("model", display_name="model")
             ]
         )
     
@@ -117,7 +117,7 @@ class Sage_CLIPLoaderFromInfo(io.ComfyNode):
             category="Sage Utils/model",
             enable_expand=True,
             inputs=[
-                ClipInfo.Input("clip_info")
+                ClipInfo.Input("clip_info", display_name="clip_info")
             ],
             outputs=[
                 io.Clip.Output("clip")
@@ -148,7 +148,7 @@ class Sage_ChromaCLIPLoaderFromInfo(io.ComfyNode):
             category="Sage Utils/model",
             enable_expand=True,
             inputs=[
-                ClipInfo.Input("clip_info")
+                ClipInfo.Input("clip_info", display_name="clip_info")
             ],
             outputs=[
                 io.Clip.Output("clip")
@@ -179,10 +179,10 @@ class Sage_VAELoaderFromInfo(io.ComfyNode):
             category="Sage Utils/model",
             enable_expand=True,
             inputs=[
-                VaeInfo.Input("vae_info")
+                VaeInfo.Input("vae_info", display_name="vae_info")
             ],
             outputs=[
-                io.Vae.Output("vae")
+                io.Vae.Output("vae", display_name="vae")
             ]
         )
     
@@ -210,10 +210,10 @@ class Sage_LoraStackLoader(io.ComfyNode):
             category="Sage Utils/lora",
             enable_expand=True,
             inputs=[
-                io.Model.Input("model"),
-                io.Clip.Input("clip"),
-                LoraStack.Input("lora_stack", optional=True),
-                ModelShiftInfo.Input("model_shifts", optional=True)
+                io.Model.Input("model", display_name="model"),
+                io.Clip.Input("clip", display_name="clip"),
+                LoraStack.Input("lora_stack", display_name="lora_stack", optional=True),
+                ModelShiftInfo.Input("model_shifts", display_name="model_shifts", optional=True)
             ],
             outputs=[
                 io.Model.Output("out_model", display_name="model"),
@@ -255,14 +255,14 @@ class Sage_ModelLoraStackLoader(io.ComfyNode):
             category="Sage Utils/model",
             enable_expand=True,
             inputs=[
-                ModelInfo.Input("model_info"),
-                LoraStack.Input("lora_stack", optional=True),
-                ModelShiftInfo.Input("model_shifts", optional=True)
+                ModelInfo.Input("model_info", display_name="model_info"),
+                LoraStack.Input("lora_stack", display_name="lora_stack", optional=True),
+                ModelShiftInfo.Input("model_shifts", display_name="model_shifts", optional=True)
             ],
             outputs=[
-                io.Model.Output("model"),
-                io.Clip.Output("clip"),
-                io.Vae.Output("vae"),
+                io.Model.Output("model", display_name="model"),
+                io.Clip.Output("clip", display_name="clip"),
+                io.Vae.Output("vae", display_name="vae"),
                 LoraStack.Output("out_lora_stack", display_name="lora_stack"),
                 io.String.Output("keywords", display_name="keywords")
             ]
@@ -299,9 +299,9 @@ class Sage_UNETLoRALoader(io.ComfyNode):
             category="Sage Utils/model",
             enable_expand=True,
             inputs=[
-                io.Model.Input("model"),
-                LoraStack.Input("lora_stack", optional=True),
-                ModelShiftInfo.Input("model_shifts", optional=True)
+                io.Model.Input("model", display_name="model"),
+                LoraStack.Input("lora_stack", display_name="lora_stack", optional=True),
+                ModelShiftInfo.Input("model_shifts", display_name="model_shifts", optional=True)
             ],
             outputs=[
                 io.Model.Output("out_model", display_name="model"),

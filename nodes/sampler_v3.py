@@ -30,10 +30,10 @@ class Sage_SamplerSelector(io.ComfyNode):
             description="Selects a sampler for use in the pipeline.",
             category="Sage Utils/sampler",
             inputs=[
-                io.Combo.Input("sampler_name", options=list(SAMPLERS), default="dpmpp_2m")
+                io.Combo.Input("sampler_name", display_name="sampler_name", options=list(SAMPLERS), default="dpmpp_2m")
             ],
             outputs=[
-                io.String.Output("sampler")
+                io.String.Output("sampler", display_name="sampler")
             ]
         )
     
@@ -52,12 +52,12 @@ class Sage_SchedulerSelector(io.ComfyNode):
             description="Selects a scheduler for use in the pipeline, and passes the steps to be used in the KSampler.",
             category="Sage Utils/sampler",
             inputs=[
-                io.Int.Input("steps", default=20, min=1, max=10000),
-                io.Combo.Input("scheduler_name", options=list(SCHEDULERS), default="beta")
+                io.Int.Input("steps", display_name="steps", default=20, min=1, max=10000),
+                io.Combo.Input("scheduler_name", display_name="scheduler_name", options=list(SCHEDULERS), default="beta")
             ],
             outputs=[
                 io.Int.Output("out_steps", display_name="steps"),
-                io.String.Output("scheduler")
+                io.String.Output("scheduler", display_name="scheduler")
             ]
         )
     
@@ -77,14 +77,14 @@ class Sage_SamplerInfo(io.ComfyNode):
             description="Grabs most of the sampler info. Should be routed both to the Construct Metadata node and the KSampler w/ Sampler Info node.",
             category="Sage Utils/sampler",
             inputs=[
-                io.Int.Input("seed", default=0, min=0, max=0xffffffffffffffff),
-                io.Int.Input("steps", default=20, min=1, max=10000),
-                io.Float.Input("cfg", default=5.5, min=0.0, max=100.0, step=0.1, round=0.01),
-                io.Combo.Input("sampler_name", options=list(SAMPLERS), default="dpmpp_2m"),
-                io.Combo.Input("scheduler", options=list(SCHEDULERS), default="beta")
+                io.Int.Input("seed", display_name="seed", default=0, min=0, max=0xffffffffffffffff),
+                io.Int.Input("steps", display_name="steps", default=20, min=1, max=10000),
+                io.Float.Input("cfg", display_name="cfg", default=5.5, min=0.0, max=100.0, step=0.1, round=0.01),
+                io.Combo.Input("sampler_name", display_name="sampler_name", options=list(SAMPLERS), default="dpmpp_2m"),
+                io.Combo.Input("scheduler", display_name="scheduler", options=list(SCHEDULERS), default="beta")
             ],
             outputs=[
-                SamplerInfo.Output("sampler_info")
+                SamplerInfo.Output("sampler_info", display_name="sampler_info")
             ]
         )
     
@@ -115,13 +115,13 @@ class Sage_AdvSamplerInfo(io.ComfyNode):
             description="Adds more optional values to the KSampler.",
             category="Sage Utils/sampler",
             inputs=[
-                io.Boolean.Input("add_noise", default=True),
-                io.Int.Input("start_at_step", default=0, min=0, max=10000),
-                io.Int.Input("end_at_step", default=10000, min=0, max=10000),
-                io.Boolean.Input("return_with_leftover_noise", default=False)
+                io.Boolean.Input("add_noise", display_name="add_noise", default=True),
+                io.Int.Input("start_at_step", display_name="start_at_step", default=0, min=0, max=10000),
+                io.Int.Input("end_at_step", display_name="end_at_step", default=10000, min=0, max=10000),
+                io.Boolean.Input("return_with_leftover_noise", display_name="return_with_leftover_noise", default=False)
             ],
             outputs=[
-                AdvSamplerInfo.Output("adv_sampler_info")
+                AdvSamplerInfo.Output("adv_sampler_info", display_name="adv_sampler_info")
             ]
         )
     
@@ -150,16 +150,16 @@ class Sage_KSampler(io.ComfyNode):
             description="Uses the provided model, positive and negative conditioning to denoise the latent image. Designed to work with the Sampler info node.",
             category="Sage Utils/sampler",
             inputs=[
-                io.Model.Input("model"),
-                SamplerInfo.Input("sampler_info"),
-                io.Conditioning.Input("positive"),
-                io.Conditioning.Input("negative"),
-                io.Latent.Input("latent_image"),
-                io.Float.Input("denoise", default=1.0, min=0.0, max=1.0, step=0.01),
-                AdvSamplerInfo.Input("advanced_info", optional=True)
+                io.Model.Input("model", display_name="model"),
+                SamplerInfo.Input("sampler_info", display_name="sampler_info"),
+                io.Conditioning.Input("positive", display_name="positive"),
+                io.Conditioning.Input("negative", display_name="negative"),
+                io.Latent.Input("latent_image", display_name="latent_image"),
+                io.Float.Input("denoise", display_name="denoise", default=1.0, min=0.0, max=1.0, step=0.01),
+                AdvSamplerInfo.Input("advanced_info", display_name="advanced_info", optional=True)
             ],
             outputs=[
-                io.Latent.Output("latent")
+                io.Latent.Output("latent", display_name="latent")
             ]
         )
 
@@ -216,19 +216,19 @@ class Sage_KSamplerTiledDecoder(io.ComfyNode):
             description="Uses the provided model, positive and negative conditioning to denoise the latent image, and generate an image with the provided vae. Designed to work with the Sampler info node. Will tile if tiling info is provided.",
             category="Sage Utils/sampler",
             inputs=[
-                io.Model.Input("model"),
-                SamplerInfo.Input("sampler_info"),
-                io.Conditioning.Input("positive"),
-                io.Conditioning.Input("negative"),
-                io.Latent.Input("latent_image"),
-                io.Vae.Input("vae"),
-                io.Float.Input("denoise", default=1.0, min=0.0, max=1.0, step=0.01),
-                TilingInfo.Input("tiling_info", optional=True),
-                AdvSamplerInfo.Input("advanced_info", optional=True)
+                io.Model.Input("model", display_name="model"),
+                SamplerInfo.Input("sampler_info", display_name="sampler_info"),
+                io.Conditioning.Input("positive", display_name="positive"),
+                io.Conditioning.Input("negative", display_name="negative"),
+                io.Latent.Input("latent_image", display_name="latent_image"),
+                io.Vae.Input("vae", display_name="vae"),
+                io.Float.Input("denoise", display_name="denoise", default=1.0, min=0.0, max=1.0, step=0.01),
+                TilingInfo.Input("tiling_info", display_name="tiling_info", optional=True),
+                AdvSamplerInfo.Input("advanced_info", display_name="advanced_info", optional=True)
             ],
             outputs=[
-                io.Latent.Output("latent"),
-                io.Image.Output("image")
+                io.Latent.Output("latent", display_name="latent"),
+                io.Image.Output("image", display_name="image")
             ]
         )
     
@@ -302,18 +302,18 @@ class Sage_KSamplerAudioDecoder(io.ComfyNode):
             description="Uses the provided model, positive and negative conditioning to denoise the latent audio, and generate audio with the provided vae. Designed to work with the Sampler info node.",
             category="Sage Utils/sampler",
             inputs=[
-                io.Model.Input("model"),
-                SamplerInfo.Input("sampler_info"),
-                io.Conditioning.Input("positive"),
-                io.Conditioning.Input("negative"),
-                io.Latent.Input("latent_audio"),
-                io.Vae.Input("vae"),
-                io.Float.Input("denoise", default=1.0, min=0.0, max=1.0, step=0.01),
-                AdvSamplerInfo.Input("advanced_info", optional=True)
+                io.Model.Input("model", display_name="model"),
+                SamplerInfo.Input("sampler_info", display_name="sampler_info"),
+                io.Conditioning.Input("positive", display_name="positive"),
+                io.Conditioning.Input("negative", display_name="negative"),
+                io.Latent.Input("latent_audio", display_name="latent_audio"),
+                io.Vae.Input("vae", display_name="vae"),
+                io.Float.Input("denoise", display_name="denoise", default=1.0, min=0.0, max=1.0, step=0.01),
+                AdvSamplerInfo.Input("advanced_info", display_name="advanced_info", optional=True)
             ],
             outputs=[
-                io.Latent.Output("latent"),
-                io.Audio.Output("audio")
+                io.Latent.Output("latent", display_name="latent"),
+                io.Audio.Output("audio", display_name="audio")
             ]
         )
 

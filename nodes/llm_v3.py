@@ -78,8 +78,8 @@ class Sage_ConstructLLMPrompt(io.ComfyNode):
             description="Construct a prompt for an LLM based on the provided image and prompt.",
             category="Sage Utils/LLM",
             inputs=[
-                io.Combo.Input("prompt", options=prompt_list),
-                io.String.Input("extra_instructions", default="", multiline=True)
+                io.Combo.Input("prompt", display_name="prompt", options=prompt_list),
+                io.String.Input("extra_instructions", display_name="extra_instructions", default="", multiline=True)
             ] + extra_inputs,
             outputs=[
                 io.String.Output("out_prompt", display_name="prompt")
@@ -151,10 +151,10 @@ class Sage_ConstructLLMPromptExtra(io.ComfyNode):
             description="Construct extra instructions for an LLM based on the provided options.",
             category="Sage Utils/LLM",
             inputs=[
-                io.String.Input("extra_instructions", default="", multiline=True)
+                io.String.Input("extra_instructions", display_name="extra_instructions", default="", multiline=True)
             ] + extra_inputs,
             outputs=[
-                io.String.Output("extra")
+                io.String.Output("extra", display_name="extra")
             ]
         )
     
@@ -184,18 +184,18 @@ class Sage_OllamaAdvancedOptions(io.ComfyNode):
             description="Get advanced options for LLMs.",
             category="Sage Utils/LLM/Ollama",
             inputs=[
-                io.Int.Input("num_keep", default=0, min=0, max=100, step=1),
-                io.Int.Input("num_predict", default=-1, min=-1, max=2048, step=1),
-                io.Int.Input("top_k", default=40, min=1, max=1000, step=1),
-                io.Float.Input("top_p", default=0.9, min=0.0, max=1.0, step=0.01),
-                io.Int.Input("repeat_last_n", default=64, min=0, max=256, step=1),
-                io.Float.Input("temperature", default=0.8, min=0.0, max=1.0, step=0.01),
-                io.Float.Input("repeat_penalty", default=1.1, min=1.0, max=2.0, step=0.01),
-                io.Float.Input("presence_penalty", default=0.0, min=-2.0, max=2.0, step=0.01),
-                io.Float.Input("frequency_penalty", default=0.0, min=-2.0, max=2.0, step=0.01)
+                io.Int.Input("num_keep", display_name="num_keep", default=0, min=0, max=100, step=1),
+                io.Int.Input("num_predict", display_name="num_predict", default=-1, min=-1, max=2048, step=1),
+                io.Int.Input("top_k", display_name="top_k", default=40, min=1, max=1000, step=1),
+                io.Float.Input("top_p", display_name="top_p", default=0.9, min=0.0, max=1.0, step=0.01),
+                io.Int.Input("repeat_last_n", display_name="repeat_last_n", default=64, min=0, max=256, step=1),
+                io.Float.Input("temperature", display_name="temperature", default=0.8, min=0.0, max=1.0, step=0.01),
+                io.Float.Input("repeat_penalty", display_name="repeat_penalty", default=1.1, min=1.0, max=2.0, step=0.01),
+                io.Float.Input("presence_penalty", display_name="presence_penalty", default=0.0, min=-2.0, max=2.0, step=0.01),
+                io.Float.Input("frequency_penalty", display_name="frequency_penalty", default=0.0, min=-2.0, max=2.0, step=0.01)
             ],
             outputs=[
-                OllamaOptions.Output("options")
+                OllamaOptions.Output("options", display_name="options")
             ]
         )
     
@@ -217,15 +217,15 @@ class Sage_OllamaLLMPromptText(io.ComfyNode):
             description="Send a prompt to a language model and get a response. The model must be installed via Ollama.",
             category="Sage Utils/LLM/Ollama",
             inputs=[
-                io.String.Input("prompt", default=DEFAULT_TEXT_PROMPT, multiline=True),
-                io.Combo.Input("model", options=sorted(models)),
-                io.Int.Input("seed", default=0, min=0, max=2**32 - 1, step=1),
-                io.Float.Input("keep_alive", default=0.0, min=-1.0, max=60.0 * 60.0, step=1),
-                OllamaOptions.Input("options", optional=True),
-                io.String.Input("system_prompt", default="", multiline=True, optional=True)
+                io.String.Input("prompt", display_name="prompt", default=DEFAULT_TEXT_PROMPT, multiline=True),
+                io.Combo.Input("model", display_name="model", options=sorted(models)),
+                io.Int.Input("seed", display_name="seed", default=0, min=0, max=2**32 - 1, step=1),
+                io.Float.Input("keep_alive", display_name="keep_alive", default=0.0, min=-1.0, max=60.0 * 60.0, step=1),
+                OllamaOptions.Input("options", display_name="options", optional=True),
+                io.String.Input("system_prompt", display_name="system_prompt", default="", multiline=True, optional=True)
             ],
             outputs=[
-                io.String.Output("response")
+                io.String.Output("response", display_name="response")
             ]
         )
     
@@ -263,16 +263,16 @@ class Sage_OllamaLLMPromptVision(io.ComfyNode):
             description="Send a prompt to a language model and get a response. Optionally, you can provide an image/s to the model if it supports multimodal input. The model must be installed via Ollama.",
             category="Sage Utils/LLM/Ollama",
             inputs=[
-                io.String.Input("prompt", default=DEFAULT_VISION_PROMPT, multiline=True),
-                io.Combo.Input("model", options=sorted(models)),
-                io.Image.Input("image"),
-                io.Int.Input("seed", default=0, min=0, max=2**32 - 1, step=1),
-                io.Float.Input("keep_alive", default=0.0, min=-1.0, max=60.0 * 60.0, step=0.1),
-                OllamaOptions.Input("options", optional=True),
-                io.String.Input("system_prompt", default="", multiline=True, optional=True)
+                io.String.Input("prompt", display_name="prompt", default=DEFAULT_VISION_PROMPT, multiline=True),
+                io.Combo.Input("model", display_name="model", options=sorted(models)),
+                io.Image.Input("image", display_name="image"),
+                io.Int.Input("seed", display_name="seed", default=0, min=0, max=2**32 - 1, step=1),
+                io.Float.Input("keep_alive", display_name="keep_alive", default=0.0, min=-1.0, max=60.0 * 60.0, step=0.1),
+                OllamaOptions.Input("options", display_name="options", optional=True),
+                io.String.Input("system_prompt", display_name="system_prompt", default="", multiline=True, optional=True)
             ],
             outputs=[
-                io.String.Output("response")
+                io.String.Output("response", display_name="response")
             ]
         )
     
@@ -370,13 +370,13 @@ class Sage_LMStudioLLMPromptText(io.ComfyNode):
             description="Send a prompt to a language model and get a response. The model must be installed via LM Studio.",
             category="Sage Utils/LLM/LM Studio",
             inputs=[
-                io.String.Input("prompt", default=DEFAULT_TEXT_PROMPT, multiline=True),
-                io.Combo.Input("model", options=sorted(models)),
-                io.Int.Input("seed", default=0, min=0, max=2**32 - 1, step=1),
-                io.Int.Input("load_for_seconds", default=0, min=-1, max=60*60, step=1)
+                io.String.Input("prompt", display_name="prompt", default=DEFAULT_TEXT_PROMPT, multiline=True),
+                io.Combo.Input("model", display_name="model", options=sorted(models)),
+                io.Int.Input("seed", display_name="seed", default=0, min=0, max=2**32 - 1, step=1),
+                io.Int.Input("load_for_seconds", display_name="load_for_seconds", default=0, min=-1, max=60*60, step=1)
             ],
             outputs=[
-                io.String.Output("response")
+                io.String.Output("response", display_name="response")
             ]
         )
     
@@ -411,14 +411,14 @@ class Sage_LMStudioLLMPromptVision(io.ComfyNode):
             description="Send a prompt to a language model and get a response. Optionally, you can provide an image/s to the model if it supports multimodal input. The model must be installed via LM Studio.",
             category="Sage Utils/LLM/LM Studio",
             inputs=[
-                io.String.Input("prompt", default=DEFAULT_VISION_PROMPT, multiline=True),
-                io.Combo.Input("model", options=sorted(models)),
-                io.Image.Input("image"),
-                io.Int.Input("seed", default=0, min=0, max=2**32 - 1, step=1),
-                io.Int.Input("load_for_seconds", default=0, min=-1, max=60*60, step=1)
+                io.String.Input("prompt", display_name="prompt", default=DEFAULT_VISION_PROMPT, multiline=True),
+                io.Combo.Input("model", display_name="model", options=sorted(models)),
+                io.Image.Input("image", display_name="image"),
+                io.Int.Input("seed", display_name="seed", default=0, min=0, max=2**32 - 1, step=1),
+                io.Int.Input("load_for_seconds", display_name="load_for_seconds", default=0, min=-1, max=60*60, step=1)
             ],
             outputs=[
-                io.String.Output("response")
+                io.String.Output("response", display_name="response")
             ]
         )
     

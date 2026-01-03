@@ -47,19 +47,19 @@ class Sage_ConstructMetadataFlexible(io.ComfyNode):
             description="PLACEHOLDER: Flexible metadata constructor supporting multiple styles: A1111 Full (with LoRA hashes), A1111 Lite (simplified, only includes models on Civitai), and Simple (No models or LoRAs).",
             category="Sage Utils/metadata",
             inputs=[
-                ModelInfo.Input("model_info"),
-                io.String.Input("positive_string", default=""),
-                io.String.Input("negative_string", default=""),
-                SamplerInfo.Input("sampler_info"),
-                io.Int.Input("width", default=1024),
-                io.Int.Input("height", default=1024),
-                io.Combo.Input("metadata_style", 
+                ModelInfo.Input("model_info", display_name="model_info"),
+                io.String.Input("positive_string", display_name="positive_string", default=""),
+                io.String.Input("negative_string", display_name="negative_string", default=""),
+                SamplerInfo.Input("sampler_info", display_name="sampler_info"),
+                io.Int.Input("width", display_name="width", default=1024),
+                io.Int.Input("height", display_name="height", default=1024),
+                io.Combo.Input("metadata_style", display_name="metadata_style", 
                              options=["A1111 Full", "A1111 Lite", "Simple"],
                              default="A1111 Full"),
-                LoraStack.Input("lora_stack", optional=True)
+                LoraStack.Input("lora_stack", display_name="lora_stack", optional=True)
             ],
             outputs=[
-                io.String.Output("param_metadata")
+                io.String.Output("param_metadata", display_name="param_metadata")
             ]
         )
         return schema

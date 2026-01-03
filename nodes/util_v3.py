@@ -42,8 +42,8 @@ class Sage_FreeMemory(io.ComfyNode):
             description="Unload models, run garbage collection, and empty caches when enabled.",
             category="Sage Utils/util",
             inputs=[
-                io.Boolean.Input("free_memory", default=False),
-                io.AnyType.Input("value")
+                io.Boolean.Input("free_memory", display_name="free_memory", default=False),
+                io.AnyType.Input("value", display_name="value")
             ],
             outputs=[
                 io.AnyType.Output("out_value", display_name="value")
@@ -70,8 +70,8 @@ class Sage_Halt(io.ComfyNode):
             description="Return the value when continuing; otherwise halt execution.",
             category="Sage Utils/util",
             inputs=[
-                io.Boolean.Input("continue_executing", default=True),
-                io.AnyType.Input("value", lazy=True, optional=True)
+                io.Boolean.Input("continue_executing", display_name="continue_executing", default=True),
+                io.AnyType.Input("value", display_name="value", lazy=True, optional=True)
             ],
             outputs=[
                 io.AnyType.Output("out_value", display_name="value")
@@ -103,12 +103,12 @@ class Sage_LogicalSwitch(io.ComfyNode):
             description="Select between two inputs based on the condition; only the needed branch is evaluated when lazy.",
             category="Sage Utils/util",
             inputs=[
-                io.Boolean.Input("condition", default=True),
-                io.AnyType.Input("true_value", lazy=True, optional=True),
-                io.AnyType.Input("false_value", lazy=True, optional=True)
+                io.Boolean.Input("condition", display_name="condition", default=True),
+                io.AnyType.Input("true_value", display_name="true_value", lazy=True, optional=True),
+                io.AnyType.Input("false_value", display_name="false_value", lazy=True, optional=True)
             ],
             outputs=[
-                io.AnyType.Output("result")
+                io.AnyType.Output("result", display_name="result")
             ]
         )
     
@@ -158,14 +158,14 @@ class Sage_ModelInfo(io.ComfyNode):
             description="PLACEHOLDER: Pull the civitai model info, and return what the base model is, the name with version, the url, the url for the latest version, and a preview image.",
             category="Sage Utils/model/info",
             inputs=[
-                ModelInfo.Input("model_info")
+                ModelInfo.Input("model_info", display_name="model_info")
             ],
             outputs=[
-                io.String.Output("base_model"),
-                io.String.Output("name"),
-                io.String.Output("url"),
-                io.String.Output("latest_url"),
-                io.Image.Output("image")
+                io.String.Output("base_model", display_name="base_model"),
+                io.String.Output("name", display_name="name"),
+                io.String.Output("url", display_name="url"),
+                io.String.Output("latest_url", display_name="latest_url"),
+                io.Image.Output("image", display_name="image")
             ]
         )
     
@@ -216,10 +216,10 @@ class Sage_ModelInfoDisplay(io.ComfyNode):
             category="Sage Utils/model/info",
             is_output_node=True,
             inputs=[
-                ModelInfo.Input("model_info")
+                ModelInfo.Input("model_info", display_name="model_info")
             ],
             outputs=[
-                io.String.Output("markdown_display")
+                io.String.Output("markdown_display", display_name="markdown_display")
             ]
         )
     
@@ -340,10 +340,10 @@ class Sage_LoraStackInfoDisplay(io.ComfyNode):
             category="Sage Utils/model/info",
             is_output_node=True,
             inputs=[
-                LoraStack.Input("lora_stack")
+                LoraStack.Input("lora_stack", display_name="lora_stack")
             ],
             outputs=[
-                io.String.Output("markdown_display")
+                io.String.Output("markdown_display", display_name="markdown_display")
             ]
         )
     
@@ -475,14 +475,14 @@ class Sage_LastLoraInfo(io.ComfyNode):
             description="PLACEHOLDER: Pull civitai info for the last lora in the stack and return details.",
             category="Sage Utils/model/info",
             inputs=
-            [LoraStack.Input("lora_stack")
+            [LoraStack.Input("lora_stack", display_name="lora_stack")
             ],
             outputs=[
-                io.String.Output("base_model"),
-                io.String.Output("name"),
-                io.String.Output("url"),
-                io.String.Output("latest_url"),
-                io.Image.Output("image")
+                io.String.Output("base_model", display_name="base_model"),
+                io.String.Output("name", display_name="name"),
+                io.String.Output("url", display_name="url"),
+                io.String.Output("latest_url", display_name="latest_url"),
+                io.Image.Output("image", display_name="image")
             ]
         )
     
@@ -533,11 +533,11 @@ class Sage_GetFileHash(io.ComfyNode):
             description="Get the hash of a file in the configured model paths.",
             category="Sage Utils/util",
             inputs=[
-                io.Combo.Input("base_dir", options=folder_list, default=folder_list[0] if folder_list else ""),
-                io.String.Input("filename")
+                io.Combo.Input("base_dir", display_name="base_dir", options=folder_list, default=folder_list[0] if folder_list else ""),
+                io.String.Input("filename", display_name="filename")
             ],
             outputs=[
-                io.String.Output("hash")
+                io.String.Output("hash", display_name="hash")
             ]
         )
     
@@ -596,13 +596,13 @@ class Sage_CacheMaintenance(io.ComfyNode):
             category="Sage Utils/util",
             is_output_node=True,
             inputs=[
-                io.Boolean.Input("remove_ghost_entries", default=False)
+                io.Boolean.Input("remove_ghost_entries", display_name="remove_ghost_entries", default=False)
             ],
             outputs=[
-                io.String.Output("ghost_entries"),
-                io.String.Output("dup_hash"),
-                io.String.Output("dup_model"),
-                io.String.Output("not_on_civitai")
+                io.String.Output("ghost_entries", display_name="ghost_entries"),
+                io.String.Output("dup_hash", display_name="dup_hash"),
+                io.String.Output("dup_model", display_name="dup_model"),
+                io.String.Output("not_on_civitai", display_name="not_on_civitai")
             ]
         )
     
@@ -659,12 +659,12 @@ class Sage_ModelReport(io.ComfyNode):
             category="Sage Utils/model/info",
             is_output_node=True,
             inputs=[
-                io.Combo.Input("scan_models", options=["none", "loras", "checkpoints", "all"], default="none"),
-                io.Boolean.Input("force_recheck", default=False)
+                io.Combo.Input("scan_models", display_name="scan_models", options=["none", "loras", "checkpoints", "all"], default="none"),
+                io.Boolean.Input("force_recheck", display_name="force_recheck", default=False)
             ],
             outputs=[
-                io.String.Output("model_list"),
-                io.String.Output("lora_list")
+                io.String.Output("model_list", display_name="model_list"),
+                io.String.Output("lora_list", display_name="lora_list")
             ]
         )
     
@@ -711,11 +711,11 @@ class Sage_MultiModelPicker(io.ComfyNode):
             description="Select one model_info from a list by index.",
             category="Sage Utils/model",
             inputs=[
-                io.Int.Input("index", default=1, min=1, max=100, step=1, tooltip="1-based index into provided model list"),
-                io.AnyType.Input("models")
+                io.Int.Input("index", display_name="index", default=1, min=1, max=100, step=1, tooltip="1-based index into provided model list"),
+                io.AnyType.Input("models", display_name="models")
             ],
             outputs=[
-                ModelInfo.Output("model_info")
+                ModelInfo.Output("model_info", display_name="model_info")
             ]
         )
     
@@ -741,10 +741,10 @@ class Sage_CollectKeywordsFromLoraStack(io.ComfyNode):
             description="PLACEHOLDER: Collect keywords from all LoRAs in a stack.",
             category="Sage Utils/lora",
             inputs=[
-                LoraStack.Input("lora_stack")
+                LoraStack.Input("lora_stack", display_name="lora_stack")
             ],
             outputs=[
-                io.String.Output("keywords")
+                io.String.Output("keywords", display_name="keywords")
             ]
         )
     
@@ -766,13 +766,13 @@ class Sage_CheckLorasForUpdates(io.ComfyNode):
             category="Sage Utils/lora",
             is_output_node=True,
             inputs=[
-                LoraStack.Input("lora_stack"),
-                io.Boolean.Input("force", default=False, tooltip="Force a check even if marked up to date.")
+                LoraStack.Input("lora_stack", display_name="lora_stack"),
+                io.Boolean.Input("force", display_name="force", default=False, tooltip="Force a check even if marked up to date.")
             ],
             outputs=[
-                LoraStack.Output("out_lora_stack"),
-                io.String.Output("path"),
-                io.String.Output("latest_url")
+                LoraStack.Output("out_lora_stack", display_name="lora_stack"),
+                io.String.Output("path", display_name="path"),
+                io.String.Output("latest_url", display_name="latest_url")
             ]
         )
     

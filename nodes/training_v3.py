@@ -40,15 +40,15 @@ class Sage_Load_Dataset_From_Folder(io.ComfyNode):
             description="Loads images and paired captions from a folder; applies optional prefix/suffix.",
             category="Sage Utils/train",
             inputs=[
-                io.String.Input("dataset_path"),
-                io.String.Input("prefix", default="", optional=True),
-                io.String.Input("suffix", default="", optional=True),
-                io.String.Input("separator", default=" ", optional=True)
+                io.String.Input("dataset_path", display_name="dataset_path"),
+                io.String.Input("prefix", display_name="prefix", default="", optional=True),
+                io.String.Input("suffix", display_name="suffix", default="", optional=True),
+                io.String.Input("separator", display_name="separator", default=" ", optional=True)
             ],
             outputs=[
-                io.Image.Output("images"),
-                io.String.Output("filenames"),
-                io.String.Output("captions")
+                io.Image.Output("images", display_name="images"),
+                io.String.Output("filenames", display_name="filenames"),
+                io.String.Output("captions", display_name="captions")
             ]
         )
     
@@ -143,11 +143,11 @@ class Sage_TrainingCaptionsToConditioning(io.ComfyNode):
             description="Encodes captions with a CLIP model to produce conditioning vectors for training workflows.",
             category="Sage Utils/train",
             inputs=[
-                io.Clip.Input("clip"),
-                io.String.Input("captions")
+                io.Clip.Input("clip", display_name="clip"),
+                io.String.Input("captions", display_name="captions")
             ],
             outputs=[
-                io.Conditioning.Output("conditioning")
+                io.Conditioning.Output("conditioning", display_name="conditioning")
             ]
         )
     

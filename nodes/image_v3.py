@@ -58,13 +58,13 @@ class Sage_EmptyLatentImagePassthrough(io.ComfyNode):
             description="Passes through an empty latent image.",
             category="Sage Utils/image",
             inputs=[
-                io.Int.Input("width", default=1024),
-                io.Int.Input("height", default=1024),
-                io.Int.Input("batch_size", default=1),
-                io.Combo.Input("type", default="4_channel", options=["4_channel", "16_channel", "radiance"], tooltip="The type of latent to create. 4_channel is for standard latent diffusion models, 16_channel is for SD3 models, and radiance is for Chroma Radiance models."),
+                io.Int.Input("width", display_name="width", default=1024),
+                io.Int.Input("height", display_name="height", default=1024),
+                io.Int.Input("batch_size", display_name="batch_size", default=1),
+                io.Combo.Input("type", display_name="type", default="4_channel", options=["4_channel", "16_channel", "radiance"], tooltip="The type of latent to create. 4_channel is for standard latent diffusion models, 16_channel is for SD3 models, and radiance is for Chroma Radiance models."),
             ],
             outputs=[
-                io.Latent.Output("latent"),
+                io.Latent.Output("latent", display_name="latent"),
                 io.Int.Output("out_width", display_name="width"),
                 io.Int.Output("out_height", display_name="height"),
             ]
@@ -108,13 +108,13 @@ class Sage_SaveImageWithMetadata(io.ComfyNode):
             category="Sage Utils/image",
             is_output_node=True,
             inputs=[
-                io.Image.Input("images", tooltip="The images to save."),
-                io.String.Input("filename_prefix", default="image_", tooltip="The prefix for the saved image filenames."),
-                io.Boolean.Input("include_node_metadata", default=True, tooltip="Whether to include node metadata in the saved image."),
-                io.Boolean.Input("include_extra_pnginfo_metadata", default=False, tooltip="Whether to include extra PNG info metadata."),
-                io.Boolean.Input("save_text", default=False, tooltip="Whether to save accompanying text files with metadata."),
-                io.String.Input("param_metadata", default="", tooltip="The metadata to embed in the image."),
-                io.String.Input("extra_metadata", default="", tooltip="Any extra metadata to include."),
+                io.Image.Input("images", display_name="images", tooltip="The images to save."),
+                io.String.Input("filename_prefix", display_name="filename_prefix", default="image_", tooltip="The prefix for the saved image filenames."),
+                io.Boolean.Input("include_node_metadata", display_name="include_node_metadata", default=True, tooltip="Whether to include node metadata in the saved image."),
+                io.Boolean.Input("include_extra_pnginfo_metadata", display_name="include_extra_pnginfo_metadata", default=False, tooltip="Whether to include extra PNG info metadata."),
+                io.Boolean.Input("save_text", display_name="save_text", default=False, tooltip="Whether to save accompanying text files with metadata."),
+                io.String.Input("param_metadata", display_name="param_metadata", default="", tooltip="The metadata to embed in the image."),
+                io.String.Input("extra_metadata", display_name="extra_metadata", default="", tooltip="Any extra metadata to include."),
             ],
             outputs=[],
             hidden=[io.Hidden.prompt, io.Hidden.extra_pnginfo]
@@ -356,8 +356,8 @@ class Sage_GuessResolutionByRatio(io.ComfyNode):
                 io.Int.Input("height", min = 64, max = 8192, default=1024, step = 1, tooltip="The input height."),
                 ],
             outputs=[
-                io.Int.Output("new_width", tooltip="The guessed width."),
-                io.Int.Output("new_height", tooltip="The guessed height."),
+                io.Int.Output("new_width", display_name="width", tooltip="The guessed width."),
+                io.Int.Output("new_height", display_name="height", tooltip="The guessed height."),
             ]
         )
 
@@ -410,8 +410,8 @@ class Sage_QuickResPicker(io.ComfyNode):
                 io.Float.Input("multiplier", display_name="Multiplier", default=1.0, min = 0.1, max = 10.0, step = 0.1, round = 0.001, tooltip="The multiplier for the base resolution."),
             ],
             outputs=[
-                io.Int.Output("width", display_name="Width", tooltip="The selected width."),
-                io.Int.Output("height", display_name="Height", tooltip="The selected height."),
+                io.Int.Output("width", display_name="width", tooltip="The selected width."),
+                io.Int.Output("height", display_name="height", tooltip="The selected height."),
             ]
         )
 
@@ -446,18 +446,18 @@ class Sage_CubiqImageResize(io.ComfyNode):
             description="Resizes an image using Cubiq interpolation.",
             category="Sage Utils/image",
             inputs=[
-                io.Image.Input("image", display_name="Image", tooltip="The image to resize."),
-                io.Int.Input("width", display_name="Width", default=1024, min = 0, max = MAX_RESOLUTION, step = 1, tooltip="The target width."),
-                io.Int.Input("height", display_name="Height", default=1024, min = 0, max = MAX_RESOLUTION, step = 1, tooltip="The target height."),
-                io.Combo.Input("interpolation", display_name="Interpolation", default="bicubic", options=["nearest", "bilinear", "bicubic", "area", "nearest-exact", "lanczos", "bislerp"], tooltip="The interpolation method."),
-                io.Combo.Input("method", display_name="Method", default="keep proportion", options=["stretch", "keep proportion", "fill / crop", "pad"], tooltip="The resizing method."),
-                io.Combo.Input("condition", display_name="Condition", default="always", options = ["always", "downscale if bigger", "upscale if smaller", "if bigger area", "if smaller area"], tooltip="The condition for conditioned resizing."),
-                io.Int.Input("multiple_of", display_name="Multiple Of", default=0, min = 0, max = 1024,  step = 1, tooltip="Ensure dimensions are multiples of this value."),
+                io.Image.Input("image", display_name="image", tooltip="The image to resize."),
+                io.Int.Input("width", display_name="width", default=1024, min = 0, max = MAX_RESOLUTION, step = 1, tooltip="The target width."),
+                io.Int.Input("height", display_name="height", default=1024, min = 0, max = MAX_RESOLUTION, step = 1, tooltip="The target height."),
+                io.Combo.Input("interpolation", display_name="interpolation", default="bicubic", options=["nearest", "bilinear", "bicubic", "area", "nearest-exact", "lanczos", "bislerp"], tooltip="The interpolation method."),
+                io.Combo.Input("method", display_name="method", default="keep proportion", options=["stretch", "keep proportion", "fill / crop", "pad"], tooltip="The resizing method."),
+                io.Combo.Input("condition", display_name="condition", default="always", options = ["always", "downscale if bigger", "upscale if smaller", "if bigger area", "if smaller area"], tooltip="The condition for conditioned resizing."),
+                io.Int.Input("multiple_of", display_name="multiple_of", default=0, min = 0, max = 1024,  step = 1, tooltip="Ensure dimensions are multiples of this value."),
             ],
             outputs=[
-                io.Image.Output("out_image", tooltip="The resized image.", display_name="Image"),
-                io.Int.Output("out_width", tooltip="The new width.", display_name="Width"),
-                io.Int.Output("out_height", tooltip="The new height.", display_name="Height"),
+                io.Image.Output("out_image", tooltip="The resized image.", display_name="image"),
+                io.Int.Output("out_width", tooltip="The new width.", display_name="width"),
+                io.Int.Output("out_height", tooltip="The new height.", display_name="height"),
             ]
         )
 
@@ -544,13 +544,13 @@ class Sage_ReferenceImage(io.ComfyNode):
             description="Processes a reference image to produce conditioning and latent.",
             category="Sage Utils/image",
             inputs=[
-                io.Conditioning.Input("conditioning", tooltip="The input conditioning."),
-                io.Image.Input("image", tooltip="The reference image."),
-                io.Vae.Input("vae", tooltip="The VAE model for encoding the image."),
+                io.Conditioning.Input("conditioning", display_name="conditioning", tooltip="The input conditioning."),
+                io.Image.Input("image", display_name="image", tooltip="The reference image."),
+                io.Vae.Input("vae", display_name="vae", tooltip="The VAE model for encoding the image."),
             ],
             outputs=[
-                io.Conditioning.Output("out_conditioning", tooltip="The output conditioning.", display_name="conditioning"),
-                io.Latent.Output("latent", tooltip="The encoded latent."),
+                io.Conditioning.Output("out_conditioning", display_name="conditioning", tooltip="The output conditioning."),
+                io.Latent.Output("latent", display_name="latent", tooltip="The encoded latent."),
             ]
         )
 

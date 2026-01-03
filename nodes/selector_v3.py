@@ -58,10 +58,10 @@ class Sage_CheckpointSelector(io.ComfyNode):
             description="Selects a checkpoint from a list.",
             category="Sage Utils/selector",
             inputs=[
-                io.Combo.Input("ckpt_name", options=get_model_list("checkpoints")),
+                io.Combo.Input("ckpt_name", display_name="ckpt_name", options=get_model_list("checkpoints")),
             ],
             outputs=[
-                ModelInfo.Output()
+                ModelInfo.Output("model_info", display_name="model_info")
             ]
         )
     
@@ -80,11 +80,11 @@ class Sage_UNETSelector(io.ComfyNode):
             description="Selects a UNET model from a list.",
             category="Sage Utils/selector",
             inputs=[
-                io.Combo.Input("unet_name", options=get_model_list("unets")),
-                io.Combo.Input("weight_dtype", options=mi.weight_dtype_options, default="default"),
+                io.Combo.Input("unet_name", display_name="unet_name", options=get_model_list("unets")),
+                io.Combo.Input("weight_dtype", display_name="weight_dtype", options=mi.weight_dtype_options, default="default"),
             ],
             outputs=[
-                UnetInfo.Output()
+                UnetInfo.Output("unet_info", display_name="unet_info")
             ]
         )
     
@@ -104,10 +104,10 @@ class Sage_VAESelector(io.ComfyNode):
             description="Selects a VAE model from a list.",
             category="Sage Utils/selector",
             inputs=[
-                io.Combo.Input("vae_name", options=get_model_list("vaes")),
+                io.Combo.Input("vae_name", display_name="vae_name", options=get_model_list("vaes")),
             ],
             outputs=[
-                VaeInfo.Output()
+                VaeInfo.Output("vae_info", display_name="vae_info")
             ]
         )
     
@@ -126,11 +126,11 @@ class Sage_CLIPSelector(io.ComfyNode):
             description="Selects a CLIP model from a list.",
             category="Sage Utils/selector",
             inputs=[
-                io.Combo.Input("clip_name", options=get_model_list("clips")),
-                io.Combo.Input("clip_type", options=mi.single_clip_loader_options, default="chroma"),
+                io.Combo.Input("clip_name", display_name="clip_name", options=get_model_list("clips")),
+                io.Combo.Input("clip_type", display_name="clip_type", options=mi.single_clip_loader_options, default="chroma"),
             ],
             outputs=[
-                ClipInfo.Output()
+                ClipInfo.Output("clip_info", display_name="clip_info")
             ]
         )
     
@@ -150,12 +150,12 @@ class Sage_DualCLIPSelector(io.ComfyNode):
             description="Selects two CLIP models from a list.",
             category="Sage Utils/selector",
             inputs=[
-                io.Combo.Input("clip_name_1", options=get_model_list("clips")),
-                io.Combo.Input("clip_name_2", options=get_model_list("clips")),
-                io.Combo.Input("clip_type", options=mi.dual_clip_loader_options, default="sdxl"),
+                io.Combo.Input("clip_name_1", display_name="clip_name_1", options=get_model_list("clips")),
+                io.Combo.Input("clip_name_2", display_name="clip_name_2", options=get_model_list("clips")),
+                io.Combo.Input("clip_type", display_name="clip_type", options=mi.dual_clip_loader_options, default="sdxl"),
             ],
             outputs=[
-                ClipInfo.Output()
+                ClipInfo.Output("clip_info", display_name="clip_info")
             ]
         )
     
@@ -176,12 +176,12 @@ class Sage_TripleCLIPSelector(io.ComfyNode):
             description="Selects three CLIP models from a list.",
             category="Sage Utils/selector",
             inputs=[
-                io.Combo.Input("clip_name_1", options=get_model_list("clips")),
-                io.Combo.Input("clip_name_2", options=get_model_list("clips")),
-                io.Combo.Input("clip_name_3", options=get_model_list("clips")),
+                io.Combo.Input("clip_name_1", display_name="clip_name_1", options=get_model_list("clips")),
+                io.Combo.Input("clip_name_2", display_name="clip_name_2", options=get_model_list("clips")),
+                io.Combo.Input("clip_name_3", display_name="clip_name_3", options=get_model_list("clips")),
             ],
             outputs=[
-                ClipInfo.Output()
+                ClipInfo.Output("clip_info", display_name="clip_info")
             ]
         )
 
@@ -202,13 +202,13 @@ class Sage_QuadCLIPSelector(io.ComfyNode):
             description="Selects four CLIP models from a list.",
             category="Sage Utils/selector",
             inputs=[
-                io.Combo.Input("clip_name_1", options=get_model_list("clips")),
-                io.Combo.Input("clip_name_2", options=get_model_list("clips")),
-                io.Combo.Input("clip_name_3", options=get_model_list("clips")),
-                io.Combo.Input("clip_name_4", options=get_model_list("clips")),
+                io.Combo.Input("clip_name_1", display_name="clip_name_1", options=get_model_list("clips")),
+                io.Combo.Input("clip_name_2", display_name="clip_name_2", options=get_model_list("clips")),
+                io.Combo.Input("clip_name_3", display_name="clip_name_3", options=get_model_list("clips")),
+                io.Combo.Input("clip_name_4", display_name="clip_name_4", options=get_model_list("clips")),
             ],
             outputs=[
-                ClipInfo.Output()
+                ClipInfo.Output("clip_info", display_name="clip_info")
             ]
         )
 
@@ -230,14 +230,14 @@ class Sage_MultiSelectorSingleClip(io.ComfyNode):
             description="Selects checkpoint, UNET, VAE, and single CLIP models from lists.",
             category="Sage Utils/selector",
             inputs=[
-                io.Combo.Input("unet_name", options=get_model_list("unets")),
-                io.Combo.Input("weight_dtype", options=mi.weight_dtype_options, default="default"),
-                io.Combo.Input("clip_name", options=get_model_list("clips")),
-                io.Combo.Input("clip_type", options=mi.single_clip_loader_options, default="chroma"),
-                io.Combo.Input("vae_name", options=get_model_list("vaes")),
+                io.Combo.Input("unet_name", display_name="unet_name", options=get_model_list("unets")),
+                io.Combo.Input("weight_dtype", display_name="weight_dtype", options=mi.weight_dtype_options, default="default"),
+                io.Combo.Input("clip_name", display_name="clip_name", options=get_model_list("clips")),
+                io.Combo.Input("clip_type", display_name="clip_type", options=mi.single_clip_loader_options, default="chroma"),
+                io.Combo.Input("vae_name", display_name="vae_name", options=get_model_list("vaes")),
             ],
             outputs=[
-                ModelInfo.Output()
+                ModelInfo.Output("model_info", display_name="model_info")
             ]
         )
     
@@ -265,15 +265,15 @@ class Sage_MultiSelectorDoubleClip(io.ComfyNode):
             description="Selects checkpoint, UNET, VAE, and two CLIP models from lists.",
             category="Sage Utils/selector",
             inputs=[
-                io.Combo.Input("unet_name", options=get_model_list("unets")),
-                io.Combo.Input("weight_dtype", options=mi.weight_dtype_options, default="default"),
-                io.Combo.Input("clip_name_1", options=get_model_list("clips")),
-                io.Combo.Input("clip_name_2", options=get_model_list("clips")),
-                io.Combo.Input("clip_type", options=mi.dual_clip_loader_options, default="sdxl"),
-                io.Combo.Input("vae_name", options=get_model_list("vaes")),
+                io.Combo.Input("unet_name", display_name="unet_name", options=get_model_list("unets")),
+                io.Combo.Input("weight_dtype", display_name="weight_dtype", options=mi.weight_dtype_options, default="default"),
+                io.Combo.Input("clip_name_1", display_name="clip_name_1", options=get_model_list("clips")),
+                io.Combo.Input("clip_name_2", display_name="clip_name_2", options=get_model_list("clips")),
+                io.Combo.Input("clip_type", display_name="clip_type", options=mi.dual_clip_loader_options, default="sdxl"),
+                io.Combo.Input("vae_name", display_name="vae_name", options=get_model_list("vaes")),
             ],
             outputs=[
-                ModelInfo.Output()
+                ModelInfo.Output("model_info", display_name="model_info")
             ]
         )
     
@@ -302,15 +302,15 @@ class Sage_MultiSelectorTripleClip(io.ComfyNode):
             description="Selects checkpoint, UNET, VAE, and three CLIP models from lists.",
             category="Sage Utils/selector",
             inputs=[
-                io.Combo.Input("unet_name", options=get_model_list("unets")),
-                io.Combo.Input("weight_dtype", options=mi.weight_dtype_options, default="default"),
-                io.Combo.Input("clip_name_1", options=get_model_list("clips")),
-                io.Combo.Input("clip_name_2", options=get_model_list("clips")),
-                io.Combo.Input("clip_name_3", options=get_model_list("clips")),
-                io.Combo.Input("vae_name", options=get_model_list("vaes")),
+                io.Combo.Input("unet_name", display_name="unet_name", options=get_model_list("unets")),
+                io.Combo.Input("weight_dtype", display_name="weight_dtype", options=mi.weight_dtype_options, default="default"),
+                io.Combo.Input("clip_name_1", display_name="clip_name_1", options=get_model_list("clips")),
+                io.Combo.Input("clip_name_2", display_name="clip_name_2", options=get_model_list("clips")),
+                io.Combo.Input("clip_name_3", display_name="clip_name_3", options=get_model_list("clips")),
+                io.Combo.Input("vae_name", display_name="vae_name", options=get_model_list("vaes")),
             ],
             outputs=[
-                ModelInfo.Output()
+                ModelInfo.Output("model_info", display_name="model_info")
             ]
         )
     
@@ -339,16 +339,16 @@ class Sage_MultiSelectorQuadClip(io.ComfyNode):
             description="Selects checkpoint, UNET, VAE, and four CLIP models from lists.",
             category="Sage Utils/selector",
             inputs=[
-                io.Combo.Input("unet_name", options=get_model_list("unets")),
-                io.Combo.Input("weight_dtype", options=mi.weight_dtype_options, default="default"),
-                io.Combo.Input("clip_name_1", options=get_model_list("clips")),
-                io.Combo.Input("clip_name_2", options=get_model_list("clips")),
-                io.Combo.Input("clip_name_3", options=get_model_list("clips")),
-                io.Combo.Input("clip_name_4", options=get_model_list("clips")),
-                io.Combo.Input("vae_name", options=get_model_list("vaes")),
+                io.Combo.Input("unet_name", display_name="unet_name", options=get_model_list("unets")),
+                io.Combo.Input("weight_dtype", display_name="weight_dtype", options=mi.weight_dtype_options, default="default"),
+                io.Combo.Input("clip_name_1", display_name="clip_name_1", options=get_model_list("clips")),
+                io.Combo.Input("clip_name_2", display_name="clip_name_2", options=get_model_list("clips")),
+                io.Combo.Input("clip_name_3", display_name="clip_name_3", options=get_model_list("clips")),
+                io.Combo.Input("clip_name_4", display_name="clip_name_4", options=get_model_list("clips")),
+                io.Combo.Input("vae_name", display_name="vae_name", options=get_model_list("vaes")),
             ],
             outputs=[
-                ModelInfo.Output()
+                ModelInfo.Output("model_info", display_name="model_info")
             ]
         )
     
@@ -379,16 +379,16 @@ class Sage_ModelShifts(io.ComfyNode):
             description="Get the model shifts and free_u2 settings to apply to the model. This is used by the model loader node.",
             category="Sage Utils/model",
             inputs=[
-                io.Combo.Input("shift_type", options=["None", "x1", "x1000"], default="None"),
-                io.Float.Input("shift", default=3.0, min=0.0, max=100.0, step=0.01),
-                io.Boolean.Input("freeu_v2", default=False),
-                io.Float.Input("b1", default=1.3, min=0.0, max=10.0, step=0.01),
-                io.Float.Input("b2", default=1.4, min=0.0, max=10.0, step=0.01),
-                io.Float.Input("s1", default=0.9, min=0.0, max=10.0, step=0.01),
-                io.Float.Input("s2", default=0.2, min=0.0, max=10.0, step=0.01)
+                io.Combo.Input("shift_type", display_name="shift_type", options=["None", "x1", "x1000"], default="None"),
+                io.Float.Input("shift", display_name="shift", default=3.0, min=0.0, max=100.0, step=0.01),
+                io.Boolean.Input("freeu_v2", display_name="freeu_v2", default=False),
+                io.Float.Input("b1", display_name="b1", default=1.3, min=0.0, max=10.0, step=0.01),
+                io.Float.Input("b2", display_name="b2", default=1.4, min=0.0, max=10.0, step=0.01),
+                io.Float.Input("s1", display_name="s1", default=0.9, min=0.0, max=10.0, step=0.01),
+                io.Float.Input("s2", display_name="s2", default=0.2, min=0.0, max=10.0, step=0.01)
             ],
             outputs=[
-                ModelShiftInfo.Output("model_shifts")
+                ModelShiftInfo.Output("model_shifts", display_name="model_shifts")
             ]
         )
     
@@ -414,11 +414,11 @@ class Sage_ModelShiftOnly(io.ComfyNode):
             description="Get the model shifts to apply to the model. This is used by the model loader node.",
             category="Sage Utils/model",
             inputs=[
-                io.Combo.Input("shift_type", options=["None", "x1", "x1000"], default="None"),
-                io.Float.Input("shift", default=3.0, min=0.0, max=100.0, step=0.01)
+                io.Combo.Input("shift_type", display_name="shift_type", options=["None", "x1", "x1000"], default="None"),
+                io.Float.Input("shift", display_name="shift", default=3.0, min=0.0, max=100.0, step=0.01)
             ],
             outputs=[
-                ModelShiftInfo.Output("model_shifts")
+                ModelShiftInfo.Output("model_shifts", display_name="model_shifts")
             ]
         )
     
@@ -444,14 +444,14 @@ class Sage_FreeU2(io.ComfyNode):
             description="Get the free_u2 settings to apply to the model.",
             category="Sage Utils/model",
             inputs=[
-                io.Boolean.Input("freeu_v2", default=False),
-                io.Float.Input("b1", default=1.3, min=0.0, max=10.0, step=0.01),
-                io.Float.Input("b2", default=1.4, min=0.0, max=10.0, step=0.01),
-                io.Float.Input("s1", default=0.9, min=0.0, max=10.0, step=0.01),
-                io.Float.Input("s2", default=0.2, min=0.0, max=10.0, step=0.01)
+                io.Boolean.Input("freeu_v2", display_name="freeu_v2", default=False),
+                io.Float.Input("b1", display_name="b1", default=1.3, min=0.0, max=10.0, step=0.01),
+                io.Float.Input("b2", display_name="b2", default=1.4, min=0.0, max=10.0, step=0.01),
+                io.Float.Input("s1", display_name="s1", default=0.9, min=0.0, max=10.0, step=0.01),
+                io.Float.Input("s2", display_name="s2", default=0.2, min=0.0, max=10.0, step=0.01)
             ],
             outputs=[
-                ModelShiftInfo.Output("model_shifts")
+                ModelShiftInfo.Output("model_shifts", display_name="model_shifts")
             ]
         )
     
@@ -477,13 +477,13 @@ class Sage_TilingInfo(io.ComfyNode):
             description="Adds tiling information to the KSampler.",
             category="Sage Utils/sampler",
             inputs=[
-                io.Int.Input("tile_size", default=512, min=64, max=4096, step=32),
-                io.Int.Input("overlap", default=64, min=0, max=4096, step=32),
-                io.Int.Input("temporal_size", default=64, min=8, max=4096, step=4, tooltip="Only used for video VAEs: Amount of frames to decode at a time."),
-                io.Int.Input("temporal_overlap", default=8, min=4, max=4096, step=4, tooltip="Only used for video VAEs: Amount of frames to overlap.")
+                io.Int.Input("tile_size", display_name="tile_size", default=512, min=64, max=4096, step=32),
+                io.Int.Input("overlap", display_name="overlap", default=64, min=0, max=4096, step=32),
+                io.Int.Input("temporal_size", display_name="temporal_size", default=64, min=8, max=4096, step=4, tooltip="Only used for video VAEs: Amount of frames to decode at a time."),
+                io.Int.Input("temporal_overlap", display_name="temporal_overlap", default=8, min=4, max=4096, step=4, tooltip="Only used for video VAEs: Amount of frames to overlap.")
             ],
             outputs=[
-                TilingInfo.Output("tiling_info")
+                TilingInfo.Output("tiling_info", display_name="tiling_info")
             ]
         )
     
@@ -512,12 +512,12 @@ class Sage_UnetClipVaeToModelInfo(io.ComfyNode):
             description="Returns a list with the unets, clips, and vae in it to be loaded.",
             category="Sage Utils/model",
             inputs=[
-                UnetInfo.Input("unet_info"),
-                ClipInfo.Input("clip_info"),
-                VaeInfo.Input("vae_info")
+                UnetInfo.Input("unet_info", display_name="unet_info"),
+                ClipInfo.Input("clip_info", display_name="clip_info"),
+                VaeInfo.Input("vae_info", display_name="vae_info")
             ],
             outputs=[
-                ModelInfo.Output("model_info")
+                ModelInfo.Output("model_info", display_name="model_info")
             ]
         )
     
@@ -538,11 +538,11 @@ class Sage_LoraStack(io.ComfyNode):
             description="Choose a lora with weights, and add it to a lora_stack. Compatible with other node packs that have lora_stacks.",
             category="Sage Utils/lora",
             inputs=[
-                io.Boolean.Input("enabled", default=False),
-                io.Combo.Input("lora_name", options=get_model_list("loras")),
-                io.Float.Input("model_weight", default=1.0, min=-100.0, max=100.0, step=0.01),
-                io.Float.Input("clip_weight", default=1.0, min=-100.0, max=100.0, step=0.01),
-                LoraStack.Input("lora_stack", optional=True)
+                io.Boolean.Input("enabled", display_name="enabled", default=False),
+                io.Combo.Input("lora_name", display_name="lora_name", options=get_model_list("loras")),
+                io.Float.Input("model_weight", display_name="model_weight", default=1.0, min=-100.0, max=100.0, step=0.01),
+                io.Float.Input("clip_weight", display_name="clip_weight", default=1.0, min=-100.0, max=100.0, step=0.01),
+                LoraStack.Input("lora_stack", display_name="lora_stack", optional=True)
             ],
             outputs=[
                 LoraStack.Output("out_lora_stack", display_name="lora_stack")
@@ -575,10 +575,10 @@ class Sage_QuickLoraStack(io.ComfyNode):
             description="A simplified version of the lora stack node, without the clip_weight.",
             category="Sage Utils/lora",
             inputs=[
-                io.Boolean.Input("enabled", default=True),
-                io.Combo.Input("lora_name", options=get_model_list("loras")),
-                io.Float.Input("model_weight", default=1.0, min=-100.0, max=100.0, step=0.01),
-                LoraStack.Input("lora_stack", optional=True)
+                io.Boolean.Input("enabled", display_name="enabled", default=True),
+                io.Combo.Input("lora_name", display_name="lora_name", options=get_model_list("loras")),
+                io.Float.Input("model_weight", display_name="model_weight", default=1.0, min=-100.0, max=100.0, step=0.01),
+                LoraStack.Input("lora_stack", display_name="lora_stack", optional=True)
             ],
             outputs=[
                 LoraStack.Output("out_lora_stack", display_name="lora_stack")
@@ -622,11 +622,11 @@ class Sage_TripleLoraStack(io.ComfyNode):
             ]
         )
         for i in range(1, cls.NUM_OF_ENTRIES + 1):
-            schema.inputs.append(io.Boolean.Input(f"enabled_{i}", default=True))
-            schema.inputs.append(io.Combo.Input(f"lora_{i}_name", options=lora_list))
-            schema.inputs.append(io.Float.Input(f"model_{i}_weight", default=1.0, min=-100.0, max=100.0, step=0.01))
-            schema.inputs.append(io.Float.Input(f"clip_{i}_weight", default=1.0, min=-100.0, max=100.0, step=0.01))
-        schema.inputs.append(LoraStack.Input("lora_stack", optional=True))
+            schema.inputs.append(io.Boolean.Input(f"enabled_{i}", display_name=f"enabled_{i}", default=True))
+            schema.inputs.append(io.Combo.Input(f"lora_{i}_name", display_name=f"lora_{i}_name", options=lora_list))
+            schema.inputs.append(io.Float.Input(f"model_{i}_weight", display_name=f"model_{i}_weight", default=1.0, min=-100.0, max=100.0, step=0.01))
+            schema.inputs.append(io.Float.Input(f"clip_{i}_weight", display_name=f"clip_{i}_weight", default=1.0, min=-100.0, max=100.0, step=0.01))
+        schema.inputs.append(LoraStack.Input("lora_stack", display_name="lora_stack", optional=True))
         
         return schema
     
@@ -670,11 +670,11 @@ class Sage_SixLoraStack(Sage_TripleLoraStack):
             ]
         )
         for i in range(1, cls.NUM_OF_ENTRIES + 1):
-            schema.inputs.append(io.Boolean.Input(f"enabled_{i}", default=True))
-            schema.inputs.append(io.Combo.Input(f"lora_{i}_name", options=lora_list))
-            schema.inputs.append(io.Float.Input(f"model_{i}_weight", default=1.0, min=-100.0, max=100.0, step=0.01))
-            schema.inputs.append(io.Float.Input(f"clip_{i}_weight", default=1.0, min=-100.0, max=100.0, step=0.01))
-        schema.inputs.append(LoraStack.Input("lora_stack", optional=True))
+            schema.inputs.append(io.Boolean.Input(f"enabled_{i}", display_name=f"enabled_{i}", default=True))
+            schema.inputs.append(io.Combo.Input(f"lora_{i}_name", display_name=f"lora_{i}_name", options=lora_list))
+            schema.inputs.append(io.Float.Input(f"model_{i}_weight", display_name=f"model_{i}_weight", default=1.0, min=-100.0, max=100.0, step=0.01))
+            schema.inputs.append(io.Float.Input(f"clip_{i}_weight", display_name=f"clip_{i}_weight", default=1.0, min=-100.0, max=100.0, step=0.01))
+        schema.inputs.append(LoraStack.Input("lora_stack", display_name="lora_stack", optional=True))
         
         return schema
 
@@ -701,11 +701,11 @@ class Sage_NineLoraStack(Sage_TripleLoraStack):
             ]
         )
         for i in range(1, cls.NUM_OF_ENTRIES + 1):
-            schema.inputs.append(io.Boolean.Input(f"enabled_{i}", default=True))
-            schema.inputs.append(io.Combo.Input(f"lora_{i}_name", options=lora_list))
-            schema.inputs.append(io.Float.Input(f"model_{i}_weight", default=1.0, min=-100.0, max=100.0, step=0.01))
-            schema.inputs.append(io.Float.Input(f"clip_{i}_weight", default=1.0, min=-100.0, max=100.0, step=0.01))
-        schema.inputs.append(LoraStack.Input("lora_stack", optional=True))
+            schema.inputs.append(io.Boolean.Input(f"enabled_{i}", display_name=f"enabled_{i}", default=True))
+            schema.inputs.append(io.Combo.Input(f"lora_{i}_name", display_name=f"lora_{i}_name", options=lora_list))
+            schema.inputs.append(io.Float.Input(f"model_{i}_weight", display_name=f"model_{i}_weight", default=1.0, min=-100.0, max=100.0, step=0.01))
+            schema.inputs.append(io.Float.Input(f"clip_{i}_weight", display_name=f"clip_{i}_weight", default=1.0, min=-100.0, max=100.0, step=0.01))
+        schema.inputs.append(LoraStack.Input("lora_stack", display_name="lora_stack", optional=True))
         
         return schema
 
@@ -733,10 +733,10 @@ class Sage_TripleQuickLoraStack(io.ComfyNode):
             ]
         )
         for i in range(1, cls.NUM_OF_ENTRIES + 1):
-            schema.inputs.append(io.Boolean.Input(f"enabled_{i}", default=True))
-            schema.inputs.append(io.Combo.Input(f"lora_{i}_name", options=lora_list))
-            schema.inputs.append(io.Float.Input(f"model_{i}_weight", default=1.0, min=-100.0, max=100.0, step=0.01))
-        schema.inputs.append(LoraStack.Input("lora_stack", optional=True))
+            schema.inputs.append(io.Boolean.Input(f"enabled_{i}", display_name=f"enabled_{i}", default=True))
+            schema.inputs.append(io.Combo.Input(f"lora_{i}_name", display_name=f"lora_{i}_name", options=lora_list))
+            schema.inputs.append(io.Float.Input(f"model_{i}_weight", display_name=f"model_{i}_weight", default=1.0, min=-100.0, max=100.0, step=0.01))
+        schema.inputs.append(LoraStack.Input("lora_stack", display_name="lora_stack", optional=True))
         
         return schema
     
@@ -778,10 +778,10 @@ class Sage_QuickSixLoraStack(Sage_TripleQuickLoraStack):
             ]
         )
         for i in range(1, cls.NUM_OF_ENTRIES + 1):
-            schema.inputs.append(io.Boolean.Input(f"enabled_{i}", default=True))
-            schema.inputs.append(io.Combo.Input(f"lora_{i}_name", options=lora_list))
-            schema.inputs.append(io.Float.Input(f"model_{i}_weight", default=1.0, min=-100.0, max=100.0, step=0.01))
-        schema.inputs.append(LoraStack.Input("lora_stack", optional=True))
+            schema.inputs.append(io.Boolean.Input(f"enabled_{i}", display_name=f"enabled_{i}", default=True))
+            schema.inputs.append(io.Combo.Input(f"lora_{i}_name", display_name=f"lora_{i}_name", options=lora_list))
+            schema.inputs.append(io.Float.Input(f"model_{i}_weight", display_name=f"model_{i}_weight", default=1.0, min=-100.0, max=100.0, step=0.01))
+        schema.inputs.append(LoraStack.Input("lora_stack", display_name="lora_stack", optional=True))
         
         return schema
 
@@ -808,10 +808,10 @@ class Sage_QuickNineLoraStack(Sage_TripleQuickLoraStack):
             ]
         )
         for i in range(1, cls.NUM_OF_ENTRIES + 1):
-            schema.inputs.append(io.Boolean.Input(f"enabled_{i}", default=True))
-            schema.inputs.append(io.Combo.Input(f"lora_{i}_name", options=lora_list))
-            schema.inputs.append(io.Float.Input(f"model_{i}_weight", default=1.0, min=-100.0, max=100.0, step=0.01))
-        schema.inputs.append(LoraStack.Input("lora_stack", optional=True))
+            schema.inputs.append(io.Boolean.Input(f"enabled_{i}", display_name=f"enabled_{i}", default=True))
+            schema.inputs.append(io.Combo.Input(f"lora_{i}_name", display_name=f"lora_{i}_name", options=lora_list))
+            schema.inputs.append(io.Float.Input(f"model_{i}_weight", display_name=f"model_{i}_weight", default=1.0, min=-100.0, max=100.0, step=0.01))
+        schema.inputs.append(LoraStack.Input("lora_stack", display_name="lora_stack", optional=True))
         
         return schema
 
