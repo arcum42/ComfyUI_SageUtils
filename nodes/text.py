@@ -625,7 +625,7 @@ class Sage_PonyScore(ComfyNodeABC):
             "required": {
                 "score_start": (IO.INT, {"default": 9, "min": 0, "max": 9, "step": 1}),
                 "score_end": (IO.INT, {"default": 4, "min": 0, "max": 9, "step": 1}),
-                "up_to": (IO.BOOLEAN, {"default": False, "tooltip": "If true, adds '_up' to the score string, except for score_9. (v6 uses up, v7 doesn't)"})
+                "up_to": (IO.BOOLEAN, {"default": True, "tooltip": "If true, adds '_up' to the score string, except for score_9. (v6 uses up, v7 doesn't)"})
             }
         }
 

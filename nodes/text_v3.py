@@ -795,7 +795,7 @@ class Sage_PonyScore(io.ComfyNode):
             inputs=[
                 io.Int.Input("score_start", display_name="score_start", default=9, min=0, max=9, step=1),
                 io.Int.Input("score_end", display_name="score_end", default=4, min=0, max=9, step=1),
-                io.Boolean.Input("up_to", display_name="up_to", default=False, tooltip="If true, adds '_up' to the score string, except for score_9. (v6 uses up, v7 doesn't)")
+                io.Boolean.Input("up_to", display_name="up_to", default=True, tooltip="If true, adds '_up' to the score string, except for score_9. (v6 uses up, v7 doesn't)")
             ],
             outputs=[
                 io.String.Output("score_text", display_name="score_text")

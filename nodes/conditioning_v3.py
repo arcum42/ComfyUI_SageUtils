@@ -44,11 +44,7 @@ class Sage_ZeroConditioning(io.ComfyNode):
         clip = kwargs.get("clip")
         if clip is None:
             raise ValueError("Clip input is required.")
-        tokens = clip.tokenize("")
-        output = clip.encode_from_tokens(tokens, return_pooled=True, return_dict=True)
-        output["pooled_output"] = torch.zeros_like(output.get("pooled_output", torch.tensor([])))
-        conditioning = torch.zeros_like(output.pop("cond"))
-        return io.NodeOutput([conditioning, output])
+        return io.NodeOutput(condition_text(clip))
 
 class Sage_SingleCLIPTextEncode(io.ComfyNode):
     @classmethod
