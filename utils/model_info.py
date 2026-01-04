@@ -110,7 +110,7 @@ def model_name_and_hash_as_str(model_info) -> str:
         model_info (dict): The model_info dictionary containing the model path and hash.
     """
     model_string = ""
-    if isinstance(model_info, tuple):
+    if isinstance(model_info, tuple) or isinstance(model_info, list):
         model_list = []
         for info in model_info:    
             model_name = _get_model_name_from_info(info)
@@ -210,7 +210,7 @@ def collect_resource_hashes(model_info, lora_stack: Optional[list] = None) -> li
     resource_hashes = []
     
     # Handle model_info - could be a tuple or a single dictionary
-    if isinstance(model_info, tuple):
+    if isinstance(model_info, tuple) or isinstance(model_info, list):
         # Process each model_info in the tuple
         for info in model_info:
             if info is None or not isinstance(info, dict):

@@ -69,6 +69,19 @@ class Sage_ConstructMetadataFlexible(io.ComfyNode):
                                    width: int, height: int, sampler_info: dict,
                                    lora_stack: Optional[list] = None) -> dict:
         """Collect all metadata components needed for any style."""
+        def _flatten_model_info(info) -> list:
+            """Recursively flatten model_info that may be nested tuples/lists of dicts."""
+            if info is None:
+                return []
+            if isinstance(info, dict):
+                return [info]
+            if isinstance(info, (tuple, list)):
+                flattened = []
+                for item in info:
+                    flattened.extend(_flatten_model_info(item))
+                return flattened
+            return []
+
         # Individual sampler components
         sampler_name = civitai_sampler_name(sampler_info['sampler'], sampler_info['scheduler'])
         steps = sampler_info['steps']
@@ -102,32 +115,26 @@ class Sage_ConstructMetadataFlexible(io.ComfyNode):
             negative_prompt_line = f"Negative prompt: {negative_string}"
 
         # Model and version info
-        model_hash_str = model_name_and_hash_as_str(model_info)
+        print(f"DEBUG: model_info in _collect_metadata_components: {model_info}")
         comfyui_version = COMFYUI_VERSION
         version_str = f"Version: {COMFYUI_VERSION}"
-        
-        # Individual model components for flexible templating
-        if isinstance(model_info, tuple):
-            # Handle multiple models - combine names and hashes
-            model_names = []
-            model_hashes = []
-            for info in model_info:
-                if info and isinstance(info, dict):
-                    model_names.append(_get_model_name_from_info(info))
-                    model_hashes.append(_get_model_hash_from_info(info))
-            model_name = " + ".join(model_names) if model_names else ""
-            model_hash = " + ".join(model_hashes) if model_hashes else ""
-        else:
-            # Handle single model
-            if isinstance(model_info, dict) and "path" in model_info and "hash" in model_info:
-                model_name = _get_model_name_from_info(model_info)
-                model_hash = _get_model_hash_from_info(model_info)
-            else:
-                model_name = ""
-                model_hash = ""
+        flattened_models = _flatten_model_info(model_info)
+        model_hash_str = model_name_and_hash_as_str(flattened_models)
+
+        model_names = []
+        model_hashes = []
+        for info in flattened_models:
+            if not isinstance(info, dict):
+                continue
+            if "path" in info and "hash" in info:
+                model_names.append(_get_model_name_from_info(info))
+                model_hashes.append(_get_model_hash_from_info(info))
+
+        model_name = " + ".join(model_names) if model_names else ""
+        model_hash = " + ".join(model_hashes) if model_hashes else ""
         
         # Resource hashes for lite version
-        resource_hashes_json = json.dumps(collect_resource_hashes(model_info, lora_stack))
+        resource_hashes_json = json.dumps(collect_resource_hashes(flattened_models, lora_stack))
         
         # LoRA information for full version
         lora_hashes_list = []

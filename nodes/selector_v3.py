@@ -80,7 +80,7 @@ class Sage_UNETSelector(io.ComfyNode):
             description="Selects a UNET model from a list.",
             category="Sage Utils/selector",
             inputs=[
-                io.Combo.Input("unet_name", display_name="unet_name", options=get_model_list("unets")),
+                io.Combo.Input("unet_name", display_name="unet_name", options=get_model_list("unet")),
                 io.Combo.Input("weight_dtype", display_name="weight_dtype", options=mi.weight_dtype_options, default="default"),
             ],
             outputs=[
@@ -104,7 +104,7 @@ class Sage_VAESelector(io.ComfyNode):
             description="Selects a VAE model from a list.",
             category="Sage Utils/selector",
             inputs=[
-                io.Combo.Input("vae_name", display_name="vae_name", options=get_model_list("vaes")),
+                io.Combo.Input("vae_name", display_name="vae_name", options=get_model_list("vae")),
             ],
             outputs=[
                 VaeInfo.Output("vae_info", display_name="vae_info")
@@ -126,7 +126,7 @@ class Sage_CLIPSelector(io.ComfyNode):
             description="Selects a CLIP model from a list.",
             category="Sage Utils/selector",
             inputs=[
-                io.Combo.Input("clip_name", display_name="clip_name", options=get_model_list("clips")),
+                io.Combo.Input("clip_name", display_name="clip_name", options=get_model_list("clip")),
                 io.Combo.Input("clip_type", display_name="clip_type", options=mi.single_clip_loader_options, default="chroma"),
             ],
             outputs=[
@@ -144,14 +144,15 @@ class Sage_CLIPSelector(io.ComfyNode):
 class Sage_DualCLIPSelector(io.ComfyNode):
     @classmethod
     def define_schema(cls):
+        clip_list = get_model_list("clip")
         return io.Schema(
             node_id="Sage_DualCLIPSelector",
             display_name="Dual CLIP Selector",
             description="Selects two CLIP models from a list.",
             category="Sage Utils/selector",
             inputs=[
-                io.Combo.Input("clip_name_1", display_name="clip_name_1", options=get_model_list("clips")),
-                io.Combo.Input("clip_name_2", display_name="clip_name_2", options=get_model_list("clips")),
+                io.Combo.Input("clip_name_1", display_name="clip_name_1", options=clip_list),
+                io.Combo.Input("clip_name_2", display_name="clip_name_2", options=clip_list),
                 io.Combo.Input("clip_type", display_name="clip_type", options=mi.dual_clip_loader_options, default="sdxl"),
             ],
             outputs=[
@@ -170,15 +171,16 @@ class Sage_DualCLIPSelector(io.ComfyNode):
 class Sage_TripleCLIPSelector(io.ComfyNode):
     @classmethod
     def define_schema(cls):
+        clip_list = get_model_list("clip")
         return io.Schema(
             node_id="Sage_TripleCLIPSelector",
             display_name="Triple CLIP Selector",
             description="Selects three CLIP models from a list.",
             category="Sage Utils/selector",
             inputs=[
-                io.Combo.Input("clip_name_1", display_name="clip_name_1", options=get_model_list("clips")),
-                io.Combo.Input("clip_name_2", display_name="clip_name_2", options=get_model_list("clips")),
-                io.Combo.Input("clip_name_3", display_name="clip_name_3", options=get_model_list("clips")),
+                io.Combo.Input("clip_name_1", display_name="clip_name_1", options=clip_list),
+                io.Combo.Input("clip_name_2", display_name="clip_name_2", options=clip_list),
+                io.Combo.Input("clip_name_3", display_name="clip_name_3", options=clip_list),
             ],
             outputs=[
                 ClipInfo.Output("clip_info", display_name="clip_info")
@@ -196,16 +198,17 @@ class Sage_TripleCLIPSelector(io.ComfyNode):
 class Sage_QuadCLIPSelector(io.ComfyNode):
     @classmethod
     def define_schema(cls):
+        clip_list = get_model_list("clip")
         return io.Schema(
             node_id="Sage_QuadCLIPSelector",
             display_name="Quad CLIP Selector",
             description="Selects four CLIP models from a list.",
             category="Sage Utils/selector",
             inputs=[
-                io.Combo.Input("clip_name_1", display_name="clip_name_1", options=get_model_list("clips")),
-                io.Combo.Input("clip_name_2", display_name="clip_name_2", options=get_model_list("clips")),
-                io.Combo.Input("clip_name_3", display_name="clip_name_3", options=get_model_list("clips")),
-                io.Combo.Input("clip_name_4", display_name="clip_name_4", options=get_model_list("clips")),
+                io.Combo.Input("clip_name_1", display_name="clip_name_1", options=clip_list),
+                io.Combo.Input("clip_name_2", display_name="clip_name_2", options=clip_list),
+                io.Combo.Input("clip_name_3", display_name="clip_name_3", options=clip_list),
+                io.Combo.Input("clip_name_4", display_name="clip_name_4", options=clip_list),
             ],
             outputs=[
                 ClipInfo.Output("clip_info", display_name="clip_info")
@@ -230,11 +233,11 @@ class Sage_MultiSelectorSingleClip(io.ComfyNode):
             description="Selects checkpoint, UNET, VAE, and single CLIP models from lists.",
             category="Sage Utils/selector",
             inputs=[
-                io.Combo.Input("unet_name", display_name="unet_name", options=get_model_list("unets")),
+                io.Combo.Input("unet_name", display_name="unet_name", options=get_model_list("unet")),
                 io.Combo.Input("weight_dtype", display_name="weight_dtype", options=mi.weight_dtype_options, default="default"),
-                io.Combo.Input("clip_name", display_name="clip_name", options=get_model_list("clips")),
+                io.Combo.Input("clip_name", display_name="clip_name", options=get_model_list("clip")),
                 io.Combo.Input("clip_type", display_name="clip_type", options=mi.single_clip_loader_options, default="chroma"),
-                io.Combo.Input("vae_name", display_name="vae_name", options=get_model_list("vaes")),
+                io.Combo.Input("vae_name", display_name="vae_name", options=get_model_list("vae")),
             ],
             outputs=[
                 ModelInfo.Output("model_info", display_name="model_info")
@@ -259,18 +262,19 @@ class Sage_MultiSelectorSingleClip(io.ComfyNode):
 class Sage_MultiSelectorDoubleClip(io.ComfyNode):
     @classmethod
     def define_schema(cls):
+        clip_list = get_model_list("clip")
         return io.Schema(
             node_id="Sage_MultiSelectorDoubleClip",
             display_name="Multi Selector Double CLIP",
             description="Selects checkpoint, UNET, VAE, and two CLIP models from lists.",
             category="Sage Utils/selector",
             inputs=[
-                io.Combo.Input("unet_name", display_name="unet_name", options=get_model_list("unets")),
+                io.Combo.Input("unet_name", display_name="unet_name", options=get_model_list("unet")),
                 io.Combo.Input("weight_dtype", display_name="weight_dtype", options=mi.weight_dtype_options, default="default"),
-                io.Combo.Input("clip_name_1", display_name="clip_name_1", options=get_model_list("clips")),
-                io.Combo.Input("clip_name_2", display_name="clip_name_2", options=get_model_list("clips")),
+                io.Combo.Input("clip_name_1", display_name="clip_name_1", options=clip_list),
+                io.Combo.Input("clip_name_2", display_name="clip_name_2", options=clip_list),
                 io.Combo.Input("clip_type", display_name="clip_type", options=mi.dual_clip_loader_options, default="sdxl"),
-                io.Combo.Input("vae_name", display_name="vae_name", options=get_model_list("vaes")),
+                io.Combo.Input("vae_name", display_name="vae_name", options=get_model_list("vae")),
             ],
             outputs=[
                 ModelInfo.Output("model_info", display_name="model_info")
@@ -296,18 +300,19 @@ class Sage_MultiSelectorDoubleClip(io.ComfyNode):
 class Sage_MultiSelectorTripleClip(io.ComfyNode):
     @classmethod
     def define_schema(cls):
+        clip_list = get_model_list("clip")
         return io.Schema(
             node_id="Sage_MultiSelectorTripleClip",
             display_name="Multi Selector Triple CLIP",
             description="Selects checkpoint, UNET, VAE, and three CLIP models from lists.",
             category="Sage Utils/selector",
             inputs=[
-                io.Combo.Input("unet_name", display_name="unet_name", options=get_model_list("unets")),
+                io.Combo.Input("unet_name", display_name="unet_name", options=get_model_list("unet")),
                 io.Combo.Input("weight_dtype", display_name="weight_dtype", options=mi.weight_dtype_options, default="default"),
-                io.Combo.Input("clip_name_1", display_name="clip_name_1", options=get_model_list("clips")),
-                io.Combo.Input("clip_name_2", display_name="clip_name_2", options=get_model_list("clips")),
-                io.Combo.Input("clip_name_3", display_name="clip_name_3", options=get_model_list("clips")),
-                io.Combo.Input("vae_name", display_name="vae_name", options=get_model_list("vaes")),
+                io.Combo.Input("clip_name_1", display_name="clip_name_1", options=get_model_list("clip")),
+                io.Combo.Input("clip_name_2", display_name="clip_name_2", options=clip_list),
+                io.Combo.Input("clip_name_3", display_name="clip_name_3", options=clip_list),
+                io.Combo.Input("vae_name", display_name="vae_name", options=get_model_list("vae")),
             ],
             outputs=[
                 ModelInfo.Output("model_info", display_name="model_info")
@@ -333,19 +338,20 @@ class Sage_MultiSelectorTripleClip(io.ComfyNode):
 class Sage_MultiSelectorQuadClip(io.ComfyNode):
     @classmethod
     def define_schema(cls):
+        clip_list = get_model_list("clip")
         return io.Schema(
             node_id="Sage_MultiSelectorQuadClip",
             display_name="Multi Selector Quad CLIP",
             description="Selects checkpoint, UNET, VAE, and four CLIP models from lists.",
             category="Sage Utils/selector",
             inputs=[
-                io.Combo.Input("unet_name", display_name="unet_name", options=get_model_list("unets")),
+                io.Combo.Input("unet_name", display_name="unet_name", options=get_model_list("unet")),
                 io.Combo.Input("weight_dtype", display_name="weight_dtype", options=mi.weight_dtype_options, default="default"),
-                io.Combo.Input("clip_name_1", display_name="clip_name_1", options=get_model_list("clips")),
-                io.Combo.Input("clip_name_2", display_name="clip_name_2", options=get_model_list("clips")),
-                io.Combo.Input("clip_name_3", display_name="clip_name_3", options=get_model_list("clips")),
-                io.Combo.Input("clip_name_4", display_name="clip_name_4", options=get_model_list("clips")),
-                io.Combo.Input("vae_name", display_name="vae_name", options=get_model_list("vaes")),
+                io.Combo.Input("clip_name_1", display_name="clip_name_1", options=clip_list),
+                io.Combo.Input("clip_name_2", display_name="clip_name_2", options=clip_list),
+                io.Combo.Input("clip_name_3", display_name="clip_name_3", options=clip_list),
+                io.Combo.Input("clip_name_4", display_name="clip_name_4", options=clip_list),
+                io.Combo.Input("vae_name", display_name="vae_name", options=get_model_list("vae")),
             ],
             outputs=[
                 ModelInfo.Output("model_info", display_name="model_info")

@@ -433,7 +433,16 @@ class Sage_PonyStyle(io.ComfyNode):
     @classmethod
     def execute(cls, **kwargs):
         style = kwargs.get("style", [])
-        return io.NodeOutput(", ".join(style))
+        
+        styled_text = ""
+        if not style:
+            styled_text = ""
+        
+        if isinstance(style, str):
+            style = [style]
+        
+        styled_text = ", ".join(style)
+        return io.NodeOutput(styled_text)
 
 class Sage_SaveText(io.ComfyNode):
     @classmethod
