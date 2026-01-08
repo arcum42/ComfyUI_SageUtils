@@ -34,6 +34,10 @@ def flatten_model_info(model_info):
 def add_ckpt_node(graph: GraphBuilder, ckpt_info):
     ckpt_node = None
     if ckpt_info is not None:
+        # if ckpt_info is a tuple, unpack it.
+        if isinstance(ckpt_info, tuple):
+            ckpt_info = ckpt_info[0]
+
         ckpt_name = ckpt_info["path"]
         ckpt_fixed_name = get_path_without_base("checkpoints", ckpt_name)
         # No GGUF support for checkpoints yet that I see.
@@ -46,6 +50,10 @@ def add_ckpt_node(graph: GraphBuilder, ckpt_info):
 def add_unet_node(graph: GraphBuilder, unet_info):
     unet_node = None
     if unet_info is not None:
+        # if unet_info is a tuple, unpack it.
+        if isinstance(unet_info, tuple):
+            unet_info = unet_info[0]
+
         unet_name = unet_info["path"]
         unet_weight_dtype = unet_info["weight_dtype"]
         unet_fixed_name = get_path_without_base("diffusion_models", unet_name)
@@ -65,6 +73,9 @@ def add_unet_node(graph: GraphBuilder, unet_info):
 def add_clip_node(graph: GraphBuilder, clip_info):
     clip_node = None
     if clip_info is not None:
+        # if clip_info is a tuple, unpack it.
+        if isinstance(clip_info, tuple):
+            clip_info = clip_info[0]
         print(f"Adding CLIP node with info: {clip_info}")
         # 1+2 are in nodes.py, 3 is in node_sd3.py, and 4 is in nodes_hidream.py for legacy reasons.
         clip_path = clip_info["path"]
@@ -111,6 +122,10 @@ def add_clip_node(graph: GraphBuilder, clip_info):
 def add_vae_node(graph: GraphBuilder, vae_info):
     vae_node = None
     if vae_info is not None:
+        # if vae_info is a tuple, unpack it.
+        if isinstance(vae_info, tuple):
+            vae_info = vae_info[0]
+
         vae_name = vae_info["path"]
         vae_fixed_name = get_path_without_base("vae", vae_name)
         # There is no GGUF for VAE currently, so we can just use VAELoader.

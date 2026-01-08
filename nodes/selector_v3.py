@@ -107,7 +107,7 @@ class Sage_VAESelector(io.ComfyNode):
                 io.Combo.Input("vae_name", display_name="vae_name", options=get_model_list("vae")),
             ],
             outputs=[
-                VaeInfo.Output("vae_info", display_name="vae_info")
+                VaeInfo.Output("Selector: vae_info", display_name="vae_info")
             ]
         )
     
@@ -115,6 +115,7 @@ class Sage_VAESelector(io.ComfyNode):
     def execute(cls, **kwargs):
         vae_name = kwargs.get("vae_name", "")
         info = mi.get_model_info_vae(vae_name)
+        print(f"VAE info: {info}")
         return io.NodeOutput(info)
 
 class Sage_CLIPSelector(io.ComfyNode):

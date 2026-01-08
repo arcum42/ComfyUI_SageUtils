@@ -94,6 +94,8 @@ class Sage_UNETLoaderFromInfo(io.ComfyNode):
     @classmethod
     def execute(cls, **kwargs):
         unet_info = kwargs.get("unet_info", None)
+        if isinstance(unet_info, (list, tuple)):
+            unet_info = unet_info[0]
         
         graph = GraphBuilder()
         unet_node = add_unet_node(graph, unet_info)
@@ -127,6 +129,8 @@ class Sage_CLIPLoaderFromInfo(io.ComfyNode):
     @classmethod
     def execute(cls, **kwargs):
         clip_info = kwargs.get("clip_info", None)
+        if isinstance(clip_info, (list, tuple)):
+            clip_info = clip_info[0]
         graph = GraphBuilder()
         clip_node = add_clip_node(graph, clip_info)
         if clip_node is None or clip_info is None:
@@ -158,6 +162,8 @@ class Sage_ChromaCLIPLoaderFromInfo(io.ComfyNode):
     @classmethod
     def execute(cls, **kwargs):
         clip_info = kwargs.get("clip_info", None)
+        if isinstance(clip_info, (list, tuple)):
+            clip_info = clip_info[0]
         graph = GraphBuilder()
         clip_node = add_clip_node(graph, clip_info)
         if clip_node is None or clip_info is None:
@@ -189,6 +195,9 @@ class Sage_VAELoaderFromInfo(io.ComfyNode):
     @classmethod
     def execute(cls, **kwargs):
         vae_info = kwargs.get("vae_info", None)
+        if isinstance(vae_info, (list, tuple)):
+            vae_info = vae_info[0]
+        print(f"Loader: vae_info = {vae_info}")
         graph = GraphBuilder()
         vae_node = add_vae_node(graph, vae_info)
         if vae_node is None or vae_info is None:
