@@ -26,12 +26,6 @@ from .custom_io_v3 import *
 
 # NOTE: These nodes mirror v1 behavior; UI-rich outputs use markdown text in ui payloads.
 
-# ============================================================================
-# PLACEHOLDER NODES - NOT YET FULLY IMPLEMENTED
-# ============================================================================
-# These are placeholder implementations. The inputs/outputs match the original
-# v1 nodes, but the execute methods need proper implementation.
-
 class Sage_FreeMemory(io.ComfyNode):
     """Free up memory by unloading all models and clearing caches."""
     @classmethod
@@ -155,7 +149,7 @@ class Sage_ModelInfo(io.ComfyNode):
         return io.Schema(
             node_id="Sage_ModelInfo",
             display_name="Model Info",
-            description="PLACEHOLDER: Pull the civitai model info, and return what the base model is, the name with version, the url, the url for the latest version, and a preview image.",
+            description="Pull the civitai model info, and return what the base model is, the name with version, the url, the url for the latest version, and a preview image.",
             category="Sage Utils/model/info",
             inputs=[
                 ModelInfo.Input("model_info", display_name="model_info")
@@ -212,7 +206,7 @@ class Sage_ModelInfoDisplay(io.ComfyNode):
         return io.Schema(
             node_id="Sage_ModelInfoDisplay",
             display_name="Model Info Display",
-            description="PLACEHOLDER: Display model information in a formatted markdown block with civitai details, base model, name, version, and links.",
+            description="Display model information in a formatted markdown block with civitai details, base model, name, version, and links.",
             category="Sage Utils/model/info",
             is_output_node=True,
             inputs=[
@@ -336,7 +330,7 @@ class Sage_LoraStackInfoDisplay(io.ComfyNode):
         return io.Schema(
             node_id="Sage_LoraStackInfoDisplay",
             display_name="LoRA Stack Info Display",
-            description="PLACEHOLDER: Display information for all LoRAs in a lora_stack as formatted markdown with civitai details, weights, and links.",
+            description="Display information for all LoRAs in a lora_stack as formatted markdown with civitai details, weights, and links.",
             category="Sage Utils/model/info",
             is_output_node=True,
             inputs=[
@@ -472,7 +466,7 @@ class Sage_LastLoraInfo(io.ComfyNode):
         return io.Schema(
             node_id="Sage_LastLoraInfo",
             display_name="Last LoRA Info",
-            description="PLACEHOLDER: Pull civitai info for the last lora in the stack and return details.",
+            description="Pull civitai info for the last lora in the stack and return details.",
             category="Sage Utils/model/info",
             inputs=
             [LoraStack.Input("lora_stack", display_name="lora_stack")
@@ -592,7 +586,7 @@ class Sage_CacheMaintenance(io.ComfyNode):
         return io.Schema(
             node_id="Sage_CacheMaintenance",
             display_name="Cache Maintenance",
-            description="PLACEHOLDER: Perform cache maintenance operations like clearing or updating the cache.",
+            description="Perform cache maintenance operations like clearing or updating the cache.",
             category="Sage Utils/util",
             is_output_node=True,
             inputs=[
@@ -655,7 +649,7 @@ class Sage_ModelReport(io.ComfyNode):
         return io.Schema(
             node_id="Sage_ModelReport",
             display_name="Model Report",
-            description="PLACEHOLDER: Generate a report of all models with their information.",
+            description="Generate a report of all models with their information.",
             category="Sage Utils/model/info",
             is_output_node=True,
             inputs=[
@@ -738,7 +732,7 @@ class Sage_CollectKeywordsFromLoraStack(io.ComfyNode):
         return io.Schema(
             node_id="Sage_CollectKeywordsFromLoraStack",
             display_name="Collect Keywords From LoRA Stack",
-            description="PLACEHOLDER: Collect keywords from all LoRAs in a stack.",
+            description="Collect keywords from all LoRAs in a stack.",
             category="Sage Utils/lora",
             inputs=[
                 LoraStack.Input("lora_stack", display_name="lora_stack")
@@ -762,7 +756,7 @@ class Sage_CheckLorasForUpdates(io.ComfyNode):
         return io.Schema(
             node_id="Sage_CheckLorasForUpdates",
             display_name="Check LoRAs For Updates",
-            description="PLACEHOLDER: Check if LoRAs in the stack have updates available on Civitai.",
+            description="Check if LoRAs in the stack have updates available on Civitai.",
             category="Sage Utils/lora",
             is_output_node=True,
             inputs=[

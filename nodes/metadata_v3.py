@@ -38,13 +38,13 @@ except ImportError:
     COMFYUI_VERSION = "v1.10-RC-6-comfyui"
 
 class Sage_ConstructMetadataFlexible(io.ComfyNode):
-    """PLACEHOLDER: Flexible metadata constructor with multiple style options."""
+    """Flexible metadata constructor with multiple style options."""
     @classmethod
     def define_schema(cls):
         schema = io.Schema(
             node_id="Sage_ConstructMetadataFlexible",
             display_name="Construct Metadata Flexible",
-            description="PLACEHOLDER: Flexible metadata constructor supporting multiple styles: A1111 Full (with LoRA hashes), A1111 Lite (simplified, only includes models on Civitai), and Simple (No models or LoRAs).",
+            description="Flexible metadata constructor supporting multiple styles: A1111 Full (with LoRA hashes), A1111 Lite (simplified, only includes models on Civitai), and Simple (No models or LoRAs).",
             category="Sage Utils/metadata",
             inputs=[
                 ModelInfo.Input("model_info", display_name="model_info"),
@@ -54,7 +54,7 @@ class Sage_ConstructMetadataFlexible(io.ComfyNode):
                 io.Int.Input("width", display_name="width", default=1024),
                 io.Int.Input("height", display_name="height", default=1024),
                 io.Combo.Input("metadata_style", display_name="metadata_style", 
-                             options=["A1111 Full", "A1111 Lite", "Simple"],
+                             options=list(metadata_templates.keys()),
                              default="A1111 Full"),
                 LoraStack.Input("lora_stack", display_name="lora_stack", optional=True)
             ],
