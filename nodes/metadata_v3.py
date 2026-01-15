@@ -44,7 +44,7 @@ class Sage_ConstructMetadataFlexible(io.ComfyNode):
         schema = io.Schema(
             node_id="Sage_ConstructMetadataFlexible",
             display_name="Construct Metadata Flexible",
-            description="Flexible metadata constructor supporting multiple styles: A1111 Full (with LoRA hashes), A1111 Lite (simplified, only includes models on Civitai), and Simple (No models or LoRAs).",
+            description="Flexible metadata constructor supporting multiple styles: A1111 Full (with LoRA hashes), A1111 Lite (simplified, only includes models on Civitai), Simple (No models or LoRAs) as well as any others defined in metadata_templates.",
             category="Sage Utils/metadata",
             inputs=[
                 ModelInfo.Input("model_info", display_name="model_info"),
