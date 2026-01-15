@@ -12,11 +12,11 @@ from typing import Optional
 import folder_paths
 from comfy.comfy_types.node_typing import ComfyNodeABC, IO
 
-from ..utils import (
+from ...utils import (
     lora_to_prompt, civitai_sampler_name,pull_metadata, get_model_dict, cache,
 )
-from ..utils.model_info import collect_resource_hashes, model_name_and_hash_as_str, _get_model_name_from_info, _get_model_hash_from_info
-from ..utils.config_manager import metadata_templates
+from ...utils.model_info import collect_resource_hashes, model_name_and_hash_as_str, _get_model_name_from_info, _get_model_hash_from_info
+from ...utils.config_manager import metadata_templates
 
 # Constants
 try:

@@ -10,7 +10,7 @@ import logging
 from comfy_execution.graph import ExecutionBlocker
 
 # Import specific utilities instead of wildcard import
-from ..utils import (
+from ...utils import (
     cache, blank_image, url_to_torch_image,
     get_latest_model_version, get_lora_hash, pull_metadata,
     get_civitai_model_version_json_by_hash, pull_lora_image_urls, model_scan, str_to_bool, get_lora_stack_keywords
@@ -20,7 +20,7 @@ import comfy.model_management as mm
 import gc
 import json
 import pathlib
-from ..utils import model_info as mi
+from ...utils import model_info as mi
 class Sage_FreeMemory(ComfyNodeABC):
     @classmethod
     def INPUT_TYPES(cls) -> InputTypeDict:

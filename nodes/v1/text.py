@@ -9,7 +9,7 @@ import string
 import logging
 
 # Import specific utilities instead of wildcard import
-from ..utils import (
+from ...utils import (
     clean_text, get_save_file_path,
     sage_wildcard_path,
     path_manager
@@ -17,7 +17,7 @@ from ..utils import (
 
 from dynamicprompts.generators import RandomPromptGenerator
 from dynamicprompts.wildcards.wildcard_manager import WildcardManager
-from ..utils.constants import (
+from ...utils.constants import (
     LUMINA2_SYSTEM_PROMPTS_V2,
     LUMINA2_SYSTEM_PROMPT,
     PROMPT_START,

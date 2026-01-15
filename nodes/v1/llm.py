@@ -12,16 +12,16 @@ from __future__ import annotations
 from comfy.comfy_types.node_typing import ComfyNodeABC, InputTypeDict, IO
 
 # Import specific utilities instead of wildcard import
-from ..utils.config_manager import llm_prompts
-from ..utils import llm_wrapper as llm
-from ..utils.performance_fix import (
+from ...utils.config_manager import llm_prompts
+from ...utils import llm_wrapper as llm
+from ...utils.performance_fix import (
     get_cached_ollama_models_for_input_types,
     get_cached_lmstudio_models_for_input_types,
     get_cached_ollama_vision_models_for_input_types,
     get_cached_lmstudio_vision_models_for_input_types
 )
 
-from ..utils.constants import DEFAULT_VISION_PROMPT, DEFAULT_TEXT_PROMPT
+from ...utils.constants import DEFAULT_VISION_PROMPT, DEFAULT_TEXT_PROMPT
 import logging
 
 # Nodes to construct prompts for LLMs, including extra instructions and advanced options.

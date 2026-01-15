@@ -5,11 +5,11 @@ from __future__ import annotations
 from comfy.comfy_types.node_typing import ComfyNodeABC, InputTypeDict, IO
 
 import folder_paths
-from ..utils import model_info as mi
+from ...utils import model_info as mi
 from comfy_execution.graph_utils import GraphBuilder
-from ..utils import add_lora_to_stack
-from ..utils import get_model_list
-from ..utils.helpers_graph import (
+from ...utils import add_lora_to_stack
+from ...utils import get_model_list
+from ...utils.helpers_graph import (
     add_lora_stack_node
 )
 

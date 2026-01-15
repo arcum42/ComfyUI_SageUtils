@@ -9,12 +9,12 @@ from comfy_execution.graph_utils import GraphBuilder
 
 
 # Import specific utilities instead of wildcard import
-from ..utils import condition_text, clean_text, clean_if_needed
+from ...utils import condition_text, clean_text, clean_if_needed
 
 import torch
 
 from comfy.utils import ProgressBar
-from ..utils.constants import LUMINA2_SYSTEM_PROMPT, LUMINA2_SYSTEM_PROMPT_TIP
+from ...utils.constants import LUMINA2_SYSTEM_PROMPT, LUMINA2_SYSTEM_PROMPT_TIP
 
 class Sage_ConditioningZeroOut(ComfyNodeABC):
     @classmethod

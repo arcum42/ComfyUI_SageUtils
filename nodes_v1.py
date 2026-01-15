@@ -2,17 +2,17 @@
 from .utils.performance_timer import log_init
 
 # Import all node classes
-from .nodes.conditioning import *
-from .nodes.deprecated import *
-from .nodes.image import *
-from .nodes.llm import *
-from .nodes.loader import *
-from .nodes.metadata import *
-from .nodes.sampler import *
-from .nodes.selector import *
-from .nodes.text import *
-from .nodes.training import *
-from .nodes.util import *
+from .nodes.v1.conditioning import *
+from .nodes.v1.deprecated import *
+from .nodes.v1.image import *
+from .nodes.v1.llm import *
+from .nodes.v1.loader import *
+from .nodes.v1.metadata import *
+from .nodes.v1.sampler import *
+from .nodes.v1.selector import *
+from .nodes.v1.text import *
+from .nodes.v1.training import *
+from .nodes.v1.util import *
 
 log_init("V1_NODES_IMPORTED")
 

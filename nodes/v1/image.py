@@ -10,7 +10,7 @@ from comfy_execution.graph_utils import GraphBuilder
 from comfy_extras.nodes_images import ImageCrop
 
 # Import specific utilities instead of wildcard import  
-from ..utils import load_image_from_path
+from ...utils import load_image_from_path
 
 import torch
 import numpy as np
@@ -26,9 +26,9 @@ import comfy.utils
 import comfy.cli_args
 import datetime
 import logging
-from ..utils.constants import QUICK_ASPECT_RATIOS, MAX_RESOLUTION
+from ...utils.constants import QUICK_ASPECT_RATIOS, MAX_RESOLUTION
 
-from ..utils.common import get_files_in_dir, calc_padding, image_manipulate, resize_needed, load_upscaler, \
+from ...utils.common import get_files_in_dir, calc_padding, image_manipulate, resize_needed, load_upscaler, \
     upscale_with_model, get_model_list
 
 class Sage_EmptyLatentImagePassthrough(ComfyNodeABC):
