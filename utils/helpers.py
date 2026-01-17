@@ -428,6 +428,9 @@ def lora_to_prompt(lora_stack = None):
     if lora_stack is None:
         return ""
     else:
+        if isinstance(lora_stack, tuple) or isinstance(lora_stack, list):
+            if not isinstance(lora_stack[0], (list, tuple)):
+                lora_stack = [lora_stack]
         for lora in lora_stack:
             lora_info += lora_to_string(lora[0], lora[1], lora[2])
     return lora_info

@@ -37,18 +37,6 @@ import logging
 from ..utils.constants import QUICK_ASPECT_RATIOS, MAX_RESOLUTION
 from ..utils.helpers_image import calc_padding, resize_needed, image_manipulate
 
-# Current status - Empty latent only.
-# Sage_EmptyLatentImagePassthrough - Works.
-# Sage_SaveImageWithMetadata - Works.
-# Sage_LoadImage - Works.
-# Sage_CropImage - Works.
-# Sage_GuessResolutionByRatio - Seems to work.
-# Sage_QuickResPicker - Seems to work.
-
-# Test results here:
-# Sage_CubiqImageResize - Not implemented yet.
-# Sage_ReferenceImage - Not implemented yet.
-
 class Sage_EmptyLatentImagePassthrough(io.ComfyNode):
     @classmethod
     def define_schema(cls):
@@ -541,8 +529,9 @@ class Sage_ReferenceImage(io.ComfyNode):
         return io.Schema(
             node_id="Sage_ReferenceImage",
             display_name="Reference Image",
-            description="Processes a reference image to produce conditioning and latent.",
+            description="This node sets the guiding latent for an edit model. If the model supports it you can chain multiple to set multiple reference images.",
             category="Sage Utils/image",
+            enable_expand=True,
             inputs=[
                 io.Conditioning.Input("conditioning", display_name="conditioning", tooltip="The input conditioning."),
                 io.Image.Input("image", display_name="image", tooltip="The reference image."),
@@ -550,7 +539,7 @@ class Sage_ReferenceImage(io.ComfyNode):
             ],
             outputs=[
                 io.Conditioning.Output("out_conditioning", display_name="conditioning", tooltip="The output conditioning."),
-                io.Latent.Output("latent", display_name="latent", tooltip="The encoded latent."),
+                io.Latent.Output("out_latent", display_name="latent", tooltip="The encoded latent."),
             ]
         )
 
@@ -560,13 +549,12 @@ class Sage_ReferenceImage(io.ComfyNode):
         image = kwargs.get("image")
         vae = kwargs.get("vae")
 
-        if image is None or vae is None:
-            return io.NodeOutput(conditioning, None)
+        # Create a subgraph using GraphBuilder to properly handle reference latent processing
+        graph = GraphBuilder()
+        encoder_node = graph.node("VAEEncode", pixels=image, vae=vae)
+        ref_latent_node = graph.node("ReferenceLatent", conditioning=conditioning, latent=encoder_node.out(0))
 
-        # Implement encoding logic here.
-        latent = vae.encode(image)
-
-        return io.NodeOutput(conditioning, latent)
+        return io.NodeOutput(ref_latent_node.out(0), encoder_node.out(0), expand=graph.finalize())
 
 IMAGE_NODES = [
     Sage_EmptyLatentImagePassthrough,

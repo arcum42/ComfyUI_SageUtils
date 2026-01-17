@@ -4,13 +4,11 @@ from typing import Optional
 import folder_paths
 from .helpers import name_from_path, pull_metadata
 from .model_cache import cache
+from .lora_stack import norm_lora_stack
+
 weight_dtype_options = ["default", "fp8_e4m3fn", "fp8_e4m3fn_fast", "fp8_e5m2"]
 single_clip_loader_options = ["stable_diffusion", "stable_cascade", "sd3", "stable_audio", "mochi", "ltxv", "pixart", "cosmos", "lumina2", "wan", "hidream", "chroma", "ace", "omnigen2", "qwen_image"]
 dual_clip_loader_options = ["sdxl", "sd3", "flux", "hunyuan_video", "hidream"]
-
-# Abstracting things first, then we can change the implementation to be more flexible.
-# Right now, mostly supports checkpoints, but we should be supporting UNET, Clip, and VAE files as well.
-# As a checkpoint has a unet, clip, and vae in it, we'll need to be able to use both.
 
 def get_model_info_ckpt(ckpt_name: str) -> tuple:
     """
@@ -208,6 +206,7 @@ def collect_resource_hashes(model_info, lora_stack: Optional[list] = None) -> li
     from .helpers import get_model_dict
     
     resource_hashes = []
+    lora_stack = norm_lora_stack(lora_stack)
     
     # Handle model_info - could be a tuple or a single dictionary
     if isinstance(model_info, tuple) or isinstance(model_info, list):

@@ -96,6 +96,7 @@ class Sage_LogicalSwitch(io.ComfyNode):
             display_name="Logical Switch",
             description="Select between two inputs based on the condition; only the needed branch is evaluated when lazy.",
             category="Sage Utils/util",
+            is_deprecated=True,
             inputs=[
                 io.Boolean.Input("condition", display_name="condition", default=True),
                 io.AnyType.Input("true_value", display_name="true_value", lazy=True, optional=True),
@@ -459,242 +460,6 @@ Failed to retrieve LoRA information from Civitai.
 *Information retrieved from Civitai*"""
         return io.NodeOutput(markdown, ui={"text": markdown})
 
-class Sage_LastLoraInfo(io.ComfyNode):
-    """Pull Civitai info for the last LoRA in the stack."""
-    @classmethod
-    def define_schema(cls):
-        return io.Schema(
-            node_id="Sage_LastLoraInfo",
-            display_name="Last LoRA Info",
-            description="Pull civitai info for the last lora in the stack and return details.",
-            category="Sage Utils/model/info",
-            inputs=
-            [LoraStack.Input("lora_stack", display_name="lora_stack")
-            ],
-            outputs=[
-                io.String.Output("base_model", display_name="base_model"),
-                io.String.Output("name", display_name="name"),
-                io.String.Output("url", display_name="url"),
-                io.String.Output("latest_url", display_name="latest_url"),
-                io.Image.Output("image", display_name="image")
-            ]
-        )
-    
-    @classmethod
-    def execute(cls, **kwargs):
-        lora_stack = kwargs.get("lora_stack")
-        if lora_stack is None:
-            return io.NodeOutput("", "", "", "", None)
-
-        last_lora = lora_stack[-1]
-        image = blank_image()
-        try:
-            hash_value = get_lora_hash(last_lora[0])
-            json_data = get_civitai_model_version_json_by_hash(hash_value)
-            if "modelId" in json_data:
-                url = f"https://civitai.com/models/{json_data['modelId']}?modelVersionId={json_data['id']}"
-                latest_version = get_latest_model_version(json_data["modelId"]) or json_data["id"]
-                latest_url = f"https://civitai.com/models/{json_data['modelId']}?modelVersionId={latest_version}"
-                image_urls = pull_lora_image_urls(hash_value, True)
-                if image_urls:
-                    image = url_to_torch_image(image_urls[0])
-            else:
-                url = ""
-                latest_url = ""
-
-            model_data = json_data.get("model", {}) if isinstance(json_data, dict) else {}
-            model_name = model_data.get("name", "") if isinstance(model_data, dict) else ""
-
-            return io.NodeOutput(
-                json_data.get("baseModel", ""),
-                f"{model_name} {json_data.get('name', '')}",
-                url,
-                latest_url,
-                image
-            )
-        except Exception:
-            logging.error("Exception when getting lora info json data.")
-            return io.NodeOutput("", "", "", "", image)
-
-class Sage_GetFileHash(io.ComfyNode):
-    """Get an sha256 hash of a file."""
-    @classmethod
-    def define_schema(cls):
-        folder_list = list(folder_paths.folder_names_and_paths.keys())
-        return io.Schema(
-            node_id="Sage_GetFileHash",
-            display_name="Get File Hash",
-            description="Get the hash of a file in the configured model paths.",
-            category="Sage Utils/util",
-            inputs=[
-                io.Combo.Input("base_dir", display_name="base_dir", options=folder_list, default=folder_list[0] if folder_list else ""),
-                io.String.Input("filename", display_name="filename")
-            ],
-            outputs=[
-                io.String.Output("hash", display_name="hash")
-            ]
-        )
-    
-    @classmethod
-    def validate_inputs(cls, **kwargs):
-        base_dir = kwargs.get("base_dir", "")
-        filename = kwargs.get("filename", "")
-        try:
-            file_path = pathlib.Path(folder_paths.get_full_path_or_raise(base_dir, filename))
-        except Exception:
-            return f"File '{filename}' not found in base directory '{base_dir}'."
-
-        if not file_path.is_file():
-            return f"'{file_path}' is not a file."
-
-        return True
-
-    @classmethod
-    def fingerprint_inputs(cls, **kwargs):
-        base_dir = kwargs.get("base_dir", "")
-        filename = kwargs.get("filename", "")
-        try:
-            file_path = pathlib.Path(folder_paths.get_full_path_or_raise(base_dir, filename))
-            stat = file_path.stat()
-        except Exception:
-            return None
-
-        m = hashlib.sha256()
-        m.update(str(file_path).encode())
-        m.update(str(stat.st_size).encode())
-        m.update(str(stat.st_mtime_ns).encode())
-        return m.digest().hex()
-
-    @classmethod
-    def execute(cls, **kwargs):
-        base_dir = kwargs.get("base_dir")
-        filename = kwargs.get("filename")
-        the_hash = ""
-        try:
-            file_path = folder_paths.get_full_path_or_raise(base_dir, filename)
-            pull_metadata(file_path)
-            the_hash = cache.hash.get(file_path, "")
-        except Exception:
-            logging.error(f"Unable to hash file '{filename}'.")
-            the_hash = ""
-        return io.NodeOutput(str(the_hash))
-
-class Sage_CacheMaintenance(io.ComfyNode):
-    """Remove ghost entries and report dupes / missing Civitai entries."""
-    @classmethod
-    def define_schema(cls):
-        return io.Schema(
-            node_id="Sage_CacheMaintenance",
-            display_name="Cache Maintenance",
-            description="Perform cache maintenance operations like clearing or updating the cache.",
-            category="Sage Utils/util",
-            is_output_node=True,
-            inputs=[
-                io.Boolean.Input("remove_ghost_entries", display_name="remove_ghost_entries", default=False)
-            ],
-            outputs=[
-                io.String.Output("ghost_entries", display_name="ghost_entries"),
-                io.String.Output("dup_hash", display_name="dup_hash"),
-                io.String.Output("dup_model", display_name="dup_model"),
-                io.String.Output("not_on_civitai", display_name="not_on_civitai")
-            ]
-        )
-    
-    @classmethod
-    def execute(cls, **kwargs):
-        remove_ghost_entries = kwargs.get("remove_ghost_entries", False)
-        ghost_entries = []
-        for key in list(cache.hash.keys()):
-            if not pathlib.Path(key).is_file():
-                ghost_entries.append(key)
-
-        cache_by_hash = {}
-        cache_by_id = {}
-        for model_path, model_hash in cache.hash.items():
-            cache_by_hash.setdefault(model_hash, []).append(model_path)
-            info = cache.by_path(model_path)
-            model_id = info.get("modelId", None)
-            if model_id:
-                cache_by_id.setdefault(model_id, []).append(model_path)
-
-        if remove_ghost_entries:
-            for ghost in ghost_entries:
-                cache.hash.pop(ghost, None)
-            cache.save()
-
-        dup_hash = {h: paths for h, paths in cache_by_hash.items() if len(paths) > 1}
-        dup_id = {i: paths for i, paths in cache_by_id.items() if len(paths) > 1}
-
-        dup_hash_json = json.dumps(dup_hash, separators=(",", ":"), sort_keys=True, indent=4)
-        dup_id_json = json.dumps(dup_id, separators=(",", ":"), sort_keys=True, indent=4)
-
-        not_on_civitai = []
-        for model_path, _ in cache.hash.items():
-            model_info = cache.by_path(model_path)
-            in_civitai = False
-            try:
-                in_civitai = str_to_bool(model_info.get("civitai"))
-            except Exception:
-                in_civitai = False
-            if in_civitai is not True:
-                not_on_civitai.append(model_path)
-
-        not_on_civitai_str = str(not_on_civitai)
-        return io.NodeOutput(", ".join(ghost_entries), dup_hash_json, dup_id_json, not_on_civitai_str)
-
-class Sage_ModelReport(io.ComfyNode):
-    """Scan models/loras and emit lists grouped by base model."""
-    @classmethod
-    def define_schema(cls):
-        return io.Schema(
-            node_id="Sage_ModelReport",
-            display_name="Model Report",
-            description="Generate a report of all models with their information.",
-            category="Sage Utils/model/info",
-            is_output_node=True,
-            inputs=[
-                io.Combo.Input("scan_models", display_name="scan_models", options=["none", "loras", "checkpoints", "all"], default="none"),
-                io.Boolean.Input("force_recheck", display_name="force_recheck", default=False)
-            ],
-            outputs=[
-                io.String.Output("model_list", display_name="model_list"),
-                io.String.Output("lora_list", display_name="lora_list")
-            ]
-        )
-    
-    @classmethod
-    def execute(cls, **kwargs):
-        scan_models = kwargs.get("scan_models", "none")
-        force_recheck = kwargs.get("force_recheck", False)
-
-        def get_files(kind, force):
-            paths = []
-            if kind == "loras":
-                paths = folder_paths.get_folder_paths("loras")
-            elif kind == "checkpoints":
-                paths = folder_paths.get_folder_paths("checkpoints")
-            elif kind == "all":
-                paths = [*folder_paths.get_folder_paths("loras"), *folder_paths.get_folder_paths("checkpoints")]
-            if paths:
-                model_scan(paths, force=force)
-
-        get_files(scan_models, force_recheck)
-
-        sorted_models = {}
-        sorted_loras = {}
-        for model_path, model_hash in cache.hash.items():
-            cur = cache.info.get(model_hash, {})
-            base_model = cur.get("baseModel", None)
-            model_type = cur.get("model", {}).get("type", None)
-            if model_type == "Checkpoint":
-                sorted_models.setdefault(base_model, []).append(str(model_path))
-            if model_type == "LORA":
-                sorted_loras.setdefault(base_model, []).append(str(model_path))
-
-        model_list = json.dumps(sorted_models, separators=(",", ":"), sort_keys=True, indent=4) if sorted_models else ""
-        lora_list = json.dumps(sorted_loras, separators=(",", ":"), sort_keys=True, indent=4) if sorted_loras else ""
-        return io.NodeOutput(model_list, lora_list)
-
 class Sage_MultiModelPicker(io.ComfyNode):
     """Pick a model_info entry by index from a provided list."""
     @classmethod
@@ -705,8 +470,7 @@ class Sage_MultiModelPicker(io.ComfyNode):
             description="Select one model_info from a list by index.",
             category="Sage Utils/model",
             inputs=[
-                io.Int.Input("index", display_name="index", default=1, min=1, max=100, step=1, tooltip="1-based index into provided model list"),
-                io.AnyType.Input("models", display_name="models")
+                io.Int.Input("index", display_name="index", default=1, min=1, max=100, step=1, tooltip="1-based index into provided model list")
             ],
             outputs=[
                 ModelInfo.Output("model_info", display_name="model_info")
@@ -714,16 +478,15 @@ class Sage_MultiModelPicker(io.ComfyNode):
         )
     
     @classmethod
-    def execute(cls, **kwargs):
-        index = kwargs.get("index", 1)
-        models = kwargs.get("models")
-        if models is None:
-            raise ValueError("No models provided to Multi Model Picker.")
-        model_list = list(models) if not isinstance(models, dict) else list(models.values())
-        if index < 1 or index > len(model_list):
+    def execute(cls, **kw):
+        model_infos = kw.values()
+        index = kw.get("index", 1)
+        model_infos = list(model_infos)
+        if index < 1 or index > len(model_infos):
             raise ValueError("Index out of range. Please select a valid model index.")
-        selected = model_list[index - 1]
-        return io.NodeOutput(selected)
+        selected_model_info = model_infos[index]
+    
+        return io.NodeOutput(selected_model_info)
 
 class Sage_CollectKeywordsFromLoraStack(io.ComfyNode):
     """Collect keywords from all LoRAs in a stack."""
@@ -808,10 +571,6 @@ UTIL_NODES = [
     Sage_ModelInfo,
     Sage_ModelInfoDisplay,
     Sage_LoraStackInfoDisplay,
-    Sage_LastLoraInfo,
-    Sage_GetFileHash,
-    Sage_CacheMaintenance,
-    Sage_ModelReport,
     Sage_MultiModelPicker,
     Sage_CollectKeywordsFromLoraStack,
     Sage_CheckLorasForUpdates

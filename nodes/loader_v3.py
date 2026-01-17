@@ -15,6 +15,8 @@ from comfy_execution.graph import ExecutionBlocker
 from .custom_io_v3 import ModelInfo, UnetInfo, VaeInfo, ClipInfo, ModelShiftInfo, LoraStack
 from ..utils.helpers import pull_metadata, update_model_timestamp, pull_and_update_model_timestamp
 
+from ..utils.lora_stack import norm_lora_stack
+
 # Import specific utilities instead of wildcard import
 from ..utils import get_lora_stack_keywords
 from ..utils import model_info as mi
@@ -236,12 +238,14 @@ class Sage_LoraStackLoader(io.ComfyNode):
     def execute(cls, **kwargs):
         model = kwargs.get("model", None)
         clip = kwargs.get("clip", None)
+
         lora_stack = kwargs.get("lora_stack", None)
+        lora_stack = norm_lora_stack(lora_stack)
+
         model_shifts = kwargs.get("model_shifts", None)
         if isinstance(model_shifts, (list, tuple)):
             model_shifts = model_shifts[0]
-        if isinstance(lora_stack, (list, tuple)):
-            lora_stack = lora_stack[0]
+
         graph = GraphBuilder()
         exit_node, exit_unet, exit_clip = create_lora_shift_nodes(graph, model, clip, lora_stack, model_shifts)
         if lora_stack is not None and exit_unet is not None:
@@ -280,7 +284,10 @@ class Sage_ModelLoraStackLoader(io.ComfyNode):
     @classmethod
     def execute(cls, **kwargs):
         model_info = kwargs.get("model_info", None)
+
         lora_stack = kwargs.get("lora_stack", None)
+        lora_stack = norm_lora_stack(lora_stack)
+
         model_shifts = kwargs.get("model_shifts", None)
         if isinstance(model_shifts, (list, tuple)):
             model_shifts = model_shifts[0]
@@ -322,13 +329,13 @@ class Sage_UNETLoRALoader(io.ComfyNode):
     @classmethod
     def execute(cls, **kwargs):
         unet_info = kwargs.get("unet_info", None)
+
         lora_stack = kwargs.get("lora_stack", None)
+        lora_stack = norm_lora_stack(lora_stack)
+
         model_shifts = kwargs.get("model_shifts", None)
         if isinstance(model_shifts, (list, tuple)):
             model_shifts = model_shifts[0]
-        if isinstance(lora_stack, tuple) or isinstance(lora_stack, list):
-            if not isinstance(lora_stack[0], (list, tuple)):
-                lora_stack = [lora_stack]
         if isinstance(unet_info, (list, tuple)):
             unet_info = unet_info[0]
 
