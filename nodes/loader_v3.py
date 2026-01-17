@@ -308,7 +308,7 @@ class Sage_UNETLoRALoader(io.ComfyNode):
             category="Sage Utils/model",
             enable_expand=True,
             inputs=[
-                io.Model.Input("model", display_name="model"),
+                UnetInfo.Input("unet_info", display_name="unet_info"),
                 LoraStack.Input("lora_stack", display_name="lora_stack", optional=True),
                 ModelShiftInfo.Input("model_shifts", display_name="model_shifts", optional=True)
             ],
@@ -321,21 +321,31 @@ class Sage_UNETLoRALoader(io.ComfyNode):
     
     @classmethod
     def execute(cls, **kwargs):
-        model = kwargs.get("model", None)
+        unet_info = kwargs.get("unet_info", None)
         lora_stack = kwargs.get("lora_stack", None)
         model_shifts = kwargs.get("model_shifts", None)
         if isinstance(model_shifts, (list, tuple)):
             model_shifts = model_shifts[0]
-        if isinstance(lora_stack, (list, tuple)):
-            lora_stack = lora_stack[0]
+        if isinstance(lora_stack, tuple) or isinstance(lora_stack, list):
+            if not isinstance(lora_stack[0], (list, tuple)):
+                lora_stack = [lora_stack]
+        if isinstance(unet_info, (list, tuple)):
+            unet_info = unet_info[0]
+
         graph = GraphBuilder()
-        exit_node, exit_unet, _ = create_lora_shift_nodes(graph, model, None, lora_stack, model_shifts)
-        if lora_stack is not None and exit_unet is not None:
-            try:
-                lora_paths = [folder_paths.get_full_path_or_raise("loras", lora[0]) for lora in lora_stack]
-                pull_and_update_model_timestamp(lora_paths, model_type="lora")
-            except Exception as e:
-                logging.warning(f"Timestamp update failed for loras: {e}")
+        unet_node = add_unet_node(graph, unet_info)
+        unet_out = unet_node.out(0) if unet_node else None
+        if unet_node is None or unet_info is None:
+            raise ValueError("UNET info is missing or invalid.")
+        else:
+            pull_and_update_model_timestamp(unet_info["path"], model_type="unet")
+
+        exit_node, exit_unet, exit_clip = create_lora_shift_nodes(graph, unet_out, None, lora_stack, model_shifts)
+
+        if lora_stack is not None and unet_out is not None:
+            lora_paths = [folder_paths.get_full_path_or_raise("loras", lora[0]) for lora in lora_stack]
+            pull_and_update_model_timestamp(lora_paths, model_type="lora")
+
         keywords = get_lora_stack_keywords(lora_stack) if lora_stack is not None else ""
         return io.NodeOutput(exit_unet, lora_stack, keywords, expand=graph.finalize())
 

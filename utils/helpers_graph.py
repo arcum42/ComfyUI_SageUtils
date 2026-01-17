@@ -50,8 +50,8 @@ def add_ckpt_node(graph: GraphBuilder, ckpt_info):
 def add_unet_node(graph: GraphBuilder, unet_info):
     unet_node = None
     if unet_info is not None:
-        # if unet_info is a tuple, unpack it.
-        if isinstance(unet_info, tuple):
+        # if unet_info is a tuple or list, unpack it.
+        if isinstance(unet_info, tuple) or isinstance(unet_info, list):
             unet_info = unet_info[0]
 
         unet_name = unet_info["path"]
@@ -195,6 +195,9 @@ def create_lora_nodes(graph: GraphBuilder, unet_in, clip_in=None, lora_stack=Non
     if lora_stack is None:
         logging.info("No loras in stack.")
         return exit_node, exit_unet, exit_clip
+    if isinstance(lora_stack, tuple) or isinstance(lora_stack, list):
+        if not isinstance(lora_stack[0], (list, tuple)):
+            lora_stack = [lora_stack]
 
     if exit_clip is not None:
         logging.info("Using CLIP with loras.")
