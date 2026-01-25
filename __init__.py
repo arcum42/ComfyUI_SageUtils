@@ -4,12 +4,6 @@ import logging
 # Uncomment the next line to enable debug logging
 # logging.basicConfig(level=logging.DEBUG)
 
-# Enable v3 nodes by default
-CURRENT_NODE_VERSION = '3'
-# CURRENT_NODE_VERSION = '1'  # Uncomment to use v1 nodes
-
-NODE_VERSION = os.environ.get('SAGEUTILS_NODE_VERSION', CURRENT_NODE_VERSION)
-
 SAGEUTILS_PRINT_TIMING = False  # Set to True to enable timing report
 # Print timing report if enabled via environment variable
 if os.environ.get('SAGEUTILS_PRINT_TIMING', '').lower() in ('1', 'true', 'yes'):
@@ -18,10 +12,6 @@ if os.environ.get('SAGEUTILS_PRINT_TIMING', '').lower() in ('1', 'true', 'yes'):
 # Initialize performance timing as early as possible
 from .utils.performance_timer import python_timer, log_init
 log_init("IMPORTS_START")
-
-# Import all node classes
-if NODE_VERSION == '1':
-    from .nodes_v1 import *
 
 # Import utility functions and objects
 from .utils import cache, config_manager
@@ -71,34 +61,6 @@ except Exception as e:
 
 WEB_DIRECTORY = "./js"
 
-if NODE_VERSION == '1':
-    if llm.OLLAMA_AVAILABLE:
-        LLM_CLASS_MAPPINGS = LLM_CLASS_MAPPINGS | OLLAMA_CLASS_MAPPINGS
-
-    if llm.LMSTUDIO_AVAILABLE:
-        LLM_CLASS_MAPPINGS = LLM_CLASS_MAPPINGS | LMSTUDIO_CLASS_MAPPINGS
-
-    # A dictionary that contains all nodes you want to export with their names
-    # NOTE: names should be globally unique
-    NODE_CLASS_MAPPINGS |= NODE_CLASS_MAPPINGS | LLM_CLASS_MAPPINGS
-
-    if ENABLE_TRAINING_NODES:
-        NODE_CLASS_MAPPINGS = NODE_CLASS_MAPPINGS | TRAINING_CLASS_MAPPINGS
-
-    if llm.OLLAMA_AVAILABLE:
-        LLM_NAME_MAPPINGS = LLM_NAME_MAPPINGS | OLLAMA_NAME_MAPPINGS
-
-    if llm.LMSTUDIO_AVAILABLE:
-        LLM_NAME_MAPPINGS = LLM_NAME_MAPPINGS | LMSTUDIO_NAME_MAPPINGS
-
-    # A dictionary that contains the friendly/human readable titles for the nodes
-    NODE_DISPLAY_NAME_MAPPINGS = NODE_DISPLAY_NAME_MAPPINGS | LLM_NAME_MAPPINGS
-
-    if ENABLE_TRAINING_NODES:
-        NODE_DISPLAY_NAME_MAPPINGS = NODE_DISPLAY_NAME_MAPPINGS | TRAINING_NAME_MAPPINGS
-
-    log_init("NODE_MAPPINGS_CREATED")
-
 # Complete initialization timing
 from .utils.performance_timer import complete_initialization, print_timing_report
 total_init_time = complete_initialization()
@@ -114,8 +76,5 @@ except Exception as e:
 if SAGEUTILS_PRINT_TIMING:
     print_timing_report()
 
-if NODE_VERSION == '1':
-    __all__ = ['NODE_CLASS_MAPPINGS', 'NODE_DISPLAY_NAME_MAPPINGS', 'WEB_DIRECTORY']
-else:
-    from .nodes_v3 import *
-    __all__ = ['SageExtension', 'WEB_DIRECTORY']
+from .nodes_v3 import *
+__all__ = ['SageExtension', 'WEB_DIRECTORY']

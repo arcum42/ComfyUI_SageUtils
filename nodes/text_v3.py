@@ -296,6 +296,70 @@ class Sage_SetText(io.ComfyNode):
 
         return io.NodeOutput(f"{prefix or ''}{str}{suffix or ''}")
 
+def remove_comments_from_text(text: str) -> str:
+    lines = text.splitlines()
+    filtered_lines = []
+    in_block_comment = False
+    
+    for line in lines:
+        # Handle block comments /* */
+        while "/*" in line and "*/" in line:
+            start = line.find("/*")
+            end = line.find("*/", start)
+            line = line[:start] + line[end+2:]
+        
+        if "/*" in line:
+            in_block_comment = True
+            line = line[:line.find("/*")]
+        elif "*/" in line:
+            in_block_comment = False
+            line = line[line.find("*/")+2:]
+        elif in_block_comment:
+            line = ""
+        
+        # Remove Python-style comments (#)
+        if "#" in line:
+            line = line[:line.find("#")]
+        
+        # Remove C/C++ line comments (//)
+        if "//" in line:
+            line = line[:line.find("//")]
+        
+        # Only add non-empty lines
+        stripped = line.rstrip()
+        if stripped:
+            filtered_lines.append(stripped)
+    
+    cleaned_str = "\n".join(filtered_lines)
+    return cleaned_str
+
+class Sage_SetTextWithoutComments(io.ComfyNode):
+    @classmethod
+    def define_schema(cls):
+        return io.Schema(
+            node_id="Sage_SetTextWithoutComments",
+            display_name="Set Text Without Comments",
+            description="Sets some text after removing comments (Python #, C/C++ //, and /* */ style).",
+            category="Sage Utils/text",
+            inputs = [
+                io.String.Input("str", display_name="str", force_input = False, dynamic_prompts = False, multiline = True),
+                io.String.Input("prefix", display_name="prefix", force_input = True, multiline = True, optional=True),
+                io.String.Input("suffix", display_name="suffix", force_input = True, multiline = True, optional=True)
+            ],
+            outputs = [
+                io.String.Output("str_out", display_name="str")
+            ],
+        )
+    @classmethod
+    def execute(cls, **kwargs):
+        str = kwargs.get("str", "")
+        prefix = kwargs.get("prefix", "")
+        suffix = kwargs.get("suffix", "")
+        
+        cleaned_str = remove_comments_from_text(str)
+
+        return io.NodeOutput(f"{prefix or ''}{cleaned_str}{suffix or ''}")
+
 class Sage_SetTextWithInt(io.ComfyNode):
     @classmethod
     def define_schema(cls):
@@ -870,7 +934,8 @@ TEXT_NODES = [
     Sage_IntToStr,
     Sage_FloatToStr,
     SageSetWildcardText,
-    Sage_SetText, 
+    Sage_SetText,
+    Sage_SetTextWithoutComments,
     Sage_SetTextWithInt, 
     Sage_TextSwitch, 
     Sage_CleanText, 
