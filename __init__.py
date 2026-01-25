@@ -4,10 +4,9 @@ import logging
 # Uncomment the next line to enable debug logging
 # logging.basicConfig(level=logging.DEBUG)
 
-# Set to 1 for v1 nodes, 3 for v3 nodes.
-# Right now, v3 nodes aren't ready for use.
-CURRENT_NODE_VERSION = '1'
-# CURRENT_NODE_VERSION = '3'
+# Enable v3 nodes by default
+CURRENT_NODE_VERSION = '3'
+# CURRENT_NODE_VERSION = '1'  # Uncomment to use v1 nodes
 
 NODE_VERSION = os.environ.get('SAGEUTILS_NODE_VERSION', CURRENT_NODE_VERSION)
 
