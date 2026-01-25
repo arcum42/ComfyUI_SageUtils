@@ -508,19 +508,176 @@ def get_model_list(model_type: str) -> list[str]:
     _model_list_cache[model_type] = (now, result)
     return result
 
+def normalize_prompt_weights(text):
+    """
+    Parse and normalize text prompts with weight formatting.
+    
+    Converts prompts with implicit weights (parentheses) and explicit weights (text):weight
+    into a normalized format using only explicit weight notation.
+    
+    Weight rules:
+    - Default weight: 1.0 (no parentheses in output)
+    - Each layer of parentheses adds 0.1 to the weight
+    - Explicit format: (text):weight stacks with surrounding parentheses
+    - Weight 1.1 outputs as (text) without weight notation
+    - All other weights output as (text:weight)
+    
+    Example input:  "The (cat) (jumped over (the dog):1.5)"
+    Example output: "The (cat) (jumped over (the dog:1.5))"
+    
+    Cleanup rules applied:
+    - Multiple spaces reduced to 1
+    - Commas always followed by a space
+    - No space after ( or before )
+    - Space between ) and (
+    - Max one empty line in a row
+    - Unmatched parentheses are automatically balanced
+    """
+    import re
+    
+    # Balance parentheses
+    open_count = text.count('(')
+    close_count = text.count(')')
+    
+    if open_count > close_count:
+        text = text + ')' * (open_count - close_count)
+    elif close_count > open_count:
+        text = '(' * (close_count - open_count) + text
+    
+    def parse_weighted_text(text):
+        """Parse text and return list of (content, weight, is_explicit) tuples."""
+        result = []
+        i = 0
+        
+        while i < len(text):
+            # Look for opening parenthesis
+            paren_start = text.find('(', i)
+            
+            if paren_start == -1:
+                # No more parentheses, add remaining text
+                if i < len(text):
+                    result.append((text[i:], 1.0, False))
+                break
+            
+            # Add text before parenthesis
+            if paren_start > i:
+                result.append((text[i:paren_start], 1.0, False))
+            
+            # Find matching closing parenthesis and parse content
+            paren_depth = 0
+            j = paren_start
+            
+            while j < len(text):
+                if text[j] == '(':
+                    paren_depth += 1
+                elif text[j] == ')':
+                    paren_depth -= 1
+                    if paren_depth == 0:
+                        break
+                j += 1
+            
+            if paren_depth != 0:
+                # Unmatched parenthesis, treat as regular text
+                result.append((text[i:], 1.0, False))
+                break
+            
+            # Extract content between parentheses
+            content = text[paren_start + 1:j]
+            
+            # Check for explicit weight specification
+            weight_match = re.match(r'^(.*?):\s*([0-9]*\.?[0-9]+)\s*$', content)
+            
+            if weight_match:
+                # Explicit weight specified
+                inner_content = weight_match.group(1).strip()
+                weight = float(weight_match.group(2))
+                result.append((inner_content, weight, True))
+            else:
+                # Implicit weight: recurse to calculate based on nested parentheses
+                nested_parts = parse_weighted_text(content)
+                
+                # Adjust weights: add 0.1 for this level, for both implicit and explicit weights
+                for nested_content, nested_weight, is_explicit in nested_parts:
+                    # Add 0.1 to both implicit and explicit weights for this parenthesis level
+                    result.append((nested_content, nested_weight + 0.1, is_explicit))
+            
+            i = j + 1
+        
+        return result
+    
+    def format_output(parts):
+        """Format parsed parts into normalized output."""
+        output = []
+        
+        for content, weight, is_explicit in parts:
+            # Round weight to avoid floating-point precision issues
+            weight = round(weight, 10)
+            
+            # Recursively handle nested content
+            if '(' in content:
+                formatted = format_output(parse_weighted_text(content))
+                if weight == 1.0:
+                    output.append(formatted)
+                elif weight == 1.1:
+                    output.append(f"({formatted})")
+                else:
+                    output.append(f"({formatted}:{weight})")
+            else:
+                content = content.strip()
+                if content:
+                    if weight == 1.0:
+                        output.append(content)
+                    elif weight == 1.1:
+                        output.append(f"({content})")
+                    else:
+                        output.append(f"({content}:{weight})")
+        
+        return ' '.join(output)
+    
+    # Parse the text
+    parts = parse_weighted_text(text)
+    
+    # Format output
+    result = format_output(parts)
+    
+    # Apply text cleanup
+    # Multiple spaces to single space
+    result = re.sub(r' +', ' ', result)
+    
+    # Commas always followed by space
+    result = re.sub(r',\s*', ', ', result)
+    
+    # Clean up spacing around parentheses
+    result = re.sub(r'\(\s+', '(', result)  # No space after (
+    result = re.sub(r'\s+\)', ')', result)  # No space before )
+    result = re.sub(r'\)\s+', ')', result)  # No space after ) initially
+    
+    # Add space after ) if followed by alphanumeric or (
+    result = re.sub(r'\)(?=[a-zA-Z0-9(])', ') ', result)
+    
+    # Handle line breaks - max one empty line
+    result = re.sub(r'\n\s*\n\s*\n+', '\n\n', result)
+    
+    # Clean leading/trailing whitespace
+    result = result.strip()
+    
+    return result
+
+
 def clean_keywords(keywords):
     keywords = set(filter(None, (x.strip() for x in keywords)))
     return ', '.join(keywords)
 
 def clean_text(text):
-    ret = ' '.join(filter(None, (x.strip() for x in text.split())))
-    ret = ', '.join(filter(None, (x.strip() for x in ret.split(','))))
-    ret = '\n'.join(filter(None, (x.strip() for x in ret.split('\n'))))
+    # ret = ' '.join(filter(None, (x.strip() for x in text.split())))
+    # ret = ', '.join(filter(None, (x.strip() for x in ret.split(','))))
+    # ret = '\n'.join(filter(None, (x.strip() for x in ret.split('\n'))))
     
     
-    # Strip whitespace from the start and end of text in parentheses
-    ret = ' ('.join(part.strip() for part in ret.split('('))
-    ret = ')'.join(part.strip() for part in ret.split(')'))
+    # # Strip whitespace from the start and end of text in parentheses
+    # ret = ' ('.join(part.strip() for part in ret.split('('))
+    # ret = ')'.join(part.strip() for part in ret.split(')'))
+    ret = normalize_prompt_weights(text)
     return ret
 
 def clean_if_needed(text, clean):
