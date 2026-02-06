@@ -24,31 +24,6 @@ from .custom_io_v3 import *
 
 import logging
 
-# Fully implemented selector nodes:
-# - Sage_CheckpointSelector
-# - Sage_UNETSelector
-# - Sage_VAESelector
-# - Sage_CLIPSelector
-# - Sage_DualCLIPSelector
-# - Sage_TripleCLIPSelector
-# - Sage_QuadCLIPSelector
-# - Sage_MultiSelectorSingleClip
-# - Sage_MultiSelectorDoubleClip
-# - Sage_MultiSelectorTripleClip
-# - Sage_MultiSelectorQuadClip
-# - Sage_ModelShifts
-# - Sage_ModelShiftOnly
-# - Sage_FreeU2
-# - Sage_UnetClipVaeToModelInfo
-# - Sage_LoraStack
-# - Sage_QuickLoraStack
-# - Sage_TripleLoraStack
-# - Sage_TripleQuickLoraStack
-# - Sage_QuickSixLoraStack
-# - Sage_QuickNineLoraStack
-# - Sage_SixLoraStack
-# - Sage_TilingInfo
-
 class Sage_CheckpointSelector(io.ComfyNode):
     @classmethod
     def define_schema(cls):
@@ -190,10 +165,8 @@ class Sage_TripleCLIPSelector(io.ComfyNode):
 
     @classmethod
     def execute(cls, **kwargs):
-        clip_name_1 = kwargs.get("clip_name_1", "")
-        clip_name_2 = kwargs.get("clip_name_2", "")
-        clip_name_3 = kwargs.get("clip_name_3", "")
-        info = mi.get_model_info_clips([clip_name_1, clip_name_2, clip_name_3])
+        clip_names = [kwargs.get(key, "") for key in sorted(kwargs.keys()) if key.startswith("clip_name_")]
+        info = mi.get_model_info_clips(clip_names)
         return io.NodeOutput(info)
 
 class Sage_QuadCLIPSelector(io.ComfyNode):
@@ -223,6 +196,58 @@ class Sage_QuadCLIPSelector(io.ComfyNode):
         clip_name_3 = kwargs.get("clip_name_3", "")
         clip_name_4 = kwargs.get("clip_name_4", "")
         info = mi.get_model_info_clips([clip_name_1, clip_name_2, clip_name_3, clip_name_4])
+        return io.NodeOutput(info)
+
+class Sage_FlexibleCLIPSelector(io.ComfyNode):
+    @classmethod
+    def define_schema(cls):
+        clip_list = get_model_list("clip")
+        clip_options = {}
+        
+        # Build clip options for 1-4 clips
+        for num_clips in range(1, 5):
+            clip_options[num_clips] = []
+            for i in range(1, num_clips + 1):
+                clip_options[num_clips].append(
+                    io.Combo.Input(f"clip_name_{i}", display_name=f"clip_name_{i}", options=clip_list)
+                )
+            # Add clip_type selector
+            default_type = "chroma" if num_clips == 1 else "sdxl"
+            clip_options[num_clips].append(
+                io.Combo.Input("clip_type", display_name="clip_type", options=mi.single_clip_loader_options, default=default_type)
+            )
+        
+        # Build dynamic combo options
+        dynamic_options = [
+            io.DynamicCombo.Option(str(num), list(clip_options[num]))
+            for num in range(1, 5)
+        ]
+        
+        return io.Schema(
+            node_id="Sage_FlexibleCLIPSelector",
+            display_name="Flexible CLIP Selector",
+            description="Selects a flexible number of CLIP models from a list.",
+            category="Sage Utils/selector",
+            inputs=[
+                io.DynamicCombo.Input("num_of_clips", display_name="num_of_clips", options=dynamic_options)
+            ],
+            outputs=[
+                ClipInfo.Output("clip_info", display_name="clip_info")
+            ]
+        )
+    
+    @classmethod
+    def execute(cls, **kwargs):
+        print(f"KWARGS: {kwargs}")
+        args = kwargs.get("num_of_clips", {})
+        clip_names = [args.get(key, "") for key in sorted(args.keys()) if key.startswith("clip_name_")]
+        print(f"Clip names: {clip_names}")
+        clip_type = ""
+        if len(clip_names) == 1:
+            clip_type = args.get("clip_type", "chroma")
+        else:
+            clip_type = args.get("clip_type", "sdxl")
+        info = mi.get_model_info_clips(clip_names, clip_type)
         return io.NodeOutput(info)
 
 class Sage_MultiSelectorSingleClip(io.ComfyNode):
@@ -836,6 +861,7 @@ SELECTOR_NODES = [
     Sage_MultiSelectorDoubleClip,
     Sage_MultiSelectorTripleClip,
     Sage_MultiSelectorQuadClip,
+    Sage_FlexibleCLIPSelector,
     Sage_ModelShifts,
     Sage_ModelShiftOnly,
     Sage_FreeU2,

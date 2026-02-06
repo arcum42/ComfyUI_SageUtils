@@ -562,6 +562,57 @@ class Sage_CheckLorasForUpdates(io.ComfyNode):
 
         return io.NodeOutput(lora_stack, str(lora_list), str(lora_url_list))
 
+class Sage_DynamicComboTest(io.ComfyNode):
+    @classmethod
+    def define_schema(cls):
+        return io.Schema(
+            node_id="Sage_DynamicComboTest",
+            display_name="Sage_DynamicComboTest",
+            category="Sage Utils/test",
+            is_output_node=True,
+            inputs=[
+                io.DynamicCombo.Input("combo", options=[
+                    io.DynamicCombo.Option("option1", [
+                        io.String.Input("string")
+                        ]),
+                    io.DynamicCombo.Option("option2", [
+                        io.Int.Input("integer")
+                        ]),
+                    io.DynamicCombo.Option("option3", [
+                        io.Image.Input("image")
+                        ]),
+                    # You can even nest DynamicCombos!
+                    io.DynamicCombo.Option("option4", [
+                        io.DynamicCombo.Input("subcombo", options=[
+                            io.DynamicCombo.Option("opt1", [
+                                io.Float.Input("float_x"), 
+                                io.Float.Input("float_y")
+                            ]),
+                            io.DynamicCombo.Option("opt2", [
+                                io.Mask.Input("mask1", optional=True)
+                            ]),
+                        ])
+                    ])
+                ])
+            ],
+            outputs=[io.AnyType.Output()],
+        )
+
+    @classmethod
+    def execute(cls, **kwargs):
+        # The combo parameter is a dictionary with nested structure
+        combo = kwargs.get("combo", {})
+        combo_val = combo.get("combo")
+        if combo_val == "option1":
+            return io.NodeOutput(combo.get("string"))
+        elif combo_val == "option2":
+            return io.NodeOutput(combo.get("integer"))
+        elif combo_val == "option3":
+            return io.NodeOutput(combo.get("image"))
+        elif combo_val == "option4":
+            return io.NodeOutput(f"{combo.get('subcombo')}")
+        return io.NodeOutput("No valid option selected.")
+        
 # ============================================================================
 
 UTIL_NODES = [
@@ -573,5 +624,6 @@ UTIL_NODES = [
     Sage_LoraStackInfoDisplay,
     Sage_MultiModelPicker,
     Sage_CollectKeywordsFromLoraStack,
-    Sage_CheckLorasForUpdates
+    Sage_CheckLorasForUpdates,
+    Sage_DynamicComboTest
 ]

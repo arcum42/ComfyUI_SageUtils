@@ -135,6 +135,31 @@ class Sage_SaveImageWithMetadata(io.ComfyNode):
         return result
 
     @classmethod
+    def metadata_as_text(
+        cls,
+        include_node_metadata,
+        include_extra_pnginfo_metadata,
+        param_metadata=None,
+        extra_metadata=None,
+        prompt=None,
+        extra_pnginfo=None
+        ):
+        result = ""
+        if param_metadata is not None:
+            result += f"Parameters:\n{param_metadata}\n\n"
+        if extra_metadata is not None:
+            result += f"Extra Metadata:\n{extra_metadata}\n\n"
+        if include_node_metadata == True:
+            if prompt is not None:
+                result += f"Prompt:\n{json.dumps(prompt)}\n\n"
+        if include_extra_pnginfo_metadata == True:
+            if extra_pnginfo is not None:
+                result += "Extra PNG Info:\n"
+                for x in extra_pnginfo:
+                    result += f"{x}: {json.dumps(extra_pnginfo[x])}\n"
+        return result
+
+    @classmethod
     def execute(cls, **kwargs):
         images = kwargs.get("images", [])
         filename_prefix = kwargs.get("filename_prefix", "image_")
@@ -143,8 +168,8 @@ class Sage_SaveImageWithMetadata(io.ComfyNode):
         save_text = kwargs.get("save_text", False)
         param_metadata = kwargs.get("param_metadata", "")
         extra_metadata = kwargs.get("extra_metadata", "")
-        prompt = kwargs.get("prompt", "")
-        extra_pnginfo = kwargs.get("extra_pnginfo", {})
+        prompt = cls.hidden.prompt
+        extra_pnginfo = cls.hidden.extra_pnginfo
 
         save_to_text = True
         if save_text == "Image Only":
@@ -170,6 +195,14 @@ class Sage_SaveImageWithMetadata(io.ComfyNode):
                 prompt,
                 extra_pnginfo,
             )
+            metatext = cls.metadata_as_text(
+                include_node_metadata,
+                include_extra_pnginfo_metadata,
+                param_metadata,
+                extra_metadata,
+                prompt,
+                extra_pnginfo,
+            )
 
             filename_with_batch_num = filename.replace("%batch_num%", str(batch_number))
             file = f"{filename_with_batch_num}_{counter:05}_.png"
@@ -182,12 +215,8 @@ class Sage_SaveImageWithMetadata(io.ComfyNode):
             )
             if save_to_text:
                 with open(os.path.join(full_output_folder, text_file), 'w', encoding='utf-8') as f:
-                    if save_text == "Param to Text":
-                        f.write(f"{param_metadata}")
-                    elif save_text == "Extra to Text":
-                        f.write(f"{extra_metadata}")
-                    elif save_text == "All to Text":
-                        f.write(f"{param_metadata}\n{extra_metadata}")
+                    if save_text:
+                        f.write(f"{metatext}")
             results.append(
                 {"filename": file, "subfolder": subfolder, "type": cls.type}
             )
