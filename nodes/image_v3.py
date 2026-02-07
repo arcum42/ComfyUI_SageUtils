@@ -109,71 +109,55 @@ class Sage_SaveImageWithMetadata(io.ComfyNode):
         )
 
     @classmethod
-    def set_metadata(
-        cls,
-        include_node_metadata,
-        include_extra_pnginfo_metadata,
-        param_metadata=None,
-        extra_metadata=None,
-        prompt=None,
-        extra_pnginfo=None,
-    ):
+    def set_metadata(cls,metadata):
         result = None
         if not comfy.cli_args.args.disable_metadata:
             result = PngInfo()
-            if param_metadata is not None:
-                result.add_text("parameters", param_metadata)
-            if include_node_metadata == True:
-                if prompt is not None:
-                    result.add_text("prompt", json.dumps(prompt))
-            if include_extra_pnginfo_metadata == True:
-                if extra_pnginfo is not None:
-                    for x in extra_pnginfo:
-                        result.add_text(x, json.dumps(extra_pnginfo[x]))
-            if extra_metadata is not None:
-                result.add_text("Extra", extra_metadata)
+            if metadata.get("param_metadata", None) is not None:
+                result.add_text("parameters", metadata.get("param_metadata"))
+            if metadata.get("include_node_metadata", False) == True:
+                if metadata.get("prompt", None) is not None:
+                    result.add_text("prompt", json.dumps(metadata.get("prompt")))
+            if metadata.get("include_extra_pnginfo_metadata", False) == True:
+                if metadata.get("extra_pnginfo", None) is not None:
+                    for x in metadata.get("extra_pnginfo"):
+                        result.add_text(x, json.dumps(metadata.get("extra_pnginfo")[x]))
+            if metadata.get("extra_metadata", None) is not None:
+                result.add_text("Extra", metadata.get("extra_metadata"))
         return result
 
     @classmethod
-    def metadata_as_text(
-        cls,
-        include_node_metadata,
-        include_extra_pnginfo_metadata,
-        param_metadata=None,
-        extra_metadata=None,
-        prompt=None,
-        extra_pnginfo=None
-        ):
+    def metadata_as_text(cls,metadata):
         result = ""
-        if param_metadata is not None:
-            result += f"Parameters:\n{param_metadata}\n\n"
-        if extra_metadata is not None:
-            result += f"Extra Metadata:\n{extra_metadata}\n\n"
-        if include_node_metadata == True:
-            if prompt is not None:
-                result += f"Prompt:\n{json.dumps(prompt)}\n\n"
-        if include_extra_pnginfo_metadata == True:
-            if extra_pnginfo is not None:
+        if metadata.get("param_metadata", None) is not None:
+            result += f"Parameters:\n{metadata.get('param_metadata')}\n\n"
+        if metadata.get("extra_metadata", None) is not None:
+            result += f"Extra Metadata:\n{metadata.get('extra_metadata')}\n\n"
+        if metadata.get("include_node_metadata", False) == True:
+            if metadata.get("prompt", None) is not None:
+                result += f"Prompt:\n{json.dumps(metadata.get('prompt'))}\n\n"
+        if metadata.get("include_extra_pnginfo_metadata", False) == True:
+            if metadata.get("extra_pnginfo", None) is not None:
                 result += "Extra PNG Info:\n"
-                for x in extra_pnginfo:
-                    result += f"{x}: {json.dumps(extra_pnginfo[x])}\n"
+                for x in metadata.get("extra_pnginfo"):
+                    result += f"{x}: {json.dumps(metadata.get('extra_pnginfo')[x])}\n"
         return result
 
     @classmethod
     def execute(cls, **kwargs):
         images = kwargs.get("images", [])
         filename_prefix = kwargs.get("filename_prefix", "image_")
-        include_node_metadata = kwargs.get("include_node_metadata", True)
-        include_extra_pnginfo_metadata = kwargs.get("include_extra_pnginfo_metadata", False)
         save_text = kwargs.get("save_text", False)
-        param_metadata = kwargs.get("param_metadata", "")
-        extra_metadata = kwargs.get("extra_metadata", "")
-        prompt = cls.hidden.prompt
-        extra_pnginfo = cls.hidden.extra_pnginfo
 
-        save_to_text = True
-        if save_text == "Image Only":
-            save_to_text = False
+        metadata = {
+            "include_node_metadata": kwargs.get("include_node_metadata", True),
+            "include_extra_pnginfo_metadata": kwargs.get("include_extra_pnginfo_metadata", False),
+            "param_metadata": kwargs.get("param_metadata", ""),
+            "extra_metadata": kwargs.get("extra_metadata", ""),
+            "prompt": cls.hidden.prompt,
+            "extra_pnginfo": cls.hidden.extra_pnginfo
+        }
+
         if '\n' in filename_prefix:
             filename_prefix_lines = filename_prefix.splitlines()
             filename_prefix = ''.join(filename_prefix_lines)
@@ -187,38 +171,20 @@ class Sage_SaveImageWithMetadata(io.ComfyNode):
         for batch_number, image in enumerate(images):
             i = 255.0 * image.cpu().numpy()
             img = Image.fromarray(np.clip(i, 0, 255).astype(np.uint8))
-            final_metadata = cls.set_metadata(
-                include_node_metadata,
-                include_extra_pnginfo_metadata,
-                param_metadata,
-                extra_metadata,
-                prompt,
-                extra_pnginfo,
-            )
-            metatext = cls.metadata_as_text(
-                include_node_metadata,
-                include_extra_pnginfo_metadata,
-                param_metadata,
-                extra_metadata,
-                prompt,
-                extra_pnginfo,
-            )
+            final_metadata = cls.set_metadata(metadata)
+            metatext = cls.metadata_as_text(metadata)
 
             filename_with_batch_num = filename.replace("%batch_num%", str(batch_number))
-            file = f"{filename_with_batch_num}_{counter:05}_.png"
-            text_file = f"{filename_with_batch_num}_{counter:05}_.txt"
+            filename = f"{filename_with_batch_num}_{counter:05}_.png"
+            img_path = os.path.join(full_output_folder, filename)
+            txt_path = os.path.join(full_output_folder, f"{filename_with_batch_num}_{counter:05}_.txt")
 
-            img.save(
-                os.path.join(full_output_folder, file),
-                pnginfo=final_metadata,
-                compress_level=cls.compress_level,
-            )
-            if save_to_text:
-                with open(os.path.join(full_output_folder, text_file), 'w', encoding='utf-8') as f:
-                    if save_text:
-                        f.write(f"{metatext}")
+            img.save(img_path, pnginfo=final_metadata, compress_level=cls.compress_level)
+            if save_text:
+                with open(txt_path, 'w', encoding='utf-8') as f:
+                    f.write(f"{metatext}")
             results.append(
-                {"filename": file, "subfolder": subfolder, "type": cls.type}
+                {"filename": filename, "subfolder": subfolder, "type": cls.type}
             )
             counter += 1
 
