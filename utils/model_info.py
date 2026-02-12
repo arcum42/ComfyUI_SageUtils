@@ -8,7 +8,7 @@ from .lora_stack import norm_lora_stack
 
 weight_dtype_options = ["default", "fp8_e4m3fn", "fp8_e4m3fn_fast", "fp8_e5m2"]
 single_clip_loader_options = ["stable_diffusion", "stable_cascade", "sd3", "stable_audio", "mochi", "ltxv", "pixart", "cosmos", "lumina2", "wan", "hidream", "chroma", "ace", "omnigen2", "qwen_image"]
-dual_clip_loader_options = ["sdxl", "sd3", "flux", "hunyuan_video", "hidream"]
+dual_clip_loader_options = ["sdxl", "sd3", "flux", "hunyuan_video", "hidream", "ace"]
 
 def get_model_info_ckpt(ckpt_name: str) -> tuple:
     """

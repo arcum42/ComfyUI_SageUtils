@@ -411,7 +411,7 @@ class Sage_ModelShifts(io.ComfyNode):
             description="Get the model shifts and free_u2 settings to apply to the model. This is used by the model loader node.",
             category="Sage Utils/model",
             inputs=[
-                io.Combo.Input("shift_type", display_name="shift_type", options=["None", "x1", "x1000"], default="None"),
+                io.Combo.Input("shift_type", display_name="shift_type", options=["None", "x1", "x1000"], default="None", tooltip="The type of shift to apply to the model. x1 for Auraflow and Lumina2, x1000 for other models."),
                 io.Float.Input("shift", display_name="shift", default=3.0, min=0.0, max=100.0, step=0.01),
                 io.Boolean.Input("freeu_v2", display_name="freeu_v2", default=False),
                 io.Float.Input("b1", display_name="b1", default=1.3, min=0.0, max=10.0, step=0.01),
@@ -446,7 +446,7 @@ class Sage_ModelShiftOnly(io.ComfyNode):
             description="Get the model shifts to apply to the model. This is used by the model loader node.",
             category="Sage Utils/model",
             inputs=[
-                io.Combo.Input("shift_type", display_name="shift_type", options=["None", "x1", "x1000"], default="None"),
+                io.Combo.Input("shift_type", display_name="shift_type", options=["None", "x1", "x1000"], default="None", tooltip="The type of shift to apply to the model. x1 for Auraflow and Lumina2, x1000 for other models."),
                 io.Float.Input("shift", display_name="shift", default=3.0, min=0.0, max=100.0, step=0.01)
             ],
             outputs=[

@@ -105,6 +105,44 @@ class Sage_SamplerInfo(io.ComfyNode):
         }
         return io.NodeOutput(info)
 
+
+class Sage_SamplerInfoNoCFG(io.ComfyNode):
+    """Grabs most of the sampler info."""
+    @classmethod
+    def define_schema(cls):
+        return io.Schema(
+            node_id="Sage_SamplerInfoNoCFG",
+            display_name="KSampler Info (No CFG)",
+            description="Grabs most of the sampler info (with cfg at 1.0). Should be routed both to the Construct Metadata node and the KSampler w/ Sampler Info node.",
+            category="Sage Utils/sampler",
+            inputs=[
+                io.Int.Input("seed", display_name="seed", default=0, min=0, max=0xffffffffffffffff),
+                io.Int.Input("steps", display_name="steps", default=20, min=1, max=10000),
+                io.Combo.Input("sampler_name", display_name="sampler_name", options=list(SAMPLERS), default="dpmpp_2m"),
+                io.Combo.Input("scheduler", display_name="scheduler", options=list(SCHEDULERS), default="beta")
+            ],
+            outputs=[
+                SamplerInfo.Output("sampler_info", display_name="sampler_info")
+            ]
+        )
+    
+    @classmethod
+    def execute(cls, **kwargs):
+        seed = kwargs.get("seed", 0)
+        steps = kwargs.get("steps", 20)
+        cfg = 1.0
+        sampler_name = kwargs.get("sampler_name", "dpmpp_2m")
+        scheduler = kwargs.get("scheduler", "beta")
+        
+        info = {
+            "seed": seed,
+            "steps": steps,
+            "cfg": cfg,
+            "sampler": sampler_name,
+            "scheduler": scheduler
+        }
+        return io.NodeOutput(info)
+    
 class Sage_AdvSamplerInfo(io.ComfyNode):
     """Adds more optional values to the KSampler."""
     @classmethod
@@ -374,6 +412,7 @@ SAMPLER_NODES = [
     Sage_SamplerSelector,
     Sage_SchedulerSelector,
     Sage_SamplerInfo,
+    Sage_SamplerInfoNoCFG,
     Sage_AdvSamplerInfo,
     Sage_KSampler,
     Sage_KSamplerTiledDecoder,

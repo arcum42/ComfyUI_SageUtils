@@ -3,37 +3,33 @@
 # See ref_docs/v3_migration.md for info on migrating to v3 nodes.
 
 from __future__ import annotations
-from comfy.comfy_types.node_typing import ComfyNodeABC, InputTypeDict, IO
-from comfy_api.latest import io, ComfyExtension, ui
-from typing_extensions import override
-
-from comfy_api.latest._io import NodeOutput, Schema
-from comfy_execution.graph_utils import GraphBuilder
-from comfy_execution.graph import ExecutionBlocker
-
-import comfy
-import nodes
-from comfy_extras.nodes_images import ImageCrop
-
-# Import specific utilities instead of wildcard import  
 from ..utils import load_image_from_path
 
 import torch
 import torch.nn.functional as F
+
 import numpy as np
+
 from PIL import Image
 from PIL.PngImagePlugin import PngInfo
-import pathlib
+
 import hashlib
 import json
 import folder_paths
 import os
-import comfy.model_management
-import comfy.utils
-import comfy.cli_args
-from ..utils.common import get_files_in_dir
 import datetime
 import logging
+import nodes
+
+import comfy
+from comfy.comfy_types.node_typing import IO
+import comfy.model_management
+import comfy.cli_args
+
+from comfy_api.latest import io, ui
+from comfy_execution.graph_utils import GraphBuilder
+
+from ..utils.common import get_files_in_dir
 from ..utils.constants import QUICK_ASPECT_RATIOS, MAX_RESOLUTION
 from ..utils.helpers_image import calc_padding, resize_needed, image_manipulate
 
@@ -79,6 +75,33 @@ class Sage_EmptyLatentImagePassthrough(io.ComfyNode):
 
         return io.NodeOutput({"samples":latent}, width, height)
 
+class Sage_EmptyAceStep15LatentAudio(io.ComfyNode):
+    @classmethod
+    def define_schema(cls):
+        return io.Schema(
+            node_id="Sage_EmptyAceStep15LatentAudio",
+            display_name="Empty Ace Step 1.5 Audio Passthrough",
+            description="Creates an empty latent audio tensor for Ace Step 1.5 models.",
+            category="Sage Utils/audio",
+            inputs=[
+                io.Float.Input("seconds", display_name="seconds", default=120.0, min=1.0, max=1000.0, step=0.01),
+                io.Int.Input("batch_size", display_name="batch_size", default=1),
+            ],
+            outputs=[
+                io.Latent.Output("latent", display_name="latent"),
+                io.Float.Output("out_seconds", display_name="seconds")
+            ]
+        )
+        
+    @classmethod
+    def execute(cls, **kwargs) -> io.NodeOutput:
+        seconds = kwargs.get("seconds", 120.0)
+        batch_size = kwargs.get("batch_size", 1)
+
+        length = round((seconds * 48000 / 1920))
+        latent = torch.zeros([batch_size, 64, length], device=comfy.model_management.intermediate_device())
+        return io.NodeOutput({"samples": latent, "type": "audio"}, seconds)
+    
 class Sage_SaveImageWithMetadata(io.ComfyNode):
     @classmethod
     def __init__(cls):
@@ -553,6 +576,7 @@ class Sage_ReferenceImage(io.ComfyNode):
 
 IMAGE_NODES = [
     Sage_EmptyLatentImagePassthrough,
+    Sage_EmptyAceStep15LatentAudio,
     Sage_LoadImage,
     Sage_SaveImageWithMetadata,
     Sage_CropImage,
