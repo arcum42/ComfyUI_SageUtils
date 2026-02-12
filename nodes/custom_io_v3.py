@@ -100,6 +100,20 @@ class AdvSamplerInfo(io.ComfyTypeIO):
     """
     Type = dict  # Advanced sampler info is stored as a dictionary
 
+@io.comfytype(io_type="ADV_AUDIO_INFO")
+class AdvAudioInfo(io.ComfyTypeIO):
+    """
+    Advanced audio information type for SageUtils metadata nodes.
+    Contains metadata about the advanced audio settings without loading the actual audio model.
+    """
+    Type = dict  # Advanced audio info is stored as a dictionary
+    # Keys are:
+    # "duration": float
+    # "bpm": int
+    # "timesignature": str
+    # "keyscale": str
+    # "language": str
+
 @io.comfytype(io_type="OLLAMA_OPTIONS")
 class OllamaOptions(io.ComfyTypeIO):
     """
