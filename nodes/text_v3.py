@@ -562,7 +562,7 @@ class Sage_DynamicJoinText(io.ComfyNode):
         )
         return io.Schema(
             node_id="Sage_DynamicJoinText",
-            display_name="Dynamic Join Text",
+            display_name="Join Text",
             description="Joins multiple strings with a separator.",
             category="Sage Utils/text",
             inputs=[
@@ -597,7 +597,7 @@ class Sage_JoinText(io.ComfyNode):
     def define_schema(cls):
         return io.Schema(
             node_id="Sage_JoinText",
-            display_name="Join Text",
+            display_name="Join Text (Legacy)",
             description="Joins two strings with a separator.",
             category="Sage Utils/text",
             inputs=[
@@ -629,7 +629,7 @@ class Sage_TripleJoinText(io.ComfyNode):
     def define_schema(cls):
         return io.Schema(
             node_id="Sage_TripleJoinText",
-            display_name="Triple Join Text",
+            display_name="Triple Join Text (Legacy)",
             description="Joins three strings with a separator.",
             category="Sage Utils/text",
             inputs=[
