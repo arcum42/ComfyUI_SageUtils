@@ -534,21 +534,6 @@ class Sage_CheckLorasForUpdates(io.ComfyNode):
 
         return io.NodeOutput(lora_stack, str(lora_list), str(lora_url_list))
 
-    @classmethod
-    def execute(cls, **kwargs):
-        # The combo parameter is a dictionary with nested structure
-        combo = kwargs.get("combo", {})
-        combo_val = combo.get("combo")
-        if combo_val == "option1":
-            return io.NodeOutput(combo.get("string"))
-        elif combo_val == "option2":
-            return io.NodeOutput(combo.get("integer"))
-        elif combo_val == "option3":
-            return io.NodeOutput(combo.get("image"))
-        elif combo_val == "option4":
-            return io.NodeOutput(f"{combo.get('subcombo')}")
-        return io.NodeOutput("No valid option selected.")
-        
 # ============================================================================
 
 UTIL_NODES = [

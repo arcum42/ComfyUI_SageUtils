@@ -642,7 +642,7 @@ class Sage_Ace15AudioEncode(io.ComfyNode):
 
     @classmethod
     def execute(cls, **kwargs) -> io.NodeOutput:
-        clip = kwargs.get("clip")
+        clip = kwargs.get("clip", None)
         tags = kwargs.get("tags", "")
         lyrics = kwargs.get("lyrics", "")
         seed = kwargs.get("seed", 0)
@@ -659,6 +659,10 @@ class Sage_Ace15AudioEncode(io.ComfyNode):
         top_p = adv_audio_info.get("top_p", 0.9)
         top_k = adv_audio_info.get("top_k", 0)
         min_p = adv_audio_info.get("min_p", 0.000)
+
+        if clip is None:
+            logging.info("No clip provided for Ace Step 1.5 encoding, returning empty conditioning.")
+            return io.NodeOutput(None)
 
         tokens = clip.tokenize(tags, 
                                lyrics=lyrics, 

@@ -411,13 +411,28 @@ class Sage_ModelShifts(io.ComfyNode):
             description="Get the model shifts and free_u2 settings to apply to the model. This is used by the model loader node.",
             category="Sage Utils/model",
             inputs=[
-                io.Combo.Input("shift_type", display_name="shift_type", options=["None", "x1", "x1000"], default="None", tooltip="The type of shift to apply to the model. x1 for Auraflow and Lumina2, x1000 for other models."),
-                io.Float.Input("shift", display_name="shift", default=3.0, min=0.0, max=100.0, step=0.01),
-                io.Boolean.Input("freeu_v2", display_name="freeu_v2", default=False),
-                io.Float.Input("b1", display_name="b1", default=1.3, min=0.0, max=10.0, step=0.01),
-                io.Float.Input("b2", display_name="b2", default=1.4, min=0.0, max=10.0, step=0.01),
-                io.Float.Input("s1", display_name="s1", default=0.9, min=0.0, max=10.0, step=0.01),
-                io.Float.Input("s2", display_name="s2", default=0.2, min=0.0, max=10.0, step=0.01)
+                io.DynamicCombo.Input("settings", options=[
+                    io.DynamicCombo.Option("Shift Only", [
+                        io.Combo.Input("shift_type", display_name="shift_type", options=["None", "x1", "x1000"], default="None", tooltip="The type of shift to apply to the model. x1 for Auraflow and Lumina2, x1000 for other models."),
+                        io.Float.Input("shift", display_name="shift", default=3.0, min=0.0, max=100.0, step=0.01)
+                        ]),
+                    io.DynamicCombo.Option("FreeU v2 Only", [
+                        io.Boolean.Input("freeu_v2", display_name="freeu_v2", default=False),
+                        io.Float.Input("b1", display_name="b1", default=1.3, min=0.0, max=10.0, step=0.01),
+                        io.Float.Input("b2", display_name="b2", default=1.4, min=0.0, max=10.0, step=0.01),
+                        io.Float.Input("s1", display_name="s1", default=0.9, min=0.0, max=10.0, step=0.01),
+                        io.Float.Input("s2", display_name="s2", default=0.2, min=0.0, max=10.0, step=0.01)
+                        ]),
+                    io.DynamicCombo.Option("Shift and FreeU v2", [
+                        io.Combo.Input("shift_type", display_name="shift_type", options=["None", "x1", "x1000"], default="None", tooltip="The type of shift to apply to the model. x1 for Auraflow and Lumina2, x1000 for other models."),
+                        io.Float.Input("shift", display_name="shift", default=3.0, min=0.0, max=100.0, step=0.01),
+                        io.Boolean.Input("freeu_v2", display_name="freeu_v2", default=False),
+                        io.Float.Input("b1", display_name="b1", default=1.3, min=0.0, max=10.0, step=0.01),
+                        io.Float.Input("b2", display_name="b2", default=1.4, min=0.0, max=10.0, step=0.01),
+                        io.Float.Input("s1", display_name="s1", default=0.9, min=0.0, max=10.0, step=0.01),
+                        io.Float.Input("s2", display_name="s2", default=0.2, min=0.0, max=10.0, step=0.01)
+                    ])
+                ])
             ],
             outputs=[
                 ModelShiftInfo.Output("model_shifts", display_name="model_shifts")
@@ -426,14 +441,45 @@ class Sage_ModelShifts(io.ComfyNode):
     
     @classmethod
     def execute(cls, **kwargs):
+        main_settings = kwargs.get("settings", {})
+        shift_flag = False
+        freeu_flag = False
+        
+        if main_settings.get("settings", "") == "Shift Only":
+            shift_flag = True
+        elif main_settings.get("settings", "") == "FreeU v2 Only":
+            freeu_flag = True
+        elif main_settings.get("settings", "") == "Shift and FreeU v2":
+            shift_flag = True
+            freeu_flag = True
+
+        if shift_flag:
+            shift_type = main_settings.get("shift_type", "None")
+            shift = main_settings.get("shift", 3.0)
+        else:
+            shift_type = "None"
+            shift = 0
+        if freeu_flag:
+            freeu_v2 = main_settings.get("freeu_v2", False)
+            b1 = main_settings.get("b1", 1.3)
+            b2 = main_settings.get("b2", 1.4)
+            s1 = main_settings.get("s1", 0.9)
+            s2 = main_settings.get("s2", 0.2)
+        else:
+            freeu_v2 = False
+            b1 = 1.3
+            b2 = 1.4
+            s1 = 0.9
+            s2 = 0.2
+            
         return io.NodeOutput({
-            "shift_type": kwargs.get("shift_type", "None"),
-            "shift": kwargs.get("shift", 3.0),
-            "freeu_v2": kwargs.get("freeu_v2", False),
-            "b1": kwargs.get("b1", 1.3),
-            "b2": kwargs.get("b2", 1.4),
-            "s1": kwargs.get("s1", 0.9),
-            "s2": kwargs.get("s2", 0.2)
+            "shift_type": shift_type,
+            "shift": shift,
+            "freeu_v2": freeu_v2,
+            "b1": b1,
+            "b2": b2,
+            "s1": s1,
+            "s2": s2
         })
 
 class Sage_ModelShiftOnly(io.ComfyNode):
