@@ -847,6 +847,44 @@ class Sage_QuickNineLoraStack(Sage_TripleQuickLoraStack):
         
         return schema
 
+class Sage_StackLoraStack(io.ComfyNode):
+    @classmethod
+    def define_schema(cls):
+        autogrow_template = io.Autogrow.TemplatePrefix(
+            input=LoraStack.Input("lora_stack"),  # template for each input
+            prefix="lora_stack_",                  # prefix for generated input names
+            min=1,                           # minimum number of inputs shown
+            max=100,                          # maximum number of inputs allowed
+        )
+        return io.Schema(
+            node_id="Sage_StackLoraStack",
+            display_name="Combine Lora Stacks",
+            description="Combine multiple lora stacks into one. This is useful for combining loras from different sources.",
+            category="Sage Utils/lora",
+            inputs=[
+                io.Autogrow.Input("lora_stack", template=autogrow_template)
+            ],
+            outputs=[LoraStack.Output("out_lora_stack", display_name="lora_stack")]
+        )
+
+    @classmethod
+    def execute(cls, **kwargs):
+        lora_stacks = kwargs.get("lora_stack", {})
+        lora_stack = []
+        
+        #loop through lora_stacks, which is a dict with keys of "lora_stack_<index>". Each value is either None or a list. Combine all the lists, in the index order.
+        for key in sorted(lora_stacks.keys()):
+            stack = lora_stacks[key]
+            if stack is not None:
+                if isinstance(stack, list):
+                    for item in stack:
+                        if item is not None:
+                            lora_stack.append(item)
+                else:
+                    lora_stack.append(stack)
+
+        return io.NodeOutput(lora_stack)
+
 # ============================================================================
 
 SELECTOR_NODES = [
@@ -873,5 +911,6 @@ SELECTOR_NODES = [
     Sage_TripleQuickLoraStack,
     Sage_QuickSixLoraStack,
     Sage_QuickNineLoraStack,
+    Sage_StackLoraStack,
     Sage_TilingInfo
 ]
