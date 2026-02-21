@@ -159,6 +159,12 @@ class Sage_ViewAnything(io.ComfyNode):
 class Sage_TextSubstitution(io.ComfyNode):
     @classmethod
     def define_schema(cls):
+        autogrow_template = io.Autogrow.TemplatePrefix(
+            input = io.String.Input("strings"),
+            prefix = "str_",
+            min = 1,
+            max = 100
+        )
         return io.Schema(
             node_id="Sage_TextSubstitution",
             display_name="Text Substitution",
@@ -168,7 +174,8 @@ class Sage_TextSubstitution(io.ComfyNode):
                 io.String.Input("text", display_name="text", default="", multiline=True),
                 io.String.Input("delimiter", display_name="delimiter", default="$"),
                 io.String.Input("prefix", display_name="prefix", force_input=True, multiline=True, optional=True),
-                io.String.Input("suffix", display_name="suffix", force_input=True, multiline=True, optional=True)
+                io.String.Input("suffix", display_name="suffix", force_input=True, multiline=True, optional=True),
+                io.Autogrow.Input("strings", template=autogrow_template)
             ],
             outputs=[
                 io.String.Output("result", display_name="result")
@@ -181,12 +188,13 @@ class Sage_TextSubstitution(io.ComfyNode):
         delimiter = kwargs.get("delimiter", "$")
         prefix = kwargs.get("prefix", "")
         suffix = kwargs.get("suffix", "")
+        strings = kwargs.get("strings", [])
         
         # Build substitution dictionary from dynamic inputs
         sub_dict = {}
         
-        # Extract str_X inputs from kwargs
-        for key, value in kwargs.items():
+        # Extract str_X inputs from strings
+        for key, value in strings.items():
             if key.startswith("str_"):
                 sub_dict[key] = value or ""
         
@@ -600,6 +608,7 @@ class Sage_JoinText(io.ComfyNode):
             display_name="Join Text (Legacy)",
             description="Joins two strings with a separator.",
             category="Sage Utils/text",
+            is_deprecated=True,
             inputs=[
                 io.String.Input("separator", display_name="separator", default=", "),
                 io.Boolean.Input("add_separator_to_end", display_name="add_separator_to_end", default=False, tooltip="Add separator to the end of the joined string."),
@@ -632,6 +641,7 @@ class Sage_TripleJoinText(io.ComfyNode):
             display_name="Triple Join Text (Legacy)",
             description="Joins three strings with a separator.",
             category="Sage Utils/text",
+            is_deprecated=True,
             inputs=[
                 io.String.Input("separator", display_name="separator", default=", "),
                 io.Boolean.Input("add_separator_to_end", display_name="add_separator_to_end", default=False, tooltip="Add separator to the end of the joined string."),

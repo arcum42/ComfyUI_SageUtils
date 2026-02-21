@@ -123,7 +123,7 @@ app.registerExtension({
     
     if (needsSetup.includes(nodeData.name)) {
       await timeFunction(`NODE_SETUP_${nodeData.name}`, async () => {
-        if (nodeData.name === _ID + "TextSubstitution") {
+        if (nodeData.name === _ID + "LegacyTextSubstitution") {
           setupTextSubstitutionNode(nodeType, nodeData, app);
         } else if (nodeData.name === _ID + "ViewAnything") {
           setupViewTextOrAnythingNode(nodeType, nodeData, app);
