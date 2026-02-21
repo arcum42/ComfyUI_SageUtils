@@ -50,39 +50,6 @@ class Sage_FreeMemory(io.ComfyNode):
             mm.soft_empty_cache()
         return io.NodeOutput(value)
 
-class Sage_Halt(io.ComfyNode):
-    """Continue or halt the workflow from this point."""
-    @classmethod
-    def define_schema(cls):
-        return io.Schema(
-            node_id="Sage_Halt",
-            display_name="Halt",
-            description="Return the value when continuing; otherwise halt execution.",
-            category="Sage Utils/util",
-            inputs=[
-                io.Boolean.Input("continue_executing", display_name="continue_executing", default=True),
-                io.AnyType.Input("value", display_name="value", lazy=True, optional=True)
-            ],
-            outputs=[
-                io.AnyType.Output("out_value", display_name="value")
-            ]
-        )
-    
-    @classmethod
-    def check_lazy_status(cls, continue_executing, value=...):
-        # Skip evaluating the value when halting execution
-        if not continue_executing:
-            return []
-        return ["value"]
-
-    @classmethod
-    def execute(cls, **kwargs):
-        value = kwargs.get("value", None)
-        cont = kwargs.get("continue_executing", True)
-        if cont:
-            return io.NodeOutput(value)
-        return ExecutionBlocker(None)
-
 class Sage_LogicalSwitch(io.ComfyNode):
     """Return one of two values based on a condition."""
     @classmethod
@@ -567,42 +534,6 @@ class Sage_CheckLorasForUpdates(io.ComfyNode):
 
         return io.NodeOutput(lora_stack, str(lora_list), str(lora_url_list))
 
-class Sage_DynamicComboTest(io.ComfyNode):
-    @classmethod
-    def define_schema(cls):
-        return io.Schema(
-            node_id="Sage_DynamicComboTest",
-            display_name="Sage_DynamicComboTest",
-            category="Sage Utils/test",
-            is_output_node=True,
-            inputs=[
-                io.DynamicCombo.Input("combo", options=[
-                    io.DynamicCombo.Option("option1", [
-                        io.String.Input("string")
-                        ]),
-                    io.DynamicCombo.Option("option2", [
-                        io.Int.Input("integer")
-                        ]),
-                    io.DynamicCombo.Option("option3", [
-                        io.Image.Input("image")
-                        ]),
-                    # You can even nest DynamicCombos!
-                    io.DynamicCombo.Option("option4", [
-                        io.DynamicCombo.Input("subcombo", options=[
-                            io.DynamicCombo.Option("opt1", [
-                                io.Float.Input("float_x"), 
-                                io.Float.Input("float_y")
-                            ]),
-                            io.DynamicCombo.Option("opt2", [
-                                io.Mask.Input("mask1", optional=True)
-                            ]),
-                        ])
-                    ])
-                ])
-            ],
-            outputs=[io.AnyType.Output()],
-        )
-
     @classmethod
     def execute(cls, **kwargs):
         # The combo parameter is a dictionary with nested structure
@@ -622,13 +553,11 @@ class Sage_DynamicComboTest(io.ComfyNode):
 
 UTIL_NODES = [
     Sage_FreeMemory,
-    Sage_Halt,
     Sage_LogicalSwitch,
     Sage_ModelInfo,
     Sage_ModelInfoDisplay,
     Sage_LoraStackInfoDisplay,
     Sage_MultiModelPicker,
     Sage_CollectKeywordsFromLoraStack,
-    Sage_CheckLorasForUpdates,
-    Sage_DynamicComboTest
+    Sage_CheckLorasForUpdates
 ]

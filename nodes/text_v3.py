@@ -3,8 +3,8 @@
 # See ref_docs/v3_migration.md for info on migrating to v3 nodes.
 
 from __future__ import annotations
-from comfy_api.latest import io, ComfyExtension
-from comfy.comfy_types.node_typing import ComfyNodeABC, InputTypeDict, IO
+from comfy_api.latest import io, ui
+from comfy.comfy_types.node_typing import IO
 from typing_extensions import override
 import random
 import string
@@ -27,20 +27,23 @@ from ..utils.constants import (
     PONY_SOURCE
 )
 
-# To implement:
-# Sage_PromptText - Lumina 2 prompt node
-# Sage_SystemPrompt - Lumina 2 system prompt node
-
-class Sage_IntToStr(io.ComfyNode):
+class Sage_NumberToStr(io.ComfyNode):
     @classmethod
     def define_schema(cls):
         return io.Schema(
-            node_id="Sage_IntToStr",
-            display_name="Int to String",
+            node_id="Sage_NumberToStr",
+            display_name="Number to String",
             description="Converts a number to a string.",
             category="Sage Utils/text",
             inputs=[
-                io.Int.Input("num", display_name="num", default=0)
+                io.DynamicCombo.Input("num_type", options=[
+                    io.DynamicCombo.Option("float", [
+                        io.Float.Input("num", display_name="num", default=0.0, step=0.01)
+                    ]),
+                    io.DynamicCombo.Option("int", [
+                        io.Int.Input("num", display_name="num", default=0)
+                    ])
+                ])
             ],
             outputs=[
                 io.String.Output("str", display_name="str")
@@ -49,29 +52,54 @@ class Sage_IntToStr(io.ComfyNode):
     
     @classmethod
     def execute(cls, **kwargs):
-        num = kwargs.get("num", 0)
-        return io.NodeOutput(str(num))
+        base = kwargs.get("num_type", {})
+        num_type = base.get("num_type", "float")
+        num = base.get("num", 0.0)
+        if num_type == "int":
+            return io.NodeOutput(f"{int(num)}")
+        else:
+            return io.NodeOutput(f"{num}")
 
-class Sage_FloatToStr(io.ComfyNode):
+class Sage_SetTextWithNum(io.ComfyNode):
     @classmethod
     def define_schema(cls):
         return io.Schema(
-            node_id="Sage_FloatToStr",
-            display_name="Float to String",
-            description="Converts a float to a string.",
+            node_id="Sage_SetTextWithNum",
+            display_name="Set Text With Number",
+            description="Sets some text and adds a number at the end.",
             category="Sage Utils/text",
-            inputs=[
-                io.Float.Input("num", display_name="num", default=0.0)
+            inputs = [
+                io.String.Input("str", display_name="str", force_input = False, dynamic_prompts = False, multiline = True),
+                io.String.Input("prefix", display_name="prefix", force_input = True, multiline = True, optional=True),
+                io.String.Input("suffix", display_name="suffix", force_input = True, multiline = True, optional=True),
+                
+                io.DynamicCombo.Input("num_type", options=[
+                    io.DynamicCombo.Option("float", [
+                        io.Float.Input("num", display_name="num", default=0.0, step=0.01)
+                    ]),
+                    io.DynamicCombo.Option("int", [
+                        io.Int.Input("num", display_name="num", default=0)
+                    ])
+                ])
             ],
-            outputs=[
-                io.String.Output("str", display_name="str")
-            ]
+            outputs = [
+                io.String.Output("str_out", display_name="str")
+            ],
         )
-    
     @classmethod
     def execute(cls, **kwargs):
-        num = kwargs.get("num", 0.0)
-        return io.NodeOutput(f"{num:.2g}")
+        str = kwargs.get("str", "")
+        prefix = kwargs.get("prefix", "")
+        suffix = kwargs.get("suffix", "")
+        base = kwargs.get("num_type", {})
+        num_type = base.get("num_type", "float")
+        num = base.get("num", 0.0)
+        if num_type == "int":
+            number = int(num)
+        else:
+            number = num
+
+        return io.NodeOutput(f"{prefix or ''}{str}{suffix or ''}{number or ''}")
 
 class SageSetWildcardText(io.ComfyNode):
     @classmethod
@@ -152,9 +180,8 @@ class Sage_ViewAnything(io.ComfyNode):
             str_val = str_val.strip()
         else:
             str_val = str(any_val)
-        
-        return io.NodeOutput(str_val, ui={"text": str_val})
-    #{ "ui": {"text": str}, "result" : (str,) }
+    
+        return io.NodeOutput(str_val, ui = ui.PreviewText(str(str_val)))
 
 class Sage_TextSubstitution(io.ComfyNode):
     @classmethod
@@ -368,33 +395,6 @@ class Sage_SetTextWithoutComments(io.ComfyNode):
 
         return io.NodeOutput(f"{prefix or ''}{cleaned_str}{suffix or ''}")
 
-class Sage_SetTextWithInt(io.ComfyNode):
-    @classmethod
-    def define_schema(cls):
-        return io.Schema(
-            node_id="Sage_SetTextWithInt",
-            display_name="Set Text With Int",
-            description="Sets some text and adds a number at the end.",
-            category="Sage Utils/text",
-            inputs = [
-                io.String.Input("str", display_name="str", force_input = False, dynamic_prompts = False, multiline = True),
-                io.String.Input("prefix", display_name="prefix", force_input = True, multiline = True, optional=True),
-                io.String.Input("suffix", display_name="suffix", force_input = True, multiline = True, optional=True),
-                io.Int.Input("number", display_name="number", force_input = False)
-            ],
-            outputs = [
-                io.String.Output("str_out", display_name="str")
-            ],
-        )
-    @classmethod
-    def execute(cls, **kwargs):
-        str = kwargs.get("str", "")
-        prefix = kwargs.get("prefix", "")
-        suffix = kwargs.get("suffix", "")
-        number = kwargs.get("number", 0)
-
-        return io.NodeOutput(f"{prefix or ''}{str}{suffix or ''}{number or ''}")
-
 class Sage_TextSwitch(io.ComfyNode):
     @classmethod
     def define_schema(cls):
@@ -446,7 +446,7 @@ class Sage_PonyPrefix(io.ComfyNode):
             node_id="Sage_PonyPrefix",
             display_name="Pony Prefix",
             description="Generates a prefix for pony-related content.",
-            category="Sage Utils/text",
+            category="Sage Utils/text/pony",
             inputs=[
                 io.Boolean.Input("add_score", display_name="add_score", default=False),
                 io.Int.Input("score_start", display_name="Score Start", default=9),
@@ -492,7 +492,7 @@ class Sage_PonyStyle(io.ComfyNode):
             node_id="Sage_PonyStyle",
             display_name="Pony Style",
             description="Adds the chosen three letter artist styles from Pony v6.",
-            category="Sage Utils/text",
+            category="Sage Utils/text/pony",
             
             inputs=[
                 io.MultiCombo.Input("style", display_name="style", options=pony_strings, chip=True, placeholder="Pony Style")
@@ -950,7 +950,7 @@ class Sage_HiDreamE1_Instruction(io.ComfyNode):
             node_id="Sage_HiDreamE1_Instruction",
             display_name="HiDream E1 Instruction",
             description="Generates a prompt for HiDream E1 based on the given instruction and description.",
-            category="Sage Utils/text",
+            category="Sage Utils/text/specialized",
             inputs=[
                 io.String.Input("instruction", display_name="instruction", multiline=True),
                 io.String.Input("description", display_name="description", multiline=True)
@@ -982,12 +982,11 @@ class Sage_HiDreamE1_Instruction(io.ComfyNode):
 
 # Update TEXT_NODES list
 TEXT_NODES = [
-    Sage_IntToStr,
-    Sage_FloatToStr,
+    Sage_NumberToStr,
     SageSetWildcardText,
     Sage_SetText,
     Sage_SetTextWithoutComments,
-    Sage_SetTextWithInt, 
+    Sage_SetTextWithNum, 
     Sage_TextSwitch, 
     Sage_CleanText, 
     Sage_PonyStyle, 
@@ -1003,7 +1002,6 @@ TEXT_NODES = [
     Sage_TextWeight,
     Sage_HiDreamE1_Instruction,
     Sage_ViewNotes,
-    # Placeholder nodes (not fully implemented)
     Sage_PromptText,
     Sage_SystemPrompt,
     Sage_PonyStyleCluster,
