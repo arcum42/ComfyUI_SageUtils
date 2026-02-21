@@ -551,6 +551,47 @@ class Sage_SaveText(io.ComfyNode):
         
         return io.NodeOutput(str(full_path))
 
+class Sage_DynamicJoinText(io.ComfyNode):
+    @classmethod
+    def define_schema(cls):
+        autogrow_template = io.Autogrow.TemplatePrefix(
+            input=io.String.Input("strings"),  # template for each input
+            prefix="str_",                  # prefix for generated input names
+            min=1,                           # minimum number of inputs shown
+            max=100,                          # maximum number of inputs allowed
+        )
+        return io.Schema(
+            node_id="Sage_DynamicJoinText",
+            display_name="Dynamic Join Text",
+            description="Joins multiple strings with a separator.",
+            category="Sage Utils/text",
+            inputs=[
+                io.Autogrow.Input("strings", template=autogrow_template),
+                io.String.Input("separator", display_name="separator", default=", "),
+                io.Boolean.Input("add_separator_to_end", display_name="add_separator_to_end", default=False, tooltip="Add separator to the end of the joined string.")
+            ],
+            outputs=[
+                io.String.Output("str", display_name="str")
+            ]
+        )
+    
+    @classmethod
+    def execute(cls, **kwargs):
+        separator = kwargs.get("separator", ", ")
+        add_separator_to_end = kwargs.get("add_separator_to_end", False)
+        strings_dict = kwargs.get("strings", {})        
+        # Collect all inputs that start with "str_"
+        strings = []
+        for key, value in strings_dict.items():
+            if key.startswith("str_") and isinstance(value, str):
+                strings.append(value)
+        
+        result = separator.join(strings)
+        if add_separator_to_end:
+            result += separator
+        
+        return io.NodeOutput(result)
+
 class Sage_JoinText(io.ComfyNode):
     @classmethod
     def define_schema(cls):
@@ -942,6 +983,7 @@ TEXT_NODES = [
     Sage_PonyStyle, 
     Sage_PonyPrefix,
     Sage_SaveText,
+    Sage_DynamicJoinText,
     Sage_JoinText,
     Sage_TripleJoinText,
     Sage_ViewAnything,
