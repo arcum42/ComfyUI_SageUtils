@@ -15,20 +15,7 @@ All nodes are prefixed with the SageUtils identifier (`_ID` from `shared/utils.j
 
 ## Node Files
 
-### 1. multiModelPicker.js
-
-**Purpose**: Simple wrapper for dynamic model input selection  
-**Complexity**: Low  
-
-**Key Functions:**
-
-- `setupMultiModelPicker(nodeData)`: Main setup function
-  - Creates dynamic input slots for model selection
-  - Simple pass-through to `setupDynamicInputs` utility
-
-**Usage**: Provides multi-model selection capability for workflows requiring multiple model inputs.
-
-### 2. textSubstitution.js
+### 1. textSubstitution.js
 
 **Purpose**: Advanced dynamic string input handling with substitution capabilities  
 **Complexity**: High  

@@ -464,13 +464,20 @@ class Sage_MultiModelPicker(io.ComfyNode):
     """Pick a model_info entry by index from a provided list."""
     @classmethod
     def define_schema(cls):
+        autogrow_template = io.Autogrow.TemplatePrefix(
+            input=ModelInfo.Input("model_template"),  # template for each input
+            prefix="model_",                  # prefix for generated input names
+            min=1,                           # minimum number of inputs shown
+            max=100,                          # maximum number of inputs allowed
+        )
         return io.Schema(
             node_id="Sage_MultiModelPicker",
             display_name="Multi Model Picker",
             description="Select one model_info from a list by index.",
             category="Sage Utils/model",
             inputs=[
-                io.Int.Input("index", display_name="index", default=1, min=1, max=100, step=1, tooltip="1-based index into provided model list")
+                io.Int.Input("index", display_name="index", default=0, min=0, max=100, step=1, tooltip="0-based index into provided model list"),
+                io.Autogrow.Input("model_template", template=autogrow_template)
             ],
             outputs=[
                 ModelInfo.Output("model_info", display_name="model_info")
@@ -479,12 +486,14 @@ class Sage_MultiModelPicker(io.ComfyNode):
     
     @classmethod
     def execute(cls, **kw):
-        model_infos = kw.values()
-        index = kw.get("index", 1)
-        model_infos = list(model_infos)
-        if index < 1 or index > len(model_infos):
+        models = kw.get("model_template", {})
+        print(f"models = {models}")
+        index = kw.get("index", 0)
+        if index < 0 or index >= len(models):
             raise ValueError("Index out of range. Please select a valid model index.")
-        selected_model_info = model_infos[index]
+        model_index = f"model_{index}"
+        selected_model_info = models.get(model_index, None)
+        print(f"Selected model_info: {selected_model_info}")
     
         return io.NodeOutput(selected_model_info)
 

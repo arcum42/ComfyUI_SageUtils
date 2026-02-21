@@ -20,7 +20,6 @@ import {
 recordInitializationMilestone("SAGE_JS_START");
 
 // Import node setup functions
-import { setupMultiModelPickerNode } from "./nodes/multiModelPicker.js";
 import { setupTextSubstitutionNode } from "./nodes/textSubstitution.js";
 import { setupViewTextOrAnythingNode } from "./nodes/viewAnything.js";
 import { setupViewNotesNode } from "./nodes/viewNotes.js";
@@ -115,7 +114,6 @@ app.registerExtension({
     
     // Only time the actual setup functions, not every node
     const needsSetup = [
-      _ID + "MultiModelPicker",
       _ID + "TextSubstitution", 
       _ID + "ViewAnything",
       _ID + "ViewNotes",
@@ -125,9 +123,7 @@ app.registerExtension({
     
     if (needsSetup.includes(nodeData.name)) {
       await timeFunction(`NODE_SETUP_${nodeData.name}`, async () => {
-        if (nodeData.name === _ID + "MultiModelPicker") {
-          setupMultiModelPickerNode(nodeType, nodeData, app);
-        } else if (nodeData.name === _ID + "TextSubstitution") {
+        if (nodeData.name === _ID + "TextSubstitution") {
           setupTextSubstitutionNode(nodeType, nodeData, app);
         } else if (nodeData.name === _ID + "ViewAnything") {
           setupViewTextOrAnythingNode(nodeType, nodeData, app);
