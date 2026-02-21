@@ -2,7 +2,7 @@
 # Misc utility and model-info helpers migrated from v1.
 
 from __future__ import annotations
-from comfy.comfy_types.node_typing import ComfyNodeABC, InputTypeDict, IO
+from comfy.comfy_types.node_typing import IO
 from comfy_api.latest import io
 from comfy_execution.graph import ExecutionBlocker
 
@@ -11,18 +11,14 @@ from ..utils import (
     cache, blank_image, url_to_torch_image,
     get_latest_model_version, get_lora_hash, pull_metadata,
     get_civitai_model_version_json_by_hash, pull_lora_image_urls,
-    model_scan, str_to_bool, get_lora_stack_keywords
+    get_lora_stack_keywords
 )
 from ..utils import model_info as mi
 import folder_paths
-import hashlib
 import gc
-import json
 import logging
-import pathlib
 
 from .custom_io_v3 import *
-
 
 # NOTE: These nodes mirror v1 behavior; UI-rich outputs use markdown text in ui payloads.
 

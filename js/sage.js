@@ -20,7 +20,6 @@ import {
 recordInitializationMilestone("SAGE_JS_START");
 
 // Import node setup functions
-import { setupTextSubstitutionNode } from "./nodes/textSubstitution.js";
 import { setupViewTextOrAnythingNode } from "./nodes/viewAnything.js";
 import { setupViewNotesNode } from "./nodes/viewNotes.js";
 import { setupModelInfoDisplayNode } from "./nodes/modelInfoDisplay.js";
@@ -114,7 +113,6 @@ app.registerExtension({
     
     // Only time the actual setup functions, not every node
     const needsSetup = [
-      _ID + "TextSubstitution", 
       _ID + "ViewAnything",
       _ID + "ViewNotes",
       _ID + "ModelInfoDisplay",
@@ -123,9 +121,7 @@ app.registerExtension({
     
     if (needsSetup.includes(nodeData.name)) {
       await timeFunction(`NODE_SETUP_${nodeData.name}`, async () => {
-        if (nodeData.name === _ID + "LegacyTextSubstitution") {
-          setupTextSubstitutionNode(nodeType, nodeData, app);
-        } else if (nodeData.name === _ID + "ViewAnything") {
+         if (nodeData.name === _ID + "ViewAnything") {
           setupViewTextOrAnythingNode(nodeType, nodeData, app);
         } else if (nodeData.name === _ID + "ViewNotes") {
           setupViewNotesNode(nodeType, nodeData, app);
