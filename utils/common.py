@@ -3,7 +3,7 @@ Central utilities module for SageUtils nodes.
 This module provides explicit imports that replace wildcard imports in nodes.
 """
 
-# Core utilities that are commonly used across nodes
+from .logger import get_logger
 from .helpers import (
     str_to_bool,
     bool_to_str,
@@ -82,6 +82,8 @@ from .lora_stack import (
     add_lora_to_stack
 )
 
+logger = get_logger('utils.common')
+
 # Model info utilities - import function directly to avoid circular dependency
 def get_model_types(model_info):
     """Determine which model types are present in model_info."""
@@ -91,9 +93,9 @@ def get_model_types(model_info):
         model_info = (model_info,)
 
     for info in model_info:
-        print(f"Checking model info: {info}")
+        logger.debug(f"Checking model info: {info}")
         if isinstance(info, dict) and "type" in info:
-            print(f"Model type found: {info['type']}")
+            logger.debug(f"Model type found: {info['type']}")
             model_types.append(info["type"])
     return model_types
 

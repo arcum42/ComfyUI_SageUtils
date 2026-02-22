@@ -4,11 +4,13 @@ Handles notes file management including CRUD operations and file serving.
 Consolidates legacy duplicate routes into a cleaner API.
 """
 
-import logging
+from ..utils.logger import get_logger
 import mimetypes
 from pathlib import Path
 from aiohttp import web
 from .base import route_error_handler, validate_query_params, validate_json_body, success_response, error_response
+
+logger = get_logger('routes.notes')
 
 # Route list for documentation and registration tracking
 _route_list = []
@@ -83,7 +85,7 @@ def register_routes(routes_instance):
             })
             
         except Exception as e:
-            logging.error(f"List notes error: {e}")
+            logger.error(f"List notes error: {e}")
             return error_response(f"Failed to list notes: {str(e)}", status=500)
 
     @routes_instance.post('/sage_utils/read_note')
@@ -132,7 +134,7 @@ def register_routes(routes_instance):
                 )
             
         except Exception as e:
-            logging.error(f"Read note error: {e}")
+            logger.error(f"Read note error: {e}")
             return error_response(f"Failed to read note: {str(e)}", status=500)
 
     @routes_instance.get('/sage_utils/read_note')
@@ -208,7 +210,7 @@ def register_routes(routes_instance):
                     )
                     
         except Exception as e:
-            logging.error(f"Serve note file error: {e}")
+            logger.error(f"Serve note file error: {e}")
             return web.Response(text=f"Failed to read file: {str(e)}", status=500)
 
     @routes_instance.post('/sage_utils/save_note')
@@ -248,7 +250,7 @@ def register_routes(routes_instance):
             return success_response(message=f"File '{filename}' saved successfully")
             
         except Exception as e:
-            logging.error(f"Save note error: {e}")
+            logger.error(f"Save note error: {e}")
             return error_response(f"Failed to save note: {str(e)}", status=500)
 
     @routes_instance.post('/sage_utils/delete_note')
@@ -285,7 +287,7 @@ def register_routes(routes_instance):
             return success_response(message=f"File '{filename}' deleted successfully")
             
         except Exception as e:
-            logging.error(f"Delete note error: {e}")
+            logger.error(f"Delete note error: {e}")
             return error_response(f"Failed to delete note: {str(e)}", status=500)
 
     def _handle_range_request(file_path, range_header, content_type):
@@ -332,7 +334,7 @@ def register_routes(routes_instance):
             )
             
         except Exception as e:
-            logging.error(f"Range request error: {e}")
+            logger.error(f"Range request error: {e}")
             # Fall back to full file if range request fails
             with open(file_path, 'rb') as file:
                 content = file.read()

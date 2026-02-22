@@ -10,6 +10,9 @@ import logging
 from typing import Dict, List, Optional, Any
 from threading import Lock
 
+from .logger import get_logger
+logger = get_logger('llm.cache')
+
 class LLMModelCache:
     """Thread-safe cache for LLM model information."""
     
@@ -46,10 +49,10 @@ class LLMModelCache:
                 models = fetch_function()
                 self._ollama_models = models
                 self._ollama_models_time = time.time()
-                logging.debug(f"Cached {len(models)} Ollama models")
+                logger.debug(f"Cached {len(models)} Ollama models")
                 return models.copy()
             except Exception as e:
-                logging.error(f"Failed to fetch Ollama models: {e}")
+                logger.error(f"Failed to fetch Ollama models: {e}")
                 return self._ollama_models.copy() if self._ollama_models else []
     
     def get_ollama_vision_models(self, fetch_function) -> List[str]:
@@ -64,10 +67,10 @@ class LLMModelCache:
                 models = fetch_function(self)
                 self._ollama_vision_models = models
                 self._ollama_vision_models_time = time.time()
-                logging.debug(f"Cached {len(models)} Ollama vision models")
+                logger.debug(f"Cached {len(models)} Ollama vision models")
                 return models.copy()
             except Exception as e:
-                logging.error(f"Failed to fetch Ollama vision models: {e}")
+                logger.error(f"Failed to fetch Ollama vision models: {e}")
                 return self._ollama_vision_models.copy() if self._ollama_vision_models else []
     
     def get_lmstudio_models(self, fetch_function) -> List[str]:
@@ -81,10 +84,10 @@ class LLMModelCache:
                 models = fetch_function()
                 self._lmstudio_models = models
                 self._lmstudio_models_time = time.time()
-                logging.debug(f"Cached {len(models)} LM Studio models")
+                logger.debug(f"Cached {len(models)} LM Studio models")
                 return models.copy()
             except Exception as e:
-                logging.error(f"Failed to fetch LM Studio models: {e}")
+                logger.error(f"Failed to fetch LM Studio models: {e}")
                 return self._lmstudio_models.copy() if self._lmstudio_models else []
     
     def get_lmstudio_vision_models(self, fetch_function) -> List[str]:
@@ -99,10 +102,10 @@ class LLMModelCache:
                 models = fetch_function(self)
                 self._lmstudio_vision_models = models
                 self._lmstudio_vision_models_time = time.time()
-                logging.debug(f"Cached {len(models)} LM Studio vision models")
+                logger.debug(f"Cached {len(models)} LM Studio vision models")
                 return models.copy()
             except Exception as e:
-                logging.error(f"Failed to fetch LM Studio vision models: {e}")
+                logger.error(f"Failed to fetch LM Studio vision models: {e}")
                 return self._lmstudio_vision_models.copy() if self._lmstudio_vision_models else []
     
     def is_ollama_vision_model(self, model_name: str) -> Optional[bool]:
@@ -214,4 +217,4 @@ def invalidate_llm_cache() -> None:
     """Invalidate all LLM cache data."""
     cache = get_llm_cache()
     cache.invalidate_all()
-    logging.info("LLM model cache invalidated")
+    logger.info("LLM model cache invalidated")

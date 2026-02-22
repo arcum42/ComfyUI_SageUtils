@@ -3,12 +3,15 @@ Prompt Storage Routes Module
 Handles saved prompt management for prompt building.
 """
 
-import logging
+from ..utils.logger import get_logger
 import json
 import uuid
 from datetime import datetime
 from pathlib import Path
+from aiohttp import web
 from .base import route_error_handler, success_response, error_response
+
+logger = get_logger('routes.prompt_storage')
 
 # Route list for documentation and registration tracking
 _route_list = []
@@ -88,7 +91,7 @@ async def save_prompt(request):
         
         return success_response({"prompt": prompt_entry})
     except Exception as e:
-        logging.error(f"Error in save_prompt: {e}")
+        logger.error(f"Error in save_prompt: {e}")
         return error_response(f"Failed to save prompt: {str(e)}", 500)
 
 
@@ -128,7 +131,7 @@ async def list_prompts(request):
             "metadata": prompts_data.get('metadata', {})
         })
     except Exception as e:
-        logging.error(f"Error in list_prompts: {e}")
+        logger.error(f"Error in list_prompts: {e}")
         return error_response(f"Failed to load prompts: {str(e)}", 500)
 
 
@@ -157,7 +160,7 @@ async def get_prompt(request):
         return success_response({"prompt": prompt})
         
     except Exception as e:
-        logging.error(f"Error in get_prompt: {e}")
+        logger.error(f"Error in get_prompt: {e}")
         return error_response(f"Failed to get prompt: {str(e)}", 500)
 
 
@@ -195,7 +198,7 @@ async def delete_prompt(request):
         return success_response({"deleted": prompt_id})
         
     except Exception as e:
-        logging.error(f"Error in delete_prompt: {e}")
+        logger.error(f"Error in delete_prompt: {e}")
         return error_response(f"Failed to delete prompt: {str(e)}", 500)
 
 
@@ -234,7 +237,7 @@ async def update_prompt_usage(request):
         return success_response({"prompt": prompt})
         
     except Exception as e:
-        logging.error(f"Error in update_prompt_usage: {e}")
+        logger.error(f"Error in update_prompt_usage: {e}")
         return error_response(f"Failed to update prompt usage: {str(e)}", 500)
 
 
@@ -293,7 +296,7 @@ async def add_category(request):
         })
         
     except Exception as e:
-        logging.error(f"Error in add_category: {e}")
+        logger.error(f"Error in add_category: {e}")
         return error_response(f"Failed to add category: {str(e)}", 500)
 
 

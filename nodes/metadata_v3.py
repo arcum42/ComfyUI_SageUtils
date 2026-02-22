@@ -27,6 +27,9 @@ from ..utils import (
 )
 from ..utils.model_info import collect_resource_hashes, model_name_and_hash_as_str, _get_model_name_from_info, _get_model_hash_from_info
 from ..utils.config_manager import metadata_templates
+from ..utils.logger import get_logger
+
+logger = get_logger('nodes.metadata')
 
 from .custom_io_v3 import ModelInfo, LoraStack, SamplerInfo
 
@@ -115,7 +118,7 @@ class Sage_ConstructMetadataFlexible(io.ComfyNode):
             negative_prompt_line = f"Negative prompt: {negative_string}"
 
         # Model and version info
-        print(f"DEBUG: model_info in _collect_metadata_components: {model_info}")
+        logger.debug(f"DEBUG: model_info in _collect_metadata_components: {model_info}")
         comfyui_version = COMFYUI_VERSION
         version_str = f"Version: {COMFYUI_VERSION}"
         flattened_models = _flatten_model_info(model_info)

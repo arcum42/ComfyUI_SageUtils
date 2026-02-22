@@ -13,11 +13,13 @@ Contains global scan progress store for real-time tracking.
 
 try:
     from aiohttp import web
+    from ..utils.logger import get_logger
     import os
     import time
     import asyncio
     import pathlib
-    import logging
+    
+    logger = get_logger('routes.scanning')
     
     # Global scan progress storage
     scan_progress_store = {
@@ -113,7 +115,7 @@ try:
                                     total_count += file_count
                                         
                         except Exception as folder_error:
-                            logging.error(f"Error processing folder '{folder_key}': {str(folder_error)}")
+                            logger.error(f"Error processing folder '{folder_key}': {str(folder_error)}")
                             continue
                     
                     # Add category entry if it has any valid paths
@@ -141,7 +143,7 @@ try:
             except Exception as e:
                 import traceback
                 error_details = traceback.format_exc()
-                logging.error(f"SageUtils get available folders error: {error_details}")
+                logger.error(f"SageUtils get available folders error: {error_details}")
                 return web.json_response(
                     {"success": False, "error": f"Failed to get available folders: {str(e)}"}, 
                     status=500
@@ -169,7 +171,7 @@ try:
             except Exception as e:
                 import traceback
                 error_details = traceback.format_exc()
-                logging.error(f"SageUtils scan progress error: {error_details}")
+                logger.error(f"SageUtils scan progress error: {error_details}")
                 return web.json_response(
                     {"success": False, "error": f"Failed to get scan progress: {str(e)}"}, 
                     status=500
@@ -229,7 +231,7 @@ try:
                 
                 import traceback
                 error_details = traceback.format_exc()
-                logging.error(f"SageUtils perform model scan error: {error_details}")
+                logger.error(f"SageUtils perform model scan error: {error_details}")
                 return web.json_response(
                     {"success": False, "error": f"Failed to perform model scan: {str(e)}"}, 
                     status=500
@@ -261,7 +263,7 @@ try:
             except Exception as e:
                 import traceback
                 error_details = traceback.format_exc()
-                logging.error(f"SageUtils cancel scan error: {error_details}")
+                logger.error(f"SageUtils cancel scan error: {error_details}")
                 return web.json_response(
                     {"success": False, "error": f"Failed to cancel scan: {str(e)}"}, 
                     status=500
@@ -365,7 +367,7 @@ try:
             scan_progress_store['total'] = len(model_list)
             scan_progress_store['status'] = 'processing_metadata'
             
-            logging.info(f"Found {len(model_list)} models to process")
+            logger.info(f"Found {len(model_list)} models to process")
             
             # Enable batch mode for reduced I/O during bulk operations
             cache.begin_batch()
@@ -375,7 +377,7 @@ try:
                 processed_count = 0
                 for file_path in model_list:
                     if not scan_progress_store['active']:  # Check if cancelled
-                        logging.info(f"Scan cancelled, stopping at {processed_count}/{len(model_list)} files")
+                        logger.info(f"Scan cancelled, stopping at {processed_count}/{len(model_list)} files")
                         break
                         
                     file_name = os.path.basename(file_path)
@@ -384,7 +386,7 @@ try:
                     
                     # Debug progress update
                     if processed_count % 10 == 0:  # Log every 10 files
-                        logging.debug(f"Progress: {processed_count}/{len(model_list)} files processed ({(processed_count/len(model_list)*100):.1f}%)")
+                        logger.debug(f"Progress: {processed_count}/{len(model_list)} files processed ({(processed_count/len(model_list)*100):.1f}%)")
                     
                     try:
                         # If this file has no cached hash, indicate hashing in progress
@@ -398,15 +400,15 @@ try:
                             scan_progress_store['status'] = 'hashing'
                             scan_progress_store['current_file'] = file_name
                             if force and existing_hash:
-                                logging.info(f"Recalculating hash (forced) for {file_path}")
+                                logger.info(f"Recalculating hash (forced) for {file_path}")
                             else:
-                                logging.info(f"Calculating hash for {file_path}")
+                                logger.info(f"Calculating hash for {file_path}")
 
                         # Process single file without updating timestamp
                         pull_metadata(file_path, timestamp=False, force_all=force)
                         processed_count += 1
                     except Exception as file_error:
-                        logging.error(f"Error processing {file_path}: {file_error}")
+                        logger.error(f"Error processing {file_path}: {file_error}")
                         # Continue with other files
                         processed_count += 1
                     
@@ -414,7 +416,7 @@ try:
                     if processed_count % SCAN_CHECKPOINT_INTERVAL == 0:
                         cache.end_batch(force_save=True)
                         scan_progress_store['current_file'] = f"Checkpoint save ({processed_count} files)..."
-                        logging.info(f"Checkpoint save at {processed_count}/{len(model_list)} files")
+                        logger.info(f"Checkpoint save at {processed_count}/{len(model_list)} files")
                         cache.begin_batch()
                     
                     # Restore general status after any hashing indicator
@@ -427,7 +429,7 @@ try:
             finally:
                 # Always end batch mode and perform final save, even on cancellation or error
                 cache.end_batch(force_save=True)
-                logging.info(f"Final batch save completed")
+                logger.info(f"Final batch save completed")
             
             # Mark scan as complete
             scan_progress_store.update({
@@ -437,7 +439,7 @@ try:
                 'current_file': 'Scan completed'
             })
             
-            logging.info(f"Background scan completed: {processed_count} files processed")
+            logger.info(f"Background scan completed: {processed_count} files processed")
             
         except Exception as scan_error:
             scan_progress_store.update({
@@ -448,7 +450,7 @@ try:
             
             import traceback
             error_details = traceback.format_exc()
-            logging.error(f"Background scan execution error: {error_details}")
+            logger.error(f"Background scan execution error: {error_details}")
 
     def get_route_list():
         """Get list of registered routes for this module."""
@@ -456,7 +458,7 @@ try:
 
 except ImportError as e:
     import logging
-    logging.error(f"SageUtils scanning routes import error: {e}")
+    logger.error(f"SageUtils scanning routes import error: {e}")
     
     # Route list for documentation and registration tracking
     _route_list = []

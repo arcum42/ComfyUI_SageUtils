@@ -5,6 +5,10 @@ Handles all paths, directory creation, and file initialization logic.
 
 import json
 import pathlib
+from .logger import get_logger
+
+logger = get_logger('utils.path_manager')
+
 import tempfile
 import os
 from typing import Any, Dict, Optional
@@ -77,7 +81,7 @@ class SageFileManager:
                 data = json.load(read_file)
             return data
         except Exception as e:
-            print(f"Unable to load {label} from {path}: {e}")
+            logger.debug(f"Unable to load {label} from {path}: {e}")
             return None
     
     def save_json_file(self, path: pathlib.Path, data: Any, label: str = "file") -> bool:
@@ -86,7 +90,7 @@ class SageFileManager:
             self.atomic_write_json(path, data)
             return True
         except Exception as e:
-            print(f"Unable to save {label} to {path}: {e}")
+            logger.debug(f"Unable to save {label} to {path}: {e}")
             return False
     
     def ensure_user_config_file(self, config_name: str, overwrite: bool = False) -> bool:
@@ -103,12 +107,12 @@ class SageFileManager:
                     data = self.load_json_file(asset_file, f"default {config_name}")
                     if data is not None:
                         self.save_json_file(user_file, data, f"{config_name} user config")
-                        print(f"Copied default {config_name}.json to {user_file}.")
+                        logger.debug(f"Copied default {config_name}.json to {user_file}.")
                         return True
                 except Exception as e:
-                    print(f"Failed to copy {config_name}.json from assets: {e}")
+                    logger.debug(f"Failed to copy {config_name}.json from assets: {e}")
             else:
-                print(f"No default {config_name}.json found in assets.")
+                logger.debug(f"No default {config_name}.json found in assets.")
         
         return False
     

@@ -2,6 +2,10 @@
 
 import io
 import base64
+from .logger import get_logger
+
+logger = get_logger('utils.helpers_image')
+
 import time
 import pathlib
 from PIL import Image, ImageOps, ImageSequence
@@ -101,8 +105,8 @@ def tensor_to_temp_image(tensor, filename=None):
         file_path = pathlib.Path(output_dir) / fname
         img.save(file_path, format="PNG")
         filenames.append(str(file_path))
-    print(f"Saved {len(filenames)} images to {output_dir}")
-    print(filenames)
+    logger.debug(f"Saved {len(filenames)} images to {output_dir}")
+    logger.debug(filenames)
     return filenames
 
 def calc_padding(width, height, new_width, new_height):

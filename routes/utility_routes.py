@@ -3,10 +3,12 @@ Utility Routes Module
 Handles utility functions and miscellaneous endpoints.
 """
 
-import logging
+from ..utils.logger import get_logger
 import os
 from aiohttp import web
 from .base import route_error_handler, validate_query_params, success_response, error_response
+
+logger = get_logger('routes.utility')
 
 # Route list for documentation and registration tracking
 _route_list = []
@@ -45,7 +47,7 @@ def register_routes(routes_instance):
                 "file_path": file_path
             })
         except OSError as e:
-            logging.error(f"Cannot access file {file_path}: {e}")
+            logger.error(f"Cannot access file {file_path}: {e}")
             return error_response(f"Cannot access file: {str(e)}", status=403)
 
     @routes_instance.post('/sage_utils/timing_data')
@@ -59,22 +61,22 @@ def register_routes(routes_instance):
         timing_data = data.get('data', {})
         
         # Log the timing data
-        logging.debug(f"\\n=== Timing Data from {source.upper()} ===")
+        logger.debug(f"\\n=== Timing Data from {source.upper()} ===")
         if 'initializationTimes' in timing_data:
-            logging.debug("Initialization Times:")
+            logger.debug("Initialization Times:")
             for milestone, time_ms in timing_data['initializationTimes'].items():
                 if milestone != '__complete__':
-                    logging.debug(f"  {milestone}: {time_ms:.4f}ms")
+                    logger.debug(f"  {milestone}: {time_ms:.4f}ms")
             
             if '__complete__' in timing_data['initializationTimes']:
                 total = timing_data['initializationTimes']['__complete__']
-                logging.debug(f"  TOTAL: {total:.4f}ms")
+                logger.debug(f"  TOTAL: {total:.4f}ms")
         
         if 'runtimeStats' in timing_data:
-            logging.debug("Runtime Statistics:")
+            logger.debug("Runtime Statistics:")
             for operation, stats in timing_data['runtimeStats'].items():
                 if stats:
-                    logging.debug(f"  {operation}: {stats.get('count', 0)} calls, "
+                    logger.debug(f"  {operation}: {stats.get('count', 0)} calls, "
                         f"{stats.get('total', 0):.4f}ms total, "
                         f"{stats.get('average', 0):.4f}ms avg")
         
@@ -122,7 +124,7 @@ def register_routes(routes_instance):
             return success_response(data={"timing_report": report})
             
         except Exception as e:
-            logging.error(f"Failed to generate timing report: {e}")
+            logger.error(f"Failed to generate timing report: {e}")
             return error_response(f"Failed to generate timing report: {str(e)}", status=500)
 
     # Track registered routes

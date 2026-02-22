@@ -5,6 +5,10 @@ Provides comprehensive timing functionality to measure initialization and runtim
 
 import time
 import functools
+from .logger import get_logger
+
+logger = get_logger('utils.performance_timer')
+
 import logging
 import os
 from typing import Dict, List, Optional, Any, Callable
@@ -219,7 +223,7 @@ class PerformanceTimer:
     
     def print_report(self):
         """Print the full performance report to console."""
-        print(self.get_full_report())
+        logger.debug(self.get_full_report())
     
     def log_report(self, level: int = logging.INFO):
         """Log the full performance report."""
@@ -292,18 +296,18 @@ def setup_timing_logging():
     # Check if timing logging is explicitly enabled
     timing_enabled = os.environ.get('SAGEUTILS_ENABLE_TIMING_LOGS', '').lower() in ('1', 'true', 'yes')
     
-    logger = logging.getLogger("sageutils.timing")
-    if timing_enabled and not logger.handlers:
+    timing_logger = logging.getLogger("sageutils.timing")
+    if timing_enabled and not timing_logger.handlers:
         handler = logging.StreamHandler()
         formatter = logging.Formatter(
             '[TIMING] %(asctime)s - %(name)s - %(levelname)s - %(message)s'
         )
         handler.setFormatter(formatter)
-        logger.addHandler(handler)
-        logger.setLevel(logging.INFO)
+        timing_logger.addHandler(handler)
+        timing_logger.setLevel(logging.INFO)
     elif not timing_enabled:
         # Disable timing logging by setting level to CRITICAL+1
-        logger.setLevel(logging.CRITICAL + 1)
+        timing_logger.setLevel(logging.CRITICAL + 1)
 
 # Initialize logging
 setup_timing_logging()

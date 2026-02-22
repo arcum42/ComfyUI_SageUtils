@@ -12,6 +12,9 @@ from typing import Any, Dict, Optional
 from .config_manager import ConfigManager
 import logging
 
+from .logger import get_logger
+logger = get_logger('settings')
+
 # Define the schema for all SageUtils settings
 SETTINGS_SCHEMA = {
     # LLM Integration Settings
@@ -112,12 +115,12 @@ class SettingsValidator:
                 else:
                     raise TypeError(f"Cannot convert {type(value)} to {expected_type}")
             except (ValueError, TypeError) as e:
-                logging.warning(f"Setting '{key}': Invalid type. Expected {expected_type.__name__}, got {type(value).__name__}. Using default.")
+                logger.warning(f"Setting '{key}': Invalid type. Expected {expected_type.__name__}, got {type(value).__name__}. Using default.")
                 return schema_entry["default"]
         
         # Valid values checking
         if valid_values and value not in valid_values:
-            logging.warning(f"Setting '{key}': Invalid value '{value}'. Must be one of {valid_values}. Using default.")
+            logger.warning(f"Setting '{key}': Invalid value '{value}'. Must be one of {valid_values}. Using default.")
             return schema_entry["default"]
         
         return value
@@ -152,23 +155,23 @@ class SageSettings:
                 # Check if validation changed the value
                 if validated_value != current_settings[key]:
                     settings_updated = True
-                    logging.info(f"Setting '{key}' corrected to: {validated_value}")
+                    logger.info(f"Setting '{key}' corrected to: {validated_value}")
             else:
                 # Use default for missing settings
                 self._settings[key] = schema_entry["default"]
                 settings_updated = True
-                logging.info(f"Setting '{key}' added with default value: {schema_entry['default']}")
+                logger.info(f"Setting '{key}' added with default value: {schema_entry['default']}")
         
         # Remove any settings not in schema (cleanup old/deprecated settings)
         for key in current_settings:
             if key not in SETTINGS_SCHEMA:
-                logging.warning(f"Removing deprecated setting: '{key}'")
+                logger.warning(f"Removing deprecated setting: '{key}'")
                 settings_updated = True
         
         # Save if any changes were made
         if settings_updated:
             self.save()
-            logging.info("Settings updated and saved.")
+            logger.info("Settings updated and saved.")
     
     def get(self, key: str, default: Any = None) -> Any:
         """Get a setting value with optional default fallback."""
@@ -179,7 +182,7 @@ class SageSettings:
     def set(self, key: str, value: Any) -> bool:
         """Set a setting value with validation."""
         if key not in SETTINGS_SCHEMA:
-            logging.warning(f"Setting unknown key '{key}'. Consider adding it to SETTINGS_SCHEMA.")
+            logger.warning(f"Setting unknown key '{key}'. Consider adding it to SETTINGS_SCHEMA.")
             self._settings[key] = value
             return True
         
@@ -188,7 +191,7 @@ class SageSettings:
         
         if self._settings.get(key) != validated_value:
             self._settings[key] = validated_value
-            logging.info(f"Setting '{key}' updated to: {validated_value}")
+            logger.info(f"Setting '{key}' updated to: {validated_value}")
             return True
         
         return False
@@ -199,7 +202,7 @@ class SageSettings:
             self._config_manager.data = self._settings.copy()
             return self._config_manager.save()
         except Exception as e:
-            logging.error(f"Failed to save settings: {e}")
+            logger.error(f"Failed to save settings: {e}")
             return False
     
     # Used in settings and server_routes.
@@ -207,7 +210,7 @@ class SageSettings:
         """Reset all settings to their default values."""
         self._settings = {key: entry["default"] for key, entry in SETTINGS_SCHEMA.items()}
         self.save()
-        logging.info("All settings reset to defaults.")
+        logger.info("All settings reset to defaults.")
     
     def get_setting_info(self, key: str) -> Optional[Dict[str, Any]]:
         """Get information about a setting including description and current value."""

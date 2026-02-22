@@ -16,9 +16,11 @@ from ..utils import (
 from ..utils import model_info as mi
 import folder_paths
 import gc
-import logging
 
+from ..utils.logger import get_logger
 from .custom_io_v3 import *
+
+logger = get_logger('nodes.util')
 
 # NOTE: These nodes mirror v1 behavior; UI-rich outputs use markdown text in ui payloads.
 
@@ -160,7 +162,7 @@ class Sage_ModelInfo(io.ComfyNode):
                 image
             )
         except Exception:
-            logging.error("Exception when getting model info json data.")
+            logger.error("Exception when getting model info json data.")
             return io.NodeOutput("", "", "", "", image)
 
 class Sage_ModelInfoDisplay(io.ComfyNode):
@@ -450,13 +452,13 @@ class Sage_MultiModelPicker(io.ComfyNode):
     @classmethod
     def execute(cls, **kw):
         models = kw.get("model_template", {})
-        print(f"models = {models}")
+        logger.debug(f"models = {models}")
         index = kw.get("index", 0)
         if index < 0 or index >= len(models):
             raise ValueError("Index out of range. Please select a valid model index.")
         model_index = f"model_{index}"
         selected_model_info = models.get(model_index, None)
-        print(f"Selected model_info: {selected_model_info}")
+        logger.debug(f"Selected model_info: {selected_model_info}")
     
         return io.NodeOutput(selected_model_info)
 
@@ -517,10 +519,10 @@ class Sage_CheckLorasForUpdates(io.ComfyNode):
 
         for lora in lora_stack:
             if lora is not None:
-                logging.info(f"Checking {lora[0]} for updates...")
+                logger.info(f"Checking {lora[0]} for updates...")
                 lora_path = folder_paths.get_full_path_or_raise("loras", lora[0])
                 pull_metadata(lora_path, force_all=force)
-                logging.info(f"Update check complete for {lora[0]}")
+                logger.info(f"Update check complete for {lora[0]}")
 
                 info = cache.by_path(lora_path)
                 if info.get("update_available"):
@@ -528,7 +530,7 @@ class Sage_CheckLorasForUpdates(io.ComfyNode):
                     latest_version = get_latest_model_version(model_id) if model_id else None
                     latest_url = f"https://civitai.com/models/{model_id}?modelVersionId={latest_version}" if latest_version else ""
                     if latest_url:
-                        logging.info(f"Update found for {lora[0]}")
+                        logger.info(f"Update found for {lora[0]}")
                         lora_url_list.append(latest_url)
                         lora_list.append(lora_path)
 

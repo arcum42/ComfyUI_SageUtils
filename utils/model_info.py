@@ -5,6 +5,9 @@ import folder_paths
 from .helpers import name_from_path, pull_metadata
 from .model_cache import cache
 from .lora_stack import norm_lora_stack
+from .logger import get_logger
+
+logger = get_logger('model_info')
 
 weight_dtype_options = ["default", "fp8_e4m3fn", "fp8_e4m3fn_fast", "fp8_e5m2"]
 single_clip_loader_options = ["stable_diffusion", "stable_cascade", "sd3", "stable_audio", "mochi", "ltxv", "pixart", "cosmos", "lumina2", "wan", "hidream", "chroma", "ace", "omnigen2", "qwen_image", "hunyuan_image", "flux2", "ovis"]
@@ -47,8 +50,11 @@ def get_model_info_unet(unet_name: str, weight_dtype: str = "default") -> tuple:
         model_info["weight_dtype"] = weight_dtype
     else:
         model_info["weight_dtype"] = "default"
-        print(f"Warning: Invalid weight_dtype '{weight_dtype}'. Using default 'default'. Valid options are: {', '.join(weight_dtype_options)}")
-    print(f"UNET model info: {model_info}")
+        logger.warning(
+            f"Invalid weight_dtype '{weight_dtype}'. Using default. "
+            f"Valid options are: {', '.join(weight_dtype_options)}"
+        )
+    logger.debug(f"UNET model info: {model_info}")
     return (model_info,)
 
 def get_model_info_clips(clip_names: list, clip_type: str = "") -> tuple:
@@ -81,7 +87,7 @@ def get_model_info_clips(clip_names: list, clip_type: str = "") -> tuple:
         "clip_type": clip_type
     }
 
-    print(f"CLIP model info: {model_info}")
+    logger.debug(f"CLIP model info: {model_info}")
     return (model_info,)
 
 def get_model_info_vae(vae_name: str) -> tuple:
@@ -97,7 +103,7 @@ def get_model_info_vae(vae_name: str) -> tuple:
     model_info = {"type": "VAE", "path": folder_paths.get_full_path_or_raise("vae", vae_name)}
     pull_metadata(model_info["path"])
     model_info["hash"] = cache.hash[model_info["path"]]
-    print(f"VAE model info: {model_info}")
+    logger.debug(f"VAE model info: {model_info}")
     return (model_info,)
 
 def model_name_and_hash_as_str(model_info) -> str:
@@ -177,12 +183,12 @@ def get_model_info_component(models_info: tuple, component_type: str) -> dict:
     Returns:
         dict: The model_info dictionary for the specified component type, or empty dict if not found.
     """
-    print(f"Searching for component type: {component_type} in models_info: {models_info}")
+    logger.debug(f"Searching for component type: {component_type} in models_info")
     if not isinstance(models_info, tuple):
         models_info = (models_info,)
     
     for model_info in models_info:
-        print(f"Checking model_info: {model_info}")
+        logger.debug(f"Checking model type: {model_info.get('type')}")
         if model_info is None:
             continue
         if model_info.get("type") == component_type:

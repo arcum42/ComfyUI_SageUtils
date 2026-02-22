@@ -3,8 +3,10 @@ SageUtils Routes Module
 Centralizes route registration and provides backwards compatibility.
 """
 
-import logging
+from ..utils.logger import get_logger
 from .base import route_error_handler
+
+logger = get_logger('routes')
 
 # Track initialization for performance monitoring
 _routes_initialized = False
@@ -24,7 +26,7 @@ def register_routes(routes_instance):
     global _routes_initialized, _registered_routes
     
     if _routes_initialized:
-        logging.warning("Routes already initialized, skipping re-registration")
+        logger.warning("Routes already initialized, skipping re-registration")
         return len(_registered_routes)
     
     try:
@@ -62,23 +64,23 @@ def register_routes(routes_instance):
                 if hasattr(route_module, 'register_routes'):
                     group_count = route_module.register_routes(routes_instance)
                     route_count += group_count
-                    logging.debug(f"Registered {group_count} {group_name} routes successfully")
+                    logger.debug(f"Registered {group_count} {group_name} routes successfully")
                     _registered_routes.extend(route_module.get_route_list() if hasattr(route_module, 'get_route_list') else [])
                 else:
-                    logging.warning(f"Route module {group_name} missing register_routes function")
+                    logger.warning(f"Route module {group_name} missing register_routes function")
             except ImportError as e:
-                logging.warning(f"Could not import {group_name} routes: {e}")
+                logger.warning(f"Could not import {group_name} routes: {e}")
             except Exception as e:
                 import traceback
-                logging.error(f"Error registering {group_name} routes: {e}")
-                logging.error(traceback.format_exc())
+                logger.error(f"Error registering {group_name} routes: {e}")
+                logger.error(traceback.format_exc())
         
         _routes_initialized = True
-        logging.info(f"SageUtils: Registered {route_count} routes across {len(route_groups)} modules")
+        logger.info(f"SageUtils: Registered {route_count} routes across {len(route_groups)} modules")
         return route_count
         
     except Exception as e:
-        logging.error(f"Failed to initialize SageUtils routes: {e}")
+        logger.error(f"Failed to initialize SageUtils routes: {e}")
         return 0
 
 
@@ -120,17 +122,17 @@ def setup_legacy_routes(routes_instance):
         
         # Check if the old routes are still available
         if hasattr(server_routes, 'routes') and server_routes.routes:
-            logging.info("Using legacy server_routes.py for backwards compatibility")
+            logger.info("Using legacy server_routes.py for backwards compatibility")
             return True
         else:
-            logging.warning("Legacy server_routes.py not available or empty")
+            logger.warning("Legacy server_routes.py not available or empty")
             return False
             
     except ImportError as e:
-        logging.warning(f"Could not import legacy server_routes: {e}")
+        logger.warning(f"Could not import legacy server_routes: {e}")
         return False
     except Exception as e:
-        logging.error(f"Error setting up legacy routes: {e}")
+        logger.error(f"Error setting up legacy routes: {e}")
         return False
 
 

@@ -4,9 +4,11 @@ Handles LLM chat endpoints for Ollama and LM Studio integration.
 """
 
 import json
-import logging
+from ..utils.logger import get_logger
 from aiohttp import web
 from .base import route_error_handler, success_response, error_response, validate_json_body
+
+logger = get_logger('routes.llm')
 
 # Route list for documentation and registration tracking
 _route_list = []
@@ -54,7 +56,7 @@ def register_routes(routes_instance):
             try:
                 llm.ensure_llm_initialized()
             except Exception as init_error:
-                logging.warning(f"LLM initialization warning: {init_error}")
+                logger.warning(f"LLM initialization warning: {init_error}")
             
             # Check settings
             ollama_enabled = get_setting("enable_ollama", True)
@@ -86,7 +88,7 @@ def register_routes(routes_instance):
             })
             
         except Exception as e:
-            logging.error(f"LLM status error: {str(e)}")
+            logger.error(f"LLM status error: {str(e)}")
             return error_response(f"Failed to get LLM status: {str(e)}", status=500)
     
     _route_list.append({
@@ -125,7 +127,7 @@ def register_routes(routes_instance):
             force = request.rel_url.query.get('force', '').lower() == 'true'
             
             if force:
-                logging.info("Force re-initializing LLM providers...")
+                logger.info("Force re-initializing LLM providers...")
                 # Reset initialization flags to force re-init
                 llm._ollama_initialized = False
                 llm._lmstudio_initialized = False
@@ -147,7 +149,7 @@ def register_routes(routes_instance):
                     if ollama_models and ollama_models[0].startswith("("):
                         ollama_models = []
                 except Exception as e:
-                    logging.warning(f"Failed to get Ollama models: {e}")
+                    logger.warning(f"Failed to get Ollama models: {e}")
             
             if lmstudio_enabled and llm.LMSTUDIO_AVAILABLE:
                 try:
@@ -156,7 +158,7 @@ def register_routes(routes_instance):
                     if lmstudio_models and lmstudio_models[0].startswith("("):
                         lmstudio_models = []
                 except Exception as e:
-                    logging.warning(f"Failed to get LM Studio models: {e}")
+                    logger.warning(f"Failed to get LM Studio models: {e}")
             
             return success_response(data={
                 "models": {
@@ -170,7 +172,7 @@ def register_routes(routes_instance):
             })
             
         except Exception as e:
-            logging.error(f"Failed to get models: {str(e)}")
+            logger.error(f"Failed to get models: {str(e)}")
             return error_response(f"Failed to get models: {str(e)}", status=500)
     
     _route_list.append({
@@ -209,7 +211,7 @@ def register_routes(routes_instance):
             force = request.rel_url.query.get('force', '').lower() == 'true'
             
             if force:
-                logging.info("Force re-initializing LLM providers for vision models...")
+                logger.info("Force re-initializing LLM providers for vision models...")
                 # Reset initialization flags to force re-init
                 llm._ollama_initialized = False
                 llm._lmstudio_initialized = False
@@ -231,7 +233,7 @@ def register_routes(routes_instance):
                     if ollama_models and ollama_models[0].startswith("("):
                         ollama_models = []
                 except Exception as e:
-                    logging.warning(f"Failed to get Ollama vision models: {e}")
+                    logger.warning(f"Failed to get Ollama vision models: {e}")
             
             if lmstudio_enabled and llm.LMSTUDIO_AVAILABLE:
                 try:
@@ -240,7 +242,7 @@ def register_routes(routes_instance):
                     if lmstudio_models and lmstudio_models[0].startswith("("):
                         lmstudio_models = []
                 except Exception as e:
-                    logging.warning(f"Failed to get LM Studio vision models: {e}")
+                    logger.warning(f"Failed to get LM Studio vision models: {e}")
             
             return success_response(data={
                 "models": {
@@ -254,7 +256,7 @@ def register_routes(routes_instance):
             })
             
         except Exception as e:
-            logging.error(f"Failed to get vision models: {str(e)}")
+            logger.error(f"Failed to get vision models: {str(e)}")
             return error_response(f"Failed to get vision models: {str(e)}", status=500)
     
     _route_list.append({
@@ -286,7 +288,7 @@ def register_routes(routes_instance):
             })
             
         except Exception as e:
-            logging.error(f"Failed to get prompts: {str(e)}")
+            logger.error(f"Failed to get prompts: {str(e)}")
             return error_response(f"Failed to get prompts: {str(e)}", status=500)
     
     _route_list.append({
@@ -379,10 +381,10 @@ def register_routes(routes_instance):
             })
             
         except ValueError as e:
-            logging.error(f"Validation error in generate: {str(e)}")
+            logger.error(f"Validation error in generate: {str(e)}")
             return error_response(str(e), status=400)
         except Exception as e:
-            logging.error(f"Failed to generate response: {str(e)}")
+            logger.error(f"Failed to generate response: {str(e)}")
             return error_response(f"Failed to generate response: {str(e)}", status=500)
     
     _route_list.append({
@@ -491,7 +493,7 @@ def register_routes(routes_instance):
                 return response
                 
             except Exception as e:
-                logging.error(f"Error during streaming: {str(e)}")
+                logger.error(f"Error during streaming: {str(e)}")
                 import json
                 error_data = json.dumps({"error": str(e), "done": True})
                 await response.write(f"data: {error_data}\n\n".encode('utf-8'))
@@ -499,7 +501,7 @@ def register_routes(routes_instance):
                 return response
                 
         except Exception as e:
-            logging.error(f"Failed to initialize streaming: {str(e)}")
+            logger.error(f"Failed to initialize streaming: {str(e)}")
             return error_response(f"Failed to initialize streaming: {str(e)}", status=500)
     
     _route_list.append({
@@ -659,10 +661,10 @@ def register_routes(routes_instance):
             })
             
         except ValueError as e:
-            logging.error(f"Validation error in vision generate: {str(e)}")
+            logger.error(f"Validation error in vision generate: {str(e)}")
             return error_response(str(e), status=400)
         except Exception as e:
-            logging.error(f"Failed to generate vision response: {str(e)}")
+            logger.error(f"Failed to generate vision response: {str(e)}")
             return error_response(f"Failed to generate vision response: {str(e)}", status=500)
     
     _route_list.append({
@@ -844,7 +846,7 @@ def register_routes(routes_instance):
                 return response
                 
             except Exception as e:
-                logging.error(f"Error during vision streaming: {str(e)}")
+                logger.error(f"Error during vision streaming: {str(e)}")
                 import json
                 error_data = json.dumps({"error": str(e), "done": True})
                 await response.write(f"data: {error_data}\n\n".encode('utf-8'))
@@ -852,7 +854,7 @@ def register_routes(routes_instance):
                 return response
                 
         except Exception as e:
-            logging.error(f"Failed to initialize vision streaming: {str(e)}")
+            logger.error(f"Failed to initialize vision streaming: {str(e)}")
             return error_response(f"Failed to initialize vision streaming: {str(e)}", status=500)
     
     _route_list.append({
@@ -904,7 +906,7 @@ def register_routes(routes_instance):
             return web.Response(text=content, content_type='text/markdown')
             
         except Exception as e:
-            logging.error(f"Error loading system prompt: {str(e)}")
+            logger.error(f"Error loading system prompt: {str(e)}")
             return error_response(f"Failed to load system prompt: {str(e)}", status=500)
     
     _route_list.append({
@@ -972,7 +974,7 @@ def register_routes(routes_instance):
             return success_response({"id": prompt_id, "name": name})
             
         except Exception as e:
-            logging.error(f"Error saving system prompt: {str(e)}")
+            logger.error(f"Error saving system prompt: {str(e)}")
             return error_response(f"Failed to save system prompt: {str(e)}", status=500)
     
     _route_list.append({
@@ -1025,7 +1027,7 @@ def register_routes(routes_instance):
             return success_response({"deleted": prompt_id})
             
         except Exception as e:
-            logging.error(f"Error deleting system prompt: {str(e)}")
+            logger.error(f"Error deleting system prompt: {str(e)}")
             return error_response(f"Failed to delete system prompt: {str(e)}", status=500)
     
     _route_list.append({
@@ -1085,7 +1087,7 @@ def register_routes(routes_instance):
             return success_response({"prompts": prompts})
             
         except Exception as e:
-            logging.error(f"Error listing system prompts: {str(e)}")
+            logger.error(f"Error listing system prompts: {str(e)}")
             return error_response(f"Failed to list system prompts: {str(e)}", status=500)
     
     _route_list.append({
@@ -1124,7 +1126,7 @@ def register_routes(routes_instance):
             return success_response({"presets": custom_presets})
             
         except Exception as e:
-            logging.error(f"Error listing presets: {str(e)}")
+            logger.error(f"Error listing presets: {str(e)}")
             return error_response(f"Failed to list presets: {str(e)}", status=500)
     
     _route_list.append({
@@ -1181,7 +1183,7 @@ def register_routes(routes_instance):
             return success_response({"id": preset_id, "preset": preset_data})
             
         except Exception as e:
-            logging.error(f"Error saving preset: {str(e)}")
+            logger.error(f"Error saving preset: {str(e)}")
             return error_response(f"Failed to save preset: {str(e)}", status=500)
     
     _route_list.append({
@@ -1232,7 +1234,7 @@ def register_routes(routes_instance):
             return success_response({"deleted": preset_id})
             
         except Exception as e:
-            logging.error(f"Error deleting preset: {str(e)}")
+            logger.error(f"Error deleting preset: {str(e)}")
             return error_response(f"Failed to delete preset: {str(e)}", status=500)
     
     _route_list.append({
@@ -1343,7 +1345,7 @@ def register_routes(routes_instance):
             return success_response({"presets": all_presets})
             
         except Exception as e:
-            logging.error(f"Error getting all presets: {str(e)}")
+            logger.error(f"Error getting all presets: {str(e)}")
             return error_response(f"Failed to get presets: {str(e)}", status=500)
     
     _route_list.append({
@@ -1609,10 +1611,10 @@ def register_routes(routes_instance):
             })
             
         except ValueError as e:
-            logging.error(f"Validation error in preset generation: {str(e)}")
+            logger.error(f"Validation error in preset generation: {str(e)}")
             return error_response(str(e), status=400)
         except Exception as e:
-            logging.error(f"Failed to generate with preset: {str(e)}")
+            logger.error(f"Failed to generate with preset: {str(e)}")
             import traceback
             traceback.print_exc()
             return error_response(f"Failed to generate with preset: {str(e)}", status=500)

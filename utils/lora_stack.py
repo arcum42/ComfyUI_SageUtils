@@ -1,7 +1,15 @@
 import folder_paths
 from git import Optional
+from .logger import get_logger
+
+logger = get_logger('utils.lora_stack')
+
 from .model_cache import cache
 from .helpers import pull_metadata, clean_keywords
+from .logger import get_logger
+
+logger = get_logger('utils.lora_stack')
+
 
 def norm_lora_stack(lora_stack: Optional[list]) -> Optional[list]:
     """
@@ -49,7 +57,7 @@ def get_lora_stack_keywords(lora_stack=None):
             if keywords:
                 all_keywords.update(map(str.strip, keywords))
         except Exception as e:
-            print(f"Exception getting keywords for {name}: {e}")
+            logger.debug(f"Exception getting keywords for {name}: {e}")
             continue
     return clean_keywords(all_keywords)
 

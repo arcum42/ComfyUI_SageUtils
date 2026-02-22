@@ -3,11 +3,13 @@ Tag Management Routes Module
 Handles tag library and tag set management for prompt building.
 """
 
-import logging
+from ..utils.logger import get_logger
 import json
 from pathlib import Path
 from aiohttp import web
 from .base import route_error_handler, validate_json_body, success_response, error_response
+
+logger = get_logger('routes.tag')
 
 # Route list for documentation and registration tracking
 _route_list = []
@@ -41,7 +43,7 @@ def _get_default_tag_library():
             return default_tag_library
         else:
             # Fallback to minimal structure if no default data
-            logging.warning("Default tag library is empty or not loaded")
+            logger.warning("Default tag library is empty or not loaded")
             return {
                 "version": "1.0",
                 "categories": [],
@@ -54,7 +56,7 @@ def _get_default_tag_library():
                 }
             }
     except Exception as e:
-        logging.error(f"Error loading default tag library: {e}")
+        logger.error(f"Error loading default tag library: {e}")
         # Return minimal fallback structure
         return {
             "version": "1.0",
@@ -142,7 +144,7 @@ def register_routes(routes_instance):
             return success_response(data=library_data)
             
         except Exception as e:
-            logging.error(f"Get tag library error: {e}")
+            logger.error(f"Get tag library error: {e}")
             return error_response(f"Failed to get tag library: {str(e)}", status=500)
 
     @routes_instance.post('/sage_utils/tags/library')
@@ -211,7 +213,7 @@ def register_routes(routes_instance):
             )
             
         except Exception as e:
-            logging.error(f"Save tag library error: {e}")
+            logger.error(f"Save tag library error: {e}")
             return error_response(f"Failed to save tag library: {str(e)}", status=500)
 
     @routes_instance.post('/sage_utils/tags/category')
@@ -285,7 +287,7 @@ def register_routes(routes_instance):
             )
             
         except Exception as e:
-            logging.error(f"Save category error: {e}")
+            logger.error(f"Save category error: {e}")
             return error_response(f"Failed to save category: {str(e)}", status=500)
 
     @routes_instance.delete('/sage_utils/tags/category/{category_id}')
@@ -345,7 +347,7 @@ def register_routes(routes_instance):
             )
             
         except Exception as e:
-            logging.error(f"Delete category error: {e}")
+            logger.error(f"Delete category error: {e}")
             return error_response(f"Failed to delete category: {str(e)}", status=500)
 
     @routes_instance.get('/sage_utils/tags/search')
@@ -440,7 +442,7 @@ def register_routes(routes_instance):
             })
             
         except Exception as e:
-            logging.error(f"Search tags error: {e}")
+            logger.error(f"Search tags error: {e}")
             return error_response(f"Failed to search tags: {str(e)}", status=500)
 
     @routes_instance.get('/sage_utils/tags/defaults')
@@ -457,7 +459,7 @@ def register_routes(routes_instance):
             return success_response(data=default_library)
             
         except Exception as e:
-            logging.error(f"Get default tag library error: {e}")
+            logger.error(f"Get default tag library error: {e}")
             return error_response(f"Failed to get default tag library: {str(e)}", status=500)
 
     # Track registered routes

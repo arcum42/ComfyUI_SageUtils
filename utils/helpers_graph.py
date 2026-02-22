@@ -5,7 +5,9 @@ from .helpers import (
     pull_and_update_model_timestamp
     )
 
-import logging
+from .logger import get_logger
+
+logger = get_logger('helpers.graph')
 
 # Utility function
 def flatten_model_info(model_info):
@@ -41,10 +43,10 @@ def add_ckpt_node(graph: GraphBuilder, ckpt_info):
         ckpt_name = ckpt_info["path"]
         ckpt_fixed_name = get_path_without_base("checkpoints", ckpt_name)
         # No GGUF support for checkpoints yet that I see.
-        print(f"Added node CheckpointLoaderSimple with ckpt_name: {ckpt_fixed_name}")
+        logger.debug(f"Added node CheckpointLoaderSimple with ckpt_name: {ckpt_fixed_name}")
         ckpt_node = graph.node("CheckpointLoaderSimple",ckpt_name=ckpt_fixed_name)
     else:
-        print("No checkpoint found in model info, skipping checkpoint loading.")
+        logger.debug("No checkpoint found in model info, skipping checkpoint loading.")
     return ckpt_node
 
 def add_unet_node(graph: GraphBuilder, unet_info):
@@ -60,13 +62,13 @@ def add_unet_node(graph: GraphBuilder, unet_info):
         if get_file_extension(unet_fixed_name) == "gguf":
             # If the UNET is a GGUF, we need to use the GGUFLoader node. It doesn't ask for weight_dtype.
             try:
-                print(f"Added node UnetLoaderGGUF with unet_name: {unet_fixed_name}")
+                logger.debug(f"Added node UnetLoaderGGUF with unet_name: {unet_fixed_name}")
                 unet_node = graph.node("UnetLoaderGGUF", unet_name=unet_fixed_name)
             except:
-                print("Unable to load UNET as GGUF. Do you have ComfyUI-GGUF installed?")
+                logger.debug("Unable to load UNET as GGUF. Do you have ComfyUI-GGUF installed?")
                 raise ValueError("Unable to load UNET as GGUF. Do you have ComfyUI-GGUF installed?")
         else:
-            print(f"Added node UNETLoader with unet_name: {unet_fixed_name} and weight_dtype: {unet_weight_dtype}")
+            logger.debug(f"Added node UNETLoader with unet_name: {unet_fixed_name} and weight_dtype: {unet_weight_dtype}")
             unet_node = graph.node("UNETLoader", unet_name=unet_fixed_name, weight_dtype=unet_weight_dtype)
     return unet_node
 
@@ -76,46 +78,46 @@ def add_clip_node(graph: GraphBuilder, clip_info):
         # if clip_info is a tuple, unpack it.
         if isinstance(clip_info, tuple):
             clip_info = clip_info[0]
-        print(f"Adding CLIP node with info: {clip_info}")
+        logger.debug(f"Adding CLIP node with info: {clip_info}")
         # 1+2 are in nodes.py, 3 is in node_sd3.py, and 4 is in nodes_hidream.py for legacy reasons.
         clip_path = clip_info["path"]
         clip_num = len(clip_path) if isinstance(clip_path, list) else 1
         clip_fixed_path = [get_path_without_base("clip", path) for path in clip_path] if isinstance(clip_path, list) else get_path_without_base("clip", clip_path)
         clip_path = clip_fixed_path if isinstance(clip_fixed_path, list) else [clip_fixed_path]
         clip_type = clip_info["clip_type"]
-        print(f"Clip Path: {clip_path} Clip Type: {clip_type}")
+        logger.debug(f"Clip Path: {clip_path} Clip Type: {clip_type}")
 
         # If any of the clip paths are GGUF, we need to use the GGUF loader. It can also handle non-GGUF paths.
         if any(get_file_extension(path) == "gguf" for path in clip_path):
-            print("GGUF Clip!")
+            logger.debug("GGUF Clip!")
             try:
                 if clip_num == 1:
-                    print(f"Added node CLIPLoaderGGUF with clip_name: {clip_path[0]}, type: {clip_type}")
+                    logger.debug(f"Added node CLIPLoaderGGUF with clip_name: {clip_path[0]}, type: {clip_type}")
                     clip_node = graph.node("CLIPLoaderGGUF", clip_name=clip_path[0], type=clip_type)
                 elif clip_num == 2:
-                    print(f"Added node DualCLIPLoaderGGUF with clip_name1: {clip_path[0]}, clip_name2: {clip_path[1]}, type: {clip_type}")
+                    logger.debug(f"Added node DualCLIPLoaderGGUF with clip_name1: {clip_path[0]}, clip_name2: {clip_path[1]}, type: {clip_type}")
                     clip_node = graph.node("DualCLIPLoaderGGUF", clip_name1=clip_path[0], clip_name2=clip_path[1], type=clip_type)
                 elif clip_num == 3:
-                    print(f"Added node TripleCLIPLoaderGGUF with clip_name1: {clip_path[0]}, clip_name2: {clip_path[1]}, clip_name3: {clip_path[2]}")
+                    logger.debug(f"Added node TripleCLIPLoaderGGUF with clip_name1: {clip_path[0]}, clip_name2: {clip_path[1]}, clip_name3: {clip_path[2]}")
                     clip_node = graph.node("TripleCLIPLoaderGGUF", clip_name1=clip_path[0], clip_name2=clip_path[1], clip_name3=clip_path[2])
                 else:
-                    print(f"Added node QuadrupleCLIPLoaderGGUF with clip_name1: {clip_path[0]}, clip_name2: {clip_path[1]}, clip_name3: {clip_path[2]}, clip_name4: {clip_path[3]}")
+                    logger.debug(f"Added node QuadrupleCLIPLoaderGGUF with clip_name1: {clip_path[0]}, clip_name2: {clip_path[1]}, clip_name3: {clip_path[2]}, clip_name4: {clip_path[3]}")
                     clip_node = graph.node("QuadrupleCLIPLoaderGGUF", clip_name1=clip_path[0], clip_name2=clip_path[1], clip_name3=clip_path[2], clip_name4=clip_path[3])
             except:
-                print("Unable to load CLIP as GGUF. Do you have ComfyUI-GGUF installed?")
+                logger.debug("Unable to load CLIP as GGUF. Do you have ComfyUI-GGUF installed?")
                 raise ValueError("Unable to load CLIP as GGUF. Do you have ComfyUI-GGUF installed?")
         else:
             if clip_num == 1:
-                print(f"Added node CLIPLoader with clip_name: {clip_path[0]}, type: {clip_type}")
+                logger.debug(f"Added node CLIPLoader with clip_name: {clip_path[0]}, type: {clip_type}")
                 clip_node = graph.node("CLIPLoader", clip_name=clip_path[0], type=clip_type)
             elif clip_num == 2:
-                print(f"Added node DualCLIPLoader with clip_name1: {clip_path[0]}, clip_name2: {clip_path[1]}, type: {clip_type}")
+                logger.debug(f"Added node DualCLIPLoader with clip_name1: {clip_path[0]}, clip_name2: {clip_path[1]}, type: {clip_type}")
                 clip_node = graph.node("DualCLIPLoader", clip_name1=clip_path[0], clip_name2=clip_path[1], type=clip_type)
             elif clip_num == 3:
-                print(f"Added node TripleCLIPLoader with clip_name1: {clip_path[0]}, clip_name2: {clip_path[1]}, clip_name3: {clip_path[2]}")
+                logger.debug(f"Added node TripleCLIPLoader with clip_name1: {clip_path[0]}, clip_name2: {clip_path[1]}, clip_name3: {clip_path[2]}")
                 clip_node = graph.node("TripleCLIPLoader", clip_name1=clip_path[0], clip_name2=clip_path[1], clip_name3=clip_path[2])
             else:
-                print(f"Added node QuadrupleCLIPLoader with clip_name1: {clip_path[0]}, clip_name2: {clip_path[1]}, clip_name3: {clip_path[2]}, clip_name4: {clip_path[3]}")
+                logger.debug(f"Added node QuadrupleCLIPLoader with clip_name1: {clip_path[0]}, clip_name2: {clip_path[1]}, clip_name3: {clip_path[2]}, clip_name4: {clip_path[3]}")
                 clip_node = graph.node("QuadrupleCLIPLoader", clip_name1=clip_path[0], clip_name2=clip_path[1], clip_name3=clip_path[2], clip_name4=clip_path[3])
     return clip_node
 
@@ -129,7 +131,7 @@ def add_vae_node(graph: GraphBuilder, vae_info):
         vae_name = vae_info["path"]
         vae_fixed_name = get_path_without_base("vae", vae_name)
         # There is no GGUF for VAE currently, so we can just use VAELoader.
-        print(f"Added node VAELoader with vae_name: {vae_fixed_name}")
+        logger.debug(f"Added node VAELoader with vae_name: {vae_fixed_name}")
         vae_node = graph.node("VAELoader", vae_name=vae_fixed_name)
     return vae_node
 
@@ -141,10 +143,10 @@ def create_model_loader_nodes(graph: GraphBuilder, model_info):
 
     # model_info is either a list of dicts, or a list of tuples with dicts inside. Either way, we need to go over each dict, and check the "type" key.
     model_info = flatten_model_info(model_info)
-    print(f"Flattened model_info: {model_info}")
+    logger.debug(f"Flattened model_info: {model_info}")
 
     for idx, item in enumerate(model_info):
-        print(f"Processing model_info item {idx}: {item}")
+        logger.debug(f"Processing model_info item {idx}: {item}")
         model_present[item["type"]] = item
 
     if model_present["CKPT"] is not None:
@@ -193,24 +195,24 @@ def create_lora_nodes(graph: GraphBuilder, unet_in, clip_in=None, lora_stack=Non
     exit_node = None
     
     if lora_stack is None:
-        logging.info("No loras in stack.")
+        logger.info("No loras in stack.")
         return exit_node, exit_unet, exit_clip
     if isinstance(lora_stack, tuple) or isinstance(lora_stack, list):
         if not isinstance(lora_stack[0], (list, tuple)):
             lora_stack = [lora_stack]
 
     if exit_clip is not None:
-        logging.info("Using CLIP with loras.")
+        logger.info("Using CLIP with loras.")
         for lora in lora_stack:
-            logging.info(f"Applying lora: {lora[0]}, unet: {lora[1]}, clip: {lora[2]}")
+            logger.info(f"Applying lora: {lora[0]}, unet: {lora[1]}, clip: {lora[2]}")
             exit_node = graph.node("LoraLoader", model=exit_unet, clip=exit_clip, lora_name=lora[0], strength_model=lora[1], strength_clip=lora[2])
             exit_unet = exit_node.out(0)
             exit_clip = exit_node.out(1)
         return exit_node, exit_unet, exit_clip
 
-    logging.info("Using Model Only loras.")
+    logger.info("Using Model Only loras.")
     for lora in lora_stack:
-        logging.info(f"Applying lora: {lora[0]}, unet: {lora[1]}")
+        logger.info(f"Applying lora: {lora[0]}, unet: {lora[1]}")
         exit_node = graph.node("LoraLoaderModelOnly", model=exit_unet, lora_name=lora[0], strength_model=lora[1])
         exit_unet = exit_node.out(0)
     return exit_node, exit_unet, exit_clip
@@ -222,11 +224,11 @@ def create_shift_node(graph: GraphBuilder, unet_in, model_shifts):
 
     if model_shifts is not None and model_shifts["shift_type"] != "None":
         if model_shifts["shift_type"] == "x1":
-            logging.info(f"Applying x1 shift - AuraFlow/Lumina2. Shift: {model_shifts['shift']}")
+            logger.info(f"Applying x1 shift - AuraFlow/Lumina2. Shift: {model_shifts['shift']}")
             exit_node = graph.node("ModelSamplingAuraFlow", model=unet_out, shift=model_shifts["shift"])
             unet_out = exit_node.out(0)
         elif model_shifts["shift_type"] == "x1000":
-            logging.info(f"Applying x1000 shift - SD3. Shift: {model_shifts['shift']}")
+            logger.info(f"Applying x1000 shift - SD3. Shift: {model_shifts['shift']}")
             exit_node = graph.node("ModelSamplingSD3", model=unet_out, shift=model_shifts["shift"])
             unet_out = exit_node.out(0)
 
@@ -238,7 +240,7 @@ def create_freeu_v2_node(graph: GraphBuilder, unet_in, model_shifts):
     unet_out = unet_in
 
     if model_shifts is not None and model_shifts.get("freeu_v2", False) == True:
-        logging.info(f"FreeU v2 is enabled, applying to model. b1: {model_shifts['b1']}, b2: {model_shifts['b2']}, s1: {model_shifts['s1']}, s2: {model_shifts['s2']}")
+        logger.info(f"FreeU v2 is enabled, applying to model. b1: {model_shifts['b1']}, b2: {model_shifts['b2']}, s1: {model_shifts['s1']}, s2: {model_shifts['s2']}")
         exit_node = graph.node("FreeU_V2",
             model=unet_out,
             b1=model_shifts["b1"],
@@ -255,7 +257,7 @@ def create_model_shift_nodes(graph, unet_in, model_shifts):
     exit_node = None
     unet_out = unet_in
     if model_shifts is None:
-        logging.info("No model shifts to apply.")
+        logger.info("No model shifts to apply.")
         return exit_node, unet_out
 
     exit_node, unet_out = create_shift_node(graph, unet_out, model_shifts)
@@ -275,7 +277,7 @@ def add_lora_stack_node(graph: GraphBuilder, args, idx, lora_stack = None):
     model_weight = args[f"model_{idx}_weight"]
     # If clip weight is not provided, it defaults to 1.0
     clip_weight = args.get(f"clip_{idx}_weight", 1.0)
-    logging.info(f"Creating Lora stack node: {lora_name}, enabled: {lora_enabled}, model_weight: {model_weight}, clip_weight: {clip_weight}")
+    logger.info(f"Creating Lora stack node: {lora_name}, enabled: {lora_enabled}, model_weight: {model_weight}, clip_weight: {clip_weight}")
 
     return graph.node("Sage_LoraStack",
             enabled = lora_enabled,

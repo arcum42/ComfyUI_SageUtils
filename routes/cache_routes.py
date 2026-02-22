@@ -3,9 +3,11 @@ Cache Routes Module
 Handles cache information and management endpoints.
 """
 
-import logging
+from ..utils.logger import get_logger
 from aiohttp import web
 from .base import route_error_handler, validate_query_params, validate_json_body, success_response, error_response
+
+logger = get_logger('routes.cache')
 
 # Route list for documentation and registration tracking
 _route_list = []
@@ -48,7 +50,7 @@ def register_routes(routes_instance):
             return web.json_response(cache.info)
             
         except Exception as e:
-            logging.error(f"Cache info error: {e}")
+            logger.error(f"Cache info error: {e}")
             return error_response(f"Cache system error: {str(e)}", status=503)
 
     @routes_instance.get('/sage_cache/hash')
@@ -75,7 +77,7 @@ def register_routes(routes_instance):
             return web.json_response(cache.hash)
             
         except Exception as e:
-            logging.error(f"Cache hash error: {e}")
+            logger.error(f"Cache hash error: {e}")
             return error_response(f"Cache system error: {str(e)}", status=503)
 
     @routes_instance.get('/sage_cache/stats')
@@ -108,7 +110,7 @@ def register_routes(routes_instance):
             return web.json_response(stats)
             
         except Exception as e:
-            logging.error(f"Cache stats error: {e}")
+            logger.error(f"Cache stats error: {e}")
             return error_response(f"Cache system error: {str(e)}", status=503)
 
     @routes_instance.get('/sage_cache/file/{file_hash}')
@@ -152,7 +154,7 @@ def register_routes(routes_instance):
             return web.json_response(result)
             
         except Exception as e:
-            logging.error(f"Cache file info error: {e}")
+            logger.error(f"Cache file info error: {e}")
             return error_response(f"Cache system error: {str(e)}", status=503)
 
     @routes_instance.get('/sage_cache/path')
@@ -207,7 +209,7 @@ def register_routes(routes_instance):
             return web.json_response(result)
             
         except Exception as e:
-            logging.error(f"Cache path info error: {e}")
+            logger.error(f"Cache path info error: {e}")
             return error_response(f"Cache system error: {str(e)}", status=503)
 
     @routes_instance.post('/sage_utils/pull_metadata')
@@ -238,11 +240,11 @@ def register_routes(routes_instance):
                 pull_metadata([file_path], force_all=force)
                 return success_response(message=f"Metadata pulled successfully for {file_path}")
             except Exception as pull_error:
-                logging.error(f"Failed to pull metadata for {file_path}: {pull_error}")
+                logger.error(f"Failed to pull metadata for {file_path}: {pull_error}")
                 return error_response(f"Failed to pull metadata: {str(pull_error)}", status=500)
                 
         except Exception as e:
-            logging.error(f"Pull metadata error: {e}")
+            logger.error(f"Pull metadata error: {e}")
             return error_response(f"Metadata pull system error: {str(e)}", status=503)
 
     @routes_instance.post('/sage_utils/update_cache_info')
@@ -276,11 +278,11 @@ def register_routes(routes_instance):
                 
                 return success_response(message=f"Cache info updated successfully for hash {hash_value}")
             except Exception as update_error:
-                logging.error(f"Failed to update cache info for {hash_value}: {update_error}")
+                logger.error(f"Failed to update cache info for {hash_value}: {update_error}")
                 return error_response(f"Failed to update cache info: {str(update_error)}", status=500)
                 
         except Exception as e:
-            logging.error(f"Update cache info error: {e}")
+            logger.error(f"Update cache info error: {e}")
             return error_response(f"Cache system error: {str(e)}", status=503)
 
     @routes_instance.get('/sage_utils/cache_info_images')
@@ -372,7 +374,7 @@ def register_routes(routes_instance):
             })
             
         except Exception as e:
-            logging.error(f"Cache info images error: {e}")
+            logger.error(f"Cache info images error: {e}")
             return error_response(f"Cache system error: {str(e)}", status=503)
 
     # Track registered routes

@@ -3,11 +3,13 @@ Base utilities and shared functionality for SageUtils routes.
 Provides decorators, common utilities, and error handling patterns.
 """
 
-import logging
+from ..utils.logger import get_logger
 import pathlib
 from functools import wraps
 from aiohttp import web
 import traceback
+
+logger = get_logger('routes.base')
 
 
 def route_error_handler(func):
@@ -22,7 +24,7 @@ def route_error_handler(func):
         except Exception as e:
             # Log the full error for debugging
             error_details = traceback.format_exc()
-            logging.error(f"Route error in {func.__name__}: {error_details}")
+            logger.error(f"Route error in {func.__name__}: {error_details}")
             
             # Return user-friendly error response
             return web.json_response(

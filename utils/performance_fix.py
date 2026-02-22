@@ -11,6 +11,9 @@ The fix: Create lightweight cached versions that don't block during node registr
 import logging
 from typing import List
 
+from .logger import get_logger
+logger = get_logger('performance.fix')
+
 def get_cached_ollama_models_for_input_types() -> List[str]:
     """
     Lightweight version for INPUT_TYPES - returns cached models without network calls.
@@ -27,7 +30,7 @@ def get_cached_ollama_models_for_input_types() -> List[str]:
         # Return placeholder - models will be populated when cache is populated
         return ["(Loading Ollama models...)"]
     except Exception as e:
-        logging.debug(f"Failed to get cached Ollama models for INPUT_TYPES: {e}")
+        logger.debug(f"Failed to get cached Ollama models for INPUT_TYPES: {e}")
         return ["(Ollama models unavailable)"]
 
 def get_cached_lmstudio_models_for_input_types() -> List[str]:
@@ -46,7 +49,7 @@ def get_cached_lmstudio_models_for_input_types() -> List[str]:
         # Return placeholder - models will be populated when cache is populated
         return ["(Loading LM Studio models...)"]
     except Exception as e:
-        logging.debug(f"Failed to get cached LM Studio models for INPUT_TYPES: {e}")
+        logger.debug(f"Failed to get cached LM Studio models for INPUT_TYPES: {e}")
         return ["(LM Studio models unavailable)"]
 
 def get_cached_ollama_vision_models_for_input_types() -> List[str]:
@@ -65,7 +68,7 @@ def get_cached_ollama_vision_models_for_input_types() -> List[str]:
         # Return placeholder - models will be populated when cache is populated
         return ["(Loading Ollama vision models...)"]
     except Exception as e:
-        logging.debug(f"Failed to get cached Ollama vision models for INPUT_TYPES: {e}")
+        logger.debug(f"Failed to get cached Ollama vision models for INPUT_TYPES: {e}")
         return ["(Ollama vision models unavailable)"]
 
 def get_cached_lmstudio_vision_models_for_input_types() -> List[str]:
@@ -84,7 +87,7 @@ def get_cached_lmstudio_vision_models_for_input_types() -> List[str]:
         # Return placeholder - models will be populated when cache is populated
         return ["(Loading LM Studio vision models...)"]
     except Exception as e:
-        logging.debug(f"Failed to get cached LM Studio vision models for INPUT_TYPES: {e}")
+        logger.debug(f"Failed to get cached LM Studio vision models for INPUT_TYPES: {e}")
         return ["(LM Studio vision models unavailable)"]
 
 # Background task to populate cache without blocking startup
@@ -98,7 +101,7 @@ def populate_llm_cache_async():
     def _populate_cache():
         try:
             from . import llm_wrapper as llm
-            logging.info("Starting background LLM cache population...")
+            logger.info("Starting background LLM cache population...")
             
             # These calls will populate the cache asynchronously
             llm.get_ollama_models()
@@ -106,11 +109,11 @@ def populate_llm_cache_async():
             llm.get_ollama_vision_models()
             llm.get_lmstudio_vision_models()
             
-            logging.info("Background LLM cache population completed")
+            logger.info("Background LLM cache population completed")
         except Exception as e:
-            logging.error(f"Failed to populate LLM cache in background: {e}")
+            logger.error(f"Failed to populate LLM cache in background: {e}")
     
     # Start background thread
     thread = threading.Thread(target=_populate_cache, daemon=True)
     thread.start()
-    logging.debug("Started background thread for LLM cache population")
+    logger.debug("Started background thread for LLM cache population")

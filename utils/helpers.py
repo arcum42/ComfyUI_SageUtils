@@ -4,7 +4,6 @@ import pathlib
 import hashlib
 import datetime
 import torch
-import logging
 
 import folder_paths
 import comfy.utils
@@ -12,6 +11,11 @@ import comfy.utils
 from .model_cache import cache
 from .helpers_civitai import *
 from .constants import MODEL_FILE_EXTENSIONS
+from .logger import get_logger
+import logging
+
+logger = get_logger('helpers')
+logger.setLevel(logging.WARNING)
 
 def str_to_bool(value):
     if isinstance(value, bool):
@@ -75,7 +79,7 @@ def get_file_sha256(path, fast_hash_threshold=0):  # Full hashing by default
     Returns:
         First 10 characters of the SHA256 hash
     """
-    print(f"Calculating hash for {path}")
+    logger.debug(f"Calculating hash for {path}")
     import hashlib
     import os
     
@@ -84,13 +88,13 @@ def get_file_sha256(path, fast_hash_threshold=0):  # Full hashing by default
     
     try:
         file_size = os.path.getsize(path)
-        print(f"File size: {file_size / (1024*1024):.1f} MB")
+        logger.debug(f"File size: {file_size / (1024*1024):.1f} MB")
         
         m = hashlib.sha256()
         
         # For very large files, use a sampling approach for speed
         if fast_hash_threshold > 0 and file_size > fast_hash_threshold:
-            print(f"Large file detected, using fast hashing strategy")
+            logger.debug("Large file detected, using fast hashing strategy")
             
             # Sample strategy: hash beginning, middle, and end of file + file size + filename
             # This creates a unique signature that's very unlikely to collide for different files
@@ -127,13 +131,12 @@ def get_file_sha256(path, fast_hash_threshold=0):  # Full hashing by default
                     m.update(chunk)
                 
     except (OSError, IOError) as e:
-        print(f"Error reading file {path}: {e}")
+        logger.error(f"Error reading file {path}: {e}")
         raise
     
     full_hash = m.hexdigest()
-    print(f"Got full hash {full_hash}")
+    logger.debug(f"Calculated hash: {full_hash[:10]}")
     result = full_hash[:10]
-    print(f"Got hash {result}")
     return result
 
 
@@ -194,10 +197,10 @@ def get_file_modification_date(file_path):
         if file_path.exists():
             return datetime.datetime.fromtimestamp(file_path.stat().st_mtime)
         else:
-            print(f"File {file_path} does not exist.")
+            logger.warning(f"File {file_path} does not exist.")
             return datetime.datetime.now()
     except Exception as e:
-        print(f"Error getting modification date for {file_path}: {e}")
+        logger.error(f"Error getting modification date for {file_path}: {e}")
         return datetime.datetime.now()
 
 # Called *after* verifying the json pulled successfully.
@@ -235,14 +238,14 @@ def update_cache_from_civitai_json(file_path, json_data, timestamp=True):
         'hashes': hashes
     })
     if timestamp:
-        print("Updating timestamp.")
+        logger.info("Updating timestamp.")
         cache.update_last_used_by_path(file_path)
 
-    print("Successfully pulled metadata.")
+    logger.info("Successfully pulled metadata.")
 
 def update_cache_without_civitai_json(file_path, hash, timestamp=True):
     file_cache = cache.by_path(file_path)
-    print(f"Unable to find on civitai.")
+    logger.info("Unable to find metadata on CivitAI.")
     file_cache['civitai'] = "False"
     file_cache['civitai_failed_count'] = file_cache.get('civitai_failed_count', 0) + 1
     file_cache['hash'] = hash
@@ -250,7 +253,7 @@ def update_cache_without_civitai_json(file_path, hash, timestamp=True):
 
 def add_file_to_cache(file_path, hash=None):
     file_path = str(file_path)
-    print(f"Adding {file_path} to cache.")
+    logger.info(f"Adding {file_path} to cache.")
     if hash is None:
         hash = get_file_sha256(file_path)
     
@@ -266,20 +269,20 @@ def add_file_to_cache(file_path, hash=None):
             'lastUsed': datetime.datetime.now().isoformat()
         }
     
-    print(f"Adding {file_path} to cache with hash {hash}.")
+    logger.info(f"Added {file_path} to cache with hash {hash}.")
     return hash
 
 def recheck_hash(file_path, hash):
     new_hash = get_file_sha256(file_path)
     if new_hash != hash:
-        print(f"Hash mismatch. Using new hash.")
+        logger.info("Hash mismatch detected. Using new hash.")
         if file_path in cache.hash:
-            print(f"Updating cache for {file_path} with new hash {new_hash}.")
+            logger.info(f"Updating cache for {file_path} with new hash {new_hash}.")
             if new_hash not in cache.info:
                 if hash in cache.info:
                     cache.info[new_hash] = cache.info[hash]
         else:
-            print(f"File {file_path} not in cache. Adding with new hash {new_hash}.")
+            logger.info(f"File {file_path} not in cache. Adding with new hash {new_hash}.")
             add_file_to_cache(file_path, new_hash)
         hash = new_hash
     return hash
@@ -325,7 +328,7 @@ def pull_metadata(file_paths, timestamp = True, force_all = False, pbar = None, 
         file_paths = [file_paths]
     
     if not file_paths:
-        logging.warning("No file paths provided.")
+        logger.warning("No file paths provided.")
         return
     
     num_not_pulled = 0
@@ -334,7 +337,7 @@ def pull_metadata(file_paths, timestamp = True, force_all = False, pbar = None, 
         force = force_all
         hash = cache.hash.get(str(file_path), None)
         if hash is None:
-            logging.debug(f"Hash not found in cache for {file_path}. Adding to cache.")
+            logger.debug(f"Hash not found in cache for {file_path}. Adding to cache.")
             hash = add_file_to_cache(file_path)
 
         file_cache = cache.by_path(file_path)
@@ -344,7 +347,7 @@ def pull_metadata(file_paths, timestamp = True, force_all = False, pbar = None, 
         modified = get_file_modification_date(file_path)
         # If file was modified after last used, force metadata pull
         if last_used_date is not None and modified is not None and modified > last_used_date:
-            logging.info(f"File was modified after last used. Pulling metadata.")
+            logger.info(f"File was modified after last used. Pulling metadata.")
             force = True
         
         # Only skip pull if not forced and civitai is True and recently pulled
@@ -361,16 +364,16 @@ def pull_metadata(file_paths, timestamp = True, force_all = False, pbar = None, 
 
         if file_cache.get('blacklist'):
             if not force:
-                logging.warning(f"File {file_path} is blacklisted (previously not found). Skipping metadata pull.")
+                logger.info(f"File {file_path} is blacklisted (previously not found). Skipping metadata pull.")
             pull_json = False
 
         # If force, recalculate hash before any API call
         if force:
-            logging.debug(f"Force flag is set. Recalculating hash for {file_path}.")
+            logger.debug(f"Force flag is set. Recalculating hash for {file_path}.")
             hash = recheck_hash(file_path, hash)
 
         if pull_json or force:
-            logging.debug(f"Currently pulling metadata for {file_path}.")
+            logger.debug(f"Currently pulling metadata for {file_path}.")
             json = get_civitai_model_version_json_by_hash(hash)
 
             if 'error' in json:
@@ -383,18 +386,18 @@ def pull_metadata(file_paths, timestamp = True, force_all = False, pbar = None, 
                 # Try fallback with modelId if available
                 if dead_model is False:
                     if 'modelId' in file_cache:
-                        logging.debug(f"Using cached model id {file_cache.get('id', None)}")
+                        logger.debug(f"Using cached model id {file_cache.get('id', None)}")
                         json = get_civitai_model_version_json_by_id(file_cache['id'])
                         retried = True
                     else:
-                        logging.debug(f"No cached model id.")
+                        logger.debug(f"No cached model id.")
 
                 if 'error' in json:
                     if retried:
-                        logging.error(f"Error: {json['error']}")
+                        logger.error(f"Error: {json['error']}")
                     if dead_model:
                         file_cache['blacklist'] = True
-                    print(f"Unable to find on civitai.")
+                    logger.info("Unable to find metadata on CivitAI.")
                     file_cache['civitai'] = "False"
                     file_cache['civitai_failed_count'] = file_cache.get('civitai_failed_count', 0) + 1
                     update_cache_without_civitai_json(file_path, hash, timestamp=timestamp)
@@ -415,7 +418,7 @@ def pull_metadata(file_paths, timestamp = True, force_all = False, pbar = None, 
             pbar.update(1)
 
     if num_not_pulled > 0:
-        logging.info(f"Metadata pull complete. Skipped {num_not_pulled} files checked within the last {metadata_days_recheck} days.")
+        logger.info(f"Metadata pull complete. Skipped {num_not_pulled} files checked within the last {metadata_days_recheck} days.")
     cache.save()
 
 def lora_to_string(lora_name, model_weight, clip_weight):
@@ -444,17 +447,17 @@ def get_lora_hash(lora_name):
 def model_scan(the_path, force = False):
     the_paths = the_path
 
-    print(f"the_paths: {the_paths}")
+    logger.debug(f"Scanning paths: {the_paths}")
 
     model_list = []
     for dir in the_paths:
-        print(f"dir: {dir}")
+        logger.debug(f"Scanning directory: {dir}")
         result = list(p.resolve() for p in pathlib.Path(dir).glob("**/*") if p.suffix in MODEL_FILE_EXTENSIONS)
         model_list.extend(result)
 
     model_list = list(set(model_list))
     model_list = [str(x) for x in model_list]
-    print(f"Scanning {len(model_list)} models for metadata.")
+    logger.info(f"Starting metadata scan for {len(model_list)} models.")
     pbar = comfy.utils.ProgressBar(len(model_list))
     pull_metadata(model_list, force_all=force, pbar=pbar)
 
@@ -762,7 +765,7 @@ def get_save_file_path(filename_prefix: str = "text", filename_ext: str = "txt")
             f"  Target folder: {full_output_folder.resolve()}\n"
             f"  Output directory: {output_path.resolve()}"
         )
-        logging.error(error_msg)
+        logger.error(error_msg)
         raise ValueError(error_msg)
 
     # Ensure output directory exists
@@ -785,7 +788,7 @@ def get_save_file_path(filename_prefix: str = "text", filename_ext: str = "txt")
             counter = max(matching_counters) + 1
             
     except Exception as e:
-        logging.warning(f"Error finding existing files, using counter=1: {e}")
+        logger.warning(f"Error finding existing files, using counter=1: {e}")
         counter = 1
 
     # Generate final filename

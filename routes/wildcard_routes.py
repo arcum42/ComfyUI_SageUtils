@@ -3,10 +3,12 @@ Wildcard Routes Module
 Handles wildcard system and prompt generation.
 """
 
-import logging
+from ..utils.logger import get_logger
 from pathlib import Path
 from aiohttp import web
 from .base import route_error_handler, validate_json_body, success_response, error_response
+
+logger = get_logger('routes.wildcard')
 
 # Route list for documentation and registration tracking
 _route_list = []
@@ -69,7 +71,7 @@ def register_routes(routes_instance):
             return success_response(data={"path": str(sage_wildcard_path)})
             
         except Exception as e:
-            logging.error(f"Get wildcard path error: {e}")
+            logger.error(f"Get wildcard path error: {e}")
             return error_response(f"Failed to get wildcard path: {str(e)}", status=500)
 
     @routes_instance.get('/sage_utils/wildcard_files')
@@ -143,7 +145,7 @@ def register_routes(routes_instance):
             })
             
         except Exception as e:
-            logging.error(f"List wildcard files error: {e}")
+            logger.error(f"List wildcard files error: {e}")
             return error_response(f"Failed to list wildcard files: {str(e)}", status=500)
 
     @routes_instance.post('/sage_utils/generate_wildcard')
@@ -206,7 +208,7 @@ def register_routes(routes_instance):
             })
             
         except Exception as e:
-            logging.error(f"Generate wildcard prompt error: {e}")
+            logger.error(f"Generate wildcard prompt error: {e}")
             return error_response(f"Failed to generate wildcard prompt: {str(e)}", status=500)
 
     @routes_instance.get('/sage_utils/wildcard_file/{filename:.*}')
@@ -255,7 +257,7 @@ def register_routes(routes_instance):
                 )
             
         except Exception as e:
-            logging.error(f"Get wildcard file content error: {e}")
+            logger.error(f"Get wildcard file content error: {e}")
             return error_response(f"Failed to read wildcard file: {str(e)}", status=500)
 
     @routes_instance.post('/sage_utils/wildcard/file/save')
@@ -304,7 +306,7 @@ def register_routes(routes_instance):
             )
             
         except Exception as e:
-            logging.error(f"Save wildcard file error: {e}")
+            logger.error(f"Save wildcard file error: {e}")
             return error_response(f"Failed to save wildcard file: {str(e)}", status=500)
 
     # Track registered routes

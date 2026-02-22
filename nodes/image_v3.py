@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 from ..utils import load_image_from_path
+from ..utils.logger import get_logger
 
 import torch
 import torch.nn.functional as F
@@ -18,7 +19,6 @@ import json
 import folder_paths
 import os
 import datetime
-import logging
 import nodes
 
 import comfy
@@ -34,6 +34,8 @@ from ..utils.constants import QUICK_ASPECT_RATIOS, MAX_RESOLUTION
 from ..utils.helpers_image import calc_padding, resize_needed, image_manipulate
 
 from .custom_io_v3 import AdvAudioInfo
+
+logger = get_logger('nodes.image')
 
 class Sage_EmptyLatentImagePassthrough(io.ComfyNode):
     @classmethod
@@ -72,7 +74,7 @@ class Sage_EmptyLatentImagePassthrough(io.ComfyNode):
         elif type == "radiance":
             latent = torch.zeros([batch_size, 3, height, width], device=device)
         else:
-            logging.info(f"Unknown latent type '{type}', defaulting to 4_channel.")
+            logger.info(f"Unknown latent type '{type}', defaulting to 4_channel.")
             latent = torch.zeros([batch_size, 4, height // 8, width // 8], device=device)
 
         return io.NodeOutput({"samples":latent}, width, height)
@@ -273,7 +275,7 @@ class Sage_LoadImage(io.ComfyNode):
         image_name = kwargs.get("image_name", "")
         # Return True if valid, error string if not
         if not folder_paths.exists_annotated_filepath(image_name):
-            logging.info("Invalid image file: {}".format(image_name))
+            logger.info("Invalid image file: {}".format(image_name))
             return False
 
         return True
@@ -389,7 +391,7 @@ class Sage_GuessResolutionByRatio(io.ComfyNode):
                 closest_diff = diff
                 closest_ratio = (w, h)
         if closest_ratio is None:
-            logging.info("No close resolution found, defaulting to 1024x1024.")
+            logger.info("No close resolution found, defaulting to 1024x1024.")
             return io.NodeOutput(1024, 1024)
         width, height = closest_ratio
 
@@ -400,7 +402,7 @@ class Sage_GuessResolutionByRatio(io.ComfyNode):
         if landscape:
             width, height = height, width
 
-        logging.info(f"Guessed resolution: {width}x{height}")
+        logger.info(f"Guessed resolution: {width}x{height}")
 
         return io.NodeOutput(width, height)
 
@@ -431,7 +433,7 @@ class Sage_QuickResPicker(io.ComfyNode):
 
         if aspect_ratio not in QUICK_ASPECT_RATIOS:
             aspect_ratio = "1:1"  # Default to 1:1 if not found
-            logging.info(f"Aspect ratio '{aspect_ratio}' not found, defaulting to 1:1.")
+            logger.info(f"Aspect ratio '{aspect_ratio}' not found, defaulting to 1:1.")
 
         width, height = QUICK_ASPECT_RATIOS[aspect_ratio]
         if orientation == "Landscape":
@@ -661,7 +663,7 @@ class Sage_Ace15AudioEncode(io.ComfyNode):
         min_p = adv_audio_info.get("min_p", 0.000)
 
         if clip is None:
-            logging.info("No clip provided for Ace Step 1.5 encoding, returning empty conditioning.")
+            logger.info("No clip provided for Ace Step 1.5 encoding, returning empty conditioning.")
             return io.NodeOutput(None)
 
         tokens = clip.tokenize(tags, 

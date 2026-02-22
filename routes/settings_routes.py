@@ -4,9 +4,11 @@ Handles settings management endpoints.
 """
 
 import json
-import logging
+from ..utils.logger import get_logger
 from aiohttp import web
 from .base import route_error_handler, success_response, error_response
+
+logger = get_logger('routes.settings')
 
 # Route list for documentation and registration tracking
 _route_list = []
@@ -47,10 +49,10 @@ def register_routes(routes_instance):
             })
             
         except (TypeError, ValueError) as e:
-            logging.error(f"Settings JSON serialization error: {str(e)}")
+            logger.error(f"Settings JSON serialization error: {str(e)}")
             return error_response(f"JSON serialization error: {str(e)}", status=500)
         except Exception as e:
-            logging.error(f"Settings retrieval error: {str(e)}")
+            logger.error(f"Settings retrieval error: {str(e)}")
             return error_response(f"Failed to retrieve settings: {str(e)}", status=500)
 
     @routes_instance.post('/sage_utils/settings')
@@ -125,7 +127,7 @@ def register_routes(routes_instance):
                     )
                 
         except Exception as e:
-            logging.error(f"Settings update error: {str(e)}")
+            logger.error(f"Settings update error: {str(e)}")
             return error_response(f"Failed to update settings: {str(e)}", status=500)
 
     @routes_instance.post('/sage_utils/settings/reset')
@@ -143,7 +145,7 @@ def register_routes(routes_instance):
             return success_response(message="All settings reset to defaults")
             
         except Exception as e:
-            logging.error(f"Settings reset error: {str(e)}")
+            logger.error(f"Settings reset error: {str(e)}")
             return error_response(f"Failed to reset settings: {str(e)}", status=500)
 
     # Track registered routes

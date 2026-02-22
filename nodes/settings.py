@@ -7,6 +7,9 @@ This node provides a way to view and manage SageUtils settings from within Comfy
 from typing import Tuple
 import logging
 
+from ..utils.logger import get_logger
+logger = get_logger('nodes.settings')
+
 try:
     from ..utils.settings import get_settings, SETTINGS_SCHEMA
     ENHANCED_SETTINGS_AVAILABLE = True
@@ -59,7 +62,7 @@ class Sage_SettingsManager:
             
             if refresh:
                 settings.load_and_validate()
-                logging.info("Settings refreshed from files.")
+                logger.info("Settings refreshed from files.")
             
             # Build formatted output
             lines = []
@@ -125,7 +128,7 @@ class Sage_SettingsManager:
             
         except Exception as e:
             error_msg = f"Error getting settings information: {str(e)}"
-            logging.error(error_msg)
+            logger.error(error_msg)
             return (error_msg,)
 
 
@@ -184,10 +187,10 @@ class Sage_SettingsReset:
                 "✅ Reset completed successfully."
             )
             
-            logging.info("SageUtils settings reset to defaults via SettingsReset node.")
+            logger.info("SageUtils settings reset to defaults via SettingsReset node.")
             return (result,)
             
         except Exception as e:
             error_msg = f"Error resetting settings: {str(e)}"
-            logging.error(error_msg)
+            logger.error(error_msg)
             return (error_msg,)

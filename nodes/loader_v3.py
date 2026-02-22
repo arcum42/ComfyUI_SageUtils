@@ -33,7 +33,9 @@ from ..utils.helpers_graph import (
 
 from comfy_execution.graph_utils import GraphBuilder
 import folder_paths
-import logging
+from ..utils.logger import get_logger
+
+logger = get_logger('nodes.loader')
 
 # Sage_LoadModelFromInfo & Sage_UNETLoaderFromInfo implemented manually. Others need checking.
 
@@ -63,13 +65,13 @@ class Sage_LoadModelFromInfo(io.ComfyNode):
         graph = GraphBuilder()
         model_info = kwargs.get("model_info", None)
         model_shifts = kwargs.get("model_shifts", None)
-        print(f"model_info = {model_info}")
-        print(f"model_shifts = {model_shifts}")
+        logger.debug(f"model_info = {model_info}")
+        logger.debug(f"model_shifts = {model_shifts}")
         unet_out, clip_out, vae_out = create_model_loader_nodes(graph, model_info)
 
         if isinstance(model_shifts, tuple) or isinstance(model_shifts, list):
             model_shifts = model_shifts[0]
-        print(f"model_shifts (again) = {model_shifts}")
+        logger.debug(f"model_shifts (again) = {model_shifts}")
         if model_shifts is not None:
             exit_node, unet_out = create_model_shift_nodes(graph, unet_out, model_shifts)
 
@@ -105,7 +107,7 @@ class Sage_UNETLoaderFromInfo(io.ComfyNode):
             raise ValueError("Failed to create UNET node from unet_info.")
         else:
             pull_and_update_model_timestamp(unet_info.get("path",""), model_type="unet")
-        logging.info(f"Sage_UNETLoaderFromInfo: Loaded UNET from {unet_info.get('path','')}")
+        logger.warning(f"Sage_UNETLoaderFromInfo: Loaded UNET from {unet_info.get('path','')}")
 
         unet_out = unet_node.out(0) if unet_node else None
         return io.NodeOutput(unet_out, expand = graph.finalize())
@@ -139,7 +141,7 @@ class Sage_CLIPLoaderFromInfo(io.ComfyNode):
             raise ValueError("Failed to create CLIP node from clip_info.")
         else:
             pull_and_update_model_timestamp(clip_info.get("path",""), model_type="clip")
-        logging.info(f"Sage_CLIPLoaderFromInfo: Loaded CLIP from {clip_info.get('path','')}")
+        logger.warning(f"Sage_CLIPLoaderFromInfo: Loaded CLIP from {clip_info.get('path','')}")
         clip_out = clip_node.out(0) if clip_node else None
         return io.NodeOutput(clip_out, expand=graph.finalize())
 
@@ -173,7 +175,7 @@ class Sage_ChromaCLIPLoaderFromInfo(io.ComfyNode):
         else:
             pull_and_update_model_timestamp(clip_info.get("path",""), model_type="clip")
         chroma_node = graph.node("T5TokenizerOptions", clip=clip_node.out(0), min_padding=1, min_length=0)
-        logging.info(f"Sage_ChromaCLIPLoaderFromInfo: Loaded Chroma CLIP from {clip_info.get('path','')}")
+        logger.warning(f"Sage_ChromaCLIPLoaderFromInfo: Loaded Chroma CLIP from {clip_info.get('path','')}")
         return io.NodeOutput(chroma_node.out(0), expand=graph.finalize())
 
 class Sage_VAELoaderFromInfo(io.ComfyNode):
@@ -199,14 +201,14 @@ class Sage_VAELoaderFromInfo(io.ComfyNode):
         vae_info = kwargs.get("vae_info", None)
         if isinstance(vae_info, (list, tuple)):
             vae_info = vae_info[0]
-        print(f"Loader: vae_info = {vae_info}")
+        logger.debug(f"Loader: vae_info = {vae_info}")
         graph = GraphBuilder()
         vae_node = add_vae_node(graph, vae_info)
         if vae_node is None or vae_info is None:
             raise ValueError("Failed to create VAE node from vae_info.")
         else:
             pull_and_update_model_timestamp(vae_info.get("path",""), model_type="vae")
-        logging.info(f"Sage_VAELoaderFromInfo: Loaded VAE from {vae_info.get('path','')}")
+        logger.warning(f"Sage_VAELoaderFromInfo: Loaded VAE from {vae_info.get('path','')}")
         vae_out = vae_node.out(0) if vae_node else None
         return io.NodeOutput(vae_out, expand=graph.finalize())
 
@@ -252,8 +254,9 @@ class Sage_LoraStackLoader(io.ComfyNode):
             try:
                 lora_paths = [folder_paths.get_full_path_or_raise("loras", lora[0]) for lora in lora_stack]
                 pull_and_update_model_timestamp(lora_paths, model_type="lora")
+                logger.warning(f"Sage_LoraStackLoader: Loaded Loras from {lora_paths}")
             except Exception as e:
-                logging.warning(f"Timestamp update failed for loras: {e}")
+                logger.warning(f"Timestamp update failed for loras: {e}")
         keywords = get_lora_stack_keywords(lora_stack) if lora_stack is not None else ""
         return io.NodeOutput(exit_unet, exit_clip, lora_stack, keywords, expand=graph.finalize())
 
@@ -299,8 +302,9 @@ class Sage_ModelLoraStackLoader(io.ComfyNode):
             try:
                 lora_paths = [folder_paths.get_full_path_or_raise("loras", lora[0]) for lora in lora_stack]
                 pull_and_update_model_timestamp(lora_paths, model_type="lora")
+                logger.warning(f"Sage_LoraStackLoader: Loaded Loras from {lora_paths}") 
             except Exception as e:
-                logging.warning(f"Timestamp update failed for loras: {e}")
+                logger.warning(f"Timestamp update failed for loras: {e}")
         keywords = get_lora_stack_keywords(lora_stack) if lora_stack is not None else ""
         return io.NodeOutput(exit_unet, exit_clip, vae_out, lora_stack, keywords, expand=graph.finalize())
 
@@ -352,6 +356,7 @@ class Sage_UNETLoRALoader(io.ComfyNode):
         if lora_stack is not None and unet_out is not None:
             lora_paths = [folder_paths.get_full_path_or_raise("loras", lora[0]) for lora in lora_stack]
             pull_and_update_model_timestamp(lora_paths, model_type="lora")
+            logger.warning(f"Sage_UNETLoRALoader: Loading UNET from {unet_info.get('path','')} with Loras from {lora_paths}")
 
         keywords = get_lora_stack_keywords(lora_stack) if lora_stack is not None else ""
         return io.NodeOutput(exit_unet, lora_stack, keywords, expand=graph.finalize())

@@ -1,37 +1,35 @@
 import logging
 from .helpers_image import tensor_to_base64, tensor_to_temp_image
 from .llm_cache import get_llm_cache
+from .logger import get_logger, get_sageutils_logger
+
+logger = get_logger('llm')
+root_logger = get_sageutils_logger()
 
 # Initialization flags to track if services have been initialized
 _ollama_initialized = False
 _lmstudio_initialized = False
-
-logging.getLogger('httpx').setLevel(logging.WARNING)
 
 # Attempt to import ollama, if available. Set a flag if it is not available.
 try:
     import ollama
     OLLAMA_AVAILABLE = True
     ollama_client = None  # Will be initialized in init_ollama
-    ollama_logger = logging.getLogger('ollama')
-    ollama_logger.setLevel(logging.ERROR)
     
 
 except ImportError:
     ollama = None
     OLLAMA_AVAILABLE = False
     ollama_client = None
-    logging.warning("Ollama library not found.")
+    root_logger.warning("Ollama library not found.")
 
 try:
     import lmstudio as lms
     LMSTUDIO_AVAILABLE = True
-    lms_logger = logging.getLogger('lmstudio')
-    lms_logger.setLevel(logging.ERROR)
 except ImportError:
     lms = None
     LMSTUDIO_AVAILABLE = False
-    logging.warning("LM Studio library not found.")
+    root_logger.warning("LM Studio library not found.")
 
 
 def _is_ollama_enabled() -> bool:
@@ -88,7 +86,7 @@ def get_ollama_vision_models() -> list[str]:
             return ["(Ollama not available)"]
             
         try:
-            logging.debug("Fetching vision models from Ollama...")
+            logger.debug("Fetching vision models from Ollama...")
             response = ollama_client.list()
             models = []
             
@@ -96,12 +94,12 @@ def get_ollama_vision_models() -> list[str]:
                 if model.model is None:
                     continue
                 
-                logging.debug(f"Checking model: {model.model}")
+                logger.debug(f"Checking model: {model.model}")
                 
                 # Check cache first (this doesn't acquire lock in fetch function)
                 cached_vision = cache_instance.is_ollama_vision_model(model.model)
                 if cached_vision is not None:
-                    logging.debug(f"Model {model.model} cached as vision: {cached_vision}")
+                    logger.debug(f"Model {model.model} cached as vision: {cached_vision}")
                     if cached_vision:
                         models.append(model.model)
                     continue
@@ -118,18 +116,18 @@ def get_ollama_vision_models() -> list[str]:
                         if 'vision' in getattr(show_response, 'capabilities', []):
                             is_vision = True
                     except Exception as e:
-                        logging.debug(f"Failed to get capabilities for {model.model}: {e}")
+                        logger.debug(f"Failed to get capabilities for {model.model}: {e}")
                 
                 # Cache the result using unlocked method (we're already inside the lock)
-                logging.debug(f"Caching vision capability for {model.model}: {is_vision}")
+                logger.debug(f"Caching vision capability for {model.model}: {is_vision}")
                 cache_instance._set_ollama_vision_capability_unlocked(model.model, is_vision)
                 if is_vision:
                     models.append(model.model)
             
-            logging.debug(f"Found {len(models)} vision models.")
+            logger.debug(f"Found {len(models)} vision models.")
             return models
         except Exception as e:
-            logging.error(f"Error retrieving vision models from Ollama: {e}")
+            logger.error(f"Error retrieving vision models from Ollama: {e}")
             return []
     
     cache = get_llm_cache()
@@ -150,16 +148,16 @@ def get_ollama_models() -> list[str]:
             return ["(Ollama not available)"]
 
         try:
-            logging.info("Fetching models from Ollama...")
+            logger.info("Fetching models from Ollama...")
             response = ollama_client.list()
-            logging.info(f"Found {len(response.models)} models.")
+            logger.info(f"Found {len(response.models)} models.")
             return [model.model for model in response.models if model.model is not None]
         except Exception as e:
-            logging.error(f"Error retrieving models from Ollama: {e}")
+            logger.error(f"Error retrieving models from Ollama: {e}")
             return []
     
     cache = get_llm_cache()
-    logging.debug("Fetching Ollama models from cache...")
+    logger.debug("Fetching Ollama models from cache...")
     return cache.get_ollama_models(_fetch_ollama_models)
 
 
@@ -242,7 +240,7 @@ def ollama_generate_vision(model: str, prompt: str, keep_alive: float = 0.0, ima
             raise ValueError("No valid response received from the model.")
         return clean_response(response['response'])
     except Exception as e:
-        logging.error(f"Error generating response from Ollama vision model: {e}")
+        logger.error(f"Error generating response from Ollama vision model: {e}")
         return ""
 
 def ollama_generate(model: str, prompt: str, keep_alive: float = 0.0, options=None, system_prompt: str = "") -> str:
@@ -264,7 +262,7 @@ def ollama_generate(model: str, prompt: str, keep_alive: float = 0.0, options=No
             raise ValueError("No valid response received from the model.")
         return clean_response(response['response'])
     except Exception as e:
-        logging.error(f"Error generating response from Ollama: {e}")
+        logger.error(f"Error generating response from Ollama: {e}")
         return ""
 
 def ollama_generate_vision_refine( model: str, prompt: str, images=None, options=None, refine_model: str = "", refine_prompt: str = "", refine_options = None) -> tuple[str, str]:
@@ -304,7 +302,7 @@ def ollama_generate_vision_refine( model: str, prompt: str, images=None, options
         refined_response = clean_response(refined_response['response'])
         return (initial_response, refined_response)
     except Exception as e:
-        logging.error(f"Error generating response from Ollama vision model: {e}")
+        logger.error(f"Error generating response from Ollama vision model: {e}")
         return ("", "")
 
 def is_lmstudio_running() -> bool:
@@ -336,11 +334,11 @@ def get_lmstudio_models() -> list[str]:
             return []
             
         try:
-            logging.debug("Retrieving models from LM Studio...")
+            logger.debug("Retrieving models from LM Studio...")
             response = lms.list_downloaded_models("llm")
             return [model.model_key for model in response if hasattr(model, 'model_key') and model.model_key is not None]
         except Exception as e:
-            logging.error(f"Error retrieving models from LM Studio: {e}")
+            logger.error(f"Error retrieving models from LM Studio: {e}")
             return ["(LM Studio not available)"]
 
     cache = get_llm_cache()
@@ -361,7 +359,7 @@ def get_lmstudio_vision_models() -> list[str]:
             return ["(LM Studio not available)"]
 
         try:
-            logging.debug("Retrieving vision models from LM Studio...")
+            logger.debug("Retrieving vision models from LM Studio...")
             response = lms.list_downloaded_models("llm")
             models = []
             
@@ -386,7 +384,7 @@ def get_lmstudio_vision_models() -> list[str]:
             
             return models
         except Exception as e:
-            logging.error(f"Error retrieving vision models from LM Studio: {e}")
+            logger.error(f"Error retrieving vision models from LM Studio: {e}")
             return []
     
     cache = get_llm_cache()
@@ -424,7 +422,7 @@ def lmstudio_generate_vision(model: str, prompt: str, keep_alive: int = 0, image
             raise ValueError("No valid response received from the model.")
         return clean_response(response.content)
     except Exception as e:
-        logging.error(f"Error generating response from LM Studio vision model: {e}")
+        logger.error(f"Error generating response from LM Studio vision model: {e}")
         if lms_model is not None and keep_alive < 1:
             lms_model.unload()
         return ""
@@ -459,7 +457,7 @@ def lmstudio_generate(model: str, prompt: str, keep_alive: int = 0, options=None
             raise ValueError("No valid response received from the model.")
         return clean_response(response.content)
     except Exception as e:
-        logging.error(f"Error generating response from LM Studio: {e}")
+        logger.error(f"Error generating response from LM Studio: {e}")
         if lms_model is not None and keep_alive < 1:
             lms_model.unload()
         return ""
@@ -510,7 +508,7 @@ def lmstudio_generate_vision_refine(model: str, prompt: str, images=None, option
 
         return (initial_response, refined_response)
     except Exception as e:
-        logging.error(f"Error generating response from LM Studio model: {e}")
+        logger.error(f"Error generating response from LM Studio model: {e}")
         if lms_model is not None:
             lms_model.unload()
         return ("", "")
@@ -574,7 +572,7 @@ def ollama_generate_stream(model: str, prompt: str, keep_alive: float = 0.0, opt
         }
         
     except Exception as e:
-        logging.error(f"Error streaming response from Ollama: {e}")
+        logger.error(f"Error streaming response from Ollama: {e}")
         yield {
             "chunk": "",
             "done": True,
@@ -641,7 +639,7 @@ def ollama_generate_vision_stream(model: str, prompt: str, keep_alive: float = 0
         }
         
     except Exception as e:
-        logging.error(f"Error streaming response from Ollama vision model: {e}")
+        logger.error(f"Error streaming response from Ollama vision model: {e}")
         yield {
             "chunk": "",
             "done": True,
@@ -723,7 +721,7 @@ def lmstudio_generate_stream(model: str, prompt: str, keep_alive: int = 0, optio
         }
         
     except Exception as e:
-        logging.error(f"Error streaming response from LM Studio: {e}")
+        logger.error(f"Error streaming response from LM Studio: {e}")
         if lms_model is not None and keep_alive < 1:
             lms_model.unload()
         yield {
@@ -809,7 +807,7 @@ def lmstudio_generate_vision_stream(model: str, prompt: str, keep_alive: int = 0
         }
         
     except Exception as e:
-        logging.error(f"Error streaming response from LM Studio vision model: {e}")
+        logger.error(f"Error streaming response from LM Studio vision model: {e}")
         if lms_model is not None and keep_alive < 1:
             lms_model.unload()
         yield {
@@ -830,11 +828,11 @@ def init_ollama():
     
     # Check if Ollama is available and enabled
     if not OLLAMA_AVAILABLE:
-        logging.warning("Ollama library is not available.")
+        logger.warning("Ollama library is not available.")
         return False
         
     if not get_setting("enable_ollama", False):
-        logging.info("Ollama is disabled in settings.")
+        logger.info("Ollama is disabled in settings.")
         _ollama_initialized = False
         ollama_client = None
         return False
@@ -844,15 +842,15 @@ def init_ollama():
         custom_url = get_setting("custom_ollama_url", "http://localhost:11434")
         if custom_url and custom_url.strip():
             ollama_client = ollama.Client(host=custom_url)
-            logging.info(f"Ollama client initialized with custom URL.")
+            logger.info(f"Ollama client initialized with custom URL.")
         else:
             ollama_client = ollama.Client()
-            logging.info("Ollama client initialized with default URL")
+            logger.info("Ollama client initialized with default URL")
         
         _ollama_initialized = True
         return True
     except Exception as e:
-        logging.error(f"Failed to initialize Ollama client: {e}")
+        logger.error(f"Failed to initialize Ollama client: {e}")
         _ollama_initialized = False
         ollama_client = None
         return False
@@ -864,13 +862,13 @@ def init_lmstudio():
     from .settings import get_setting
     
     if not LMSTUDIO_AVAILABLE or lms is None:
-        logging.info("LM Studio is not available.")
+        logger.info("LM Studio is not available.")
         _lmstudio_initialized = False
         return False
     
     # Check if LM Studio is enabled
     if not get_setting("enable_lmstudio", False):
-        logging.info("LM Studio is disabled in settings.")
+        logger.info("LM Studio is disabled in settings.")
         _lmstudio_initialized = False
         return False
     
@@ -879,14 +877,14 @@ def init_lmstudio():
         
         if custom_url and custom_url.strip():
             lm_client = lms.get_default_client(custom_url)
-            logging.info(f"LM Studio client configured with custom URL.")
+            logger.info(f"LM Studio client configured with custom URL.")
         else:
-            logging.info("LM Studio using default configuration.")
+            logger.info("LM Studio using default configuration.")
         
         _lmstudio_initialized = True
         return True
     except Exception as e:
-        logging.error(f"Failed to configure LM Studio: {e}")
+        logger.error(f"Failed to configure LM Studio: {e}")
         _lmstudio_initialized = False
         return False
 
@@ -895,7 +893,7 @@ def init_llm():
     """Initialize LLM clients."""
     init_ollama()
     init_lmstudio()
-    logging.info("LLM clients initialized.")
+    logger.info("LLM clients initialized.")
 
 
 def ensure_ollama_initialized():
@@ -904,7 +902,7 @@ def ensure_ollama_initialized():
     from .settings import get_setting
     
     if get_setting("enable_ollama", False) and not _ollama_initialized:
-        logging.info("Ollama is enabled but not initialized, initializing now...")
+        logger.info("Ollama is enabled but not initialized, initializing now...")
         return init_ollama()
     return _ollama_initialized
 
@@ -915,7 +913,7 @@ def ensure_lmstudio_initialized():
     from .settings import get_setting
     
     if get_setting("enable_lmstudio", False) and not _lmstudio_initialized:
-        logging.info("LM Studio is enabled but not initialized, initializing now...")
+        logger.info("LM Studio is enabled but not initialized, initializing now...")
         return init_lmstudio()
     return _lmstudio_initialized
 

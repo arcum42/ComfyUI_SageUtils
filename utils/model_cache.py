@@ -15,6 +15,9 @@ from typing import Any, Dict, Optional, List
 
 from .path_manager import path_manager, file_manager
 
+from .logger import get_logger
+logger = get_logger('model.cache')
+
 def str_to_bool(value: Any) -> bool:
     if isinstance(value, bool):
         return value
@@ -84,9 +87,9 @@ class SageCache:
             try:
                 with self.backup_manifest_path.open('r') as f:
                     self.backup_manifest = json.load(f)
-                logging.debug(f"Loaded backup manifest with {len(self.backup_manifest)} entries")
+                logger.debug(f"Loaded backup manifest with {len(self.backup_manifest)} entries")
             except Exception as e:
-                logging.warning(f"Failed to load backup manifest: {e}")
+                logger.warning(f"Failed to load backup manifest: {e}")
                 self.backup_manifest = {}
         else:
             self.backup_manifest = {}
@@ -97,7 +100,7 @@ class SageCache:
             with self.backup_manifest_path.open('w') as f:
                 json.dump(self.backup_manifest, f, indent=2)
         except Exception as e:
-            logging.warning(f"Failed to save backup manifest: {e}")
+            logger.warning(f"Failed to save backup manifest: {e}")
     
     def _update_manifest_for_backup(self, backup_path: pathlib.Path, data: Any) -> None:
         """Update manifest entry for a backup file."""
@@ -115,11 +118,11 @@ class SageCache:
             }
             self._save_backup_manifest()
         except Exception as e:
-            logging.warning(f"Failed to update manifest for {backup_path.name}: {e}")
+            logger.warning(f"Failed to update manifest for {backup_path.name}: {e}")
 
     def prune_all_backups(self) -> None:
         """Prune all backup files for known prefixes on initialization, printing only once."""
-        logging.info("Pruning old backups for all known prefixes...")
+        logger.info("Pruning old backups for all known prefixes...")
         prefixes = [
             "sage_cache_info",
             "sage_cache_hash",
@@ -136,7 +139,7 @@ class SageCache:
         the_hash = self.hash.get(file_path, "")
         if the_hash:
             return self.info.get(the_hash, {})
-        logging.warning(f"No hash found for file: {file_path}")
+        logger.warning(f"No hash found for file: {file_path}")
         return {}
 
     def by_hash(self, file_hash: str) -> dict:
@@ -145,7 +148,7 @@ class SageCache:
 
     def convert_old_cache(self) -> None:
         """Convert old cache format to new format, splitting into hash and info."""
-        logging.info("Converting old cache format to new format.")
+        logger.info("Converting old cache format to new format.")
         for key, val in self.data.items():
             current_hash = val.get("hash", "")
             if current_hash:
@@ -208,9 +211,9 @@ class SageCache:
                     f.unlink(missing_ok=True)
                     if f.name in self.backup_manifest:
                         del self.backup_manifest[f.name]
-                    logging.debug(f"Deleted duplicate backup: {f.name}")
+                    logger.debug(f"Deleted duplicate backup: {f.name}")
             except Exception as e:
-                logging.warning(f"Error processing backup {f.name}: {e}")
+                logger.warning(f"Error processing backup {f.name}: {e}")
                 continue
         
         # Phase 2: Smart similarity deduplication
@@ -222,7 +225,7 @@ class SageCache:
                 entry_count = len(data) if isinstance(data, dict) else 0
                 remaining_backups.append((ctime, file_size, entry_count, f, file_hash))
             except Exception as e:
-                logging.warning(f"Error parsing backup {f.name}: {e}")
+                logger.warning(f"Error parsing backup {f.name}: {e}")
                 # Keep it anyway, use file size as proxy for entry count
                 remaining_backups.append((ctime, file_size, file_size, f, file_hash))
         
@@ -258,7 +261,7 @@ class SageCache:
                     f.unlink(missing_ok=True)
                     if f.name in self.backup_manifest:
                         del self.backup_manifest[f.name]
-                    logging.debug(f"Deleted similar backup: {f.name} ({entry_count} entries)")
+                    logger.debug(f"Deleted similar backup: {f.name} ({entry_count} entries)")
                 except Exception:
                     pass
         
@@ -272,7 +275,7 @@ class SageCache:
                 f.unlink(missing_ok=True)
                 if f.name in self.backup_manifest:
                     del self.backup_manifest[f.name]
-                logging.debug(f"Deleted old backup (exceeded limit): {f.name}")
+                logger.debug(f"Deleted old backup (exceeded limit): {f.name}")
             except Exception:
                 pass
         
@@ -288,7 +291,7 @@ class SageCache:
         try:
             self._atomic_write_json(path, data)
         except Exception as e:
-            logging.error(f"Unable to save {label} to {path}: {e}")
+            logger.error(f"Unable to save {label} to {path}: {e}")
             current_date = datetime.datetime.now().strftime("%Y-%m-%dT%H-%M-%S")
             if path.is_file():
                 error_prefix = f"{path.stem}-save-error"
@@ -296,9 +299,9 @@ class SageCache:
                 try:
                     with path.open("r") as src_file, error_backup_path.open("w") as dst_file:
                         dst_file.write(src_file.read())
-                    logging.info(f"Backed up problematic file to {error_backup_path}")
+                    logger.info(f"Backed up problematic file to {error_backup_path}")
                 except Exception as backup_e:
-                    logging.error(f"Unable to backup error file {path} to {error_backup_path}: {backup_e}")
+                    logger.error(f"Unable to backup error file {path} to {error_backup_path}: {backup_e}")
 
     def backup_json(self, backup_prefix: str, data: Any, current_date: str) -> None:
         """
@@ -324,7 +327,7 @@ class SageCache:
                 
             # Check for exact duplicate
             if manifest_entry.get("content_hash") == data_hash:
-                logging.debug(f"Skipping backup - exact duplicate exists: {backup_name}")
+                logger.debug(f"Skipping backup - exact duplicate exists: {backup_name}")
                 return
             
             # Check for similar backup (within 5% entry count)
@@ -339,7 +342,7 @@ class SageCache:
         
         # If similar backup exists with more data, skip creating new backup
         if similar_backup and similar_entry_count >= entry_count:
-            # logging.debug(f"Skipping backup - similar backup with more data exists: {similar_backup} ({similar_entry_count} vs {entry_count} entries)")
+            # logger.debug(f"Skipping backup - similar backup with more data exists: {similar_backup} ({similar_entry_count} vs {entry_count} entries)")
             return
         
         # If similar backup exists with less data, delete it and create new one
@@ -349,9 +352,9 @@ class SageCache:
                 if similar_path.exists():
                     similar_path.unlink()
                     del self.backup_manifest[similar_backup]
-                    # logging.info(f"Replaced smaller backup {similar_backup} ({similar_entry_count} entries) with larger backup ({entry_count} entries)")
+                    # logger.info(f"Replaced smaller backup {similar_backup} ({similar_entry_count} entries) with larger backup ({entry_count} entries)")
             except Exception as e:
-                logging.warning(f"Failed to delete smaller backup {similar_backup}: {e}")
+                logger.warning(f"Failed to delete smaller backup {similar_backup}: {e}")
         
         # Create new backup
         safe_date = current_date.replace(":", "-")
@@ -368,9 +371,9 @@ class SageCache:
             # Update manifest
             self._update_manifest_for_backup(backup_path, data)
             
-            logging.debug(f"Created backup: {backup_path.name} ({entry_count} entries)")
+            logger.debug(f"Created backup: {backup_path.name} ({entry_count} entries)")
         except Exception as e:
-            logging.error(f"Unable to backup {backup_prefix} to {backup_path}: {e}")
+            logger.error(f"Unable to backup {backup_prefix} to {backup_path}: {e}")
 
     def load_json_file(self, path: pathlib.Path, label: str, current_date: str) -> Optional[Any]:
         """Load data from a JSON file, backing up the file if an error occurs."""
@@ -379,7 +382,7 @@ class SageCache:
                 data = json.load(read_file)
             return data
         except Exception as e:
-            logging.error(f"Unable to load {label} from {path}: {e}")
+            logger.error(f"Unable to load {label} from {path}: {e}")
             if path.is_file():
                 safe_date = current_date.replace(":", "-")
                 error_prefix = f"{path.stem}-error"
@@ -387,9 +390,9 @@ class SageCache:
                 try:
                     with path.open("r") as src_file, error_backup_path.open("w") as dst_file:
                         dst_file.write(src_file.read())
-                    logging.info(f"Backed up problematic file to {error_backup_path}")
+                    logger.info(f"Backed up problematic file to {error_backup_path}")
                 except Exception as backup_e:
-                    logging.error(f"Unable to backup error file {path} to {error_backup_path}: {backup_e}")
+                    logger.error(f"Unable to backup error file {path} to {error_backup_path}: {backup_e}")
             return None
 
     def load(self) -> None:
@@ -463,7 +466,7 @@ class SageCache:
                     self.last_ollama_models = {}
                     self.ollama_mtime = None
         except Exception as e:
-            logging.error(f"Unable to load cache: {e}")
+            logger.error(f"Unable to load cache: {e}")
 
     def save(self) -> None:
         """Save cache to disk. Skipped if batch_mode is True."""
@@ -486,7 +489,7 @@ class SageCache:
             saved = True
         if saved:
             self.save_count_since_backup += 1
-            logging.info("Saved cache to disk.")
+            logger.info("Saved cache to disk.")
     
     def begin_batch(self) -> None:
         """
@@ -502,12 +505,12 @@ class SageCache:
                 cache.end_batch(force_save=True)
         """
         if self.batch_mode:
-            logging.warning("Batch mode already active - ignoring begin_batch() call")
+            logger.warning("Batch mode already active - ignoring begin_batch() call")
             return
         
         self.batch_mode = True
         self.batch_start_changes = self.pending_changes
-        logging.info("Batch mode started - saves and backups deferred")
+        logger.info("Batch mode started - saves and backups deferred")
     
     def end_batch(self, force_save: bool = True) -> None:
         """
@@ -517,7 +520,7 @@ class SageCache:
             force_save: If True, save even if no changes detected. Default True for safety.
         """
         if not self.batch_mode:
-            logging.warning("Batch mode not active - ignoring end_batch() call")
+            logger.warning("Batch mode not active - ignoring end_batch() call")
             return
         
         self.batch_mode = False
@@ -541,12 +544,12 @@ class SageCache:
             
             if saved:
                 self.save_count_since_backup += 1
-                logging.info(f"Batch save complete ({changes_in_batch} changes)")
+                logger.info(f"Batch save complete ({changes_in_batch} changes)")
                 
                 # Check if backup is needed
                 self._create_backups_if_needed()
         else:
-            logging.info("Batch mode ended with no changes - no save needed")
+            logger.info("Batch mode ended with no changes - no save needed")
     
     def _create_backups_if_needed(self) -> None:
         """
@@ -578,7 +581,7 @@ class SageCache:
             self.save_count_since_backup = 0
             self.last_backup_time = current_time
             
-            logging.info(f"Backups created (saves: {self.save_count_since_backup}, time: {time_since_backup:.0f}s)")
+            logger.info(f"Backups created (saves: {self.save_count_since_backup}, time: {time_since_backup:.0f}s)")
 
     def add_entry(self, file_path: str, file_hash: str) -> None:
         self.hash[file_path] = file_hash

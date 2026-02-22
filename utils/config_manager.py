@@ -1,7 +1,15 @@
 import json
 from typing import Any, Dict, Optional
+from .logger import get_logger
+
+logger = get_logger('utils.config_manager')
+
 
 from .path_manager import path_manager, file_manager
+
+from .logger import get_logger
+
+logger = get_logger('utils.config_manager')
 
 class ConfigManager:
     """Simplified config manager that uses centralized file management."""
@@ -31,7 +39,7 @@ class ConfigManager:
         
         success = file_manager.save_json_file(target_file, to_save, f"{self.config_name} config")
         if success:
-            print(f"Saved {self.config_name} to {target_file}.")
+            logger.debug(f"Saved {self.config_name} to {target_file}.")
         return success
 
 # Traditional config managers for styles and prompts
@@ -60,9 +68,9 @@ try:
     # Update the settings_manager.data to point to the enhanced settings
     settings_manager.data = sage_config
     
-    print("SageUtils: Settings system loaded successfully.")
+    logger.debug("SageUtils: Settings system loaded successfully.")
 except ImportError as e:
-    print(f"SageUtils: Warning - Could not load settings system: {e}. Falling back to basic settings management.")
+    logger.debug(f"SageUtils: Warning - Could not load settings system: {e}. Falling back to basic settings management.")
     # Fallback to basic config manager
     settings_manager = ConfigManager("config")
     sage_config = settings_manager.load()

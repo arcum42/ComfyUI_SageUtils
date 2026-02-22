@@ -23,6 +23,9 @@ from ..utils.helpers_graph import (
 from .custom_io_v3 import *
 
 import logging
+from ..utils.logger import get_logger
+
+logger = get_logger('nodes.selector')
 
 class Sage_CheckpointSelector(io.ComfyNode):
     @classmethod
@@ -90,7 +93,7 @@ class Sage_VAESelector(io.ComfyNode):
     def execute(cls, **kwargs):
         vae_name = kwargs.get("vae_name", "")
         info = mi.get_model_info_vae(vae_name)
-        print(f"VAE info: {info}")
+        logger.debug(f"VAE info: {info}")
         return io.NodeOutput(info)
 
 class Sage_CLIPSelector(io.ComfyNode):
@@ -250,10 +253,10 @@ class Sage_FlexibleCLIPSelector(io.ComfyNode):
     
     @classmethod
     def execute(cls, **kwargs):
-        print(f"KWARGS: {kwargs}")
+        logger.debug(f"KWARGS: {kwargs}")
         args = kwargs.get("num_of_clips", {})
         clip_names = [args.get(key, "") for key in sorted(args.keys()) if key.startswith("clip_name_")]
-        print(f"Clip names: {clip_names}")
+        logger.debug(f"Clip names: {clip_names}")
         clip_type = ""
         if len(clip_names) == 1:
             clip_type = args.get("clip_type", "chroma")
