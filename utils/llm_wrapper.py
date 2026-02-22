@@ -6,6 +6,8 @@ from .llm_cache import get_llm_cache
 _ollama_initialized = False
 _lmstudio_initialized = False
 
+logging.getLogger('httpx').setLevel(logging.WARNING)
+
 # Attempt to import ollama, if available. Set a flag if it is not available.
 try:
     import ollama
@@ -13,6 +15,7 @@ try:
     ollama_client = None  # Will be initialized in init_ollama
     ollama_logger = logging.getLogger('ollama')
     ollama_logger.setLevel(logging.ERROR)
+    
 
 except ImportError:
     ollama = None

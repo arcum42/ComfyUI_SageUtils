@@ -334,7 +334,7 @@ def pull_metadata(file_paths, timestamp = True, force_all = False, pbar = None, 
         force = force_all
         hash = cache.hash.get(str(file_path), None)
         if hash is None:
-            print(f"Hash not found in cache for {file_path}. Adding to cache.")
+            logging.debug(f"Hash not found in cache for {file_path}. Adding to cache.")
             hash = add_file_to_cache(file_path)
 
         file_cache = cache.by_path(file_path)
@@ -344,7 +344,7 @@ def pull_metadata(file_paths, timestamp = True, force_all = False, pbar = None, 
         modified = get_file_modification_date(file_path)
         # If file was modified after last used, force metadata pull
         if last_used_date is not None and modified is not None and modified > last_used_date:
-            print(f"File was modified after last used. Pulling metadata.")
+            logging.info(f"File was modified after last used. Pulling metadata.")
             force = True
         
         # Only skip pull if not forced and civitai is True and recently pulled
@@ -361,16 +361,16 @@ def pull_metadata(file_paths, timestamp = True, force_all = False, pbar = None, 
 
         if file_cache.get('blacklist'):
             if not force:
-                print(f"File {file_path} is blacklisted (previously not found). Skipping metadata pull.")
+                logging.warning(f"File {file_path} is blacklisted (previously not found). Skipping metadata pull.")
             pull_json = False
 
         # If force, recalculate hash before any API call
         if force:
-            print(f"Force flag is set. Recalculating hash for {file_path}.")
+            logging.debug(f"Force flag is set. Recalculating hash for {file_path}.")
             hash = recheck_hash(file_path, hash)
 
         if pull_json or force:
-            print(f"Currently pulling metadata for {file_path}.")
+            logging.debug(f"Currently pulling metadata for {file_path}.")
             json = get_civitai_model_version_json_by_hash(hash)
 
             if 'error' in json:
@@ -383,15 +383,15 @@ def pull_metadata(file_paths, timestamp = True, force_all = False, pbar = None, 
                 # Try fallback with modelId if available
                 if dead_model is False:
                     if 'modelId' in file_cache:
-                        print(f"Using cached model id {file_cache.get('id', None)}")
+                        logging.debug(f"Using cached model id {file_cache.get('id', None)}")
                         json = get_civitai_model_version_json_by_id(file_cache['id'])
                         retried = True
                     else:
-                        print(f"No cached model id.")
+                        logging.debug(f"No cached model id.")
 
                 if 'error' in json:
                     if retried:
-                        print(f"Error: {json['error']}")
+                        logging.error(f"Error: {json['error']}")
                     if dead_model:
                         file_cache['blacklist'] = True
                     print(f"Unable to find on civitai.")
@@ -669,14 +669,6 @@ def clean_keywords(keywords):
     return ', '.join(keywords)
 
 def clean_text(text):
-    # ret = ' '.join(filter(None, (x.strip() for x in text.split())))
-    # ret = ', '.join(filter(None, (x.strip() for x in ret.split(','))))
-    # ret = '\n'.join(filter(None, (x.strip() for x in ret.split('\n'))))
-    
-    
-    # # Strip whitespace from the start and end of text in parentheses
-    # ret = ' ('.join(part.strip() for part in ret.split('('))
-    # ret = ')'.join(part.strip() for part in ret.split(')'))
     ret = normalize_prompt_weights(text)
     return ret
 

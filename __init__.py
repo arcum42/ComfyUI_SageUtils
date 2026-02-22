@@ -1,8 +1,15 @@
 import os
-import logging
 
-# Uncomment the next line to enable debug logging
-# logging.basicConfig(level=logging.DEBUG)
+# Initialize SageUtils logging infrastructure
+from .utils.logger import configure_logging, configure_third_party_logging, get_logger
+
+# Configure SageUtils logger early in initialization
+# Uses SAGEUTILS_LOG_LEVEL environment variable or defaults to INFO
+configure_logging()
+configure_third_party_logging()
+
+# Get logger for this module
+logger = get_logger('init')
 
 SAGEUTILS_PRINT_TIMING = False  # Set to True to enable timing report
 # Print timing report if enabled via environment variable
@@ -55,8 +62,7 @@ try:
     from . import server_routes
     log_init("SERVER_ROUTES_LOADED")
 except Exception as e:
-    import logging
-    logging.warning(f"Warning: Failed to load SageUtils custom routes: {e}")
+    logger.warning(f"Failed to load SageUtils custom routes: {e}")
     log_init("SERVER_ROUTES_FAILED")
 
 WEB_DIRECTORY = "./js"
@@ -70,7 +76,7 @@ try:
     from .utils.performance_fix import populate_llm_cache_async
     populate_llm_cache_async()
 except Exception as e:
-    logging.warning(f"Warning: Failed to start background LLM cache population: {e}")
+    logger.warning(f"Failed to start background LLM cache population: {e}")
 
 # Print timing report if enabled.
 if SAGEUTILS_PRINT_TIMING:

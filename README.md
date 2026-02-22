@@ -205,6 +205,27 @@ Example workflows are available in the `example_workflows/` folder. In ComfyUI, 
 
 The sidebar tabs (LLM Chat, Prompt Builder) will appear automatically in the ComfyUI interface.
 
+## Logging Configuration
+
+SageUtils uses a dedicated logging system that is separate from ComfyUI's logging. You can control log verbosity using the `SAGEUTILS_LOG_LEVEL` environment variable:
+
+```bash
+# Show detailed debug information
+SAGEUTILS_LOG_LEVEL=DEBUG python main.py
+
+# Show only warnings and errors (quieter)
+SAGEUTILS_LOG_LEVEL=WARNING python main.py
+
+# Default level is INFO (normal operation messages)
+python main.py
+```
+
+Available log levels: `DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL`
+
+All SageUtils logs are prefixed with `[SageUtils.*]` for easy identification.
+
+For developers, see the [Logging Guide](docs/LOGGING.md) for information on using the logger in your code.
+
 ## Documentation
 
 - 📖 [LLM Tab Guide](docs/LLM_TAB_GUIDE.md) - Complete guide to using the LLM chat interface

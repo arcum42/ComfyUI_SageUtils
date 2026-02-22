@@ -212,10 +212,22 @@ class Sage_FlexibleCLIPSelector(io.ComfyNode):
                     io.Combo.Input(f"clip_name_{i}", display_name=f"clip_name_{i}", options=clip_list)
                 )
             # Add clip_type selector
-            default_type = "chroma" if num_clips == 1 else "sdxl"
-            clip_options[num_clips].append(
-                io.Combo.Input("clip_type", display_name="clip_type", options=mi.single_clip_loader_options, default=default_type)
-            )
+            options = None
+            
+            if num_clips == 1:
+                options = mi.single_clip_loader_options
+                default_type = "chroma"
+            elif num_clips == 2:
+                options = mi.dual_clip_loader_options
+                default_type = "sdxl"
+            else:
+                options = None
+                default_type = ""
+            
+            if options:
+                clip_options[num_clips].append(
+                    io.Combo.Input("clip_type", display_name="clip_type", options=options, default=default_type)
+                )
         
         # Build dynamic combo options
         dynamic_options = [
@@ -249,6 +261,78 @@ class Sage_FlexibleCLIPSelector(io.ComfyNode):
             clip_type = args.get("clip_type", "sdxl")
         info = mi.get_model_info_clips(clip_names, clip_type)
         return io.NodeOutput(info)
+
+class Sage_MultiSelectorFlexibleClip(io.ComfyNode):
+    @classmethod
+    def define_schema(cls):
+        unet_options = get_model_list("unet")
+        vae_options = get_model_list("vae")
+        clip_list = get_model_list("clip")
+        clip_options = {}
+        
+        # Build clip options for 1-4 clips
+        for num_clips in range(1, 5):
+            clip_options[num_clips] = []
+            for i in range(1, num_clips + 1):
+                clip_options[num_clips].append(
+                    io.Combo.Input(f"clip_name_{i}", display_name=f"clip_name_{i}", options=clip_list)
+                )
+            # Add clip_type selector
+            options = None
+            
+            if num_clips == 1:
+                options = mi.single_clip_loader_options
+                default_type = "chroma"
+            elif num_clips == 2:
+                options = mi.dual_clip_loader_options
+                default_type = "sdxl"
+            else:
+                options = None
+                default_type = ""
+            
+            if options:
+                clip_options[num_clips].append(
+                    io.Combo.Input("clip_type", display_name="clip_type", options=options, default=default_type)
+                )
+
+        # Build dynamic combo options
+        dynamic_options = [
+            io.DynamicCombo.Option(str(num), list(clip_options[num]))
+            for num in range(1, 5)
+        ]
+
+        return io.Schema(
+            node_id="Sage_MultiSelectorFlexibleClip",
+            display_name="Multi Selector Flexible CLIP",
+            description="Selects checkpoint, UNET, VAE, and a flexible number of CLIP models from lists.",
+            category="Sage Utils/selector",
+            inputs=[
+                io.Combo.Input("unet_name", display_name="unet_name", options=unet_options),
+                io.Combo.Input("weight_dtype", display_name="weight_dtype", options=mi.weight_dtype_options, default="default"),
+                io.DynamicCombo.Input("num_of_clips", display_name="num_of_clips", options=dynamic_options),
+                io.Combo.Input("vae_name", display_name="vae_name", options=vae_options),
+            ],
+            outputs=[
+                ModelInfo.Output("model_info", display_name="model_info")
+            ]
+        )
+
+    @classmethod
+    def execute(cls, **kwargs):
+        unet_name = kwargs.get("unet_name", "")
+        weight_dtype = kwargs.get("weight_dtype", "default")
+        vae_name = kwargs.get("vae_name", "")
+        
+        args = kwargs.get("num_of_clips", {})
+        clip_names = [args.get(key, "") for key in sorted(args.keys()) if key.startswith("clip_name_")]
+        clip_type = kwargs.get("clip_type", "chroma")
+
+        unet_info = mi.get_model_info_unet(unet_name, weight_dtype)
+        clip_info = mi.get_model_info_clips(clip_names, clip_type)
+        vae_info = mi.get_model_info_vae(vae_name)
+
+        ret = (unet_info[0], clip_info[0], vae_info[0])
+        return io.NodeOutput(ret,)
 
 class Sage_MultiSelectorSingleClip(io.ComfyNode):
     @classmethod
@@ -311,13 +395,12 @@ class Sage_MultiSelectorDoubleClip(io.ComfyNode):
     def execute(cls, **kwargs):
         unet_name = kwargs.get("unet_name", "")
         weight_dtype = kwargs.get("weight_dtype", "default")
-        clip_name_1 = kwargs.get("clip_name_1", "")
-        clip_name_2 = kwargs.get("clip_name_2", "")
+        clip_name = [kwargs.get("clip_name_1", ""), kwargs.get("clip_name_2", "")]
         clip_type = kwargs.get("clip_type", "sdxl")
         vae_name = kwargs.get("vae_name", "")
 
         unet_info = mi.get_model_info_unet(unet_name, weight_dtype)
-        clip_info = mi.get_model_info_clips([clip_name_1, clip_name_2], clip_type)
+        clip_info = mi.get_model_info_clips(clip_name, clip_type)
         vae_info = mi.get_model_info_vae(vae_name)
 
         ret = (unet_info[0], clip_info[0], vae_info[0])
@@ -349,13 +432,11 @@ class Sage_MultiSelectorTripleClip(io.ComfyNode):
     def execute(cls, **kwargs):
         unet_name = kwargs.get("unet_name", "")
         weight_dtype = kwargs.get("weight_dtype", "default")
-        clip_name_1 = kwargs.get("clip_name_1", "")
-        clip_name_2 = kwargs.get("clip_name_2", "")
-        clip_name_3 = kwargs.get("clip_name_3", "")
+        clip_name = [kwargs.get("clip_name_1", ""), kwargs.get("clip_name_2", ""), kwargs.get("clip_name_3", "")]
         vae_name = kwargs.get("vae_name", "")
 
         unet_info = mi.get_model_info_unet(unet_name, weight_dtype)
-        clip_info = mi.get_model_info_clips([clip_name_1, clip_name_2, clip_name_3])
+        clip_info = mi.get_model_info_clips(clip_name)
         vae_info = mi.get_model_info_vae(vae_name)
 
         ret = (unet_info[0], clip_info[0], vae_info[0])
@@ -388,14 +469,11 @@ class Sage_MultiSelectorQuadClip(io.ComfyNode):
     def execute(cls, **kwargs):
         unet_name = kwargs.get("unet_name", "")
         weight_dtype = kwargs.get("weight_dtype", "default")
-        clip_name_1 = kwargs.get("clip_name_1", "")
-        clip_name_2 = kwargs.get("clip_name_2", "")
-        clip_name_3 = kwargs.get("clip_name_3", "")
-        clip_name_4 = kwargs.get("clip_name_4", "")
+        clip_name = [kwargs.get("clip_name_1", ""), kwargs.get("clip_name_2", ""), kwargs.get("clip_name_3", ""), kwargs.get("clip_name_4", "")]
         vae_name = kwargs.get("vae_name", "")
 
         unet_info = mi.get_model_info_unet(unet_name, weight_dtype)
-        clip_info = mi.get_model_info_clips([clip_name_1, clip_name_2, clip_name_3, clip_name_4])
+        clip_info = mi.get_model_info_clips(clip_name)
         vae_info = mi.get_model_info_vae(vae_name)
 
         ret = (unet_info[0], clip_info[0], vae_info[0])
@@ -946,6 +1024,7 @@ SELECTOR_NODES = [
     Sage_MultiSelectorTripleClip,
     Sage_MultiSelectorQuadClip,
     Sage_FlexibleCLIPSelector,
+    Sage_MultiSelectorFlexibleClip,
     Sage_ModelShifts,
     Sage_ModelShiftOnly,
     Sage_FreeU2,
