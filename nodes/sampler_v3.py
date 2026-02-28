@@ -162,7 +162,8 @@ class Sage_AdvSamplerInfo(io.ComfyNode):
                 AdvSamplerInfo.Output("adv_sampler_info", display_name="adv_sampler_info")
             ]
         )
-    
+    # denoise=1.0, disable_noise=False, start_step=None, last_step=None, force_full_denoise=False):
+
     @classmethod
     def execute(cls, **kwargs):
         add_noise = kwargs.get("add_noise", True)
@@ -177,6 +178,35 @@ class Sage_AdvSamplerInfo(io.ComfyNode):
             "return_with_leftover_noise": return_with_leftover_noise
         }
         return io.NodeOutput(info)
+
+def call_ksampler(info, model, positive, negative, latent_image, denoise):
+    seed = info.get("seed", 0)
+    steps = info.get("steps", 20)
+    cfg = info.get("cfg", 5.5)
+    sampler_name = info.get("sampler", "dpmpp_2m")
+    scheduler = info.get("scheduler", "beta")
+    
+    # defaults should be disable_noise=False, start_step=None, last_step=None, force_full_denoise=False
+    disable_noise = not info.get("add_noise", True)
+    start_step = info.get("start_at_step", None)
+    last_step = info.get("end_at_step", None)
+    force_full_denoise = not info.get("return_with_leftover_noise", True)
+
+    return ksampler(
+        model=model,
+        seed=seed,
+        steps=steps,
+        cfg=cfg,
+        sampler_name=sampler_name,
+        scheduler=scheduler,
+        positive=positive,
+        negative=negative,
+        latent=latent_image,
+        denoise=denoise,
+        disable_noise=disable_noise,
+        start_step=start_step,
+        last_step=last_step, 
+        force_full_denoise=force_full_denoise) # pyright: ignore[reportCallIssue]
 
 class Sage_KSampler(io.ComfyNode):
     """Uses the provided model, positive and negative conditioning to denoise the latent image."""
@@ -204,45 +234,16 @@ class Sage_KSampler(io.ComfyNode):
     @classmethod
     def execute(cls, **kwargs):
         model = kwargs.get("model", None)
-        sampler_info = kwargs.get("sampler_info", {})
-
-        seed = sampler_info.get("seed", 0)
-        steps = sampler_info.get("steps", 20)
-        cfg = sampler_info.get("cfg", 5.5)
-        sampler_name = sampler_info.get("sampler", "dpmpp_2m")
-        scheduler = sampler_info.get("scheduler", "beta")
-
         positive = kwargs.get("positive", None)
         negative = kwargs.get("negative", None)
         latent_image = kwargs.get("latent_image", None)
         denoise = kwargs.get("denoise", 1.0)
-        advanced_info = kwargs.get("advanced_info", None)
-        disable_noise = False
-        start_step = None
-        last_step = None
-        force_full_denoise = False
-        
-        if advanced_info is not None:
-            disable_noise = not advanced_info.get("add_noise", True)
-            start_step = advanced_info.get("start_at_step", None)
-            last_step = advanced_info.get("end_at_step", None)
-            force_full_denoise = not advanced_info.get("return_with_leftover_noise", True)
 
-        return ksampler(
-            model=model,
-            seed=seed,
-            steps=steps,
-            cfg=cfg,
-            sampler_name=sampler_name,
-            scheduler=scheduler,
-            positive=positive,
-            negative=negative,
-            latent=latent_image,
-            denoise=denoise,
-            disable_noise=disable_noise,
-            start_step=start_step,
-            last_step=last_step, 
-            force_full_denoise=force_full_denoise) # pyright: ignore[reportCallIssue]
+        sampler_info = kwargs.get("sampler_info", {})
+        advanced_info = kwargs.get("advanced_info", None)
+        info = sampler_info | (advanced_info or {})
+
+        return call_ksampler(info, model, positive, negative, latent_image, denoise)
 
 class Sage_KSamplerTiledDecoder(io.ComfyNode):
     """KSampler with tiled VAE decoder."""
@@ -273,48 +274,19 @@ class Sage_KSamplerTiledDecoder(io.ComfyNode):
     @classmethod
     def execute(cls, **kwargs):
         model = kwargs.get("model", None)
-        sampler_info = kwargs.get("sampler_info", {})
-
-        seed = sampler_info.get("seed", 0)
-        steps = sampler_info.get("steps", 20)
-        cfg = sampler_info.get("cfg", 5.5)
-        sampler_name = sampler_info.get("sampler", "dpmpp_2m")
-        scheduler = sampler_info.get("scheduler", "beta")
-
         positive = kwargs.get("positive", None)
         negative = kwargs.get("negative", None)
         latent_image = kwargs.get("latent_image", None)
         vae = kwargs.get("vae", None)
         denoise = kwargs.get("denoise", 1.0)
+
+        sampler_info = kwargs.get("sampler_info", {})
         advanced_info = kwargs.get("advanced_info", None)
+        info = sampler_info | (advanced_info or {})
+
         tiling_info = kwargs.get("tiling_info", None)
 
-        disable_noise = False
-        start_step = None
-        last_step = None
-        force_full_denoise = False
-        
-        if advanced_info is not None:
-            disable_noise = not advanced_info.get("add_noise", True)
-            start_step = advanced_info.get("start_at_step", None)
-            last_step = advanced_info.get("end_at_step", None)
-            force_full_denoise = not advanced_info.get("return_with_leftover_noise", True)
-
-        latent_result = ksampler(
-            model=model,
-            seed=seed,
-            steps=steps,
-            cfg=cfg,
-            sampler_name=sampler_name,
-            scheduler=scheduler,
-            positive=positive,
-            negative=negative,
-            latent=latent_image,
-            denoise=denoise,
-            disable_noise=disable_noise,
-            start_step=start_step,
-            last_step=last_step, 
-            force_full_denoise=force_full_denoise) # pyright: ignore[reportCallIssue]
+        latent_result = call_ksampler(info, model, positive, negative, latent_image, denoise)
 
         if tiling_info is not None:
             images = vae_decode_tiled(
@@ -329,7 +301,6 @@ class Sage_KSamplerTiledDecoder(io.ComfyNode):
 
         return io.NodeOutput(latent_result[0], images)
 
-# Not really tested, as I haven't done anything audio for a while.
 class Sage_KSamplerAudioDecoder(io.ComfyNode):
     """KSampler with audio VAE decoder."""
     @classmethod
@@ -358,48 +329,21 @@ class Sage_KSamplerAudioDecoder(io.ComfyNode):
     @classmethod
     def execute(cls, **kwargs):
         model = kwargs.get("model", None)
-        sampler_info = kwargs.get("sampler_info", {})
-
-        seed = sampler_info.get("seed", 0)
-        steps = sampler_info.get("steps", 20)
-        cfg = sampler_info.get("cfg", 5.5)
-        sampler_name = sampler_info.get("sampler", "dpmpp_2m")
-        scheduler = sampler_info.get("scheduler", "beta")
 
         positive = kwargs.get("positive", None)
         negative = kwargs.get("negative", None)
         latent_audio = kwargs.get("latent_audio", None)
         vae = kwargs.get("vae", None)
         denoise = kwargs.get("denoise", 1.0)
+
+        sampler_info = kwargs.get("sampler_info", {})
         advanced_info = kwargs.get("advanced_info", None)
-        disable_noise = False
-        start_step = None
-        last_step = None
-        force_full_denoise = False
+        info = sampler_info | (advanced_info or {})
+
         if vae is None:
             raise ValueError("VAE model is required for audio decoding.")
-        
-        if advanced_info is not None:
-            disable_noise = not advanced_info.get("add_noise", True)
-            start_step = advanced_info.get("start_at_step", None)
-            last_step = advanced_info.get("end_at_step", None)
-            force_full_denoise = not advanced_info.get("return_with_leftover_noise", True)
 
-        latent_result = ksampler(
-            model=model,
-            seed=seed,
-            steps=steps,
-            cfg=cfg,
-            sampler_name=sampler_name,
-            scheduler=scheduler,
-            positive=positive,
-            negative=negative,
-            latent=latent_audio,
-            denoise=denoise,
-            disable_noise=disable_noise,
-            start_step=start_step,
-            last_step=last_step, 
-            force_full_denoise=force_full_denoise) # pyright: ignore[reportCallIssue]
+        latent_result = call_ksampler(info, model, positive, negative, latent_audio, denoise)
 
         audio = vae.decode(latent_result[0]["samples"]).movedim(-1, 1)
 

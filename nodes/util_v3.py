@@ -536,6 +536,29 @@ class Sage_CheckLorasForUpdates(io.ComfyNode):
 
         return io.NodeOutput(lora_stack, str(lora_list), str(lora_url_list))
 
+class Sage_PercentageToFloat(io.ComfyNode):
+    """Convert a percentage value to a float between 0 and 1."""
+    @classmethod
+    def define_schema(cls):
+        return io.Schema(
+            node_id="Sage_PercentageToFloat",
+            display_name="Percentage To Float",
+            description="Convert a percentage value (0-100) to a float (0.0-1.0).",
+            category="Sage Utils/util",
+            inputs=[
+                io.Float.Input("percentage", display_name="percentage", default=0.0, min=0.0, max=100.0)
+            ],
+            outputs=[
+                io.Float.Output("float_value", display_name="float_value")
+            ]
+        )
+
+    @classmethod
+    def execute(cls, **kwargs):
+        percentage = kwargs.get("percentage", 0.0)
+        float_value = percentage / 100.0
+        return io.NodeOutput(float_value)
+
 # ============================================================================
 
 UTIL_NODES = [
@@ -546,5 +569,6 @@ UTIL_NODES = [
     Sage_LoraStackInfoDisplay,
     Sage_MultiModelPicker,
     Sage_CollectKeywordsFromLoraStack,
-    Sage_CheckLorasForUpdates
+    Sage_CheckLorasForUpdates,
+    Sage_PercentageToFloat
 ]
