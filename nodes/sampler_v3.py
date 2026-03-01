@@ -1,6 +1,5 @@
 # Sampler v3 nodes.
 # This is for any nodes involving samplers, currently KSampler and the sampler info nodes.
-# See ref_docs/v3_migration.md for info on migrating to v3 nodes.
 
 from __future__ import annotations
 from comfy.comfy_types.node_typing import IO
@@ -81,7 +80,8 @@ class Sage_SamplerInfo(io.ComfyNode):
                 io.Int.Input("steps", display_name="steps", default=20, min=1, max=10000),
                 io.Float.Input("cfg", display_name="cfg", default=5.5, min=0.0, max=100.0, step=0.1, round=0.01),
                 io.Combo.Input("sampler_name", display_name="sampler_name", options=list(SAMPLERS), default="dpmpp_2m"),
-                io.Combo.Input("scheduler", display_name="scheduler", options=list(SCHEDULERS), default="beta")
+                io.Combo.Input("scheduler", display_name="scheduler", options=list(SCHEDULERS), default="beta"),
+                AdvSamplerInfo.Input("advanced_info", display_name="advanced_info", optional=True)
             ],
             outputs=[
                 SamplerInfo.Output("sampler_info", display_name="sampler_info")
@@ -95,6 +95,7 @@ class Sage_SamplerInfo(io.ComfyNode):
         cfg = kwargs.get("cfg", 5.5)
         sampler_name = kwargs.get("sampler_name", "dpmpp_2m")
         scheduler = kwargs.get("scheduler", "beta")
+        adv_info = kwargs.get("advanced_info", None)
         
         info = {
             "seed": seed,
@@ -103,6 +104,8 @@ class Sage_SamplerInfo(io.ComfyNode):
             "sampler": sampler_name,
             "scheduler": scheduler
         }
+        if adv_info is not None:
+            info |= adv_info
         return io.NodeOutput(info)
 
 
@@ -119,7 +122,8 @@ class Sage_SamplerInfoNoCFG(io.ComfyNode):
                 io.Int.Input("seed", display_name="seed", default=0, min=0, max=0xffffffffffffffff),
                 io.Int.Input("steps", display_name="steps", default=20, min=1, max=10000),
                 io.Combo.Input("sampler_name", display_name="sampler_name", options=list(SAMPLERS), default="dpmpp_2m"),
-                io.Combo.Input("scheduler", display_name="scheduler", options=list(SCHEDULERS), default="beta")
+                io.Combo.Input("scheduler", display_name="scheduler", options=list(SCHEDULERS), default="beta"),
+                AdvSamplerInfo.Input("advanced_info", display_name="advanced_info", optional=True)
             ],
             outputs=[
                 SamplerInfo.Output("sampler_info", display_name="sampler_info")
@@ -133,6 +137,7 @@ class Sage_SamplerInfoNoCFG(io.ComfyNode):
         cfg = 1.0
         sampler_name = kwargs.get("sampler_name", "dpmpp_2m")
         scheduler = kwargs.get("scheduler", "beta")
+        adv_info = kwargs.get("advanced_info", None)
         
         info = {
             "seed": seed,
@@ -141,6 +146,8 @@ class Sage_SamplerInfoNoCFG(io.ComfyNode):
             "sampler": sampler_name,
             "scheduler": scheduler
         }
+        if adv_info is not None:
+            info |= adv_info
         return io.NodeOutput(info)
     
 class Sage_AdvSamplerInfo(io.ComfyNode):
@@ -162,7 +169,6 @@ class Sage_AdvSamplerInfo(io.ComfyNode):
                 AdvSamplerInfo.Output("adv_sampler_info", display_name="adv_sampler_info")
             ]
         )
-    # denoise=1.0, disable_noise=False, start_step=None, last_step=None, force_full_denoise=False):
 
     @classmethod
     def execute(cls, **kwargs):
@@ -191,6 +197,7 @@ def call_ksampler(info, model, positive, negative, latent_image, denoise):
     start_step = info.get("start_at_step", None)
     last_step = info.get("end_at_step", None)
     force_full_denoise = not info.get("return_with_leftover_noise", True)
+    print(f"Calling KSampler with seed={seed}, steps={steps}, cfg={cfg}, sampler_name={sampler_name}, scheduler={scheduler}, disable_noise={disable_noise}, start_step={start_step}, last_step={last_step}, force_full_denoise={force_full_denoise}")
 
     return ksampler(
         model=model,
@@ -223,8 +230,7 @@ class Sage_KSampler(io.ComfyNode):
                 io.Conditioning.Input("positive", display_name="positive"),
                 io.Conditioning.Input("negative", display_name="negative"),
                 io.Latent.Input("latent_image", display_name="latent_image"),
-                io.Float.Input("denoise", display_name="denoise", default=1.0, min=0.0, max=1.0, step=0.01),
-                AdvSamplerInfo.Input("advanced_info", display_name="advanced_info", optional=True)
+                io.Float.Input("denoise", display_name="denoise", default=1.0, min=0.0, max=1.0, step=0.01)
             ],
             outputs=[
                 io.Latent.Output("latent", display_name="latent")
@@ -239,9 +245,7 @@ class Sage_KSampler(io.ComfyNode):
         latent_image = kwargs.get("latent_image", None)
         denoise = kwargs.get("denoise", 1.0)
 
-        sampler_info = kwargs.get("sampler_info", {})
-        advanced_info = kwargs.get("advanced_info", None)
-        info = sampler_info | (advanced_info or {})
+        info = kwargs.get("sampler_info", {})
 
         return call_ksampler(info, model, positive, negative, latent_image, denoise)
 
@@ -262,8 +266,7 @@ class Sage_KSamplerTiledDecoder(io.ComfyNode):
                 io.Latent.Input("latent_image", display_name="latent_image"),
                 io.Vae.Input("vae", display_name="vae"),
                 io.Float.Input("denoise", display_name="denoise", default=1.0, min=0.0, max=1.0, step=0.01),
-                TilingInfo.Input("tiling_info", display_name="tiling_info", optional=True),
-                AdvSamplerInfo.Input("advanced_info", display_name="advanced_info", optional=True)
+                TilingInfo.Input("tiling_info", display_name="tiling_info", optional=True)
             ],
             outputs=[
                 io.Latent.Output("latent", display_name="latent"),
@@ -280,9 +283,7 @@ class Sage_KSamplerTiledDecoder(io.ComfyNode):
         vae = kwargs.get("vae", None)
         denoise = kwargs.get("denoise", 1.0)
 
-        sampler_info = kwargs.get("sampler_info", {})
-        advanced_info = kwargs.get("advanced_info", None)
-        info = sampler_info | (advanced_info or {})
+        info = kwargs.get("sampler_info", {})
 
         tiling_info = kwargs.get("tiling_info", None)
 
@@ -317,8 +318,7 @@ class Sage_KSamplerAudioDecoder(io.ComfyNode):
                 io.Conditioning.Input("negative", display_name="negative"),
                 io.Latent.Input("latent_audio", display_name="latent_audio"),
                 io.Vae.Input("vae", display_name="vae"),
-                io.Float.Input("denoise", display_name="denoise", default=1.0, min=0.0, max=1.0, step=0.01),
-                AdvSamplerInfo.Input("advanced_info", display_name="advanced_info", optional=True)
+                io.Float.Input("denoise", display_name="denoise", default=1.0, min=0.0, max=1.0, step=0.01)
             ],
             outputs=[
                 io.Latent.Output("latent", display_name="latent"),
@@ -336,9 +336,7 @@ class Sage_KSamplerAudioDecoder(io.ComfyNode):
         vae = kwargs.get("vae", None)
         denoise = kwargs.get("denoise", 1.0)
 
-        sampler_info = kwargs.get("sampler_info", {})
-        advanced_info = kwargs.get("advanced_info", None)
-        info = sampler_info | (advanced_info or {})
+        info = kwargs.get("sampler_info", {})
 
         if vae is None:
             raise ValueError("VAE model is required for audio decoding.")

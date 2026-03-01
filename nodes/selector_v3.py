@@ -1,6 +1,5 @@
 # Selector v3 nodes.
 # This contains nodes for selecting model information without loading the actual models.
-# See ref_docs/v3_migration.md for info on migrating to v3 nodes.
 
 from __future__ import annotations
 from comfy.comfy_types.node_typing import ComfyNodeABC, InputTypeDict, IO
