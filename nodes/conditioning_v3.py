@@ -169,6 +169,55 @@ class Sage_DualCLIPTextEncodeLumina2(io.ComfyNode):
         neg_cond = condition_text(clip, neg)
         return io.NodeOutput(pos_cond, neg_cond, pos or "", neg or "")
 
+class Sage_SingleCLIPTextImageEncode(io.ComfyNode):
+    @classmethod
+    def define_schema(cls):
+        return io.Schema(
+            node_id="Sage_SingleCLIPTextImageEncode",
+            display_name="Single CLIP Text Image Encode",
+            description="Turns a prompt into conditioning, and passes through the prompt. Zeros any input not hooked up.",
+            category="Sage Utils/clip",
+            enable_expand=True,
+            inputs=[
+                io.Clip.Input(id="clip", display_name="clip", tooltip="The CLIP model used for encoding the text."),
+                io.Boolean.Input(id="clean", display_name="clean", default=True, tooltip="Clean up the text, getting rid of extra spaces, commas, etc."),
+                io.Vae.Input(id="vae", display_name="vae", optional=True, tooltip="The VAE model used for encoding the reference image."),
+                io.String.Input(id="text", display_name="text", optional=True, force_input=True, multiline=True, dynamic_prompts=True, tooltip="The prompt's text."),
+                io.Image.Input(id="image", display_name="image", optional=True, tooltip="The prompt's image.")
+            ],
+            outputs=[
+                io.Conditioning.Output(id="conditioning", display_name="conditioning", tooltip="A conditioning containing the embedded text used to guide the diffusion model."),
+                io.String.Output(id="text", display_name="text", tooltip="The positive prompt's text.")
+            ]
+        )
+
+    @classmethod
+    def execute(cls, **kwargs) -> NodeOutput:
+        clip = kwargs.get("clip")
+        clean = kwargs.get("clean", True)
+        vae = kwargs.get("vae", None)
+        text = kwargs.get("text", "")
+        image = kwargs.get("image", None)
+
+        if isinstance(clip, tuple):
+            clip = clip[0]
+
+        text = clean_if_needed(text, clean)
+
+        graph = GraphBuilder()
+
+        clip_node = graph.node("TextEncodeQwenImageEdit", clip=clip, prompt=text, vae=vae, image=image)
+        cond = clip_node.out(0)
+        if text is None and image is None:
+            text = ""
+            pos_zero_node = graph.node("ConditioningZeroOut", conditioning=clip_node.out(0))
+            cond = pos_zero_node.out(0)
+
+        return io.NodeOutput(
+            cond, text or "",
+            expand=graph.finalize()
+        )
+
 class Sage_DualCLIPTextEncodeQwen(io.ComfyNode):
     @classmethod
     def define_schema(cls):
@@ -236,5 +285,6 @@ CONDITIONING_NODES = [
     Sage_SingleCLIPTextEncode,
     Sage_DualCLIPTextEncode,
     Sage_DualCLIPTextEncodeLumina2,
-    Sage_DualCLIPTextEncodeQwen
+    Sage_DualCLIPTextEncodeQwen,
+    Sage_SingleCLIPTextImageEncode
 ]
