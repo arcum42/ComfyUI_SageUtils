@@ -2,6 +2,9 @@
 # This contains nodes for selecting model information without loading the actual models.
 
 from __future__ import annotations
+from dataclasses import dataclass
+from typing import Any
+
 from comfy_api.latest import io
 
 from ..utils import model_info as mi
@@ -19,6 +22,20 @@ logger = get_logger('nodes.selector')
 # ============================================================================
 # Helper Functions
 # ============================================================================
+
+@dataclass(frozen=True)
+class ModelInfoBundle:
+    """Container for the common (UNET, CLIP, VAE) model info tuple."""
+    unet_info: Any
+    clip_info: Any
+    vae_info: Any
+
+    @classmethod
+    def from_loaded_infos(cls, unet_info: Any, clip_info: Any, vae_info: Any) -> "ModelInfoBundle":
+        return cls(unet_info[0], clip_info[0], vae_info[0])
+
+    def as_tuple(self) -> tuple[Any, Any, Any]:
+        return (self.unet_info, self.clip_info, self.vae_info)
 
 def _build_clip_options(num_clips: int, clip_list: list) -> list:
     """Build clip input options for flexible CLIP selectors."""
@@ -68,6 +85,11 @@ def _get_default_clip_type(num_clips: int) -> str:
     return ""
 
 
+def _extract_with_defaults(values: dict, defaults: dict[str, Any]) -> dict[str, Any]:
+    """Return a dict populated from values with fallback defaults."""
+    return {key: values.get(key, default) for key, default in defaults.items()}
+
+
 def _execute_multi_selector(kwargs: dict, num_clips: int) -> tuple:
     """Execute logic for multi-selector nodes with variable number of clips."""
     unet_name = kwargs.get("unet_name", "")
@@ -86,7 +108,7 @@ def _execute_multi_selector(kwargs: dict, num_clips: int) -> tuple:
     clip_info = mi.get_model_info_clips(clip_names, clip_type)
     vae_info = mi.get_model_info_vae(vae_name)
     
-    return (unet_info[0], clip_info[0], vae_info[0])
+    return ModelInfoBundle.from_loaded_infos(unet_info, clip_info, vae_info).as_tuple()
 
 
 # ============================================================================
@@ -183,7 +205,7 @@ class Sage_CLIPSelector(io.ComfyNode):
     @classmethod
     def execute(cls, **kwargs):
         clip_name = kwargs.get("clip_name", "")
-        clip_type = kwargs.get("clip_type", "chroma")
+        clip_type = kwargs.get("clip_type", _get_default_clip_type(1))
         info = mi.get_model_info_clips([clip_name], clip_type)
         return io.NodeOutput(info)
 
@@ -208,10 +230,9 @@ class Sage_DualCLIPSelector(io.ComfyNode):
     
     @classmethod
     def execute(cls, **kwargs):
-        clip_name_1 = kwargs.get("clip_name_1", "")
-        clip_name_2 = kwargs.get("clip_name_2", "")
-        clip_type = kwargs.get("clip_type", "sdxl")
-        info = mi.get_model_info_clips([clip_name_1, clip_name_2], clip_type)
+        clip_names = _extract_clip_names(kwargs)
+        clip_type = kwargs.get("clip_type", _get_default_clip_type(2))
+        info = mi.get_model_info_clips(clip_names, clip_type)
         return io.NodeOutput(info)
 
 class Sage_TripleCLIPSelector(io.ComfyNode):
@@ -235,7 +256,7 @@ class Sage_TripleCLIPSelector(io.ComfyNode):
 
     @classmethod
     def execute(cls, **kwargs):
-        clip_names = [kwargs.get(key, "") for key in sorted(kwargs.keys()) if key.startswith("clip_name_")]
+        clip_names = _extract_clip_names(kwargs)
         info = mi.get_model_info_clips(clip_names)
         return io.NodeOutput(info)
 
@@ -261,11 +282,8 @@ class Sage_QuadCLIPSelector(io.ComfyNode):
 
     @classmethod
     def execute(cls, **kwargs):
-        clip_name_1 = kwargs.get("clip_name_1", "")
-        clip_name_2 = kwargs.get("clip_name_2", "")
-        clip_name_3 = kwargs.get("clip_name_3", "")
-        clip_name_4 = kwargs.get("clip_name_4", "")
-        info = mi.get_model_info_clips([clip_name_1, clip_name_2, clip_name_3, clip_name_4])
+        clip_names = _extract_clip_names(kwargs)
+        info = mi.get_model_info_clips(clip_names)
         return io.NodeOutput(info)
 
 class Sage_FlexibleCLIPSelector(io.ComfyNode):
@@ -345,8 +363,8 @@ class Sage_MultiSelectorFlexibleClip(io.ComfyNode):
         clip_info = mi.get_model_info_clips(clip_names, clip_type)
         vae_info = mi.get_model_info_vae(vae_name)
 
-        ret = (unet_info[0], clip_info[0], vae_info[0])
-        return io.NodeOutput(ret,)
+        bundle = ModelInfoBundle.from_loaded_infos(unet_info, clip_info, vae_info)
+        return io.NodeOutput(bundle.as_tuple(),)
 
 class Sage_MultiSelectorSingleClip(io.ComfyNode):
     @classmethod
@@ -492,45 +510,39 @@ class Sage_ModelShifts(io.ComfyNode):
     @classmethod
     def execute(cls, **kwargs):
         main_settings = kwargs.get("settings", {})
-        shift_flag = False
-        freeu_flag = False
-        
-        if main_settings.get("settings", "") == "Shift Only":
-            shift_flag = True
-        elif main_settings.get("settings", "") == "FreeU v2 Only":
-            freeu_flag = True
-        elif main_settings.get("settings", "") == "Shift and FreeU v2":
-            shift_flag = True
-            freeu_flag = True
 
-        if shift_flag:
-            shift_type = main_settings.get("shift_type", "None")
-            shift = main_settings.get("shift", 3.0)
-        else:
-            shift_type = "None"
-            shift = 0
-        if freeu_flag:
-            freeu_v2 = main_settings.get("freeu_v2", False)
-            b1 = main_settings.get("b1", 1.3)
-            b2 = main_settings.get("b2", 1.4)
-            s1 = main_settings.get("s1", 0.9)
-            s2 = main_settings.get("s2", 0.2)
-        else:
-            freeu_v2 = False
-            b1 = 1.3
-            b2 = 1.4
-            s1 = 0.9
-            s2 = 0.2
-            
-        return io.NodeOutput({
-            "shift_type": shift_type,
-            "shift": shift,
-            "freeu_v2": freeu_v2,
-            "b1": b1,
-            "b2": b2,
-            "s1": s1,
-            "s2": s2
-        })
+        mode_flags = {
+            "Shift Only": (True, False),
+            "FreeU v2 Only": (False, True),
+            "Shift and FreeU v2": (True, True),
+        }
+        shift_enabled, freeu_enabled = mode_flags.get(main_settings.get("settings", ""), (False, False))
+
+        shift_defaults = {
+            "shift_type": "None",
+            "shift": 3.0,
+        }
+        freeu_defaults = {
+            "freeu_v2": False,
+            "b1": 1.3,
+            "b2": 1.4,
+            "s1": 0.9,
+            "s2": 0.2,
+        }
+
+        shift_values = _extract_with_defaults(main_settings, shift_defaults)
+        freeu_values = _extract_with_defaults(main_settings, freeu_defaults)
+
+        model_shifts = {
+            "shift_type": shift_values["shift_type"] if shift_enabled else "None",
+            "shift": shift_values["shift"] if shift_enabled else 0,
+            "freeu_v2": freeu_values["freeu_v2"] if freeu_enabled else False,
+            "b1": freeu_values["b1"],
+            "b2": freeu_values["b2"],
+            "s1": freeu_values["s1"],
+            "s2": freeu_values["s2"],
+        }
+        return io.NodeOutput(model_shifts)
 
 class Sage_ModelShiftOnly(io.ComfyNode):
     """Get the model shifts to apply to the model."""
@@ -552,9 +564,10 @@ class Sage_ModelShiftOnly(io.ComfyNode):
     
     @classmethod
     def execute(cls, **kwargs):
+        values = _extract_with_defaults(kwargs, {"shift_type": "None", "shift": 3.0})
         return io.NodeOutput({
-            "shift_type": kwargs.get("shift_type", "None"),
-            "shift": kwargs.get("shift", 3.0),
+            "shift_type": values["shift_type"],
+            "shift": values["shift"],
             "freeu_v2": False,
             "b1": 1.3,
             "b2": 1.4,
@@ -585,14 +598,21 @@ class Sage_FreeU2(io.ComfyNode):
     
     @classmethod
     def execute(cls, **kwargs):
+        values = _extract_with_defaults(kwargs, {
+            "freeu_v2": False,
+            "b1": 1.3,
+            "b2": 1.4,
+            "s1": 0.9,
+            "s2": 0.2,
+        })
         return io.NodeOutput({
             "shift_type": "None",
             "shift": 0,
-            "freeu_v2": kwargs.get("freeu_v2", False),
-            "b1": kwargs.get("b1", 1.3),
-            "b2": kwargs.get("b2", 1.4),
-            "s1": kwargs.get("s1", 0.9),
-            "s2": kwargs.get("s2", 0.2)
+            "freeu_v2": values["freeu_v2"],
+            "b1": values["b1"],
+            "b2": values["b2"],
+            "s1": values["s1"],
+            "s2": values["s2"]
         })
 
 class Sage_TilingInfo(io.ComfyNode):
@@ -617,18 +637,13 @@ class Sage_TilingInfo(io.ComfyNode):
     
     @classmethod
     def execute(cls, **kwargs):
-        tile_size = kwargs.get("tile_size", 512)
-        overlap = kwargs.get("overlap", 64)
-        temporal_size = kwargs.get("temporal_size", 64)
-        temporal_overlap = kwargs.get("temporal_overlap", 8)
-        
-        t_info = {
-            "tile_size": tile_size,
-            "overlap": overlap,
-            "temporal_size": temporal_size,
-            "temporal_overlap": temporal_overlap
-        }
-        return io.NodeOutput(t_info)
+        values = _extract_with_defaults(kwargs, {
+            "tile_size": 512,
+            "overlap": 64,
+            "temporal_size": 64,
+            "temporal_overlap": 8,
+        })
+        return io.NodeOutput(values)
 
 class Sage_UnetClipVaeToModelInfo(io.ComfyNode):
     """Convert UNET, CLIP, and VAE model info to a single model info output."""
