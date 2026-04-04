@@ -4,7 +4,7 @@
 from __future__ import annotations
 from comfy.comfy_types.node_typing import IO
 from comfy_api.latest import io
-from typing import Any, Callable, cast
+from typing import Any, Callable, Iterable, cast
 
 import torch
 import nodes as comfy_nodes
@@ -13,6 +13,8 @@ from comfy.samplers import KSampler
 ksampler = cast(Callable[..., Any], getattr(comfy_nodes, "common_ksampler"))
 SAMPLERS = KSampler.SAMPLERS
 SCHEDULERS = KSampler.SCHEDULERS
+SAMPLER_OPTIONS = list(cast(Iterable[str], SAMPLERS))
+SCHEDULER_OPTIONS = list(cast(Iterable[str], SCHEDULERS))
 
 from ..utils.common import (
     vae_decode,
@@ -31,7 +33,7 @@ class Sage_SamplerSelector(io.ComfyNode):
             description="Selects a sampler for use in the pipeline.",
             category="Sage Utils/sampler",
             inputs=[
-                io.Combo.Input("sampler_name", display_name="sampler_name", options=list(SAMPLERS), default="dpmpp_2m")
+                io.Combo.Input("sampler_name", display_name="sampler_name", options=SAMPLER_OPTIONS, default="dpmpp_2m")
             ],
             outputs=[
                 io.String.Output("sampler", display_name="sampler")
@@ -54,7 +56,7 @@ class Sage_SchedulerSelector(io.ComfyNode):
             category="Sage Utils/sampler",
             inputs=[
                 io.Int.Input("steps", display_name="steps", default=20, min=1, max=10000),
-                io.Combo.Input("scheduler_name", display_name="scheduler_name", options=list(SCHEDULERS), default="beta")
+                io.Combo.Input("scheduler_name", display_name="scheduler_name", options=SCHEDULER_OPTIONS, default="beta")
             ],
             outputs=[
                 io.Int.Output("out_steps", display_name="steps"),
@@ -81,8 +83,8 @@ class Sage_SamplerInfo(io.ComfyNode):
                 io.Int.Input("seed", display_name="seed", default=0, min=0, max=0xffffffffffffffff),
                 io.Int.Input("steps", display_name="steps", default=20, min=1, max=10000),
                 io.Float.Input("cfg", display_name="cfg", default=5.5, min=0.0, max=100.0, step=0.1, round=0.01),
-                io.Combo.Input("sampler_name", display_name="sampler_name", options=list(SAMPLERS), default="dpmpp_2m"),
-                io.Combo.Input("scheduler", display_name="scheduler", options=list(SCHEDULERS), default="beta"),
+                io.Combo.Input("sampler_name", display_name="sampler_name", options=SAMPLER_OPTIONS, default="dpmpp_2m"),
+                io.Combo.Input("scheduler", display_name="scheduler", options=SCHEDULER_OPTIONS, default="beta"),
                 AdvSamplerInfo.Input("advanced_info", display_name="advanced_info", optional=True)
             ],
             outputs=[
@@ -123,8 +125,8 @@ class Sage_SamplerInfoNoCFG(io.ComfyNode):
             inputs=[
                 io.Int.Input("seed", display_name="seed", default=0, min=0, max=0xffffffffffffffff),
                 io.Int.Input("steps", display_name="steps", default=20, min=1, max=10000),
-                io.Combo.Input("sampler_name", display_name="sampler_name", options=list(SAMPLERS), default="dpmpp_2m"),
-                io.Combo.Input("scheduler", display_name="scheduler", options=list(SCHEDULERS), default="beta"),
+                io.Combo.Input("sampler_name", display_name="sampler_name", options=SAMPLER_OPTIONS, default="dpmpp_2m"),
+                io.Combo.Input("scheduler", display_name="scheduler", options=SCHEDULER_OPTIONS, default="beta"),
                 AdvSamplerInfo.Input("advanced_info", display_name="advanced_info", optional=True)
             ],
             outputs=[

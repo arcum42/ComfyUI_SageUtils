@@ -1,7 +1,10 @@
 import logging
-from .helpers_image import tensor_to_base64, tensor_to_temp_image
+from typing import Any, cast
+from .helpers_image import tensor_to_temp_image
 from .llm_cache import get_llm_cache
 from .logger import get_logger, get_sageutils_logger
+from .llm.common import clean_response, build_response_parameters, build_lmstudio_config
+from .llm.providers.settings import is_ollama_enabled, is_lmstudio_enabled
 
 logger = get_logger('llm')
 root_logger = get_sageutils_logger()
@@ -32,104 +35,60 @@ except ImportError:
     root_logger.warning("LM Studio library not found.")
 
 
-def _is_ollama_enabled() -> bool:
-    """Check if Ollama is enabled in settings."""
-    try:
-        from .settings import is_feature_enabled
-        return is_feature_enabled('enable_ollama')
-    except ImportError:
-        # Fallback to config manager
-        try:
-            from . import config_manager
-            config = config_manager.settings_manager.data or {}
-            return config.get('enable_ollama', True)
-        except:
-            return True  # Default to enabled if no config available
-
-
-def _is_lmstudio_enabled() -> bool:
-    """Check if LM Studio is enabled in settings."""
-    try:
-        from .settings import is_feature_enabled
-        return is_feature_enabled('enable_lmstudio')
-    except ImportError:
-        # Fallback to config manager
-        try:
-            from . import config_manager
-            config = config_manager.settings_manager.data or {}
-            return config.get('enable_lmstudio', True)
-        except:
-            return True  # Default to enabled if no config available
-
-def clean_response(response: str) -> str:
-    """Clean the response from the model by removing unnecessary tags."""
-    if not response:
-        return ""
-    response = response.strip()
-    for tag in ("</end_of_turn>", ">end_of_turn>"):
-        if response.endswith(tag):
-            response = response[: -len(tag)].strip()
-    return response
-
-
 def get_ollama_vision_models() -> list[str]:
     """Retrieve a list of available vision models from Ollama."""
     if not OLLAMA_AVAILABLE or ollama_client is None:
         return ["(Ollama not available)"]
     
-    if not _is_ollama_enabled():
+    if not is_ollama_enabled():
         return ["(Ollama not available)"]
     
     def _fetch_ollama_vision_models(cache_instance):
         """Internal function to fetch vision models from Ollama."""
         if ollama_client is None:
             return ["(Ollama not available)"]
-            
+
         try:
             logger.debug("Fetching vision models from Ollama...")
             response = ollama_client.list()
             models = []
-            
+
             for model in response.models:
                 if model.model is None:
                     continue
-                
+
                 logger.debug(f"Checking model: {model.model}")
-                
-                # Check cache first (this doesn't acquire lock in fetch function)
+
                 cached_vision = cache_instance.is_ollama_vision_model(model.model)
                 if cached_vision is not None:
                     logger.debug(f"Model {model.model} cached as vision: {cached_vision}")
                     if cached_vision:
                         models.append(model.model)
                     continue
-                
-                # Determine vision capability
+
                 is_vision = False
                 capabilities = getattr(model, 'capabilities', None)
                 if capabilities and 'vision' in capabilities:
                     is_vision = True
                 elif not capabilities:
-                    # Fallback to detailed model info
                     try:
                         show_response = ollama_client.show(str(model.model))
                         if 'vision' in getattr(show_response, 'capabilities', []):
                             is_vision = True
                     except Exception as e:
                         logger.debug(f"Failed to get capabilities for {model.model}: {e}")
-                
-                # Cache the result using unlocked method (we're already inside the lock)
+
                 logger.debug(f"Caching vision capability for {model.model}: {is_vision}")
                 cache_instance._set_ollama_vision_capability_unlocked(model.model, is_vision)
                 if is_vision:
                     models.append(model.model)
-            
+
             logger.debug(f"Found {len(models)} vision models.")
             return models
         except Exception as e:
             logger.error(f"Error retrieving vision models from Ollama: {e}")
             return []
-    
+
     cache = get_llm_cache()
     return cache.get_ollama_vision_models(_fetch_ollama_vision_models)
 
@@ -138,8 +97,8 @@ def get_ollama_models() -> list[str]:
     """Retrieve a list of available models from Ollama."""
     if not OLLAMA_AVAILABLE or ollama_client is None:
         return ["(Ollama not available)"]
-    
-    if not _is_ollama_enabled():
+
+    if not is_ollama_enabled():
         return ["(Ollama not available)"]
 
     def _fetch_ollama_models():
@@ -159,64 +118,6 @@ def get_ollama_models() -> list[str]:
     cache = get_llm_cache()
     logger.debug("Fetching Ollama models from cache...")
     return cache.get_ollama_models(_fetch_ollama_models)
-
-
-def build_response_parameters(model: str, prompt: str, keep_alive: float, options: dict, system_prompt: str, images: None) -> dict:
-    """Build the response parameters for Ollama generate call."""
-    response_parameters = {
-        "model": model,
-        "prompt": prompt,
-        "stream": False,
-        "keep_alive": keep_alive
-    }
-    if system_prompt and isinstance(system_prompt, str) and system_prompt != "":
-        response_parameters["system"] = system_prompt
-    
-    if options and isinstance(options, dict):
-        response_parameters["options"] = options
-
-    if images is not None:
-        response_parameters["images"] = tensor_to_base64(images)
-
-    return response_parameters
-
-def build_lmstudio_config(options: dict) -> dict:
-    """
-    Build LM Studio configuration from options dictionary.
-    Maps frontend options to LM Studio API parameters.
-    
-    Args:
-        options: Dictionary of generation options
-        
-    Returns:
-        Configuration dict for LM Studio's respond() method
-    """
-    config = {}
-    
-    if not options:
-        return config
-    
-    # Map common options
-    if 'temperature' in options:
-        config['temperature'] = options['temperature']
-    
-    if 'max_tokens' in options:
-        config['maxTokens'] = options['max_tokens']
-    
-    # Map LM Studio-specific options
-    if 'topKSampling' in options:
-        config['topKSampling'] = options['topKSampling']
-    
-    if 'topPSampling' in options:
-        config['topPSampling'] = options['topPSampling']
-    
-    if 'repeatPenalty' in options:
-        config['repeatPenalty'] = options['repeatPenalty']
-    
-    if 'minPSampling' in options:
-        config['minPSampling'] = options['minPSampling']
-    
-    return config
 
 
 def ollama_generate_vision(model: str, prompt: str, keep_alive: float = 0.0, images=None, options=None, system_prompt: str = "") -> str:
@@ -310,7 +211,7 @@ def is_lmstudio_running() -> bool:
     if not LMSTUDIO_AVAILABLE or lms is None:
         return False
     
-    if not _is_lmstudio_enabled():
+    if not is_lmstudio_enabled():
         return False
     
     try:
@@ -325,7 +226,7 @@ def get_lmstudio_models() -> list[str]:
     if not LMSTUDIO_AVAILABLE or lms is None:
         return ["(LM Studio not available)"]
     
-    if not _is_lmstudio_enabled():
+    if not is_lmstudio_enabled():
         return ["(LM Studio not available)"]
     
     def _fetch_lmstudio_models():
@@ -350,7 +251,7 @@ def get_lmstudio_vision_models() -> list[str]:
     if not LMSTUDIO_AVAILABLE or lms is None:
         return ["(LM Studio not available)"]
 
-    if not _is_lmstudio_enabled():
+    if not is_lmstudio_enabled():
         return ["(LM Studio not available)"]
 
     def _fetch_lmstudio_vision_models(cache_instance):
@@ -684,7 +585,7 @@ def lmstudio_generate_stream(model: str, prompt: str, keep_alive: int = 0, optio
             raise ValueError(f"Failed to load model: {model}")
         
         # Build config from options
-        config = build_lmstudio_config(options or {})
+        config = cast(Any, build_lmstudio_config(options or {}))
         
         chat = lms.Chat()
         chat.add_user_message(prompt)
@@ -766,7 +667,7 @@ def lmstudio_generate_vision_stream(model: str, prompt: str, keep_alive: int = 0
             lms_model = lms.llm(model)
         
         # Build config from options
-        config = build_lmstudio_config(options or {})
+        config = cast(Any, build_lmstudio_config(options or {}))
         
         chat = lms.Chat()
         if not input_images:
@@ -830,6 +731,9 @@ def init_ollama():
     if not OLLAMA_AVAILABLE:
         logger.warning("Ollama library is not available.")
         return False
+    if ollama is None:
+        logger.warning("Ollama module is not loaded.")
+        return False
         
     if not get_setting("enable_ollama", False):
         logger.info("Ollama is disabled in settings.")
@@ -840,6 +744,7 @@ def init_ollama():
     try:
         # Get custom URL or use default
         custom_url = get_setting("custom_ollama_url", "http://localhost:11434")
+        assert ollama is not None
         if custom_url and custom_url.strip():
             ollama_client = ollama.Client(host=custom_url)
             logger.info(f"Ollama client initialized with custom URL.")
