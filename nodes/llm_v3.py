@@ -12,17 +12,22 @@
 # See ref_docs/v3_migration.md for info on migrating to v3 nodes.
 
 from __future__ import annotations
-from comfy.comfy_types.node_typing import ComfyNodeABC, InputTypeDict, IO
-from comfy_api.latest import io, ComfyExtension
-from typing_extensions import override
+from importlib.util import find_spec
+
+from comfy_api.latest import io
 
 from comfy_api.latest._io import NodeOutput, Schema
-from comfy_execution.graph_utils import GraphBuilder
-from comfy_execution.graph import ExecutionBlocker
 
 # Import specific utilities instead of wildcard import
 from ..utils.config_manager import llm_prompts
-from ..utils import llm_wrapper as llm
+from ..utils.llm_wrapper import (
+    lmstudio_generate,
+    lmstudio_generate_vision,
+    lmstudio_generate_vision_refine,
+    ollama_generate,
+    ollama_generate_vision,
+    ollama_generate_vision_refine,
+)
 from ..utils.performance_fix import (
     get_cached_ollama_models_for_input_types,
     get_cached_lmstudio_models_for_input_types,
@@ -31,11 +36,7 @@ from ..utils.performance_fix import (
 )
 
 # Attempt to import ollama, if available. Set a flag if it is not available.
-try:
-    import ollama
-    OLLAMA_AVAILABLE = True
-except ImportError:
-    OLLAMA_AVAILABLE = False
+OLLAMA_AVAILABLE = find_spec("ollama") is not None
 
 # Default vision prompt for LLMs.
 DEFAULT_VISION_PROMPT = "Write a detailed description for this image. Use precise, unambiguous language. Avoid vague or general terms. This is going to be used as input for an AI image generator, so do not include anything other than the description, and do not break things into sections or use markdown."
@@ -244,7 +245,7 @@ class Sage_OllamaLLMPromptText(io.ComfyNode):
         options = options or {}
         options["seed"] = seed
         try:
-            response = llm.ollama_generate(model=model, prompt=prompt, system_prompt=system_prompt, keep_alive=keep_alive, options=options)
+            response = ollama_generate(model=model, prompt=prompt, system_prompt=system_prompt, keep_alive=keep_alive, options=options)
         except Exception:
             response = ""
         return io.NodeOutput(response)
@@ -292,7 +293,7 @@ class Sage_OllamaLLMPromptVision(io.ComfyNode):
         options = options or {}
         options["seed"] = seed
         try:
-            response = llm.ollama_generate_vision(model=model, prompt=prompt, system_prompt=system_prompt, images=image, keep_alive=keep_alive, options=options)
+            response = ollama_generate_vision(model=model, prompt=prompt, system_prompt=system_prompt, images=image, keep_alive=keep_alive, options=options)
         except Exception:
             response = ""
         return io.NodeOutput(response)
@@ -343,7 +344,7 @@ class Sage_OllamaLLMPromptVisionRefine(io.ComfyNode):
             return io.NodeOutput("", "")
 
         try:
-            initial, refined = llm.ollama_generate_vision_refine(
+            initial, refined = ollama_generate_vision_refine(
                 model=model,
                 prompt=prompt,
                 images=image,
@@ -392,7 +393,7 @@ class Sage_LMStudioLLMPromptText(io.ComfyNode):
 
         options = {"seed": seed}
         try:
-            response = llm.lmstudio_generate(model=model, prompt=prompt, keep_alive=load_for_seconds, options=options)
+            response = lmstudio_generate(model=model, prompt=prompt, keep_alive=load_for_seconds, options=options)
         except Exception:
             response = ""
         return io.NodeOutput(response)
@@ -435,7 +436,7 @@ class Sage_LMStudioLLMPromptVision(io.ComfyNode):
 
         options = {"seed": seed}
         try:
-            response = llm.lmstudio_generate_vision(model=model, prompt=prompt, keep_alive=load_for_seconds, images=image, options=options)
+            response = lmstudio_generate_vision(model=model, prompt=prompt, keep_alive=load_for_seconds, images=image, options=options)
         except Exception:
             response = ""
         return io.NodeOutput(response)
@@ -486,7 +487,7 @@ class Sage_LMStudioLLMPromptVisionRefine(io.ComfyNode):
             return io.NodeOutput("", "")
 
         try:
-            initial, refined = llm.lmstudio_generate_vision_refine(
+            initial, refined = lmstudio_generate_vision_refine(
                 model=model,
                 prompt=prompt,
                 images=image,

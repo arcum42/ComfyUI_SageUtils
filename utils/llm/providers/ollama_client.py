@@ -9,18 +9,25 @@ from ..errors import raise_llm_error
 
 logger = get_logger('llm.providers.ollama')
 
+_OLLAMA_UNAVAILABLE_MESSAGE = '(Ollama not available)'
+
+
+def _ollama_unavailable_models() -> list[str]:
+    return [_OLLAMA_UNAVAILABLE_MESSAGE]
+
+
+def _is_ollama_unavailable(ollama_available: bool, ollama_client: Any, enabled: bool) -> bool:
+    return (not ollama_available) or ollama_client is None or (not enabled)
+
 
 def get_vision_models(ollama_available: bool, ollama_client: Any, enabled: bool) -> list[str]:
     """Retrieve a list of available vision models from Ollama."""
-    if not ollama_available or ollama_client is None:
-        return ['(Ollama not available)']
-
-    if not enabled:
-        return ['(Ollama not available)']
+    if _is_ollama_unavailable(ollama_available, ollama_client, enabled):
+        return _ollama_unavailable_models()
 
     def _fetch_ollama_vision_models(cache_instance):
         if ollama_client is None:
-            return ['(Ollama not available)']
+            return _ollama_unavailable_models()
 
         try:
             logger.debug('Fetching vision models from Ollama...')
@@ -69,15 +76,12 @@ def get_vision_models(ollama_available: bool, ollama_client: Any, enabled: bool)
 
 def get_models(ollama_available: bool, ollama_client: Any, enabled: bool) -> list[str]:
     """Retrieve a list of available models from Ollama."""
-    if not ollama_available or ollama_client is None:
-        return ['(Ollama not available)']
-
-    if not enabled:
-        return ['(Ollama not available)']
+    if _is_ollama_unavailable(ollama_available, ollama_client, enabled):
+        return _ollama_unavailable_models()
 
     def _fetch_ollama_models():
         if ollama_client is None:
-            return ['(Ollama not available)']
+            return _ollama_unavailable_models()
 
         try:
             logger.info('Fetching models from Ollama...')

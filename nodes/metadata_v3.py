@@ -7,24 +7,20 @@
 # See ref_docs/v3_migration.md for info on migrating to v3 nodes.
 
 from __future__ import annotations
-from comfy.comfy_types.node_typing import ComfyNodeABC, InputTypeDict, IO
-from comfy_api.latest import io, ComfyExtension
-from typing_extensions import override
+from comfy_api.latest import io
 
 from comfy_api.latest._io import NodeOutput, Schema
-from comfy_execution.graph_utils import GraphBuilder
-from comfy_execution.graph import ExecutionBlocker
 
 from pathlib import Path
 import json
 from typing import Optional, Union
 
 import folder_paths
-from comfy.comfy_types.node_typing import ComfyNodeABC, IO
 
-from ..utils import (
-    lora_to_prompt, civitai_sampler_name,pull_metadata, get_model_dict, cache,
-)
+from ..utils.lora_utils import lora_to_prompt
+from ..utils.helpers_civitai import civitai_sampler_name, get_model_dict
+from ..utils.model_metadata import pull_metadata
+from ..utils.model_cache import cache
 from ..utils.model_info import collect_resource_hashes, model_name_and_hash_as_str, _get_model_name_from_info, _get_model_hash_from_info
 from ..utils.config_manager import metadata_templates
 from ..utils.logger import get_logger

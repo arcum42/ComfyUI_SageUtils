@@ -2,7 +2,8 @@
 
 from typing import Optional
 import folder_paths
-from .helpers import name_from_path, pull_metadata
+from .file_utils import name_from_path
+from .model_metadata import pull_metadata
 from .model_cache import cache
 from .lora_stack import norm_lora_stack
 from .model_info_utils import as_list, iter_model_info_dicts, normalize_model_info_list

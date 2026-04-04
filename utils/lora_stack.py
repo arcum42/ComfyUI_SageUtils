@@ -32,8 +32,8 @@ def norm_lora_stack(lora_stack: Optional[list]) -> Optional[list]:
     return lora_stack
     
 def get_lora_keywords(lora_name):
-    # Local import avoids circular dependency with helpers facade.
-    from .helpers import pull_metadata
+    # Local import minimizes module initialization coupling.
+    from .model_metadata import pull_metadata
 
     lora_path = folder_paths.get_full_path_or_raise("loras", lora_name)
     if cache.by_path(lora_path).get("trainedWords") is None:
@@ -41,8 +41,8 @@ def get_lora_keywords(lora_name):
     return cache.by_path(lora_path).get("trainedWords", [])
 
 def get_lora_stack_keywords(lora_stack=None):
-    # Local import avoids circular dependency with helpers facade.
-    from .helpers import pull_metadata
+    # Local import minimizes module initialization coupling.
+    from .model_metadata import pull_metadata
 
     lora_stack = norm_lora_stack(lora_stack)
     if lora_stack is None:

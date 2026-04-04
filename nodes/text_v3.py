@@ -4,17 +4,13 @@
 
 from __future__ import annotations
 from comfy_api.latest import io, ui
-from comfy.comfy_types.node_typing import IO
-from typing_extensions import override
 import random
 import string
 
-# Import specific utilities instead of wildcard import
-from ..utils import (
-    clean_text, get_save_file_path,
-    sage_wildcard_path,
-    path_manager
-)
+# Import specific utilities from source modules
+from ..utils.prompt_utils import clean_text, get_save_file_path
+from ..utils.sage_utils import sage_wildcard_path
+from ..utils.path_manager import path_manager
 
 from dynamicprompts.generators import RandomPromptGenerator
 from dynamicprompts.wildcards.wildcard_manager import WildcardManager

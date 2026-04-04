@@ -37,8 +37,8 @@ def model_scan(the_path, force=False):
     logger.info(f'Starting metadata scan for {len(model_list)} models.')
     pbar = comfy.utils.ProgressBar(len(model_list))
 
-    # Local import avoids circular dependency with helpers facade.
-    from .helpers import pull_metadata
+    # Local import minimizes module initialization coupling.
+    from .model_metadata import pull_metadata
 
     pull_metadata(model_list, force_all=force, pbar=pbar)
 

@@ -2,7 +2,6 @@
 # This is for any nodes involving samplers, currently KSampler and the sampler info nodes.
 
 from __future__ import annotations
-from comfy.comfy_types.node_typing import IO
 from comfy_api.latest import io
 from typing import Any, Callable, Iterable, cast
 
@@ -16,10 +15,7 @@ SCHEDULERS = KSampler.SCHEDULERS
 SAMPLER_OPTIONS = list(cast(Iterable[str], SAMPLERS))
 SCHEDULER_OPTIONS = list(cast(Iterable[str], SCHEDULERS))
 
-from ..utils.common import (
-    vae_decode,
-    vae_decode_tiled
-)
+from ..utils.helpers_image import vae_decode, vae_decode_tiled
 
 from .custom_io_v3 import *
 

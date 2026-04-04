@@ -62,7 +62,8 @@ def update_cache_without_civitai_json(file_path, hash_value, timestamp=True):
     file_cache['civitai'] = "False"
     file_cache['civitai_failed_count'] = file_cache.get('civitai_failed_count', 0) + 1
     file_cache['hash'] = hash_value
-    cache.update_last_used_by_path(file_path)
+    if timestamp:
+        cache.update_last_used_by_path(file_path)
 
 
 def add_file_to_cache(file_path, hash_value=None):

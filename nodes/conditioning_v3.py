@@ -3,18 +3,15 @@
 # See ref_docs/v3_migration.md for info on migrating to v3 nodes.
 
 from __future__ import annotations
-from typing_extensions import override
 
-from comfy_api.latest import io, ComfyExtension
-from comfy.comfy_types.node_typing import ComfyNodeABC, InputTypeDict, IO
+from comfy_api.latest import io
 from comfy_api.latest._io import NodeOutput, Schema
 from comfy_execution.graph_utils import GraphBuilder
 from comfy.utils import ProgressBar
 
-# Import specific utilities instead of wildcard import
-from ..utils import condition_text, clean_text, clean_if_needed
+# Import specific utilities from source modules
+from ..utils.prompt_utils import condition_text, clean_if_needed
 from ..utils.constants import LUMINA2_SYSTEM_PROMPT, LUMINA2_SYSTEM_PROMPT_TIP, PROMPT_START
-import torch
 
 class Sage_ZeroConditioning(io.ComfyNode):
     @classmethod

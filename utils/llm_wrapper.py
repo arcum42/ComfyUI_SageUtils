@@ -1,4 +1,3 @@
-from typing import Any
 from .logger import get_logger, get_sageutils_logger
 from .llm.init import init_ollama_client, init_lmstudio_client
 from .llm.providers.settings import is_ollama_enabled, is_lmstudio_enabled
@@ -77,6 +76,9 @@ def ollama_generate(model: str, prompt: str, keep_alive: float = 0.0, options=No
 
 def ollama_generate_vision_refine( model: str, prompt: str, images=None, options=None, refine_model: str = "", refine_prompt: str = "", refine_options = None) -> tuple[str, str]:
     """Generate a response from an Ollama vision model and refine it with another model."""
+    # Ensure Ollama is initialized before use
+    ensure_ollama_initialized()
+
     return ollama_provider.generate_vision_refine(
         OLLAMA_AVAILABLE,
         ollama_client,
@@ -139,6 +141,9 @@ def lmstudio_generate(model: str, prompt: str, keep_alive: int = 0, options=None
 
 def lmstudio_generate_vision_refine(model: str, prompt: str, images=None, options=None, refine_model: str = "", refine_prompt: str = "", refine_options=None) -> tuple[str, str]:
     """Generate a response from an LM Studio vision model and refine it with another model."""
+    # Ensure LM Studio is initialized before use
+    ensure_lmstudio_initialized()
+
     return lmstudio_provider.generate_vision_refine(
         LMSTUDIO_AVAILABLE,
         lms,

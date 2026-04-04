@@ -109,7 +109,6 @@ def generate_vision(
     if model not in model_list:
         raise_llm_error(ValueError, f"Model '{model}' is not available. Available models: {model_list}", provider='lmstudio', operation='generate_vision')
 
-    _seed = (options or {}).get('seed', 0)
     input_images = tensor_to_temp_image(images) if images is not None else []
     lms_model = None
     try:
@@ -155,7 +154,6 @@ def generate(
     if model not in model_list:
         raise_llm_error(ValueError, f"Model '{model}' is not available. Available models: {model_list}", provider='lmstudio', operation='generate')
 
-    _seed = (options or {}).get('seed', 0)
     lms_model = None
     try:
         if keep_alive >= 1:

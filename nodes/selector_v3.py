@@ -7,12 +7,17 @@ from typing import Any
 
 from comfy_api.latest import io
 
-from ..utils import model_info as mi
-from ..utils import add_lora_to_stack
-from ..utils import get_model_list
-from ..utils.helpers_graph import (
-    add_lora_stack_node
+from ..utils.model_info import (
+    dual_clip_loader_options,
+    get_model_info_ckpt,
+    get_model_info_clips,
+    get_model_info_unet,
+    get_model_info_vae,
+    single_clip_loader_options,
+    weight_dtype_options,
 )
+from ..utils.lora_stack import add_lora_to_stack
+from ..utils.model_discovery import get_model_list
 from .custom_io_v3 import *
 
 from ..utils.logger import get_logger
@@ -48,11 +53,11 @@ def _build_clip_options(num_clips: int, clip_list: list) -> list:
     # Add clip_type selector based on number of clips
     if num_clips == 1:
         inputs.append(
-            io.Combo.Input("clip_type", display_name="clip_type", options=mi.single_clip_loader_options, default="chroma")
+            io.Combo.Input("clip_type", display_name="clip_type", options=single_clip_loader_options, default="chroma")
         )
     elif num_clips == 2:
         inputs.append(
-            io.Combo.Input("clip_type", display_name="clip_type", options=mi.dual_clip_loader_options, default="sdxl")
+            io.Combo.Input("clip_type", display_name="clip_type", options=dual_clip_loader_options, default="sdxl")
         )
     
     return inputs
@@ -104,9 +109,9 @@ def _execute_multi_selector(kwargs: dict, num_clips: int) -> tuple:
     
     clip_type = kwargs.get("clip_type", _get_default_clip_type(num_clips))
     
-    unet_info = mi.get_model_info_unet(unet_name, weight_dtype)
-    clip_info = mi.get_model_info_clips(clip_names, clip_type)
-    vae_info = mi.get_model_info_vae(vae_name)
+    unet_info = get_model_info_unet(unet_name, weight_dtype)
+    clip_info = get_model_info_clips(clip_names, clip_type)
+    vae_info = get_model_info_vae(vae_name)
     
     return ModelInfoBundle.from_loaded_infos(unet_info, clip_info, vae_info).as_tuple()
 
@@ -135,7 +140,7 @@ class Sage_CheckpointSelector(io.ComfyNode):
     @classmethod
     def execute(cls, **kwargs):
         ckpt_name = kwargs.get("ckpt_name", "")
-        info = mi.get_model_info_ckpt(ckpt_name)
+        info = get_model_info_ckpt(ckpt_name)
         return io.NodeOutput(info)
 
 class Sage_UNETSelector(io.ComfyNode):
@@ -148,7 +153,7 @@ class Sage_UNETSelector(io.ComfyNode):
             category="Sage Utils/selector",
             inputs=[
                 io.Combo.Input("unet_name", display_name="unet_name", options=get_model_list("unet")),
-                io.Combo.Input("weight_dtype", display_name="weight_dtype", options=mi.weight_dtype_options, default="default"),
+                io.Combo.Input("weight_dtype", display_name="weight_dtype", options=weight_dtype_options, default="default"),
             ],
             outputs=[
                 UnetInfo.Output("unet_info", display_name="unet_info")
@@ -159,7 +164,7 @@ class Sage_UNETSelector(io.ComfyNode):
     def execute(cls, **kwargs):
         unet_name = kwargs.get("unet_name", "")
         weight_dtype = kwargs.get("weight_dtype", "default")
-        info = mi.get_model_info_unet(unet_name, weight_dtype)
+        info = get_model_info_unet(unet_name, weight_dtype)
         return io.NodeOutput(info)
 
 class Sage_VAESelector(io.ComfyNode):
@@ -181,7 +186,7 @@ class Sage_VAESelector(io.ComfyNode):
     @classmethod
     def execute(cls, **kwargs):
         vae_name = kwargs.get("vae_name", "")
-        info = mi.get_model_info_vae(vae_name)
+        info = get_model_info_vae(vae_name)
         logger.debug(f"VAE info: {info}")
         return io.NodeOutput(info)
 
@@ -195,7 +200,7 @@ class Sage_CLIPSelector(io.ComfyNode):
             category="Sage Utils/selector",
             inputs=[
                 io.Combo.Input("clip_name", display_name="clip_name", options=get_model_list("clip")),
-                io.Combo.Input("clip_type", display_name="clip_type", options=mi.single_clip_loader_options, default="chroma"),
+                io.Combo.Input("clip_type", display_name="clip_type", options=single_clip_loader_options, default="chroma"),
             ],
             outputs=[
                 ClipInfo.Output("clip_info", display_name="clip_info")
@@ -206,7 +211,7 @@ class Sage_CLIPSelector(io.ComfyNode):
     def execute(cls, **kwargs):
         clip_name = kwargs.get("clip_name", "")
         clip_type = kwargs.get("clip_type", _get_default_clip_type(1))
-        info = mi.get_model_info_clips([clip_name], clip_type)
+        info = get_model_info_clips([clip_name], clip_type)
         return io.NodeOutput(info)
 
 class Sage_DualCLIPSelector(io.ComfyNode):
@@ -221,7 +226,7 @@ class Sage_DualCLIPSelector(io.ComfyNode):
             inputs=[
                 io.Combo.Input("clip_name_1", display_name="clip_name_1", options=clip_list),
                 io.Combo.Input("clip_name_2", display_name="clip_name_2", options=clip_list),
-                io.Combo.Input("clip_type", display_name="clip_type", options=mi.dual_clip_loader_options, default="sdxl"),
+                io.Combo.Input("clip_type", display_name="clip_type", options=dual_clip_loader_options, default="sdxl"),
             ],
             outputs=[
                 ClipInfo.Output("clip_info", display_name="clip_info")
@@ -232,7 +237,7 @@ class Sage_DualCLIPSelector(io.ComfyNode):
     def execute(cls, **kwargs):
         clip_names = _extract_clip_names(kwargs)
         clip_type = kwargs.get("clip_type", _get_default_clip_type(2))
-        info = mi.get_model_info_clips(clip_names, clip_type)
+        info = get_model_info_clips(clip_names, clip_type)
         return io.NodeOutput(info)
 
 class Sage_TripleCLIPSelector(io.ComfyNode):
@@ -257,7 +262,7 @@ class Sage_TripleCLIPSelector(io.ComfyNode):
     @classmethod
     def execute(cls, **kwargs):
         clip_names = _extract_clip_names(kwargs)
-        info = mi.get_model_info_clips(clip_names)
+        info = get_model_info_clips(clip_names)
         return io.NodeOutput(info)
 
 class Sage_QuadCLIPSelector(io.ComfyNode):
@@ -283,7 +288,7 @@ class Sage_QuadCLIPSelector(io.ComfyNode):
     @classmethod
     def execute(cls, **kwargs):
         clip_names = _extract_clip_names(kwargs)
-        info = mi.get_model_info_clips(clip_names)
+        info = get_model_info_clips(clip_names)
         return io.NodeOutput(info)
 
 class Sage_FlexibleCLIPSelector(io.ComfyNode):
@@ -317,7 +322,7 @@ class Sage_FlexibleCLIPSelector(io.ComfyNode):
         clip_names = _extract_clip_names(args)
         logger.debug(f"Clip names: {clip_names}")
         clip_type = args.get("clip_type", _get_default_clip_type(len(clip_names)))
-        info = mi.get_model_info_clips(clip_names, clip_type)
+        info = get_model_info_clips(clip_names, clip_type)
         return io.NodeOutput(info)
 
 class Sage_MultiSelectorFlexibleClip(io.ComfyNode):
@@ -340,7 +345,7 @@ class Sage_MultiSelectorFlexibleClip(io.ComfyNode):
             category="Sage Utils/selector",
             inputs=[
                 io.Combo.Input("unet_name", display_name="unet_name", options=unet_options),
-                io.Combo.Input("weight_dtype", display_name="weight_dtype", options=mi.weight_dtype_options, default="default"),
+                io.Combo.Input("weight_dtype", display_name="weight_dtype", options=weight_dtype_options, default="default"),
                 io.DynamicCombo.Input("num_of_clips", display_name="num_of_clips", options=dynamic_options),
                 io.Combo.Input("vae_name", display_name="vae_name", options=vae_options),
             ],
@@ -359,9 +364,9 @@ class Sage_MultiSelectorFlexibleClip(io.ComfyNode):
         clip_names = _extract_clip_names(args)
         clip_type = args.get("clip_type", _get_default_clip_type(len(clip_names)))
 
-        unet_info = mi.get_model_info_unet(unet_name, weight_dtype)
-        clip_info = mi.get_model_info_clips(clip_names, clip_type)
-        vae_info = mi.get_model_info_vae(vae_name)
+        unet_info = get_model_info_unet(unet_name, weight_dtype)
+        clip_info = get_model_info_clips(clip_names, clip_type)
+        vae_info = get_model_info_vae(vae_name)
 
         bundle = ModelInfoBundle.from_loaded_infos(unet_info, clip_info, vae_info)
         return io.NodeOutput(bundle.as_tuple(),)
@@ -376,9 +381,9 @@ class Sage_MultiSelectorSingleClip(io.ComfyNode):
             category="Sage Utils/selector",
             inputs=[
                 io.Combo.Input("unet_name", display_name="unet_name", options=get_model_list("unet")),
-                io.Combo.Input("weight_dtype", display_name="weight_dtype", options=mi.weight_dtype_options, default="default"),
+                io.Combo.Input("weight_dtype", display_name="weight_dtype", options=weight_dtype_options, default="default"),
                 io.Combo.Input("clip_name", display_name="clip_name", options=get_model_list("clip")),
-                io.Combo.Input("clip_type", display_name="clip_type", options=mi.single_clip_loader_options, default="chroma"),
+                io.Combo.Input("clip_type", display_name="clip_type", options=single_clip_loader_options, default="chroma"),
                 io.Combo.Input("vae_name", display_name="vae_name", options=get_model_list("vae")),
             ],
             outputs=[
@@ -401,10 +406,10 @@ class Sage_MultiSelectorDoubleClip(io.ComfyNode):
             category="Sage Utils/selector",
             inputs=[
                 io.Combo.Input("unet_name", display_name="unet_name", options=get_model_list("unet")),
-                io.Combo.Input("weight_dtype", display_name="weight_dtype", options=mi.weight_dtype_options, default="default"),
+                io.Combo.Input("weight_dtype", display_name="weight_dtype", options=weight_dtype_options, default="default"),
                 io.Combo.Input("clip_name_1", display_name="clip_name_1", options=clip_list),
                 io.Combo.Input("clip_name_2", display_name="clip_name_2", options=clip_list),
-                io.Combo.Input("clip_type", display_name="clip_type", options=mi.dual_clip_loader_options, default="sdxl"),
+                io.Combo.Input("clip_type", display_name="clip_type", options=dual_clip_loader_options, default="sdxl"),
                 io.Combo.Input("vae_name", display_name="vae_name", options=get_model_list("vae")),
             ],
             outputs=[
@@ -427,7 +432,7 @@ class Sage_MultiSelectorTripleClip(io.ComfyNode):
             category="Sage Utils/selector",
             inputs=[
                 io.Combo.Input("unet_name", display_name="unet_name", options=get_model_list("unet")),
-                io.Combo.Input("weight_dtype", display_name="weight_dtype", options=mi.weight_dtype_options, default="default"),
+                io.Combo.Input("weight_dtype", display_name="weight_dtype", options=weight_dtype_options, default="default"),
                 io.Combo.Input("clip_name_1", display_name="clip_name_1", options=get_model_list("clip")),
                 io.Combo.Input("clip_name_2", display_name="clip_name_2", options=clip_list),
                 io.Combo.Input("clip_name_3", display_name="clip_name_3", options=clip_list),
@@ -453,7 +458,7 @@ class Sage_MultiSelectorQuadClip(io.ComfyNode):
             category="Sage Utils/selector",
             inputs=[
                 io.Combo.Input("unet_name", display_name="unet_name", options=get_model_list("unet")),
-                io.Combo.Input("weight_dtype", display_name="weight_dtype", options=mi.weight_dtype_options, default="default"),
+                io.Combo.Input("weight_dtype", display_name="weight_dtype", options=weight_dtype_options, default="default"),
                 io.Combo.Input("clip_name_1", display_name="clip_name_1", options=clip_list),
                 io.Combo.Input("clip_name_2", display_name="clip_name_2", options=clip_list),
                 io.Combo.Input("clip_name_3", display_name="clip_name_3", options=clip_list),

@@ -2,18 +2,16 @@
 # Misc utility and model-info helpers migrated from v1.
 
 from __future__ import annotations
-from comfy.comfy_types.node_typing import IO
 from comfy_api.latest import io
-from comfy_execution.graph import ExecutionBlocker
 
 import comfy.model_management as mm
-from ..utils import (
-    cache, blank_image, url_to_torch_image,
-    get_latest_model_version, get_lora_hash, pull_metadata,
-    get_civitai_model_version_json_by_hash, pull_lora_image_urls,
-    get_lora_stack_keywords
-)
-from ..utils import model_info as mi
+from ..utils.model_cache import cache
+from ..utils.helpers_image import blank_image, url_to_torch_image
+from ..utils.helpers_civitai import get_latest_model_version, get_civitai_model_version_json_by_hash, pull_lora_image_urls
+from ..utils.lora_utils import get_lora_hash
+from ..utils.model_metadata import pull_metadata
+from ..utils.lora_stack import get_lora_stack_keywords
+from ..utils.model_info import get_model_info_component
 import folder_paths
 import gc
 
@@ -132,7 +130,7 @@ class Sage_ModelInfo(io.ComfyNode):
     @classmethod
     def execute(cls, **kwargs):
         model_info = kwargs.get("model_info")
-        info = mi.get_model_info_component(model_info, "CKPT") if model_info is not None else None
+        info = get_model_info_component(model_info, "CKPT") if model_info is not None else None
 
         if not info:
             return io.NodeOutput("", "", "", "", None)
@@ -186,7 +184,7 @@ class Sage_ModelInfoDisplay(io.ComfyNode):
     @classmethod
     def execute(cls, **kwargs):
         model_info = kwargs.get("model_info")
-        info = mi.get_model_info_component(model_info, "CKPT") if model_info is not None else None
+        info = get_model_info_component(model_info, "CKPT") if model_info is not None else None
 
         if not info:
             content = "# Model Information\n\n**No model information available.**"

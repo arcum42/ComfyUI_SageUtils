@@ -27,8 +27,8 @@ def lora_to_prompt(lora_stack=None):
 
 
 def get_lora_hash(lora_name):
-    # Local import avoids circular dependency with helpers facade.
-    from .helpers import pull_metadata
+    # Local import minimizes module initialization coupling.
+    from .model_metadata import pull_metadata
 
     lora_path = folder_paths.get_full_path_or_raise('loras', lora_name)
     pull_metadata(lora_path)

@@ -3,6 +3,16 @@
 from .tensor import tensor_to_base64_safe
 
 
+_LMSTUDIO_OPTION_KEY_MAP = (
+    ('temperature', 'temperature'),
+    ('max_tokens', 'maxTokens'),
+    ('topKSampling', 'topKSampling'),
+    ('topPSampling', 'topPSampling'),
+    ('repeatPenalty', 'repeatPenalty'),
+    ('minPSampling', 'minPSampling'),
+)
+
+
 def clean_response(response: str) -> str:
     """Clean the response from the model by removing unnecessary tags."""
     if not response:
@@ -41,22 +51,8 @@ def build_lmstudio_config(options: dict) -> dict:
     if not options:
         return config
 
-    if 'temperature' in options:
-        config['temperature'] = options['temperature']
-
-    if 'max_tokens' in options:
-        config['maxTokens'] = options['max_tokens']
-
-    if 'topKSampling' in options:
-        config['topKSampling'] = options['topKSampling']
-
-    if 'topPSampling' in options:
-        config['topPSampling'] = options['topPSampling']
-
-    if 'repeatPenalty' in options:
-        config['repeatPenalty'] = options['repeatPenalty']
-
-    if 'minPSampling' in options:
-        config['minPSampling'] = options['minPSampling']
+    for source_key, target_key in _LMSTUDIO_OPTION_KEY_MAP:
+        if source_key in options:
+            config[target_key] = options[source_key]
 
     return config

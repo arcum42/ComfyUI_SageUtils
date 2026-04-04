@@ -4,34 +4,26 @@
 # See ref_docs/v3_migration.md for info on migrating to v3 nodes.
 
 from __future__ import annotations
-from comfy.comfy_types.node_typing import ComfyNodeABC, InputTypeDict, IO
-from comfy_api.latest import io, ComfyExtension
-from typing_extensions import override
+from comfy_api.latest import io
 
 from comfy_api.latest._io import NodeOutput, Schema
 from comfy_execution.graph_utils import GraphBuilder
-from comfy_execution.graph import ExecutionBlocker
 
 from .custom_io_v3 import ModelInfo, UnetInfo, VaeInfo, ClipInfo, ModelShiftInfo, LoraStack
-from ..utils.helpers import pull_metadata, update_model_timestamp, pull_and_update_model_timestamp
+from ..utils.model_metadata import pull_and_update_model_timestamp
 
 from ..utils.lora_stack import norm_lora_stack
+from ..utils.lora_stack import get_lora_stack_keywords
 
-# Import specific utilities instead of wildcard import
-from ..utils import get_lora_stack_keywords
-from ..utils import model_info as mi
 from ..utils.helpers_graph import (
-    add_ckpt_node,
     add_unet_node,
     add_clip_node,
     add_vae_node,
     create_model_shift_nodes,
-    create_lora_nodes,
     create_lora_shift_nodes,
-    create_model_loader_nodes
+    create_model_loader_nodes,
 )
 
-from comfy_execution.graph_utils import GraphBuilder
 import folder_paths
 from ..utils.logger import get_logger
 
