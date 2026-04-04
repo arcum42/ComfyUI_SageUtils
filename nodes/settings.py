@@ -11,11 +11,18 @@ from ..utils.logger import get_logger
 logger = get_logger('nodes.settings')
 
 try:
-    from ..utils.settings import get_settings, SETTINGS_SCHEMA
+    from ..utils.settings import (
+        get_settings,
+        SETTINGS_SCHEMA,
+        get_setting_schema_default,
+        is_known_setting,
+    )
     ENHANCED_SETTINGS_AVAILABLE = True
 except ImportError:
     get_settings = None
     SETTINGS_SCHEMA = {}
+    get_setting_schema_default = None
+    is_known_setting = None
     ENHANCED_SETTINGS_AVAILABLE = False
 
 
@@ -81,11 +88,11 @@ class Sage_SettingsManager:
                 lines.append("-" * len(category))
                 
                 for key in setting_keys:
-                    if key in SETTINGS_SCHEMA:
+                    if is_known_setting is not None and is_known_setting(key):
                         info = settings.get_setting_info(key)
                         if info:
                             current_value = info["current_value"]
-                            default_value = info["default"]
+                            default_value = get_setting_schema_default(key) if get_setting_schema_default is not None else info["default"]
                             description = info["description"]
                             
                             # Format the value display

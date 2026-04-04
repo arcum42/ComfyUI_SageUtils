@@ -5,6 +5,7 @@ import folder_paths
 from .helpers import name_from_path, pull_metadata
 from .model_cache import cache
 from .lora_stack import norm_lora_stack
+from .model_info_utils import as_list, iter_model_info_dicts, normalize_model_info_list
 from .logger import get_logger
 
 logger = get_logger('model_info')
@@ -113,21 +114,15 @@ def model_name_and_hash_as_str(model_info) -> str:
     Args:
         model_info (dict): The model_info dictionary containing the model path and hash.
     """
-    model_string = ""
-    if isinstance(model_info, tuple) or isinstance(model_info, list):
-        model_list = []
-        for info in model_info:    
-            model_name = _get_model_name_from_info(info)
-            model_hash = _get_model_hash_from_info(info)
-            model_list.append(f"Model: {model_name}, Model hash: {model_hash}")
-        model_string = ", ".join(model_list)
-    else:
-        if isinstance(model_info, dict) and "path" in model_info and "hash" in model_info:
-            model_name = _get_model_name_from_info(model_info)
-            model_hash = _get_model_hash_from_info(model_info)
-            model_string = f"Model: {model_name}, Model hash: {model_hash}"
+    model_list = []
+    for info in iter_model_info_dicts(model_info):
+        if "path" not in info or "hash" not in info:
+            continue
+        model_name = _get_model_name_from_info(info)
+        model_hash = _get_model_hash_from_info(info)
+        model_list.append(f"Model: {model_name}, Model hash: {model_hash}")
 
-    return model_string
+    return ", ".join(model_list)
 
 
 def _get_model_name_from_info(model_info: dict) -> str:
@@ -140,14 +135,9 @@ def _get_model_name_from_info(model_info: dict) -> str:
     Returns:
         str: The model name(s).
     """
-    path = model_info['path']
-    if isinstance(path, list):
-        # Handle CLIP models with multiple paths
-        names = [name_from_path(p) for p in path]
-        return " + ".join(names)
-    else:
-        # Handle single path models (CKPT, UNET, VAE)
-        return name_from_path(path)
+    paths = as_list(model_info['path'])
+    names = [name_from_path(path) for path in paths]
+    return " + ".join(names)
 
 
 def _get_model_hash_from_info(model_info: dict) -> str:
@@ -160,13 +150,7 @@ def _get_model_hash_from_info(model_info: dict) -> str:
     Returns:
         str: The model hash(es).
     """
-    hash_value = model_info['hash']
-    if isinstance(hash_value, list):
-        # Handle CLIP models with multiple hashes
-        return " + ".join(hash_value)
-    else:
-        # Handle single hash models (CKPT, UNET, VAE)
-        return hash_value
+    return " + ".join(str(hash_value) for hash_value in as_list(model_info['hash']))
 
 def get_model_info_component(models_info: tuple, component_type: str) -> dict:
     """
@@ -184,13 +168,10 @@ def get_model_info_component(models_info: tuple, component_type: str) -> dict:
         dict: The model_info dictionary for the specified component type, or empty dict if not found.
     """
     logger.debug(f"Searching for component type: {component_type} in models_info")
-    if not isinstance(models_info, tuple):
-        models_info = (models_info,)
-    
-    for model_info in models_info:
-        logger.debug(f"Checking model type: {model_info.get('type')}")
-        if model_info is None:
+    for model_info in normalize_model_info_list(models_info):
+        if not isinstance(model_info, dict):
             continue
+        logger.debug(f"Checking model type: {model_info.get('type')}")
         if model_info.get("type") == component_type:
             return model_info
     
@@ -213,41 +194,17 @@ def collect_resource_hashes(model_info, lora_stack: Optional[list] = None) -> li
     
     resource_hashes = []
     lora_stack = norm_lora_stack(lora_stack)
-    
-    # Handle model_info - could be a tuple or a single dictionary
-    if isinstance(model_info, tuple) or isinstance(model_info, list):
-        # Process each model_info in the tuple
-        for info in model_info:
-            if info is None or not isinstance(info, dict):
-                continue
-            model_path = info.get('path')
-            if model_path:
-                if isinstance(model_path, list):
-                    # CLIP model with multiple paths - add each path separately
-                    for path in model_path:
-                        model_dict = get_model_dict(path)
-                        if model_dict:
-                            resource_hashes.append(model_dict)
-                else:
-                    # Single path model (CKPT, UNET, VAE)
-                    model_dict = get_model_dict(model_path)
-                    if model_dict:
-                        resource_hashes.append(model_dict)
-    else:
-        # Handle single model_info dictionary
-        if isinstance(model_info, dict) and 'path' in model_info:
-            model_path = model_info['path']
-            if isinstance(model_path, list):
-                # CLIP model with multiple paths - add each path separately
-                for path in model_path:
-                    model_dict = get_model_dict(path)
-                    if model_dict:
-                        resource_hashes.append(model_dict)
-            else:
-                # Single path model (CKPT, UNET, VAE)
-                model_dict = get_model_dict(model_path)
-                if model_dict:
-                    resource_hashes.append(model_dict)
+
+    # Handle model_info - could be a tuple/list or a single dictionary
+    for info in iter_model_info_dicts(model_info):
+        model_path = info.get('path')
+        if not model_path:
+            continue
+
+        for path in as_list(model_path):
+            model_dict = get_model_dict(path)
+            if model_dict:
+                resource_hashes.append(model_dict)
     
     # Add LoRA resources
     if lora_stack:

@@ -15,7 +15,6 @@ from .file_utils import (
     get_path_without_base,
     get_file_extension,
     has_model_extension,
-    is_model_file,
     get_file_sha256,
     get_files_in_dir,
     last_used,

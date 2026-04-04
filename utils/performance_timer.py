@@ -5,9 +5,6 @@ Provides comprehensive timing functionality to measure initialization and runtim
 
 import time
 import functools
-from .logger import get_logger
-
-logger = get_logger('utils.performance_timer')
 
 import logging
 import os
@@ -33,12 +30,16 @@ class PerformanceTimer:
         # Track initialization start
         self.init_start_time = time.perf_counter()
         self.initialization_complete = False
+
+    def _record_duration(self, operation: str, duration: float) -> None:
+        """Record a duration for an operation."""
+        self.timings.setdefault(operation, []).append(duration)
         
-    def enable(self):
+    def enable(self) -> None:
         """Enable timing measurements."""
         self.enabled = True
         
-    def disable(self):
+    def disable(self) -> None:
         """Disable timing measurements."""
         self.enabled = False
         
@@ -59,11 +60,7 @@ class PerformanceTimer:
             return 0.0
             
         duration = time.perf_counter() - self.start_times[operation]
-        
-        # Add to timings list
-        if operation not in self.timings:
-            self.timings[operation] = []
-        self.timings[operation].append(duration)
+        self._record_duration(operation, duration)
         
         # Remove from active timers
         del self.start_times[operation]
@@ -82,9 +79,7 @@ class PerformanceTimer:
             yield
         finally:
             duration = time.perf_counter() - start_time
-            if operation not in self.timings:
-                self.timings[operation] = []
-            self.timings[operation].append(duration)
+            self._record_duration(operation, duration)
             
     def time_function(self, operation_name: Optional[str] = None):
         """Decorator for timing function calls."""
@@ -221,15 +216,15 @@ class PerformanceTimer:
         runtime_report = self.get_runtime_report()
         return f"{init_report}\n{runtime_report}"
     
-    def print_report(self):
+    def print_report(self) -> None:
         """Print the full performance report to console."""
-        logger.debug(self.get_full_report())
+        self.logger.debug(self.get_full_report())
     
     def log_report(self, level: int = logging.INFO):
         """Log the full performance report."""
         self.logger.log(level, self.get_full_report())
     
-    def reset(self):
+    def reset(self) -> None:
         """Reset all timing data."""
         self.timings.clear()
         self.nested_timings.clear()

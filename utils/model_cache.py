@@ -9,14 +9,13 @@ import hashlib
 import datetime
 import tempfile
 import copy
-import logging
 import os
 from typing import Any, Dict, Optional, List
 
 from .path_manager import path_manager, file_manager
 
 from .logger import get_logger
-from .type_utils import str_to_bool, bool_to_str
+from .type_utils import str_to_bool
 logger = get_logger('model.cache')
 
 
@@ -265,6 +264,43 @@ class SageCache:
         """Write JSON data to a file atomically."""
         file_manager.atomic_write_json(path, data)
 
+    def _save_if_changed(self, current_data: Dict[str, Any], last_data: Dict[str, Any], path: pathlib.Path, label: str) -> tuple[bool, Dict[str, Any]]:
+        """Save one cache section if changed; returns (saved, new_last_data)."""
+        if current_data and current_data != last_data:
+            self._save_json(path, current_data, label)
+            return True, copy.deepcopy(current_data)
+        return False, last_data
+
+    def _perform_save_pass(self) -> bool:
+        """Run one save pass for all cache sections and return whether anything was saved."""
+        saved = False
+
+        hash_saved, new_last_hash = self._save_if_changed(
+            self.hash, self.last_hash, self.hash_path, "hash cache"
+        )
+        if hash_saved:
+            self.last_hash = new_last_hash
+            saved = True
+
+        info_saved, new_last_info = self._save_if_changed(
+            self.info, self.last_info, self.info_path, "info cache"
+        )
+        if info_saved:
+            self.last_info = new_last_info
+            saved = True
+
+        ollama_saved, new_last_ollama = self._save_if_changed(
+            self.ollama_models,
+            self.last_ollama_models,
+            self.ollama_models_path,
+            "Ollama models cache",
+        )
+        if ollama_saved:
+            self.last_ollama_models = new_last_ollama
+            saved = True
+
+        return saved
+
     def _save_json(self, path: pathlib.Path, data: Any, label: str) -> None:
         """Save data to a JSON file atomically, backing up and pruning old backups on error."""
         try:
@@ -452,20 +488,8 @@ class SageCache:
         # Skip save if in batch mode
         if self.batch_mode:
             return
-        
-        saved = False
-        if self.hash and self.hash != self.last_hash:
-            self._save_json(self.hash_path, self.hash, "hash cache")
-            self.last_hash = copy.deepcopy(self.hash)
-            saved = True
-        if self.info and self.info != self.last_info:
-            self._save_json(self.info_path, self.info, "info cache")
-            self.last_info = copy.deepcopy(self.info)
-            saved = True
-        if self.ollama_models and self.ollama_models != self.last_ollama_models:
-            self._save_json(self.ollama_models_path, self.ollama_models, "Ollama models cache")
-            self.last_ollama_models = copy.deepcopy(self.ollama_models)
-            saved = True
+
+        saved = self._perform_save_pass()
         if saved:
             self.save_count_since_backup += 1
             logger.info("Saved cache to disk.")
@@ -507,19 +531,7 @@ class SageCache:
         
         if force_save or changes_in_batch > 0:
             # Perform the deferred save
-            saved = False
-            if self.hash and self.hash != self.last_hash:
-                self._save_json(self.hash_path, self.hash, "hash cache")
-                self.last_hash = copy.deepcopy(self.hash)
-                saved = True
-            if self.info and self.info != self.last_info:
-                self._save_json(self.info_path, self.info, "info cache")
-                self.last_info = copy.deepcopy(self.info)
-                saved = True
-            if self.ollama_models and self.ollama_models != self.last_ollama_models:
-                self._save_json(self.ollama_models_path, self.ollama_models, "Ollama models cache")
-                self.last_ollama_models = copy.deepcopy(self.ollama_models)
-                saved = True
+            saved = self._perform_save_pass()
             
             if saved:
                 self.save_count_since_backup += 1
@@ -547,6 +559,7 @@ class SageCache:
         
         if should_backup:
             current_date = current_time.strftime("%Y-%m-%dT%H-%M-%S")
+            saves_since_backup = self.save_count_since_backup
             
             # Create backups
             if self.hash:
@@ -560,7 +573,7 @@ class SageCache:
             self.save_count_since_backup = 0
             self.last_backup_time = current_time
             
-            logger.info(f"Backups created (saves: {self.save_count_since_backup}, time: {time_since_backup:.0f}s)")
+            logger.info(f"Backups created (saves: {saves_since_backup}, time: {time_since_backup:.0f}s)")
 
     def add_entry(self, file_path: str, file_hash: str) -> None:
         self.hash[file_path] = file_hash

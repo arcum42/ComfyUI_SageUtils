@@ -6,8 +6,7 @@ repeated API calls during ComfyUI node initialization.
 """
 
 import time
-import logging
-from typing import Dict, List, Optional, Any
+from typing import Any, Callable, Dict, List, Optional
 from threading import Lock
 
 from .logger import get_logger
@@ -37,76 +36,81 @@ class LLMModelCache:
     def _is_cache_valid(self, timestamp: float) -> bool:
         """Check if cache is still valid based on timestamp."""
         return time.time() - timestamp < self.cache_duration
+
+    def _get_cached_models(
+        self,
+        models_attr: str,
+        time_attr: str,
+        fetch_function: Callable[..., List[str]],
+        label: str,
+        pass_self: bool = False,
+    ) -> List[str]:
+        """Get cached model list or fetch fresh data when cache is stale."""
+        with self._lock:
+            cached_models = getattr(self, models_attr)
+            cache_time = getattr(self, time_attr)
+
+            if cached_models is not None and self._is_cache_valid(cache_time):
+                return cached_models.copy()
+
+            try:
+                models = fetch_function(self) if pass_self else fetch_function()
+                setattr(self, models_attr, models)
+                setattr(self, time_attr, time.time())
+                logger.debug(f"Cached {len(models)} {label}")
+                return models.copy()
+            except Exception as e:
+                logger.error(f"Failed to fetch {label}: {e}")
+                return cached_models.copy() if cached_models else []
+
+    def _get_cache_entry_status(self, models_attr: str, time_attr: str, current_time: float) -> Dict[str, Any]:
+        """Return status information for one cache entry."""
+        cached_models = getattr(self, models_attr)
+        cache_time = getattr(self, time_attr)
+        return {
+            "cached": cached_models is not None,
+            "count": len(cached_models) if cached_models else 0,
+            "age": current_time - cache_time if cache_time else None,
+            "valid": self._is_cache_valid(cache_time),
+        }
     
     def get_ollama_models(self, fetch_function) -> List[str]:
         """Get cached Ollama models or fetch if expired."""
-        with self._lock:
-            if (self._ollama_models is not None and 
-                self._is_cache_valid(self._ollama_models_time)):
-                return self._ollama_models.copy()
-            
-            try:
-                models = fetch_function()
-                self._ollama_models = models
-                self._ollama_models_time = time.time()
-                logger.debug(f"Cached {len(models)} Ollama models")
-                return models.copy()
-            except Exception as e:
-                logger.error(f"Failed to fetch Ollama models: {e}")
-                return self._ollama_models.copy() if self._ollama_models else []
+        return self._get_cached_models(
+            "_ollama_models",
+            "_ollama_models_time",
+            fetch_function,
+            "Ollama models",
+        )
     
     def get_ollama_vision_models(self, fetch_function) -> List[str]:
         """Get cached Ollama vision models or fetch if expired."""
-        with self._lock:
-            if (self._ollama_vision_models is not None and 
-                self._is_cache_valid(self._ollama_vision_models_time)):
-                return self._ollama_vision_models.copy()
-            
-            try:
-                # Pass self to fetch function so it can cache capabilities
-                models = fetch_function(self)
-                self._ollama_vision_models = models
-                self._ollama_vision_models_time = time.time()
-                logger.debug(f"Cached {len(models)} Ollama vision models")
-                return models.copy()
-            except Exception as e:
-                logger.error(f"Failed to fetch Ollama vision models: {e}")
-                return self._ollama_vision_models.copy() if self._ollama_vision_models else []
+        return self._get_cached_models(
+            "_ollama_vision_models",
+            "_ollama_vision_models_time",
+            fetch_function,
+            "Ollama vision models",
+            pass_self=True,
+        )
     
     def get_lmstudio_models(self, fetch_function) -> List[str]:
         """Get cached LM Studio models or fetch if expired."""
-        with self._lock:
-            if (self._lmstudio_models is not None and 
-                self._is_cache_valid(self._lmstudio_models_time)):
-                return self._lmstudio_models.copy()
-            
-            try:
-                models = fetch_function()
-                self._lmstudio_models = models
-                self._lmstudio_models_time = time.time()
-                logger.debug(f"Cached {len(models)} LM Studio models")
-                return models.copy()
-            except Exception as e:
-                logger.error(f"Failed to fetch LM Studio models: {e}")
-                return self._lmstudio_models.copy() if self._lmstudio_models else []
+        return self._get_cached_models(
+            "_lmstudio_models",
+            "_lmstudio_models_time",
+            fetch_function,
+            "LM Studio models",
+        )
     
     def get_lmstudio_vision_models(self, fetch_function) -> List[str]:
         """Get cached LM Studio vision models or fetch if expired."""
-        with self._lock:
-            if (self._lmstudio_vision_models is not None and 
-                self._is_cache_valid(self._lmstudio_vision_models_time)):
-                return self._lmstudio_vision_models.copy()
-            
-            try:
-                # Pass self to fetch function so it can cache capabilities
-                models = fetch_function(self)
-                self._lmstudio_vision_models = models
-                self._lmstudio_vision_models_time = time.time()
-                logger.debug(f"Cached {len(models)} LM Studio vision models")
-                return models.copy()
-            except Exception as e:
-                logger.error(f"Failed to fetch LM Studio vision models: {e}")
-                return self._lmstudio_vision_models.copy() if self._lmstudio_vision_models else []
+        return self._get_cached_models(
+            "_lmstudio_vision_models",
+            "_lmstudio_vision_models_time",
+            fetch_function,
+            "LM Studio vision models",
+            pass_self=True,
+        )
     
     def is_ollama_vision_model(self, model_name: str) -> Optional[bool]:
         """Check if a model supports vision (cached result)."""
@@ -173,31 +177,19 @@ class LLMModelCache:
         with self._lock:
             current_time = time.time()
             return {
-                "ollama_models": {
-                    "cached": self._ollama_models is not None,
-                    "count": len(self._ollama_models) if self._ollama_models else 0,
-                    "age": current_time - self._ollama_models_time if self._ollama_models_time else None,
-                    "valid": self._is_cache_valid(self._ollama_models_time)
-                },
-                "ollama_vision_models": {
-                    "cached": self._ollama_vision_models is not None,
-                    "count": len(self._ollama_vision_models) if self._ollama_vision_models else 0,
-                    "age": current_time - self._ollama_vision_models_time if self._ollama_vision_models_time else None,
-                    "valid": self._is_cache_valid(self._ollama_vision_models_time)
-                },
-                "lmstudio_models": {
-                    "cached": self._lmstudio_models is not None,
-                    "count": len(self._lmstudio_models) if self._lmstudio_models else 0,
-                    "age": current_time - self._lmstudio_models_time if self._lmstudio_models_time else None,
-                    "valid": self._is_cache_valid(self._lmstudio_models_time)
-                },
-                "lmstudio_vision_models": {
-                    "cached": self._lmstudio_vision_models is not None,
-                    "count": len(self._lmstudio_vision_models) if self._lmstudio_vision_models else 0,
-                    "age": current_time - self._lmstudio_vision_models_time if self._lmstudio_vision_models_time else None,
-                    "valid": self._is_cache_valid(self._lmstudio_vision_models_time)
-                },
-                "cache_duration": self.cache_duration
+                "ollama_models": self._get_cache_entry_status(
+                    "_ollama_models", "_ollama_models_time", current_time
+                ),
+                "ollama_vision_models": self._get_cache_entry_status(
+                    "_ollama_vision_models", "_ollama_vision_models_time", current_time
+                ),
+                "lmstudio_models": self._get_cache_entry_status(
+                    "_lmstudio_models", "_lmstudio_models_time", current_time
+                ),
+                "lmstudio_vision_models": self._get_cache_entry_status(
+                    "_lmstudio_vision_models", "_lmstudio_vision_models_time", current_time
+                ),
+                "cache_duration": self.cache_duration,
             }
 
 

@@ -4,6 +4,8 @@ from .helpers import (
     get_file_extension,
     pull_and_update_model_timestamp
     )
+from .lora_stack import norm_lora_stack
+from .model_info_utils import as_list, normalize_model_info_list, unwrap_single_item
 
 from .logger import get_logger
 
@@ -12,33 +14,13 @@ logger = get_logger('helpers.graph')
 # Utility function
 def flatten_model_info(model_info):
     """Flatten model_info to a list of dictionaries."""
-    if isinstance(model_info, tuple):
-        # Unpack the tuple and convert to a list
-        flattened_info = []
-        for item in model_info:
-            flattened_info.append(item)
-        model_info = flattened_info
-
-    if isinstance(model_info, list):
-        flattened_info = []
-        for item in model_info:
-            if isinstance(item, tuple):
-                # Unpack the tuple and add all dictionaries to the flattened list
-                flattened_info.extend(item)
-            else:
-                flattened_info.append(item)
-    else:
-        # If model_info is not a list, we need to convert it to a list.
-        flattened_info = [model_info]
-    return flattened_info
+    return normalize_model_info_list(model_info)
 
 # Add individual model loader nodes
 def add_ckpt_node(graph: GraphBuilder, ckpt_info):
     ckpt_node = None
     if ckpt_info is not None:
-        # if ckpt_info is a tuple, unpack it.
-        if isinstance(ckpt_info, tuple):
-            ckpt_info = ckpt_info[0]
+        ckpt_info = unwrap_single_item(ckpt_info)
 
         ckpt_name = ckpt_info["path"]
         ckpt_fixed_name = get_path_without_base("checkpoints", ckpt_name)
@@ -52,9 +34,7 @@ def add_ckpt_node(graph: GraphBuilder, ckpt_info):
 def add_unet_node(graph: GraphBuilder, unet_info):
     unet_node = None
     if unet_info is not None:
-        # if unet_info is a tuple or list, unpack it.
-        if isinstance(unet_info, tuple) or isinstance(unet_info, list):
-            unet_info = unet_info[0]
+        unet_info = unwrap_single_item(unet_info)
 
         unet_name = unet_info["path"]
         unet_weight_dtype = unet_info["weight_dtype"]
@@ -64,7 +44,7 @@ def add_unet_node(graph: GraphBuilder, unet_info):
             try:
                 logger.debug(f"Added node UnetLoaderGGUF with unet_name: {unet_fixed_name}")
                 unet_node = graph.node("UnetLoaderGGUF", unet_name=unet_fixed_name)
-            except:
+            except Exception:
                 logger.debug("Unable to load UNET as GGUF. Do you have ComfyUI-GGUF installed?")
                 raise ValueError("Unable to load UNET as GGUF. Do you have ComfyUI-GGUF installed?")
         else:
@@ -75,15 +55,11 @@ def add_unet_node(graph: GraphBuilder, unet_info):
 def add_clip_node(graph: GraphBuilder, clip_info):
     clip_node = None
     if clip_info is not None:
-        # if clip_info is a tuple, unpack it.
-        if isinstance(clip_info, tuple):
-            clip_info = clip_info[0]
+        clip_info = unwrap_single_item(clip_info)
         logger.debug(f"Adding CLIP node with info: {clip_info}")
         # 1+2 are in nodes.py, 3 is in node_sd3.py, and 4 is in nodes_hidream.py for legacy reasons.
-        clip_path = clip_info["path"]
-        clip_num = len(clip_path) if isinstance(clip_path, list) else 1
-        clip_fixed_path = [get_path_without_base("clip", path) for path in clip_path] if isinstance(clip_path, list) else get_path_without_base("clip", clip_path)
-        clip_path = clip_fixed_path if isinstance(clip_fixed_path, list) else [clip_fixed_path]
+        clip_path = [get_path_without_base("clip", path) for path in as_list(clip_info["path"])]
+        clip_num = len(clip_path)
         clip_type = clip_info["clip_type"]
         logger.debug(f"Clip Path: {clip_path} Clip Type: {clip_type}")
 
@@ -103,7 +79,7 @@ def add_clip_node(graph: GraphBuilder, clip_info):
                 else:
                     logger.debug(f"Added node QuadrupleCLIPLoaderGGUF with clip_name1: {clip_path[0]}, clip_name2: {clip_path[1]}, clip_name3: {clip_path[2]}, clip_name4: {clip_path[3]}")
                     clip_node = graph.node("QuadrupleCLIPLoaderGGUF", clip_name1=clip_path[0], clip_name2=clip_path[1], clip_name3=clip_path[2], clip_name4=clip_path[3])
-            except:
+            except Exception:
                 logger.debug("Unable to load CLIP as GGUF. Do you have ComfyUI-GGUF installed?")
                 raise ValueError("Unable to load CLIP as GGUF. Do you have ComfyUI-GGUF installed?")
         else:
@@ -124,9 +100,7 @@ def add_clip_node(graph: GraphBuilder, clip_info):
 def add_vae_node(graph: GraphBuilder, vae_info):
     vae_node = None
     if vae_info is not None:
-        # if vae_info is a tuple, unpack it.
-        if isinstance(vae_info, tuple):
-            vae_info = vae_info[0]
+        vae_info = unwrap_single_item(vae_info)
 
         vae_name = vae_info["path"]
         vae_fixed_name = get_path_without_base("vae", vae_name)
@@ -193,13 +167,11 @@ def create_lora_nodes(graph: GraphBuilder, unet_in, clip_in=None, lora_stack=Non
     exit_unet = unet_in
     exit_clip = clip_in
     exit_node = None
-    
+
+    lora_stack = norm_lora_stack(lora_stack)
     if lora_stack is None:
         logger.info("No loras in stack.")
         return exit_node, exit_unet, exit_clip
-    if isinstance(lora_stack, tuple) or isinstance(lora_stack, list):
-        if not isinstance(lora_stack[0], (list, tuple)):
-            lora_stack = [lora_stack]
 
     if exit_clip is not None:
         logger.info("Using CLIP with loras.")

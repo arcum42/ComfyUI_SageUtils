@@ -62,7 +62,7 @@ def register_routes(routes_instance):
         Updates SageUtils settings. Expects JSON body with setting key-value pairs.
         """
         try:
-            from ..utils.settings import get_settings, SETTINGS_SCHEMA
+            from ..utils.settings import get_settings, is_known_setting
             
             data = await request.json()
             settings = get_settings()
@@ -71,7 +71,7 @@ def register_routes(routes_instance):
             errors = []
             
             for key, value in data.items():
-                if key in SETTINGS_SCHEMA:
+                if is_known_setting(key):
                     try:
                         if settings.set(key, value):
                             updated_settings.append(key)

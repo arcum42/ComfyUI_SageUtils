@@ -25,6 +25,20 @@ LOG_LEVELS = {
 }
 
 
+def _get_root_logger() -> logging.Logger:
+    """Get the root SageUtils logger."""
+    return logging.getLogger(LOGGER_NAME)
+
+
+def _resolve_log_level(level: Optional[int]) -> int:
+    """Resolve an explicit level or environment-driven default level."""
+    if level is not None:
+        return level
+
+    env_level = os.environ.get(LOG_LEVEL_ENV_VAR, "").upper()
+    return LOG_LEVELS.get(env_level, DEFAULT_LOG_LEVEL)
+
+
 def get_logger(name: Optional[str] = None) -> logging.Logger:
     """
     Get a logger instance for SageUtils.
@@ -74,15 +88,8 @@ def configure_logging(level: Optional[int] = None, handler: Optional[logging.Han
         The configured root SageUtils logger
     """
     # Get or create the root SageUtils logger
-    logger = logging.getLogger(LOGGER_NAME)
-    
-    # Determine log level
-    if level is None:
-        # Check environment variable
-        env_level = os.environ.get(LOG_LEVEL_ENV_VAR, "").upper()
-        level = LOG_LEVELS.get(env_level, DEFAULT_LOG_LEVEL)
-    
-    logger.setLevel(level)
+    logger = _get_root_logger()
+    logger.setLevel(_resolve_log_level(level))
     
     # Clear existing handlers to avoid duplicates
     logger.handlers.clear()
@@ -110,23 +117,16 @@ def configure_third_party_logging():
     Some libraries are very verbose and should have higher logging thresholds.
     This function sets appropriate levels for known chatty libraries.
     """
-    # HTTP libraries
-    logging.getLogger('httpx').setLevel(logging.WARNING)
-    logging.getLogger('urllib3').setLevel(logging.WARNING)
-    
-    # LLM libraries (if available)
-    try:
-        logging.getLogger('ollama').setLevel(logging.ERROR)
-    except:
-        pass
-    
-    try:
-        logging.getLogger('lmstudio').setLevel(logging.ERROR)
-    except:
-        pass
-    
-    # Add more as needed
-    logging.getLogger('asyncio').setLevel(logging.WARNING)
+    library_levels = {
+        'httpx': logging.WARNING,
+        'urllib3': logging.WARNING,
+        'ollama': logging.ERROR,
+        'lmstudio': logging.ERROR,
+        'asyncio': logging.WARNING,
+    }
+
+    for library_name, level in library_levels.items():
+        logging.getLogger(library_name).setLevel(level)
 
 
 def get_sageutils_logger() -> logging.Logger:
@@ -139,7 +139,7 @@ def get_sageutils_logger() -> logging.Logger:
     Returns:
         The root SageUtils logger
     """
-    return logging.getLogger(LOGGER_NAME)
+    return _get_root_logger()
 
 
 def set_log_level(level: str):
@@ -163,7 +163,7 @@ def set_log_level(level: str):
             f"Valid levels are: {', '.join(LOG_LEVELS.keys())}"
         )
     
-    logger = logging.getLogger(LOGGER_NAME)
+    logger = _get_root_logger()
     logger.setLevel(LOG_LEVELS[level_upper])
 
 
@@ -174,7 +174,7 @@ def get_log_level() -> str:
     Returns:
         Log level name ('DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL')
     """
-    logger = logging.getLogger(LOGGER_NAME)
+    logger = _get_root_logger()
     level = logger.level
     
     # Reverse lookup

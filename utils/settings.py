@@ -10,7 +10,6 @@ This module provides a centralized way to manage settings with:
 
 from typing import Any, Dict, Optional
 from .config_manager import ConfigManager
-import logging
 
 from .logger import get_logger
 logger = get_logger('settings')
@@ -88,8 +87,34 @@ SETTINGS_SCHEMA = {
 }
 
 
+def is_known_setting(key: str) -> bool:
+    """Return True when the key is defined in SETTINGS_SCHEMA."""
+    return key in SETTINGS_SCHEMA
+
+
+def get_setting_schema_default(key: str) -> Any:
+    """Get default value for a known setting key."""
+    return SETTINGS_SCHEMA[key]["default"]
+
+
 class SettingsValidator:
     """Validates settings values against the schema."""
+
+    @staticmethod
+    def _coerce_value(expected_type: type, value: Any) -> Any:
+        """Coerce a value to the expected settings type."""
+        if expected_type == bool:
+            if isinstance(value, str):
+                return value.lower() in ('true', '1', 'yes', 'on')
+            return bool(value)
+        if expected_type == int:
+            return int(value)
+        if expected_type == float:
+            return float(value)
+        if expected_type == str:
+            return str(value)
+
+        raise TypeError(f"Cannot convert {type(value)} to {expected_type}")
     
     @staticmethod
     def validate_value(key: str, value: Any, schema_entry: Dict[str, Any]) -> Any:
@@ -100,21 +125,8 @@ class SettingsValidator:
         # Type checking
         if not isinstance(value, expected_type):
             try:
-                # Attempt type conversion
-                if expected_type == bool:
-                    if isinstance(value, str):
-                        value = value.lower() in ('true', '1', 'yes', 'on')
-                    else:
-                        value = bool(value)
-                elif expected_type == int:
-                    value = int(value)
-                elif expected_type == float:
-                    value = float(value)
-                elif expected_type == str:
-                    value = str(value)
-                else:
-                    raise TypeError(f"Cannot convert {type(value)} to {expected_type}")
-            except (ValueError, TypeError) as e:
+                value = SettingsValidator._coerce_value(expected_type, value)
+            except (ValueError, TypeError):
                 logger.warning(f"Setting '{key}': Invalid type. Expected {expected_type.__name__}, got {type(value).__name__}. Using default.")
                 return schema_entry["default"]
         
@@ -134,6 +146,16 @@ class SageSettings:
         self._settings: Dict[str, Any] = {}
         self._validator = SettingsValidator()
         self.load_and_validate()
+
+    @staticmethod
+    def _is_known_setting(key: str) -> bool:
+        """Return True when the key is defined in SETTINGS_SCHEMA."""
+        return is_known_setting(key)
+
+    @staticmethod
+    def _schema_default(key: str) -> Any:
+        """Get default value for a known setting key."""
+        return get_setting_schema_default(key)
     
     def load_and_validate(self) -> None:
         """Load settings from config manager and validate against schema."""
@@ -145,6 +167,7 @@ class SageSettings:
         settings_updated = False
         
         for key, schema_entry in SETTINGS_SCHEMA.items():
+            default_value = schema_entry["default"]
             if key in current_settings:
                 # Validate existing setting
                 validated_value = self._validator.validate_value(
@@ -158,9 +181,9 @@ class SageSettings:
                     logger.info(f"Setting '{key}' corrected to: {validated_value}")
             else:
                 # Use default for missing settings
-                self._settings[key] = schema_entry["default"]
+                self._settings[key] = default_value
                 settings_updated = True
-                logger.info(f"Setting '{key}' added with default value: {schema_entry['default']}")
+                logger.info(f"Setting '{key}' added with default value: {default_value}")
         
         # Remove any settings not in schema (cleanup old/deprecated settings)
         for key in current_settings:
@@ -175,13 +198,13 @@ class SageSettings:
     
     def get(self, key: str, default: Any = None) -> Any:
         """Get a setting value with optional default fallback."""
-        if key in SETTINGS_SCHEMA:
-            return self._settings.get(key, SETTINGS_SCHEMA[key]["default"])
+        if self._is_known_setting(key):
+            return self._settings.get(key, self._schema_default(key))
         return self._settings.get(key, default)
     
     def set(self, key: str, value: Any) -> bool:
         """Set a setting value with validation."""
-        if key not in SETTINGS_SCHEMA:
+        if not self._is_known_setting(key):
             logger.warning(f"Setting unknown key '{key}'. Consider adding it to SETTINGS_SCHEMA.")
             self._settings[key] = value
             return True
@@ -208,18 +231,18 @@ class SageSettings:
     # Used in settings and server_routes.
     def reset_to_defaults(self) -> None:
         """Reset all settings to their default values."""
-        self._settings = {key: entry["default"] for key, entry in SETTINGS_SCHEMA.items()}
+        self._settings = {key: self._schema_default(key) for key in SETTINGS_SCHEMA}
         self.save()
         logger.info("All settings reset to defaults.")
     
     def get_setting_info(self, key: str) -> Optional[Dict[str, Any]]:
         """Get information about a setting including description and current value."""
-        if key not in SETTINGS_SCHEMA:
+        if not self._is_known_setting(key):
             return None
         
         schema_entry = SETTINGS_SCHEMA[key].copy()
         # Get current value, falling back to default if not set
-        schema_entry["current_value"] = self._settings.get(key, schema_entry["default"])
+        schema_entry["current_value"] = self._settings.get(key, self._schema_default(key))
         # Convert type to string representation for JSON serialization
         if "type" in schema_entry:
             schema_entry["type"] = schema_entry["type"].__name__
@@ -229,7 +252,7 @@ class SageSettings:
     def list_all_settings(self) -> Dict[str, Dict[str, Any]]:
         """Get information about all settings."""
         result = {}
-        for key in SETTINGS_SCHEMA.keys():
+        for key in SETTINGS_SCHEMA:
             setting_info = self.get_setting_info(key)
             if setting_info is not None:
                 # The setting_info is already JSON-safe from get_setting_info()

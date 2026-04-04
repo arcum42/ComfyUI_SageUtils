@@ -2,7 +2,7 @@ import folder_paths
 from typing import Optional
 from .logger import get_logger
 from .model_cache import cache
-from .helpers import pull_metadata, clean_keywords
+from .prompt_utils import clean_keywords
 
 logger = get_logger('utils.lora_stack')
 
@@ -20,26 +20,33 @@ def norm_lora_stack(lora_stack: Optional[list]) -> Optional[list]:
     """
     if lora_stack is None:
         return None
+
     if isinstance(lora_stack, (tuple, list)):
+        if len(lora_stack) == 0:
+            return None
         if not isinstance(lora_stack[0], (list, tuple)):
             lora_stack = [lora_stack]
     else:
         lora_stack = None
+
     return lora_stack
     
 def get_lora_keywords(lora_name):
+    # Local import avoids circular dependency with helpers facade.
+    from .helpers import pull_metadata
+
     lora_path = folder_paths.get_full_path_or_raise("loras", lora_name)
     if cache.by_path(lora_path).get("trainedWords") is None:
         pull_metadata(lora_path, timestamp=True)
     return cache.by_path(lora_path).get("trainedWords", [])
 
 def get_lora_stack_keywords(lora_stack=None):
-    if not lora_stack:
+    # Local import avoids circular dependency with helpers facade.
+    from .helpers import pull_metadata
+
+    lora_stack = norm_lora_stack(lora_stack)
+    if lora_stack is None:
         return []
-    
-    if isinstance(lora_stack, (tuple, list)):
-        if not isinstance(lora_stack[0], (list, tuple)):
-            lora_stack = [lora_stack]
 
     # Collect unique lora names
     lora_names = {lora[0] for lora in lora_stack}

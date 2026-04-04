@@ -47,7 +47,7 @@ def decode_base64_images_to_temp(images_data: list[str]) -> list[str]:
         for temp_path in temp_files:
             try:
                 os.unlink(temp_path)
-            except:
+            except Exception:
                 pass
         raise_llm_error(
             ValueError,
@@ -291,7 +291,7 @@ def validate_request_fields(
     """
     missing = [f for f in required_fields if f not in data]
     if missing:
-        return False, f"Missing required fields: {', '.join(missing)}"
+        return False, f"Missing required fields in {request_context}: {', '.join(missing)}"
     return True, None
 
 

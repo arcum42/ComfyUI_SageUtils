@@ -4,7 +4,7 @@ This file now uses a modular route system for better maintainability.
 """
 
 import logging
-from .utils.performance_timer import server_timer, log_init, timer_context
+from .utils.performance_timer import server_timer, log_init
 
 # Record server routes initialization start
 log_init("SERVER_ROUTES_START", server_timer)
@@ -13,11 +13,11 @@ try:
     from server import PromptServer
     from aiohttp import web
     from .utils.model_cache import cache
-    from .utils.settings import get_settings, SETTINGS_SCHEMA
+    from .utils.settings import get_settings, is_known_setting
     
     # Try to import the new modular route system
     try:
-        from .routes import register_routes, is_initialized
+        from .routes import register_routes
         _modular_routes_available = True
     except ImportError as e:
         logging.warning(f"SageUtils: Modular routes not available ({e}), using legacy routes only")
@@ -89,7 +89,7 @@ try:
                 errors = []
                 
                 for key, value in data.items():
-                    if key in SETTINGS_SCHEMA:
+                    if is_known_setting(key):
                         try:
                             if settings.set(key, value):
                                 updated_settings.append(key)

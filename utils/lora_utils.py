@@ -6,6 +6,7 @@ import folder_paths
 
 from .logger import get_logger
 from .model_cache import cache
+from .lora_stack import norm_lora_stack
 
 logger = get_logger('utils.lora_utils')
 
@@ -16,12 +17,10 @@ def lora_to_string(lora_name, model_weight, clip_weight):
 
 def lora_to_prompt(lora_stack=None):
     lora_info = ''
+    lora_stack = norm_lora_stack(lora_stack)
     if lora_stack is None:
         return ''
 
-    if isinstance(lora_stack, (tuple, list)):
-        if not isinstance(lora_stack[0], (list, tuple)):
-            lora_stack = [lora_stack]
     for lora in lora_stack:
         lora_info += lora_to_string(lora[0], lora[1], lora[2])
     return lora_info
