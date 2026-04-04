@@ -286,7 +286,6 @@ async function initializeSidebarData() {
                     handleError(event.reason, { component: 'Sidebar', operation: 'Promise Rejection' });
                 }
             };
-            
             window.addEventListener('error', sidebarErrorHandler);
             window.addEventListener('unhandledrejection', sidebarRejectionHandler);
             errorHandlersRegistered = true;
@@ -422,6 +421,21 @@ export function createCacheSidebar(el) {
         show_llm_tab: true
     };
     let tabVisibility = defaultVisibility;
+    let isDestroyed = false;
+    const pendingTimeouts = new Set();
+
+    // Track delayed callbacks so cleanup can cancel them safely.
+    const scheduleDelayed = (callback, delayMs) => {
+        const timeoutId = setTimeout(() => {
+            pendingTimeouts.delete(timeoutId);
+            if (isDestroyed) {
+                return;
+            }
+            callback();
+        }, delayMs);
+        pendingTimeouts.add(timeoutId);
+        return timeoutId;
+    };
     
     // Create main container
     const mainContainer = createMainContainer();
@@ -553,7 +567,7 @@ export function createCacheSidebar(el) {
     
     // Start background preloading of other tabs during idle time
     // Priority order: commonly used tabs first
-    setTimeout(() => {
+    scheduleDelayed(() => {
         console.debug('[Sidebar] Starting background tab preloading...');
         tabManager.preloadTabsDuringIdle({
             maxIdleTime: 20,  // Lower threshold to ensure we have real idle time
@@ -564,7 +578,7 @@ export function createCacheSidebar(el) {
     
     // Preload gallery images in the background for better UX
     // This loads the default folder (usually 'notes') so data is ready when user clicks Gallery tab
-    setTimeout(() => {
+    scheduleDelayed(() => {
         const defaultFolder = actions ? (typeof actions.selectedFolder === 'function' ? actions.selectedFolder() : 'notes') : 'notes';
         const savedFolder = selectors.selectedFolder ? selectors.selectedFolder() : defaultFolder;
         const galleryFolder = savedFolder !== 'custom' ? savedFolder : 'notes'; // Don't auto-load custom folders
@@ -613,6 +627,13 @@ export function createCacheSidebar(el) {
         switchTab: (tabId) => tabManager.switchTab(tabId),
         initializedTabs: tabManager.initializedTabs,
         cleanup: () => {
+            isDestroyed = true;
+
+            pendingTimeouts.forEach((timeoutId) => {
+                clearTimeout(timeoutId);
+            });
+            pendingTimeouts.clear();
+
             // Cleanup cross-tab subscription
             if (crossTabUnsubscribe) {
                 try {
@@ -630,11 +651,17 @@ export function createCacheSidebar(el) {
     // Subscribe to cross-tab messaging for tab switching
     // Use a slight delay to ensure all components are fully initialized
     let crossTabUnsubscribe = null;
-    setTimeout(() => {
+    scheduleDelayed(() => {
         import('../shared/crossTabMessaging.js').then(({ getEventBus, MessageTypes }) => {
+            if (isDestroyed) {
+                return;
+            }
             const bus = getEventBus();
             
             crossTabUnsubscribe = bus.subscribe(MessageTypes.TAB_SWITCH_REQUEST, (message) => {
+                if (isDestroyed) {
+                    return;
+                }
                 const { tabId, source } = message.data;
                 
                 // Map tab IDs to actual tab keys used in switchTab()

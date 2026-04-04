@@ -366,14 +366,20 @@ export async function createLLMTab(container) {
     console.log('[LLM Tab] Setting up cross-tab message subscriptions');
     console.log('[LLM Tab] Available MessageTypes:', MessageTypes);
     
-    // Handle text from Prompt Builder
-    const textSubscription = bus.subscribe(MessageTypes.PROMPT_BUILDER_TO_LLM, (data) => {
+    // Shared handler for incoming prompt text messages
+    const handleIncomingPromptText = (data) => {
         const textarea = inputSection.querySelector('.llm-textarea');
         if (textarea && data.text) {
             textarea.value = data.text;
-            textarea.dispatchEvent(new Event('input')); // Update character counter
+            textarea.dispatchEvent(new Event('input', { bubbles: true })); // Update character counter
             showNotification('Prompt received from Prompt Builder', 'success');
         }
+    };
+
+    // Handle text from Prompt Builder via event bus
+    const textSubscription = bus.subscribe(MessageTypes.TEXT_TO_LLM, (message) => {
+        const data = message?.data || message;
+        handleIncomingPromptText(data);
     });
     
     console.log('[LLM Tab] Text subscription created');
@@ -457,19 +463,52 @@ export async function createLLMTab(container) {
             }
         }
     });
-    
-    // Legacy message handler for backward compatibility
-    const messageHandler = (event) => {
-        if (event.data.type === 'PROMPT_BUILDER_TO_LLM') {
-            const textarea = inputSection.querySelector('.llm-textarea');
-            if (textarea && event.data.text) {
-                textarea.value = event.data.text;
-                textarea.dispatchEvent(new Event('input')); // Update character counter
-                showNotification('Prompt received from Prompt Builder', 'success');
+
+    // Respond to state requests from other tabs/APIs (e.g. preset API).
+    const llmStateRequestSubscription = bus.subscribe(MessageTypes.LLM_STATE_REQUEST, (message) => {
+        const source = message?.data?.source || 'unknown';
+        bus.publish(MessageTypes.LLM_STATE_RESPONSE, {
+            source: 'llm-tab',
+            target: source,
+            state
+        });
+    });
+
+    // Apply preset changes pushed from external APIs/routes.
+    const llmPresetAppliedSubscription = bus.subscribe(MessageTypes.LLM_PRESET_APPLIED, async (message) => {
+        const data = message?.data || {};
+        const presetId = data.presetId;
+
+        // Primary path: apply by preset ID through shared UI helper.
+        if (presetId && state.presets && state.presets[presetId]) {
+            await applyPresetToUI(state, presetId, modelSelection, advancedOptions, inputSection);
+
+            const presetSelect = modelSelection.querySelector('.llm-preset-select');
+            if (presetSelect) {
+                presetSelect.value = presetId;
             }
+
+            const presetName = state.presets[presetId]?.name || data.presetName || presetId;
+            showNotification(`Preset "${presetName}" applied`, 'success');
+            return;
         }
-    };
-    window.addEventListener('message', messageHandler);
+
+        // Fallback path: if a full state snapshot is provided, merge and refresh UI settings.
+        if (data.state && typeof data.state === 'object') {
+            state.settings = {
+                ...state.settings,
+                ...(data.state.settings || {})
+            };
+            updateUIFromSettings(state.settings, advancedOptions);
+
+            if (data.presetName) {
+                showNotification(`Preset "${data.presetName}" applied`, 'success');
+            }
+            return;
+        }
+
+        console.warn('[LLM Tab] Received LLM_PRESET_APPLIED without usable preset payload:', data);
+    });
     
     // Return tab utilities
     return {
@@ -480,9 +519,10 @@ export async function createLLMTab(container) {
             cleanupEventHandlers(state);
             
             // Cleanup cross-tab messaging
-            if (textSubscription) textSubscription.unsubscribe();
-            if (imageSubscription) imageSubscription.unsubscribe();
-            window.removeEventListener('message', messageHandler);
+            if (typeof textSubscription === 'function') textSubscription();
+            if (typeof imageSubscription === 'function') imageSubscription();
+            if (typeof llmStateRequestSubscription === 'function') llmStateRequestSubscription();
+            if (typeof llmPresetAppliedSubscription === 'function') llmPresetAppliedSubscription();
             
             // Stop any active generation
             if (state.generating && state.streamController) {

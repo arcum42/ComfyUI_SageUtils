@@ -168,7 +168,14 @@ export class BatchProcessor {
             this.items = [];
             
             try {
-                this.processFn(itemsToProcess);
+                const result = this.processFn(itemsToProcess);
+
+                // Capture async failures for promise-returning batch handlers.
+                if (result && typeof result.then === 'function') {
+                    result.catch(error => {
+                        console.error('[BatchProcessor] Error processing async batch:', error);
+                    });
+                }
             } catch (error) {
                 console.error('[BatchProcessor] Error processing batch:', error);
             }

@@ -31,7 +31,8 @@ const CONFIG = {
 export class LazyImageLoader {
     constructor() {
         this.observer = null;
-        this.pendingLoads = new Map(); // imagePath -> {element, retries, retryTimeout}
+        // Key by element identity to avoid collisions when multiple elements share the same image path.
+        this.pendingLoads = new Map(); // imgElement -> {imagePath, retries, retryTimeout}
         this.loadingQueue = [];
         this.isProcessingQueue = false;
         this.loadStats = {
@@ -160,7 +161,7 @@ export class LazyImageLoader {
             this.updateProgress();
             
             // Remove from pending loads
-            this.pendingLoads.delete(imagePath);
+            this.pendingLoads.delete(img);
             
         } catch (error) {
             console.warn(`Failed to load thumbnail for ${imagePath} (attempt ${retryCount + 1}):`, error);
@@ -180,14 +181,20 @@ export class LazyImageLoader {
                     this.loadStats.retrying++;
                 }
                 this.updateProgress();
+
+                // Replace any existing pending retry for this element.
+                const existingPending = this.pendingLoads.get(img);
+                if (existingPending?.retryTimeout) {
+                    clearTimeout(existingPending.retryTimeout);
+                }
                 
                 // Store pending retry
                 const retryTimeout = setTimeout(() => {
                     this.loadImage(img, imagePath, retryCount + 1);
                 }, retryDelay);
                 
-                this.pendingLoads.set(imagePath, {
-                    element: img,
+                this.pendingLoads.set(img, {
+                    imagePath,
                     retries: retryCount + 1,
                     retryTimeout
                 });
@@ -208,7 +215,7 @@ export class LazyImageLoader {
                 this.showErrorState(img, imagePath);
                 
                 // Remove from pending loads
-                this.pendingLoads.delete(imagePath);
+                this.pendingLoads.delete(img);
             }
         }
     }
@@ -318,15 +325,12 @@ export class LazyImageLoader {
         if (this.observer) {
             this.observer.unobserve(img);
         }
-        
-        const imagePath = img.dataset.imagePath;
-        if (imagePath && this.pendingLoads.has(imagePath)) {
-            const pending = this.pendingLoads.get(imagePath);
-            if (pending.retryTimeout) {
-                clearTimeout(pending.retryTimeout);
-            }
-            this.pendingLoads.delete(imagePath);
+
+        const pending = this.pendingLoads.get(img);
+        if (pending?.retryTimeout) {
+            clearTimeout(pending.retryTimeout);
         }
+        this.pendingLoads.delete(img);
     }
 
     /**
