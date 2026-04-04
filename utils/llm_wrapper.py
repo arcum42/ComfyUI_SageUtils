@@ -1,10 +1,9 @@
-import logging
-from typing import Any, cast
-from .helpers_image import tensor_to_temp_image
-from .llm_cache import get_llm_cache
+from typing import Any
 from .logger import get_logger, get_sageutils_logger
-from .llm.common import clean_response, build_response_parameters, build_lmstudio_config
+from .llm.init import init_ollama_client, init_lmstudio_client
 from .llm.providers.settings import is_ollama_enabled, is_lmstudio_enabled
+from .llm.providers import ollama_client as ollama_provider
+from .llm.providers import lmstudio_client as lmstudio_provider
 
 logger = get_logger('llm')
 root_logger = get_sageutils_logger()
@@ -37,259 +36,73 @@ except ImportError:
 
 def get_ollama_vision_models() -> list[str]:
     """Retrieve a list of available vision models from Ollama."""
-    if not OLLAMA_AVAILABLE or ollama_client is None:
-        return ["(Ollama not available)"]
-    
-    if not is_ollama_enabled():
-        return ["(Ollama not available)"]
-    
-    def _fetch_ollama_vision_models(cache_instance):
-        """Internal function to fetch vision models from Ollama."""
-        if ollama_client is None:
-            return ["(Ollama not available)"]
-
-        try:
-            logger.debug("Fetching vision models from Ollama...")
-            response = ollama_client.list()
-            models = []
-
-            for model in response.models:
-                if model.model is None:
-                    continue
-
-                logger.debug(f"Checking model: {model.model}")
-
-                cached_vision = cache_instance.is_ollama_vision_model(model.model)
-                if cached_vision is not None:
-                    logger.debug(f"Model {model.model} cached as vision: {cached_vision}")
-                    if cached_vision:
-                        models.append(model.model)
-                    continue
-
-                is_vision = False
-                capabilities = getattr(model, 'capabilities', None)
-                if capabilities and 'vision' in capabilities:
-                    is_vision = True
-                elif not capabilities:
-                    try:
-                        show_response = ollama_client.show(str(model.model))
-                        if 'vision' in getattr(show_response, 'capabilities', []):
-                            is_vision = True
-                    except Exception as e:
-                        logger.debug(f"Failed to get capabilities for {model.model}: {e}")
-
-                logger.debug(f"Caching vision capability for {model.model}: {is_vision}")
-                cache_instance._set_ollama_vision_capability_unlocked(model.model, is_vision)
-                if is_vision:
-                    models.append(model.model)
-
-            logger.debug(f"Found {len(models)} vision models.")
-            return models
-        except Exception as e:
-            logger.error(f"Error retrieving vision models from Ollama: {e}")
-            return []
-
-    cache = get_llm_cache()
-    return cache.get_ollama_vision_models(_fetch_ollama_vision_models)
+    return ollama_provider.get_vision_models(OLLAMA_AVAILABLE, ollama_client, is_ollama_enabled())
 
 
 def get_ollama_models() -> list[str]:
     """Retrieve a list of available models from Ollama."""
-    if not OLLAMA_AVAILABLE or ollama_client is None:
-        return ["(Ollama not available)"]
-
-    if not is_ollama_enabled():
-        return ["(Ollama not available)"]
-
-    def _fetch_ollama_models():
-        """Internal function to fetch models from Ollama."""
-        if ollama_client is None:
-            return ["(Ollama not available)"]
-
-        try:
-            logger.info("Fetching models from Ollama...")
-            response = ollama_client.list()
-            logger.info(f"Found {len(response.models)} models.")
-            return [model.model for model in response.models if model.model is not None]
-        except Exception as e:
-            logger.error(f"Error retrieving models from Ollama: {e}")
-            return []
-    
-    cache = get_llm_cache()
-    logger.debug("Fetching Ollama models from cache...")
-    return cache.get_ollama_models(_fetch_ollama_models)
+    return ollama_provider.get_models(OLLAMA_AVAILABLE, ollama_client, is_ollama_enabled())
 
 
 def ollama_generate_vision(model: str, prompt: str, keep_alive: float = 0.0, images=None, options=None, system_prompt: str = "") -> str:
     """Generate a response from an Ollama vision model."""
     # Ensure Ollama is initialized before use
     ensure_ollama_initialized()
-    
-    if not OLLAMA_AVAILABLE or ollama_client is None:
-        raise ImportError("Ollama is not available. Please install it to use this function.")
-    vision_models = get_ollama_vision_models()
-    if model not in vision_models:
-        raise ValueError(f"Model '{model}' is not available. Available models: {vision_models}")
-    if images is None:
-        raise ValueError("No images provided for vision model.")
-    try:
-        options = options or {}
-        options['seed'] = options.get('seed', 0)
-        response_parameters = build_response_parameters(model, prompt, keep_alive, options, system_prompt, images)
-        response = ollama_client.generate(**response_parameters)
-        if not response or 'response' not in response:
-            raise ValueError("No valid response received from the model.")
-        return clean_response(response['response'])
-    except Exception as e:
-        logger.error(f"Error generating response from Ollama vision model: {e}")
-        return ""
+    return ollama_provider.generate_vision(
+        OLLAMA_AVAILABLE,
+        ollama_client,
+        is_ollama_enabled(),
+        model,
+        prompt,
+        keep_alive,
+        images,
+        options,
+        system_prompt,
+    )
 
 def ollama_generate(model: str, prompt: str, keep_alive: float = 0.0, options=None, system_prompt: str = "") -> str:
     """Generate a response from an Ollama model."""
     # Ensure Ollama is initialized before use
     ensure_ollama_initialized()
-    
-    if not OLLAMA_AVAILABLE or ollama_client is None:
-        raise ImportError("Ollama is not available. Please install it to use this function.")
-    models = get_ollama_models()
-    if model not in models:
-        raise ValueError(f"Model '{model}' is not available. Available models: {models}")
-    try:
-        if options is None:
-            options = {}
-        response_parameters = build_response_parameters(model, prompt, keep_alive, options, system_prompt, None)
-        response = ollama_client.generate(**response_parameters)
-        if not response or 'response' not in response:
-            raise ValueError("No valid response received from the model.")
-        return clean_response(response['response'])
-    except Exception as e:
-        logger.error(f"Error generating response from Ollama: {e}")
-        return ""
+    return ollama_provider.generate(
+        OLLAMA_AVAILABLE,
+        ollama_client,
+        is_ollama_enabled(),
+        model,
+        prompt,
+        keep_alive,
+        options,
+        system_prompt,
+    )
 
 def ollama_generate_vision_refine( model: str, prompt: str, images=None, options=None, refine_model: str = "", refine_prompt: str = "", refine_options = None) -> tuple[str, str]:
     """Generate a response from an Ollama vision model and refine it with another model."""
-    if not OLLAMA_AVAILABLE or ollama_client is None:
-        raise ImportError("Ollama is not available. Please install it to use this function.")
-    vision_models = get_ollama_vision_models()
-    if model not in vision_models:
-        raise ValueError(f"Model '{model}' is not available. Available models: {vision_models}")
-    if images is None:
-        raise ValueError("No images provided for vision model.")
-
-    try:
-        options = options or {}
-        options['seed'] = options.get('seed', 0)
-        refine_options = refine_options or {}
-        refine_options['seed'] = refine_options.get('seed', 0)
-        if refine_model == "":
-            refine_model = model
-        if refine_prompt == "":
-            refine_prompt = prompt
-        
-        response_parameters = build_response_parameters(model, prompt, 0, options, "", images)
-        response = ollama_client.generate(**response_parameters)
-        if not response or 'response' not in response:
-            raise ValueError("No valid response received from the vision model.")
-        
-        initial_response = clean_response(response['response'])
-        refine_prompt = f"{refine_prompt}\n{initial_response}"
-        refine_options = refine_options or {}
-        refine_options['seed'] = options.get('seed', 0)
-        refined_response_parameters = build_response_parameters(refine_model, refine_prompt, 0, refine_options, "", None)
-
-        refined_response = ollama_client.generate(**refined_response_parameters)
-        if not refined_response or 'response' not in refined_response:
-            raise ValueError("No valid response received from the refining model.")
-        refined_response = clean_response(refined_response['response'])
-        return (initial_response, refined_response)
-    except Exception as e:
-        logger.error(f"Error generating response from Ollama vision model: {e}")
-        return ("", "")
+    return ollama_provider.generate_vision_refine(
+        OLLAMA_AVAILABLE,
+        ollama_client,
+        is_ollama_enabled(),
+        model,
+        prompt,
+        images,
+        options,
+        refine_model,
+        refine_prompt,
+        refine_options,
+    )
 
 def is_lmstudio_running() -> bool:
     """Check if LM Studio server is running by attempting a lightweight API call."""
-    if not LMSTUDIO_AVAILABLE or lms is None:
-        return False
-    
-    if not is_lmstudio_enabled():
-        return False
-    
-    try:
-        lms.list_downloaded_models("llm")
-        return True
-    except Exception:
-        return False
+    return lmstudio_provider.is_running(LMSTUDIO_AVAILABLE, lms, is_lmstudio_enabled())
 
 
 def get_lmstudio_models() -> list[str]:
     """Retrieve a list of available models from LM Studio."""
-    if not LMSTUDIO_AVAILABLE or lms is None:
-        return ["(LM Studio not available)"]
-    
-    if not is_lmstudio_enabled():
-        return ["(LM Studio not available)"]
-    
-    def _fetch_lmstudio_models():
-        """Internal function to fetch models from LM Studio."""
-        if lms is None or not is_lmstudio_running():
-            return []
-            
-        try:
-            logger.debug("Retrieving models from LM Studio...")
-            response = lms.list_downloaded_models("llm")
-            return [model.model_key for model in response if hasattr(model, 'model_key') and model.model_key is not None]
-        except Exception as e:
-            logger.error(f"Error retrieving models from LM Studio: {e}")
-            return ["(LM Studio not available)"]
-
-    cache = get_llm_cache()
-    return cache.get_lmstudio_models(_fetch_lmstudio_models)
+    return lmstudio_provider.get_models(LMSTUDIO_AVAILABLE, lms, is_lmstudio_enabled())
 
 
 def get_lmstudio_vision_models() -> list[str]:
     """Retrieve a list of available vision models from LM Studio."""
-    if not LMSTUDIO_AVAILABLE or lms is None:
-        return ["(LM Studio not available)"]
-
-    if not is_lmstudio_enabled():
-        return ["(LM Studio not available)"]
-
-    def _fetch_lmstudio_vision_models(cache_instance):
-        """Internal function to fetch vision models from LM Studio."""
-        if lms is None or not is_lmstudio_running():
-            return ["(LM Studio not available)"]
-
-        try:
-            logger.debug("Retrieving vision models from LM Studio...")
-            response = lms.list_downloaded_models("llm")
-            models = []
-            
-            for model in response:
-                if not (hasattr(model, 'model_key') and model.model_key is not None):
-                    continue
-                
-                # Check cache first
-                cached_vision = cache_instance.is_lmstudio_vision_model(model.model_key)
-                if cached_vision is not None:
-                    if cached_vision:
-                        models.append(model.model_key)
-                    continue
-                
-                # Check if model supports vision
-                is_vision = hasattr(model, 'info') and getattr(model.info, 'vision', False)
-                
-                # Cache the result using unlocked method (we're already inside the lock)
-                cache_instance._set_lmstudio_vision_capability_unlocked(model.model_key, is_vision)
-                if is_vision:
-                    models.append(model.model_key)
-            
-            return models
-        except Exception as e:
-            logger.error(f"Error retrieving vision models from LM Studio: {e}")
-            return []
-    
-    cache = get_llm_cache()
-    return cache.get_lmstudio_vision_models(_fetch_lmstudio_vision_models)
+    return lmstudio_provider.get_vision_models(LMSTUDIO_AVAILABLE, lms, is_lmstudio_enabled())
 
 
 def lmstudio_generate_vision(model: str, prompt: str, keep_alive: int = 0, images=None, options=None) -> str:
@@ -297,36 +110,16 @@ def lmstudio_generate_vision(model: str, prompt: str, keep_alive: int = 0, image
     # Ensure LM Studio is initialized before use
     ensure_lmstudio_initialized()
     
-    if not LMSTUDIO_AVAILABLE or lms is None:
-        raise ImportError("LM Studio is not available. Please install it to use this function.")
-    model_list = get_lmstudio_vision_models()
-    if model not in model_list:
-        raise ValueError(f"Model '{model}' is not available. Available models: {model_list}")
-    seed = (options or {}).get('seed', 0)
-    input_images = tensor_to_temp_image(images) if images is not None else []
-    lms_model = None
-    try:
-        if keep_alive >= 1:
-            lms_model = lms.llm(model, ttl=keep_alive)
-        else:
-            lms_model = lms.llm(model)
-        chat = lms.Chat()
-        if not input_images:
-            chat.add_user_message(prompt)
-        else:
-            image_handles = [lms.prepare_image(image) for image in input_images]
-            chat.add_user_message(prompt, images=image_handles)
-        response = lms_model.respond(chat)
-        if keep_alive < 1:
-            lms_model.unload()
-        if not response:
-            raise ValueError("No valid response received from the model.")
-        return clean_response(response.content)
-    except Exception as e:
-        logger.error(f"Error generating response from LM Studio vision model: {e}")
-        if lms_model is not None and keep_alive < 1:
-            lms_model.unload()
-        return ""
+    return lmstudio_provider.generate_vision(
+        LMSTUDIO_AVAILABLE,
+        lms,
+        is_lmstudio_enabled(),
+        model,
+        prompt,
+        keep_alive,
+        images,
+        options,
+    )
 
 
 def lmstudio_generate(model: str, prompt: str, keep_alive: int = 0, options=None) -> str:
@@ -334,85 +127,30 @@ def lmstudio_generate(model: str, prompt: str, keep_alive: int = 0, options=None
     # Ensure LM Studio is initialized before use
     ensure_lmstudio_initialized()
     
-    if not LMSTUDIO_AVAILABLE or lms is None:
-        raise ImportError("LM Studio is not available. Please install it to use this function.")
-    model_list = get_lmstudio_models()
-    if model not in model_list:
-        raise ValueError(f"Model '{model}' is not available. Available models: {model_list}")
-    seed = (options or {}).get('seed', 0)
-    lms_model = None
-    try:
-        if keep_alive >= 1:
-            lms_model = lms.llm(model, ttl=keep_alive)
-        else:
-            lms_model = lms.llm(model)
-
-        if lms_model is None:
-            raise ValueError(f"Model '{model}' could not be loaded from LM Studio.")
-        chat = lms.Chat()
-        chat.add_user_message(prompt)
-        response = lms_model.respond(chat)
-        if keep_alive < 1:
-            lms_model.unload()
-        if not response:
-            raise ValueError("No valid response received from the model.")
-        return clean_response(response.content)
-    except Exception as e:
-        logger.error(f"Error generating response from LM Studio: {e}")
-        if lms_model is not None and keep_alive < 1:
-            lms_model.unload()
-        return ""
+    return lmstudio_provider.generate(
+        LMSTUDIO_AVAILABLE,
+        lms,
+        is_lmstudio_enabled(),
+        model,
+        prompt,
+        keep_alive,
+        options,
+    )
 
 def lmstudio_generate_vision_refine(model: str, prompt: str, images=None, options=None, refine_model: str = "", refine_prompt: str = "", refine_options=None) -> tuple[str, str]:
     """Generate a response from an LM Studio vision model and refine it with another model."""
-    if not LMSTUDIO_AVAILABLE or lms is None:
-        raise ImportError("LM Studio is not available. Please install it to use this function.")
-    model_list = get_lmstudio_vision_models()
-    if model not in model_list:
-        raise ValueError(f"Model '{model}' is not available. Available models: {model_list}")
-    seed = (options or {}).get('seed', 0)
-    input_images = tensor_to_temp_image(images) if images is not None else []
-    lms_model = None
-    try:
-        lms_model = lms.llm(model)
-
-        chat = lms.Chat()
-        if not input_images:
-            chat.add_user_message(prompt)
-        else:
-            image_handles = [lms.prepare_image(image) for image in input_images]
-            chat.add_user_message(prompt, images=image_handles)
-
-        response = lms_model.respond(chat)
-        initial_response = clean_response(response.content)
-
-        if refine_model == "":
-            refine_model = model
-        if refine_prompt == "":
-            refine_prompt = prompt
-        
-        if refine_model != model:
-            lms_model.unload()
-            lms_model = lms.llm(refine_model)
-
-        chat = lms.Chat()
-        refine_prompt = f"{refine_prompt}\n{initial_response}"
-        refine_options = refine_options or {}
-        refine_options['seed'] = seed
-        chat.add_user_message(refine_prompt)
-        
-
-        refined_response = clean_response(lms_model.respond(chat).content)
-
-        if lms_model is not None:
-            lms_model.unload()
-
-        return (initial_response, refined_response)
-    except Exception as e:
-        logger.error(f"Error generating response from LM Studio model: {e}")
-        if lms_model is not None:
-            lms_model.unload()
-        return ("", "")
+    return lmstudio_provider.generate_vision_refine(
+        LMSTUDIO_AVAILABLE,
+        lms,
+        is_lmstudio_enabled(),
+        model,
+        prompt,
+        images,
+        options,
+        refine_model,
+        refine_prompt,
+        refine_options,
+    )
 
 # ============================================================================
 # STREAMING FUNCTIONS (Phase 2)
@@ -434,51 +172,16 @@ def ollama_generate_stream(model: str, prompt: str, keep_alive: float = 0.0, opt
         dict: {"chunk": str, "done": bool}
     """
     ensure_ollama_initialized()
-    
-    if not OLLAMA_AVAILABLE or ollama_client is None:
-        raise ImportError("Ollama is not available. Please install it to use this function.")
-    
-    models = get_ollama_models()
-    if model not in models:
-        raise ValueError(f"Model '{model}' is not available. Available models: {models}")
-    
-    try:
-        if options is None:
-            options = {}
-        
-        response_parameters = build_response_parameters(model, prompt, keep_alive, options, system_prompt, None)
-        response_parameters["stream"] = True  # Enable streaming
-        
-        full_response = ""
-        
-        # Stream the response
-        for chunk in ollama_client.generate(**response_parameters):
-            if 'response' in chunk:
-                chunk_text = chunk['response']
-                full_response += chunk_text
-                
-                yield {
-                    "chunk": chunk_text,
-                    "done": chunk.get('done', False)
-                }
-                
-                if chunk.get('done', False):
-                    break
-        
-        # Send final message with full response
-        yield {
-            "chunk": "",
-            "done": True,
-            "full_response": clean_response(full_response)
-        }
-        
-    except Exception as e:
-        logger.error(f"Error streaming response from Ollama: {e}")
-        yield {
-            "chunk": "",
-            "done": True,
-            "error": str(e)
-        }
+    return ollama_provider.generate_stream(
+        OLLAMA_AVAILABLE,
+        ollama_client,
+        is_ollama_enabled(),
+        model,
+        prompt,
+        keep_alive,
+        options,
+        system_prompt,
+    )
 
 
 def ollama_generate_vision_stream(model: str, prompt: str, keep_alive: float = 0.0, images=None, options=None, system_prompt: str = ""):
@@ -498,54 +201,17 @@ def ollama_generate_vision_stream(model: str, prompt: str, keep_alive: float = 0
         dict: {"chunk": str, "done": bool}
     """
     ensure_ollama_initialized()
-    
-    if not OLLAMA_AVAILABLE or ollama_client is None:
-        raise ImportError("Ollama is not available. Please install it to use this function.")
-    
-    vision_models = get_ollama_vision_models()
-    if model not in vision_models:
-        raise ValueError(f"Model '{model}' is not available. Available models: {vision_models}")
-    
-    if images is None:
-        raise ValueError("No images provided for vision model.")
-    
-    try:
-        options = options or {}
-        options['seed'] = options.get('seed', 0)
-        
-        response_parameters = build_response_parameters(model, prompt, keep_alive, options, system_prompt, images)
-        response_parameters["stream"] = True  # Enable streaming
-        
-        full_response = ""
-        
-        # Stream the response
-        for chunk in ollama_client.generate(**response_parameters):
-            if 'response' in chunk:
-                chunk_text = chunk['response']
-                full_response += chunk_text
-                
-                yield {
-                    "chunk": chunk_text,
-                    "done": chunk.get('done', False)
-                }
-                
-                if chunk.get('done', False):
-                    break
-        
-        # Send final message with full response
-        yield {
-            "chunk": "",
-            "done": True,
-            "full_response": clean_response(full_response)
-        }
-        
-    except Exception as e:
-        logger.error(f"Error streaming response from Ollama vision model: {e}")
-        yield {
-            "chunk": "",
-            "done": True,
-            "error": str(e)
-        }
+    return ollama_provider.generate_vision_stream(
+        OLLAMA_AVAILABLE,
+        ollama_client,
+        is_ollama_enabled(),
+        model,
+        prompt,
+        keep_alive,
+        images,
+        options,
+        system_prompt,
+    )
 
 
 def lmstudio_generate_stream(model: str, prompt: str, keep_alive: int = 0, options=None):
@@ -564,72 +230,15 @@ def lmstudio_generate_stream(model: str, prompt: str, keep_alive: int = 0, optio
         dict: {"chunk": str, "done": bool}
     """
     ensure_lmstudio_initialized()
-    
-    if not LMSTUDIO_AVAILABLE or lms is None:
-        raise ImportError("LM Studio is not available. Please install it to use this function.")
-    
-    model_list = get_lmstudio_models()
-    if model not in model_list:
-        raise ValueError(f"Model '{model}' is not available. Available models: {model_list}")
-    
-    seed = (options or {}).get('seed', 0)  # Note: LM Studio doesn't use seed parameter
-    lms_model = None
-    
-    try:
-        if keep_alive >= 1:
-            lms_model = lms.llm(model, ttl=keep_alive)
-        else:
-            lms_model = lms.llm(model)
-        
-        if lms_model is None:
-            raise ValueError(f"Failed to load model: {model}")
-        
-        # Build config from options
-        config = cast(Any, build_lmstudio_config(options or {}))
-        
-        chat = lms.Chat()
-        chat.add_user_message(prompt)
-        
-        # Generate response with config
-        if config:
-            response = lms_model.respond(chat, config=config)
-        else:
-            response = lms_model.respond(chat)
-        
-        if keep_alive < 1:
-            lms_model.unload()
-        
-        if not response:
-            raise ValueError("No valid response received from the model.")
-        
-        response_text = clean_response(response.content)
-        
-        # Simulate streaming by yielding in chunks
-        # This provides a consistent interface even if backend doesn't stream
-        chunk_size = 5  # Characters per chunk
-        for i in range(0, len(response_text), chunk_size):
-            chunk = response_text[i:i + chunk_size]
-            yield {
-                "chunk": chunk,
-                "done": False
-            }
-        
-        # Final message
-        yield {
-            "chunk": "",
-            "done": True,
-            "full_response": response_text
-        }
-        
-    except Exception as e:
-        logger.error(f"Error streaming response from LM Studio: {e}")
-        if lms_model is not None and keep_alive < 1:
-            lms_model.unload()
-        yield {
-            "chunk": "",
-            "done": True,
-            "error": str(e)
-        }
+    return lmstudio_provider.generate_stream(
+        LMSTUDIO_AVAILABLE,
+        lms,
+        is_lmstudio_enabled(),
+        model,
+        prompt,
+        keep_alive,
+        options,
+    )
 
 
 def lmstudio_generate_vision_stream(model: str, prompt: str, keep_alive: int = 0, images=None, options=None):
@@ -648,74 +257,16 @@ def lmstudio_generate_vision_stream(model: str, prompt: str, keep_alive: int = 0
         dict: {"chunk": str, "done": bool}
     """
     ensure_lmstudio_initialized()
-    
-    if not LMSTUDIO_AVAILABLE or lms is None:
-        raise ImportError("LM Studio is not available. Please install it to use this function.")
-    
-    model_list = get_lmstudio_vision_models()
-    if model not in model_list:
-        raise ValueError(f"Model '{model}' is not available. Available models: {model_list}")
-    
-    seed = (options or {}).get('seed', 0)  # Note: LM Studio doesn't use seed parameter
-    input_images = tensor_to_temp_image(images) if images is not None else []
-    lms_model = None
-    
-    try:
-        if keep_alive >= 1:
-            lms_model = lms.llm(model, ttl=keep_alive)
-        else:
-            lms_model = lms.llm(model)
-        
-        # Build config from options
-        config = cast(Any, build_lmstudio_config(options or {}))
-        
-        chat = lms.Chat()
-        if not input_images:
-            raise ValueError("No images provided for vision model.")
-        else:
-            # Prepare image handles
-            image_handles = [lms.prepare_image(img_path) for img_path in input_images]
-            chat.add_user_message(prompt, images=image_handles)
-        
-        # Generate response with config
-        if config:
-            response = lms_model.respond(chat, config=config)
-        else:
-            response = lms_model.respond(chat)
-        
-        if keep_alive < 1:
-            lms_model.unload()
-        
-        if not response:
-            raise ValueError("No valid response received from the model.")
-        
-        response_text = clean_response(response.content)
-        
-        # Simulate streaming by yielding in chunks
-        chunk_size = 5  # Characters per chunk
-        for i in range(0, len(response_text), chunk_size):
-            chunk = response_text[i:i + chunk_size]
-            yield {
-                "chunk": chunk,
-                "done": False
-            }
-        
-        # Final message
-        yield {
-            "chunk": "",
-            "done": True,
-            "full_response": response_text
-        }
-        
-    except Exception as e:
-        logger.error(f"Error streaming response from LM Studio vision model: {e}")
-        if lms_model is not None and keep_alive < 1:
-            lms_model.unload()
-        yield {
-            "chunk": "",
-            "done": True,
-            "error": str(e)
-        }
+    return lmstudio_provider.generate_vision_stream(
+        LMSTUDIO_AVAILABLE,
+        lms,
+        is_lmstudio_enabled(),
+        model,
+        prompt,
+        keep_alive,
+        images,
+        options,
+    )
 
 
 # ============================================================================
@@ -726,72 +277,28 @@ def init_ollama():
     """Initialize Ollama client"""
     global ollama_client, _ollama_initialized
     from .settings import get_setting
-    
-    # Check if Ollama is available and enabled
-    if not OLLAMA_AVAILABLE:
-        logger.warning("Ollama library is not available.")
-        return False
-    if ollama is None:
-        logger.warning("Ollama module is not loaded.")
-        return False
-        
-    if not get_setting("enable_ollama", False):
-        logger.info("Ollama is disabled in settings.")
-        _ollama_initialized = False
-        ollama_client = None
-        return False
-    
-    try:
-        # Get custom URL or use default
-        custom_url = get_setting("custom_ollama_url", "http://localhost:11434")
-        assert ollama is not None
-        if custom_url and custom_url.strip():
-            ollama_client = ollama.Client(host=custom_url)
-            logger.info(f"Ollama client initialized with custom URL.")
-        else:
-            ollama_client = ollama.Client()
-            logger.info("Ollama client initialized with default URL")
-        
-        _ollama_initialized = True
-        return True
-    except Exception as e:
-        logger.error(f"Failed to initialize Ollama client: {e}")
-        _ollama_initialized = False
-        ollama_client = None
-        return False
+
+    ollama_client, _ollama_initialized = init_ollama_client(
+        OLLAMA_AVAILABLE,
+        ollama,
+        bool(get_setting("enable_ollama", False)),
+        str(get_setting("custom_ollama_url", "http://localhost:11434")),
+    )
+    return _ollama_initialized
 
 
 def init_lmstudio():
     """Initialize LM Studio if available. Print config values for LM Studio."""
     global _lmstudio_initialized
     from .settings import get_setting
-    
-    if not LMSTUDIO_AVAILABLE or lms is None:
-        logger.info("LM Studio is not available.")
-        _lmstudio_initialized = False
-        return False
-    
-    # Check if LM Studio is enabled
-    if not get_setting("enable_lmstudio", False):
-        logger.info("LM Studio is disabled in settings.")
-        _lmstudio_initialized = False
-        return False
-    
-    try:
-        custom_url = get_setting('custom_lmstudio_url', '')
-        
-        if custom_url and custom_url.strip():
-            lm_client = lms.get_default_client(custom_url)
-            logger.info(f"LM Studio client configured with custom URL.")
-        else:
-            logger.info("LM Studio using default configuration.")
-        
-        _lmstudio_initialized = True
-        return True
-    except Exception as e:
-        logger.error(f"Failed to configure LM Studio: {e}")
-        _lmstudio_initialized = False
-        return False
+
+    _lmstudio_initialized = init_lmstudio_client(
+        LMSTUDIO_AVAILABLE,
+        lms,
+        bool(get_setting("enable_lmstudio", False)),
+        str(get_setting('custom_lmstudio_url', '')),
+    )
+    return _lmstudio_initialized
 
 
 def init_llm():
