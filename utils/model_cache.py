@@ -16,29 +16,8 @@ from typing import Any, Dict, Optional, List
 from .path_manager import path_manager, file_manager
 
 from .logger import get_logger
+from .type_utils import str_to_bool, bool_to_str
 logger = get_logger('model.cache')
-
-def str_to_bool(value: Any) -> bool:
-    if isinstance(value, bool):
-        return value
-    if isinstance(value, str):
-        value = value.lower()
-        if value in {'true', '1', 'yes'}:
-            return True
-        elif value in {'false', '0', 'no'}:
-            return False
-    raise ValueError(f"Cannot convert {value} to boolean.")
-
-def bool_to_str(value: Any) -> str:
-    if isinstance(value, bool):
-        return "true" if value else "false"
-    elif isinstance(value, str):
-        value = value.lower()
-        if value in {'true', '1', 'yes'}:
-            return "true"
-        elif value in {'false', '0', 'no'}:
-            return "false"
-    raise ValueError(f"Cannot convert {value} to string representation of boolean.")
 
 
 class SageCache:

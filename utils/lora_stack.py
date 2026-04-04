@@ -1,12 +1,8 @@
 import folder_paths
-from git import Optional
+from typing import Optional
 from .logger import get_logger
-
-logger = get_logger('utils.lora_stack')
-
 from .model_cache import cache
 from .helpers import pull_metadata, clean_keywords
-from .logger import get_logger
 
 logger = get_logger('utils.lora_stack')
 
@@ -24,7 +20,7 @@ def norm_lora_stack(lora_stack: Optional[list]) -> Optional[list]:
     """
     if lora_stack is None:
         return None
-    if isinstance(lora_stack, tuple) or isinstance(lora_stack, list):
+    if isinstance(lora_stack, (tuple, list)):
         if not isinstance(lora_stack[0], (list, tuple)):
             lora_stack = [lora_stack]
     else:
@@ -41,7 +37,7 @@ def get_lora_stack_keywords(lora_stack=None):
     if not lora_stack:
         return []
     
-    if isinstance(lora_stack, tuple) or isinstance(lora_stack, list):
+    if isinstance(lora_stack, (tuple, list)):
         if not isinstance(lora_stack[0], (list, tuple)):
             lora_stack = [lora_stack]
 

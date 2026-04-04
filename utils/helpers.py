@@ -9,36 +9,18 @@ import folder_paths
 import comfy.utils
 
 from .model_cache import cache
-from .helpers_civitai import *
+from .helpers_civitai import (
+    get_latest_model_version,
+    get_civitai_model_version_json_by_hash,
+    get_civitai_model_version_json_by_id,
+)
 from .constants import MODEL_FILE_EXTENSIONS
 from .logger import get_logger
+from .type_utils import str_to_bool, bool_to_str
 import logging
 
 logger = get_logger('helpers')
 logger.setLevel(logging.WARNING)
-
-def str_to_bool(value):
-    if isinstance(value, bool):
-        return value
-    if isinstance(value, str):
-        value = value.lower()
-        if value in {'true', '1', 'yes'}:
-            return True
-        if value in {'false', '0', 'no'}:
-            return False
-    raise ValueError(f"Cannot convert {value} to boolean.")
-
-# Not currently used.
-def bool_to_str(value):
-    if isinstance(value, bool):
-        return "true" if value else "false"
-    if isinstance(value, str):
-        value = value.lower()
-        if value in {'true', '1', 'yes'}:
-            return "true"
-        if value in {'false', '0', 'no'}:
-            return "false"
-    raise ValueError(f"Cannot convert {value} to string representation of boolean.")
 
 def name_from_path(path):
     return pathlib.Path(path).name
@@ -354,7 +336,7 @@ def pull_metadata(file_paths, timestamp = True, force_all = False, pbar = None, 
         civitai_val = False
         try:
             civitai_val = str_to_bool(file_cache.get('civitai', False))
-        except:
+        except (TypeError, ValueError):
             civitai_val = False
 
         if not force and civitai_val == True:

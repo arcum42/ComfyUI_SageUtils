@@ -4,11 +4,13 @@
 from __future__ import annotations
 from comfy.comfy_types.node_typing import IO
 from comfy_api.latest import io
+from typing import Any, Callable, cast
 
 import torch
+import nodes as comfy_nodes
 
 from comfy.samplers import KSampler
-from nodes import common_ksampler as ksampler
+ksampler = cast(Callable[..., Any], getattr(comfy_nodes, "common_ksampler"))
 SAMPLERS = KSampler.SAMPLERS
 SCHEDULERS = KSampler.SCHEDULERS
 

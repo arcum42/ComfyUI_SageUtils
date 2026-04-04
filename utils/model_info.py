@@ -209,7 +209,7 @@ def collect_resource_hashes(model_info, lora_stack: Optional[list] = None) -> li
     Returns:
         list[dict]: List of resource hash dictionaries for the model and any LoRAs.
     """
-    from .helpers import get_model_dict
+    from .helpers_civitai import get_model_dict
     
     resource_hashes = []
     lora_stack = norm_lora_stack(lora_stack)
