@@ -5,6 +5,8 @@ Handles LLM chat endpoints for Ollama and LM Studio integration.
 
 import json
 from ..utils.logger import get_logger
+from ..utils.llm import clean_response
+from ..utils.llm import routes_helpers
 from aiohttp import web
 from .base import route_error_handler, success_response, error_response, validate_json_body
 
@@ -24,6 +26,14 @@ def register_routes(routes_instance):
     Returns:
         int: Number of routes registered
     """
+    from ..utils.llm import set_llm_error_reporter
+    
+    # Optional: Wire up error reporter for frontend error dialogs
+    # Uncomment below if frontend is ready to handle error callbacks:
+    # set_llm_error_reporter(handle_llm_error_callback)
+    
+    # For now, errors are logged but not reported to frontend UI
+    
     global _route_list
     _route_list.clear()
     
@@ -122,6 +132,7 @@ def register_routes(routes_instance):
         try:
             from ..utils import llm_wrapper as llm
             from ..utils.settings import get_setting
+            from ..utils.llm.routes_helpers import get_compatible_models
             
             # Check if force re-initialization is requested
             force = request.rel_url.query.get('force', '').lower() == 'true'
@@ -144,19 +155,15 @@ def register_routes(routes_instance):
             
             if ollama_enabled and llm.OLLAMA_AVAILABLE:
                 try:
-                    ollama_models = llm.get_ollama_models()
-                    # Filter out placeholder messages
-                    if ollama_models and ollama_models[0].startswith("("):
-                        ollama_models = []
+                    models = llm.get_ollama_models()
+                    ollama_models = get_compatible_models('ollama', models)
                 except Exception as e:
                     logger.warning(f"Failed to get Ollama models: {e}")
             
             if lmstudio_enabled and llm.LMSTUDIO_AVAILABLE:
                 try:
-                    lmstudio_models = llm.get_lmstudio_models()
-                    # Filter out placeholder messages
-                    if lmstudio_models and lmstudio_models[0].startswith("("):
-                        lmstudio_models = []
+                    models = llm.get_lmstudio_models()
+                    lmstudio_models = get_compatible_models('lmstudio', models)
                 except Exception as e:
                     logger.warning(f"Failed to get LM Studio models: {e}")
             
@@ -206,6 +213,7 @@ def register_routes(routes_instance):
         try:
             from ..utils import llm_wrapper as llm
             from ..utils.settings import get_setting
+            from ..utils.llm.routes_helpers import get_compatible_models
             
             # Check if force re-initialization is requested
             force = request.rel_url.query.get('force', '').lower() == 'true'
@@ -228,19 +236,15 @@ def register_routes(routes_instance):
             
             if ollama_enabled and llm.OLLAMA_AVAILABLE:
                 try:
-                    ollama_models = llm.get_ollama_vision_models()
-                    # Filter out placeholder messages
-                    if ollama_models and ollama_models[0].startswith("("):
-                        ollama_models = []
+                    models = llm.get_ollama_vision_models()
+                    ollama_models = get_compatible_models('ollama', models)
                 except Exception as e:
                     logger.warning(f"Failed to get Ollama vision models: {e}")
             
             if lmstudio_enabled and llm.LMSTUDIO_AVAILABLE:
                 try:
-                    lmstudio_models = llm.get_lmstudio_vision_models()
-                    # Filter out placeholder messages
-                    if lmstudio_models and lmstudio_models[0].startswith("("):
-                        lmstudio_models = []
+                    models = llm.get_lmstudio_vision_models()
+                    lmstudio_models = get_compatible_models('lmstudio', models)
                 except Exception as e:
                     logger.warning(f"Failed to get LM Studio vision models: {e}")
             
@@ -327,21 +331,16 @@ def register_routes(routes_instance):
         try:
             data = await request.json()
             
-            # Validate required fields
-            required = ["provider", "model", "prompt"]
-            missing = [f for f in required if f not in data]
-            if missing:
-                return error_response(f"Missing required fields: {', '.join(missing)}", status=400)
+            # Validate generation input
+            is_valid, error_msg = routes_helpers.validate_generation_data(data)
+            if not is_valid:
+                return error_response(error_msg, status=400)
             
             provider = data["provider"].lower()
             model = data["model"]
             prompt = data["prompt"]
             system_prompt = data.get("system_prompt", "")
             options = data.get("options", {})
-            
-            # Validate provider
-            if provider not in ["ollama", "lmstudio"]:
-                return error_response(f"Invalid provider: {provider}. Must be 'ollama' or 'lmstudio'", status=400)
             
             from ..utils import llm_wrapper as llm
             
@@ -463,8 +462,7 @@ def register_routes(routes_instance):
                         options=options
                     ):
                         # Send chunk as SSE
-                        import json
-                        sse_data = f"data: {json.dumps(chunk_data)}\n\n"
+                        sse_data = routes_helpers.format_sse_chunk(chunk_data)
                         await response.write(sse_data.encode('utf-8'))
                         
                         if chunk_data.get("done", False):
@@ -482,8 +480,7 @@ def register_routes(routes_instance):
                         options=options
                     ):
                         # Send chunk as SSE
-                        import json
-                        sse_data = f"data: {json.dumps(chunk_data)}\n\n"
+                        sse_data = routes_helpers.format_sse_chunk(chunk_data)
                         await response.write(sse_data.encode('utf-8'))
                         
                         if chunk_data.get("done", False):
@@ -494,9 +491,8 @@ def register_routes(routes_instance):
                 
             except Exception as e:
                 logger.error(f"Error during streaming: {str(e)}")
-                import json
-                error_data = json.dumps({"error": str(e), "done": True})
-                await response.write(f"data: {error_data}\n\n".encode('utf-8'))
+                error_chunk = routes_helpers.format_sse_chunk({"error": str(e), "done": True})
+                await response.write(error_chunk.encode('utf-8'))
                 await response.write_eof()
                 return response
                 
@@ -537,11 +533,10 @@ def register_routes(routes_instance):
         try:
             data = await request.json()
             
-            # Validate required fields
-            required = ["provider", "model", "prompt", "images"]
-            missing = [f for f in required if f not in data]
-            if missing:
-                return error_response(f"Missing required fields: {', '.join(missing)}", status=400)
+            # Validate vision input
+            is_valid, error_msg = routes_helpers.validate_vision_data(data)
+            if not is_valid:
+                return error_response(error_msg, status=400)
             
             provider = data["provider"].lower()
             model = data["model"]
@@ -550,22 +545,10 @@ def register_routes(routes_instance):
             system_prompt = data.get("system_prompt", "")
             options = data.get("options", {})
             
-            # Validate provider
-            if provider not in ["ollama", "lmstudio"]:
-                return error_response(f"Invalid provider: {provider}. Must be 'ollama' or 'lmstudio'", status=400)
-            
-            # Validate images
-            if not images_data or not isinstance(images_data, list):
-                return error_response("Images must be a non-empty array", status=400)
-            
             from ..utils import llm_wrapper as llm
             
             # Initialize LLM services if needed
             llm.ensure_llm_initialized()
-            
-            # Convert base64 images to tensor format (if needed by backend)
-            # For Ollama, we can pass base64 directly
-            # For consistency, we'll keep images as base64
             
             response_text = ""
             
@@ -573,8 +556,7 @@ def register_routes(routes_instance):
                 if not llm.OLLAMA_AVAILABLE:
                     return error_response("Ollama is not available", status=503)
                 
-                # Ollama expects images as base64 in the generate call
-                # Build parameters manually to pass base64 images
+                # Build Ollama vision generation parameters
                 response_parameters = {
                     "model": model,
                     "prompt": prompt,
@@ -594,37 +576,19 @@ def register_routes(routes_instance):
                 if not response or 'response' not in response:
                     return error_response("No valid response received from model", status=500)
                 
-                response_text = llm.clean_response(response['response'])
+                response_text = clean_response(response['response'])
             
             elif provider == "lmstudio":
                 if not llm.LMSTUDIO_AVAILABLE:
                     return error_response("LM Studio is not available", status=503)
                 
-                # For LM Studio, we need to convert base64 to temp files
-                # This is handled by helpers_image
-                import base64
-                import tempfile
-                import os
-                
+                # LM Studio requires temp file conversion
                 temp_files = []
                 try:
-                    # Convert base64 to temporary image files
-                    for img_b64 in images_data:
-                        # Decode base64
-                        img_bytes = base64.b64decode(img_b64)
-                        
-                        # Create temp file
-                        temp_fd, temp_path = tempfile.mkstemp(suffix='.png')
-                        os.close(temp_fd)
-                        
-                        with open(temp_path, 'wb') as f:
-                            f.write(img_bytes)
-                        
-                        temp_files.append(temp_path)
+                    temp_files = routes_helpers.decode_base64_images_to_temp(images_data)
                     
                     # Use LM Studio's vision generation
                     import lmstudio as lms
-                    seed = options.get('seed', 0)  # Note: LM Studio doesn't use seed parameter
                     keep_alive = options.get('keep_alive', 0)
                     
                     lms_model = lms.llm(model, ttl=keep_alive) if keep_alive >= 1 else lms.llm(model)
@@ -644,15 +608,10 @@ def register_routes(routes_instance):
                     if not response:
                         return error_response("No valid response received from model", status=500)
                     
-                    response_text = llm.clean_response(response.content)
+                    response_text = clean_response(response.content)
                 
                 finally:
-                    # Cleanup temp files
-                    for temp_path in temp_files:
-                        try:
-                            os.unlink(temp_path)
-                        except:
-                            pass
+                    routes_helpers.cleanup_temp_files(temp_files)
             
             return success_response(data={
                 "response": response_text,
@@ -694,11 +653,10 @@ def register_routes(routes_instance):
         try:
             data = await request.json()
             
-            # Validate required fields
-            required = ["provider", "model", "prompt", "images"]
-            missing = [f for f in required if f not in data]
-            if missing:
-                return error_response(f"Missing required fields: {', '.join(missing)}", status=400)
+            # Validate vision input
+            is_valid, error_msg = routes_helpers.validate_vision_data(data)
+            if not is_valid:
+                return error_response(error_msg, status=400)
             
             provider = data["provider"].lower()
             model = data["model"]
@@ -706,14 +664,6 @@ def register_routes(routes_instance):
             images_data = data["images"]
             system_prompt = data.get("system_prompt", "")
             options = data.get("options", {})
-            
-            # Validate provider
-            if provider not in ["ollama", "lmstudio"]:
-                return error_response(f"Invalid provider: {provider}. Must be 'ollama' or 'lmstudio'", status=400)
-            
-            # Validate images
-            if not images_data or not isinstance(images_data, list):
-                return error_response("Images must be a non-empty array", status=400)
             
             from ..utils import llm_wrapper as llm
             
@@ -730,11 +680,13 @@ def register_routes(routes_instance):
             try:
                 if provider == "ollama":
                     if not llm.OLLAMA_AVAILABLE:
-                        await response.write(b'data: {"error": "Ollama is not available", "done": true}\n\n')
+                        error_chunk = routes_helpers.format_sse_chunk(
+                            {"error": "Ollama is not available", "done": True}
+                        )
+                        await response.write(error_chunk.encode('utf-8'))
                         return response
                     
-                    # For Ollama vision streaming, we need to pass images as base64
-                    # Create a custom generator that passes images correctly
+                    # Ollama vision streaming with base64 images
                     response_parameters = {
                         "model": model,
                         "prompt": prompt,
@@ -760,9 +712,7 @@ def register_routes(routes_instance):
                                 "chunk": chunk_text,
                                 "done": chunk.get('done', False)
                             }
-                            
-                            import json
-                            sse_data = f"data: {json.dumps(chunk_data)}\n\n"
+                            sse_data = routes_helpers.format_sse_chunk(chunk_data)
                             await response.write(sse_data.encode('utf-8'))
                             
                             if chunk.get('done', False):
@@ -770,35 +720,27 @@ def register_routes(routes_instance):
                                 final_data = {
                                     "chunk": "",
                                     "done": True,
-                                    "full_response": llm.clean_response(full_response)
+                                    "full_response": clean_response(full_response)
                                 }
-                                sse_data = f"data: {json.dumps(final_data)}\n\n"
+                                sse_data = routes_helpers.format_sse_chunk(final_data)
                                 await response.write(sse_data.encode('utf-8'))
                                 break
                 
                 elif provider == "lmstudio":
                     if not llm.LMSTUDIO_AVAILABLE:
-                        await response.write(b'data: {"error": "LM Studio is not available", "done": true}\n\n')
+                        error_chunk = routes_helpers.format_sse_chunk(
+                            {"error": "LM Studio is not available", "done": True}
+                        )
+                        await response.write(error_chunk.encode('utf-8'))
                         return response
                     
-                    # Convert base64 to temp files for LM Studio
-                    import base64
-                    import tempfile
-                    import os
-                    
+                    # LM Studio vision streaming (requires temp files)
                     temp_files = []
                     try:
-                        for img_b64 in images_data:
-                            img_bytes = base64.b64decode(img_b64)
-                            temp_fd, temp_path = tempfile.mkstemp(suffix='.png')
-                            os.close(temp_fd)
-                            with open(temp_path, 'wb') as f:
-                                f.write(img_bytes)
-                            temp_files.append(temp_path)
+                        temp_files = routes_helpers.decode_base64_images_to_temp(images_data)
                         
                         # Use streaming function
                         import lmstudio as lms
-                        seed = options.get('seed', 0)  # Note: LM Studio doesn't use seed parameter
                         keep_alive = options.get('keep_alive', 0)
                         
                         lms_model = lms.llm(model, ttl=keep_alive) if keep_alive >= 1 else lms.llm(model)
@@ -817,39 +759,31 @@ def register_routes(routes_instance):
                             lms_model.unload()
                         
                         if lms_response:
-                            response_text = llm.clean_response(lms_response.content)
+                            response_text = clean_response(lms_response.content)
                             
-                            # Simulate streaming
+                            # Simulate streaming by chunking
                             chunk_size = 5
                             for i in range(0, len(response_text), chunk_size):
                                 chunk = response_text[i:i + chunk_size]
                                 chunk_data = {"chunk": chunk, "done": False}
-                                
-                                import json
-                                sse_data = f"data: {json.dumps(chunk_data)}\n\n"
+                                sse_data = routes_helpers.format_sse_chunk(chunk_data)
                                 await response.write(sse_data.encode('utf-8'))
                             
                             # Final message
                             final_data = {"chunk": "", "done": True, "full_response": response_text}
-                            sse_data = f"data: {json.dumps(final_data)}\n\n"
+                            sse_data = routes_helpers.format_sse_chunk(final_data)
                             await response.write(sse_data.encode('utf-8'))
                     
                     finally:
-                        # Cleanup temp files
-                        for temp_path in temp_files:
-                            try:
-                                os.unlink(temp_path)
-                            except:
-                                pass
+                        routes_helpers.cleanup_temp_files(temp_files)
                 
                 await response.write_eof()
                 return response
                 
             except Exception as e:
                 logger.error(f"Error during vision streaming: {str(e)}")
-                import json
-                error_data = json.dumps({"error": str(e), "done": True})
-                await response.write(f"data: {error_data}\n\n".encode('utf-8'))
+                error_chunk = routes_helpers.format_sse_chunk({"error": str(e), "done": True})
+                await response.write(error_chunk.encode('utf-8'))
                 await response.write_eof()
                 return response
                 
@@ -932,7 +866,6 @@ def register_routes(routes_instance):
         try:
             from pathlib import Path
             from ..utils import sage_users_path
-            import json
             
             data = await request.json()
             
@@ -995,7 +928,6 @@ def register_routes(routes_instance):
         try:
             from pathlib import Path
             from ..utils import sage_users_path
-            import json
             
             data = await request.json()
             prompt_id = data.get('id')
@@ -1053,7 +985,6 @@ def register_routes(routes_instance):
         try:
             from pathlib import Path
             from ..utils import sage_users_path
-            import json
             
             prompts = {}
             
@@ -1113,7 +1044,6 @@ def register_routes(routes_instance):
         try:
             from pathlib import Path
             from ..utils import sage_users_path
-            import json
             
             # Load custom presets from user directory
             user_presets_file = Path(sage_users_path) / "llm_presets.json"
@@ -1150,7 +1080,6 @@ def register_routes(routes_instance):
         try:
             from pathlib import Path
             from ..utils import sage_users_path
-            import json
             from datetime import datetime
             
             data = await request.json()
@@ -1204,7 +1133,6 @@ def register_routes(routes_instance):
         try:
             from pathlib import Path
             from ..utils import sage_users_path
-            import json
             
             data = await request.json()
             preset_id = data.get('id')
@@ -1269,79 +1197,9 @@ def register_routes(routes_instance):
             }
         """
         try:
-            from pathlib import Path
-            from ..utils import sage_users_path
-            import json
+            from ..utils.llm.routes_helpers import get_available_presets_full
             
-            # Built-in presets
-            builtin_presets = {
-                'descriptive_prompt': {
-                    'name': 'Descriptive Prompt',
-                    'description': 'Generate detailed image descriptions',
-                    'provider': 'ollama',
-                    'model': 'gemma3:12b',
-                    'promptTemplate': 'description/Descriptive Prompt',
-                    'systemPrompt': 'e621_prompt_generator',
-                    'settings': {
-                        'temperature': 0.7,
-                        'seed': -1,
-                        'maxTokens': 512,
-                        'keepAlive': 300,
-                        'includeHistory': False
-                    },
-                    'isBuiltin': True,
-                    'category': 'description'
-                },
-                'e621_description': {
-                    'name': 'E621 Image Description',
-                    'description': 'Generate E621-style detailed image descriptions',
-                    'provider': 'ollama',
-                    'model': 'gemma3:12b',
-                    'promptTemplate': 'description/Descriptive Prompt',
-                    'systemPrompt': 'e621_prompt_generator',
-                    'settings': {
-                        'temperature': 0.8,
-                        'seed': -1,
-                        'maxTokens': 1024,
-                        'keepAlive': 300,
-                        'includeHistory': False
-                    },
-                    'isBuiltin': True,
-                    'category': 'description'
-                },
-                'casual_chat': {
-                    'name': 'Casual Chat',
-                    'description': 'Friendly conversational assistant',
-                    'provider': 'ollama',
-                    'model': None,
-                    'promptTemplate': '',
-                    'systemPrompt': 'default',
-                    'settings': {
-                        'temperature': 0.9,
-                        'seed': -1,
-                        'maxTokens': 1024,
-                        'keepAlive': 300,
-                        'includeHistory': True,
-                        'maxHistoryMessages': 10
-                    },
-                    'isBuiltin': True,
-                    'category': 'chat'
-                }
-            }
-            
-            # Start with built-in presets
-            all_presets = builtin_presets.copy()
-            
-            # Load custom presets and overrides from user directory
-            user_presets_file = Path(sage_users_path) / "llm_presets.json"
-            if user_presets_file.exists():
-                with open(user_presets_file, 'r', encoding='utf-8') as f:
-                    custom_presets = json.load(f)
-                
-                # Override built-ins or add custom presets
-                for preset_id, preset_data in custom_presets.items():
-                    all_presets[preset_id] = preset_data
-            
+            all_presets = get_available_presets_full()
             return success_response({"presets": all_presets})
             
         except Exception as e:
@@ -1384,7 +1242,6 @@ def register_routes(routes_instance):
             from ..utils import sage_users_path
             from ..utils import llm_wrapper as llm
             from ..utils.config_manager import llm_prompts
-            import json
             
             data = await request.json()
             
@@ -1555,7 +1412,7 @@ def register_routes(routes_instance):
                 if not response or 'response' not in response:
                     return error_response("No valid response received from model", status=500)
                 
-                response_text = llm.clean_response(response['response'])
+                response_text = clean_response(response['response'])
             
             elif provider == "lmstudio":
                 if not llm.LMSTUDIO_AVAILABLE:
@@ -1594,7 +1451,7 @@ def register_routes(routes_instance):
                     if not lms_response:
                         return error_response("No valid response received from model", status=500)
                     
-                    response_text = llm.clean_response(lms_response.content)
+                    response_text = clean_response(lms_response.content)
                 
                 finally:
                     for temp_path in temp_files:
