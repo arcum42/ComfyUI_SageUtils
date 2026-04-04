@@ -108,7 +108,6 @@ class Sage_ConstructMetadataFlexible(io.ComfyNode):
             positive_string = ""
         else:
             positive_string = positive_string.strip()
-        positive_string_raw = positive_string
 
         # Prompt components
         prompt_with_loras = f"{positive_string} {lora_to_prompt(lora_stack)}" if lora_stack else positive_string

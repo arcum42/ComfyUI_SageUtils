@@ -2,18 +2,9 @@
 # This contains nodes for selecting model information without loading the actual models.
 
 from __future__ import annotations
-from comfy.comfy_types.node_typing import ComfyNodeABC, InputTypeDict, IO
-from comfy_api.latest import io, ComfyExtension
-from typing_extensions import override
-
-from comfy_api.latest._io import NodeOutput, Schema
-from comfy_execution.graph_utils import GraphBuilder
-from comfy_execution.graph import ExecutionBlocker
-
-import folder_paths
+from comfy_api.latest import io
 
 from ..utils import model_info as mi
-from comfy_execution.graph_utils import GraphBuilder
 from ..utils import add_lora_to_stack
 from ..utils import get_model_list
 from ..utils.helpers_graph import (
@@ -21,10 +12,87 @@ from ..utils.helpers_graph import (
 )
 from .custom_io_v3 import *
 
-import logging
 from ..utils.logger import get_logger
 
 logger = get_logger('nodes.selector')
+
+# ============================================================================
+# Helper Functions
+# ============================================================================
+
+def _build_clip_options(num_clips: int, clip_list: list) -> list:
+    """Build clip input options for flexible CLIP selectors."""
+    inputs = []
+    for i in range(1, num_clips + 1):
+        inputs.append(
+            io.Combo.Input(f"clip_name_{i}", display_name=f"clip_name_{i}", options=clip_list)
+        )
+    
+    # Add clip_type selector based on number of clips
+    if num_clips == 1:
+        inputs.append(
+            io.Combo.Input("clip_type", display_name="clip_type", options=mi.single_clip_loader_options, default="chroma")
+        )
+    elif num_clips == 2:
+        inputs.append(
+            io.Combo.Input("clip_type", display_name="clip_type", options=mi.dual_clip_loader_options, default="sdxl")
+        )
+    
+    return inputs
+
+
+def _extract_clip_names(kwargs: dict) -> list:
+    """Extract clip names from kwargs (clip_name_1, clip_name_2, etc.)."""
+    return [kwargs.get(key, "") for key in sorted(kwargs.keys()) if key.startswith("clip_name_")]
+
+
+def _build_lora_schema_inputs(num_entries: int, lora_list: list, is_quick: bool = False) -> list:
+    """Dynamically build lora stack input list based on number of entries."""
+    inputs = []
+    for i in range(1, num_entries + 1):
+        inputs.append(io.Boolean.Input(f"enabled_{i}", display_name=f"enabled_{i}", default=True))
+        inputs.append(io.Combo.Input(f"lora_{i}_name", display_name=f"lora_{i}_name", options=lora_list))
+        inputs.append(io.Float.Input(f"model_{i}_weight", display_name=f"model_{i}_weight", default=1.0, min=-100.0, max=100.0, step=0.01))
+        if not is_quick:
+            inputs.append(io.Float.Input(f"clip_{i}_weight", display_name=f"clip_{i}_weight", default=1.0, min=-100.0, max=100.0, step=0.01))
+    inputs.append(LoraStack.Input("lora_stack", display_name="lora_stack", optional=True))
+    return inputs
+
+
+def _get_default_clip_type(num_clips: int) -> str:
+    """Get default clip_type based on number of clips."""
+    if num_clips == 1:
+        return "chroma"
+    elif num_clips == 2:
+        return "sdxl"
+    return ""
+
+
+def _execute_multi_selector(kwargs: dict, num_clips: int) -> tuple:
+    """Execute logic for multi-selector nodes with variable number of clips."""
+    unet_name = kwargs.get("unet_name", "")
+    weight_dtype = kwargs.get("weight_dtype", "default")
+    vae_name = kwargs.get("vae_name", "")
+    
+    # Extract clip names dynamically
+    clip_names = []
+    for i in range(1, num_clips + 1):
+        key = "clip_name" if num_clips == 1 else f"clip_name_{i}"
+        clip_names.append(kwargs.get(key, ""))
+    
+    clip_type = kwargs.get("clip_type", _get_default_clip_type(num_clips))
+    
+    unet_info = mi.get_model_info_unet(unet_name, weight_dtype)
+    clip_info = mi.get_model_info_clips(clip_names, clip_type)
+    vae_info = mi.get_model_info_vae(vae_name)
+    
+    return (unet_info[0], clip_info[0], vae_info[0])
+
+
+# ============================================================================
+# Selector Nodes
+# ============================================================================
+
 
 class Sage_CheckpointSelector(io.ComfyNode):
     @classmethod
@@ -204,36 +272,10 @@ class Sage_FlexibleCLIPSelector(io.ComfyNode):
     @classmethod
     def define_schema(cls):
         clip_list = get_model_list("clip")
-        clip_options = {}
         
-        # Build clip options for 1-4 clips
-        for num_clips in range(1, 5):
-            clip_options[num_clips] = []
-            for i in range(1, num_clips + 1):
-                clip_options[num_clips].append(
-                    io.Combo.Input(f"clip_name_{i}", display_name=f"clip_name_{i}", options=clip_list)
-                )
-            # Add clip_type selector
-            options = None
-            
-            if num_clips == 1:
-                options = mi.single_clip_loader_options
-                default_type = "chroma"
-            elif num_clips == 2:
-                options = mi.dual_clip_loader_options
-                default_type = "sdxl"
-            else:
-                options = None
-                default_type = ""
-            
-            if options:
-                clip_options[num_clips].append(
-                    io.Combo.Input("clip_type", display_name="clip_type", options=options, default=default_type)
-                )
-        
-        # Build dynamic combo options
+        # Build dynamic combo options for 1-4 clips
         dynamic_options = [
-            io.DynamicCombo.Option(str(num), list(clip_options[num]))
+            io.DynamicCombo.Option(str(num), _build_clip_options(num, clip_list))
             for num in range(1, 5)
         ]
         
@@ -254,13 +296,9 @@ class Sage_FlexibleCLIPSelector(io.ComfyNode):
     def execute(cls, **kwargs):
         logger.debug(f"KWARGS: {kwargs}")
         args = kwargs.get("num_of_clips", {})
-        clip_names = [args.get(key, "") for key in sorted(args.keys()) if key.startswith("clip_name_")]
+        clip_names = _extract_clip_names(args)
         logger.debug(f"Clip names: {clip_names}")
-        clip_type = ""
-        if len(clip_names) == 1:
-            clip_type = args.get("clip_type", "chroma")
-        else:
-            clip_type = args.get("clip_type", "sdxl")
+        clip_type = args.get("clip_type", _get_default_clip_type(len(clip_names)))
         info = mi.get_model_info_clips(clip_names, clip_type)
         return io.NodeOutput(info)
 
@@ -270,36 +308,10 @@ class Sage_MultiSelectorFlexibleClip(io.ComfyNode):
         unet_options = get_model_list("unet")
         vae_options = get_model_list("vae")
         clip_list = get_model_list("clip")
-        clip_options = {}
         
-        # Build clip options for 1-4 clips
-        for num_clips in range(1, 5):
-            clip_options[num_clips] = []
-            for i in range(1, num_clips + 1):
-                clip_options[num_clips].append(
-                    io.Combo.Input(f"clip_name_{i}", display_name=f"clip_name_{i}", options=clip_list)
-                )
-            # Add clip_type selector
-            options = None
-            
-            if num_clips == 1:
-                options = mi.single_clip_loader_options
-                default_type = "chroma"
-            elif num_clips == 2:
-                options = mi.dual_clip_loader_options
-                default_type = "sdxl"
-            else:
-                options = None
-                default_type = ""
-            
-            if options:
-                clip_options[num_clips].append(
-                    io.Combo.Input("clip_type", display_name="clip_type", options=options, default=default_type)
-                )
-
-        # Build dynamic combo options
+        # Build dynamic combo options for 1-4 clips
         dynamic_options = [
-            io.DynamicCombo.Option(str(num), list(clip_options[num]))
+            io.DynamicCombo.Option(str(num), _build_clip_options(num, clip_list))
             for num in range(1, 5)
         ]
 
@@ -326,8 +338,8 @@ class Sage_MultiSelectorFlexibleClip(io.ComfyNode):
         vae_name = kwargs.get("vae_name", "")
         
         args = kwargs.get("num_of_clips", {})
-        clip_names = [args.get(key, "") for key in sorted(args.keys()) if key.startswith("clip_name_")]
-        clip_type = kwargs.get("clip_type", "chroma")
+        clip_names = _extract_clip_names(args)
+        clip_type = args.get("clip_type", _get_default_clip_type(len(clip_names)))
 
         unet_info = mi.get_model_info_unet(unet_name, weight_dtype)
         clip_info = mi.get_model_info_clips(clip_names, clip_type)
@@ -358,18 +370,7 @@ class Sage_MultiSelectorSingleClip(io.ComfyNode):
     
     @classmethod
     def execute(cls, **kwargs):
-        unet_name = kwargs.get("unet_name", "")
-        weight_dtype = kwargs.get("weight_dtype", "default")
-        clip_name = kwargs.get("clip_name", "")
-        clip_type = kwargs.get("clip_type", "chroma")
-        vae_name = kwargs.get("vae_name", "")
-
-        unet_info = mi.get_model_info_unet(unet_name, weight_dtype)
-        clip_info = mi.get_model_info_clips([clip_name], clip_type)
-        vae_info = mi.get_model_info_vae(vae_name)
-
-        ret = (unet_info[0], clip_info[0], vae_info[0])
-        return io.NodeOutput(ret,)
+        return io.NodeOutput(_execute_multi_selector(kwargs, 1))
 
 class Sage_MultiSelectorDoubleClip(io.ComfyNode):
     @classmethod
@@ -395,18 +396,7 @@ class Sage_MultiSelectorDoubleClip(io.ComfyNode):
     
     @classmethod
     def execute(cls, **kwargs):
-        unet_name = kwargs.get("unet_name", "")
-        weight_dtype = kwargs.get("weight_dtype", "default")
-        clip_name = [kwargs.get("clip_name_1", ""), kwargs.get("clip_name_2", "")]
-        clip_type = kwargs.get("clip_type", "sdxl")
-        vae_name = kwargs.get("vae_name", "")
-
-        unet_info = mi.get_model_info_unet(unet_name, weight_dtype)
-        clip_info = mi.get_model_info_clips(clip_name, clip_type)
-        vae_info = mi.get_model_info_vae(vae_name)
-
-        ret = (unet_info[0], clip_info[0], vae_info[0])
-        return io.NodeOutput(ret,)
+        return io.NodeOutput(_execute_multi_selector(kwargs, 2))
 
 class Sage_MultiSelectorTripleClip(io.ComfyNode):
     @classmethod
@@ -432,17 +422,7 @@ class Sage_MultiSelectorTripleClip(io.ComfyNode):
     
     @classmethod
     def execute(cls, **kwargs):
-        unet_name = kwargs.get("unet_name", "")
-        weight_dtype = kwargs.get("weight_dtype", "default")
-        clip_name = [kwargs.get("clip_name_1", ""), kwargs.get("clip_name_2", ""), kwargs.get("clip_name_3", "")]
-        vae_name = kwargs.get("vae_name", "")
-
-        unet_info = mi.get_model_info_unet(unet_name, weight_dtype)
-        clip_info = mi.get_model_info_clips(clip_name)
-        vae_info = mi.get_model_info_vae(vae_name)
-
-        ret = (unet_info[0], clip_info[0], vae_info[0])
-        return io.NodeOutput(ret,)
+        return io.NodeOutput(_execute_multi_selector(kwargs, 3))
 
 class Sage_MultiSelectorQuadClip(io.ComfyNode):
     @classmethod
@@ -469,17 +449,7 @@ class Sage_MultiSelectorQuadClip(io.ComfyNode):
     
     @classmethod
     def execute(cls, **kwargs):
-        unet_name = kwargs.get("unet_name", "")
-        weight_dtype = kwargs.get("weight_dtype", "default")
-        clip_name = [kwargs.get("clip_name_1", ""), kwargs.get("clip_name_2", ""), kwargs.get("clip_name_3", ""), kwargs.get("clip_name_4", "")]
-        vae_name = kwargs.get("vae_name", "")
-
-        unet_info = mi.get_model_info_unet(unet_name, weight_dtype)
-        clip_info = mi.get_model_info_clips(clip_name)
-        vae_info = mi.get_model_info_vae(vae_name)
-
-        ret = (unet_info[0], clip_info[0], vae_info[0])
-        return io.NodeOutput(ret,)
+        return io.NodeOutput(_execute_multi_selector(kwargs, 4))
 
 class Sage_ModelShifts(io.ComfyNode):
     """Get the model shifts and free_u2 settings to apply to the model."""
@@ -767,24 +737,17 @@ class Sage_TripleLoraStack(io.ComfyNode):
     @classmethod
     def define_schema(cls):
         lora_list = get_model_list("loras")
-        required_list = {}
 
         schema = io.Schema(
             node_id="Sage_TripleLoraStack",
             display_name="Lora Stack (x3)",
             description="Choose three loras with weights, and add them to a lora_stack.",
             category="Sage Utils/lora",
-            inputs=[],
+            inputs=_build_lora_schema_inputs(cls.NUM_OF_ENTRIES, lora_list, is_quick=False),
             outputs=[
                 LoraStack.Output("out_lora_stack", display_name="lora_stack")
             ]
         )
-        for i in range(1, cls.NUM_OF_ENTRIES + 1):
-            schema.inputs.append(io.Boolean.Input(f"enabled_{i}", display_name=f"enabled_{i}", default=True))
-            schema.inputs.append(io.Combo.Input(f"lora_{i}_name", display_name=f"lora_{i}_name", options=lora_list))
-            schema.inputs.append(io.Float.Input(f"model_{i}_weight", display_name=f"model_{i}_weight", default=1.0, min=-100.0, max=100.0, step=0.01))
-            schema.inputs.append(io.Float.Input(f"clip_{i}_weight", display_name=f"clip_{i}_weight", default=1.0, min=-100.0, max=100.0, step=0.01))
-        schema.inputs.append(LoraStack.Input("lora_stack", display_name="lora_stack", optional=True))
         
         return schema
     
@@ -792,7 +755,6 @@ class Sage_TripleLoraStack(io.ComfyNode):
     def execute(cls, **kwargs):
         lora_stack = kwargs.get("lora_stack", None)
         #lora_stack = [(path,weight,weight),(path,weight,weight),...]
-        node = []
         
         for i in range(1, cls.NUM_OF_ENTRIES + 1):
             enabled = kwargs.get(f"enabled_{i}", True)
@@ -815,24 +777,17 @@ class Sage_SixLoraStack(Sage_TripleLoraStack):
     @classmethod
     def define_schema(cls):
         lora_list = get_model_list("loras")
-        required_list = {}
 
         schema = io.Schema(
             node_id="Sage_SixLoraStack",
             display_name="Lora Stack (x6)",
             description="Choose six loras with weights, and add them to a lora_stack.",
             category="Sage Utils/lora",
-            inputs=[],
+            inputs=_build_lora_schema_inputs(cls.NUM_OF_ENTRIES, lora_list, is_quick=False),
             outputs=[
                 LoraStack.Output("out_lora_stack", display_name="lora_stack")
             ]
         )
-        for i in range(1, cls.NUM_OF_ENTRIES + 1):
-            schema.inputs.append(io.Boolean.Input(f"enabled_{i}", display_name=f"enabled_{i}", default=True))
-            schema.inputs.append(io.Combo.Input(f"lora_{i}_name", display_name=f"lora_{i}_name", options=lora_list))
-            schema.inputs.append(io.Float.Input(f"model_{i}_weight", display_name=f"model_{i}_weight", default=1.0, min=-100.0, max=100.0, step=0.01))
-            schema.inputs.append(io.Float.Input(f"clip_{i}_weight", display_name=f"clip_{i}_weight", default=1.0, min=-100.0, max=100.0, step=0.01))
-        schema.inputs.append(LoraStack.Input("lora_stack", display_name="lora_stack", optional=True))
         
         return schema
 
@@ -846,24 +801,17 @@ class Sage_NineLoraStack(Sage_TripleLoraStack):
     @classmethod
     def define_schema(cls):
         lora_list = get_model_list("loras")
-        required_list = {}
 
         schema = io.Schema(
             node_id="Sage_NineLoraStack",
             display_name="Lora Stack (x9)",
             description="Choose nine loras with weights, and add them to a lora_stack.",
             category="Sage Utils/lora",
-            inputs=[],
+            inputs=_build_lora_schema_inputs(cls.NUM_OF_ENTRIES, lora_list, is_quick=False),
             outputs=[
                 LoraStack.Output("out_lora_stack", display_name="lora_stack")
             ]
         )
-        for i in range(1, cls.NUM_OF_ENTRIES + 1):
-            schema.inputs.append(io.Boolean.Input(f"enabled_{i}", display_name=f"enabled_{i}", default=True))
-            schema.inputs.append(io.Combo.Input(f"lora_{i}_name", display_name=f"lora_{i}_name", options=lora_list))
-            schema.inputs.append(io.Float.Input(f"model_{i}_weight", display_name=f"model_{i}_weight", default=1.0, min=-100.0, max=100.0, step=0.01))
-            schema.inputs.append(io.Float.Input(f"clip_{i}_weight", display_name=f"clip_{i}_weight", default=1.0, min=-100.0, max=100.0, step=0.01))
-        schema.inputs.append(LoraStack.Input("lora_stack", display_name="lora_stack", optional=True))
         
         return schema
 
@@ -878,23 +826,17 @@ class Sage_TripleQuickLoraStack(io.ComfyNode):
     @classmethod
     def define_schema(cls):
         lora_list = get_model_list("loras")
-        required_list = {}
 
         schema = io.Schema(
             node_id="Sage_TripleQuickLoraStack",
             display_name="Quick Lora Stack (x3)",
             description="Choose three loras with model weight only, and add them to a lora_stack.",
             category="Sage Utils/lora",
-            inputs=[],
+            inputs=_build_lora_schema_inputs(cls.NUM_OF_ENTRIES, lora_list, is_quick=True),
             outputs=[
                 LoraStack.Output("out_lora_stack", display_name="lora_stack")
             ]
         )
-        for i in range(1, cls.NUM_OF_ENTRIES + 1):
-            schema.inputs.append(io.Boolean.Input(f"enabled_{i}", display_name=f"enabled_{i}", default=True))
-            schema.inputs.append(io.Combo.Input(f"lora_{i}_name", display_name=f"lora_{i}_name", options=lora_list))
-            schema.inputs.append(io.Float.Input(f"model_{i}_weight", display_name=f"model_{i}_weight", default=1.0, min=-100.0, max=100.0, step=0.01))
-        schema.inputs.append(LoraStack.Input("lora_stack", display_name="lora_stack", optional=True))
         
         return schema
     
@@ -902,7 +844,6 @@ class Sage_TripleQuickLoraStack(io.ComfyNode):
     def execute(cls, **kwargs):
         lora_stack = kwargs.get("lora_stack", None)
         #lora_stack = [(path,weight,weight),(path,weight,weight),...]
-        node = []
         
         for i in range(1, cls.NUM_OF_ENTRIES + 1):
             enabled = kwargs.get(f"enabled_{i}", True)
@@ -923,23 +864,17 @@ class Sage_QuickSixLoraStack(Sage_TripleQuickLoraStack):
     @classmethod
     def define_schema(cls):
         lora_list = get_model_list("loras")
-        required_list = {}
 
         schema = io.Schema(
             node_id="Sage_QuickSixLoraStack",
             display_name="Quick Lora Stack (x6)",
             description="Choose six loras with model weight only, and add them to a lora_stack.",
             category="Sage Utils/lora",
-            inputs=[],
+            inputs=_build_lora_schema_inputs(cls.NUM_OF_ENTRIES, lora_list, is_quick=True),
             outputs=[
                 LoraStack.Output("out_lora_stack", display_name="lora_stack")
             ]
         )
-        for i in range(1, cls.NUM_OF_ENTRIES + 1):
-            schema.inputs.append(io.Boolean.Input(f"enabled_{i}", display_name=f"enabled_{i}", default=True))
-            schema.inputs.append(io.Combo.Input(f"lora_{i}_name", display_name=f"lora_{i}_name", options=lora_list))
-            schema.inputs.append(io.Float.Input(f"model_{i}_weight", display_name=f"model_{i}_weight", default=1.0, min=-100.0, max=100.0, step=0.01))
-        schema.inputs.append(LoraStack.Input("lora_stack", display_name="lora_stack", optional=True))
         
         return schema
 
@@ -953,23 +888,17 @@ class Sage_QuickNineLoraStack(Sage_TripleQuickLoraStack):
     @classmethod
     def define_schema(cls):
         lora_list = get_model_list("loras")
-        required_list = {}
 
         schema = io.Schema(
             node_id="Sage_QuickNineLoraStack",
             display_name="Quick Lora Stack (x9)",
             description="Choose nine loras with model weight only, and add them to a lora_stack.",
             category="Sage Utils/lora",
-            inputs=[],
+            inputs=_build_lora_schema_inputs(cls.NUM_OF_ENTRIES, lora_list, is_quick=True),
             outputs=[
                 LoraStack.Output("out_lora_stack", display_name="lora_stack")
             ]
         )
-        for i in range(1, cls.NUM_OF_ENTRIES + 1):
-            schema.inputs.append(io.Boolean.Input(f"enabled_{i}", display_name=f"enabled_{i}", default=True))
-            schema.inputs.append(io.Combo.Input(f"lora_{i}_name", display_name=f"lora_{i}_name", options=lora_list))
-            schema.inputs.append(io.Float.Input(f"model_{i}_weight", display_name=f"model_{i}_weight", default=1.0, min=-100.0, max=100.0, step=0.01))
-        schema.inputs.append(LoraStack.Input("lora_stack", display_name="lora_stack", optional=True))
         
         return schema
 
