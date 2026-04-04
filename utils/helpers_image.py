@@ -21,6 +21,8 @@ import comfy.model_management as mm
 
 from spandrel import ModelLoader, ImageModelDescriptor
 
+IMAGE_REQUEST_TIMEOUT_SECONDS = 30
+
 def blank_image():
     """Create a blank 1024x1024 RGB image as a torch tensor."""
     img = Image.new('RGB', (1024, 1024))
@@ -30,7 +32,7 @@ def blank_image():
 
 def url_to_torch_image(url):
     """Load an image from a URL and return as a torch tensor."""
-    response = requests.get(url, stream=True)
+    response = requests.get(url, stream=True, timeout=IMAGE_REQUEST_TIMEOUT_SECONDS)
     img = Image.open(io.BytesIO(response.content))
     img = ImageOps.exif_transpose(img)
     img = np.array(img.convert("RGB")).astype(np.float32) / 255.0
@@ -82,7 +84,7 @@ def load_image_from_path(image_path) -> tuple:
 
 def load_image_from_url(url) -> tuple:
     """Load an image (and mask if present) from a URL as torch tensors."""
-    response = requests.get(url, stream=True)
+    response = requests.get(url, stream=True, timeout=IMAGE_REQUEST_TIMEOUT_SECONDS)
     img = node_helpers.pillow(Image.open, io.BytesIO(response.content))
     return _load_image(img)
 

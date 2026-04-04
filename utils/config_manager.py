@@ -1,13 +1,7 @@
-import json
 from typing import Any, Dict, Optional
 from .logger import get_logger
 
-logger = get_logger('utils.config_manager')
-
-
 from .path_manager import path_manager, file_manager
-
-from .logger import get_logger
 
 logger = get_logger('utils.config_manager')
 

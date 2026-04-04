@@ -106,9 +106,9 @@ class SageFileManager:
                 try:
                     data = self.load_json_file(asset_file, f"default {config_name}")
                     if data is not None:
-                        self.save_json_file(user_file, data, f"{config_name} user config")
-                        logger.debug(f"Copied default {config_name}.json to {user_file}.")
-                        return True
+                        if self.save_json_file(user_file, data, f"{config_name} user config"):
+                            logger.debug(f"Copied default {config_name}.json to {user_file}.")
+                            return True
                 except Exception as e:
                     logger.debug(f"Failed to copy {config_name}.json from assets: {e}")
             else:
@@ -130,7 +130,6 @@ class SageFileManager:
                 data = self.load_json_file(path, f"{config_name} config")
                 if data is not None:
                     configs.append(data)
-                    #print(f"Loading {config_name} from {path}")
         
         if not configs:
             return {}

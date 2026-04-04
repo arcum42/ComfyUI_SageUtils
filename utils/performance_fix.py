@@ -8,7 +8,6 @@ These functions make network calls that can timeout, causing massive startup del
 The fix: Create lightweight cached versions that don't block during node registration.
 """
 
-import logging
 from typing import List
 
 from .logger import get_logger

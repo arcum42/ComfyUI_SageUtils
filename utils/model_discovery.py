@@ -10,6 +10,13 @@ logger = get_logger('utils.model_discovery')
 
 # Module-level cache for get_model_list
 _model_list_cache = {}
+_MODEL_SOURCE_MAP: dict[str, tuple[str, list[str] | None]] = {
+    'checkpoints': ('checkpoints', None),
+    'unet': ('unet', ['diffusion_models', 'unet_gguf']),
+    'vae': ('vae', None),
+    'clip': ('clip', ['text_encoders', 'clip_gguf']),
+    'loras': ('loras', None),
+}
 
 
 def model_scan(the_path, force=False):
@@ -65,18 +72,12 @@ def get_model_list(model_type: str) -> list[str]:
         if now - cached_time < 60:
             return cached_list
 
-    if model_type == 'checkpoints':
-        result = grab_model_list('checkpoints')
-    elif model_type == 'unet':
-        result = grab_model_list('unet', ['diffusion_models', 'unet_gguf'])
-    elif model_type == 'vae':
-        result = grab_model_list('vae')
-    elif model_type == 'clip':
-        result = grab_model_list('clip', ['text_encoders', 'clip_gguf'])
-    elif model_type == 'loras':
-        result = grab_model_list('loras')
-    else:
+    source_info = _MODEL_SOURCE_MAP.get(model_type)
+    if source_info is None:
         result = []
+    else:
+        base_model_type, extra_models = source_info
+        result = grab_model_list(base_model_type, extra_models)
 
     _model_list_cache[model_type] = (now, result)
     return result

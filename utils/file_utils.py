@@ -97,8 +97,13 @@ def get_file_sha256(path, fast_hash_threshold=0):  # Full hashing by default
 
 
 def get_files_in_dir(input_dirs=None, extensions=None):
-    if extensions is None:
-        extensions = '.*'
+    if extensions is None or extensions in ('*', '.*'):
+        allowed_extensions = None
+    elif isinstance(extensions, str):
+        allowed_extensions = {extensions.lower()}
+    else:
+        allowed_extensions = {ext.lower() for ext in extensions}
+
     if input_dirs is None:
         raise ValueError('input_dirs cannot be None')
 
@@ -113,12 +118,14 @@ def get_files_in_dir(input_dirs=None, extensions=None):
             file_list = pathlib.Path(directory).rglob('*')
             for file in file_list:
                 if file.exists() and not file.is_dir():
-                    file_path = ''
-                    if file.suffix.lower() in extensions:
-                        try:
-                            file_path = str(file.relative_to(directory))
-                        except ValueError:
-                            file_path = str(file)
+                    if allowed_extensions is not None and file.suffix.lower() not in allowed_extensions:
+                        continue
+
+                    try:
+                        file_path = str(file.relative_to(directory))
+                    except ValueError:
+                        file_path = str(file)
+
                     input_files.append(file_path)
 
     input_files = sorted(set(input_files))

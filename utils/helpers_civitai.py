@@ -9,12 +9,15 @@ from .logger import get_logger
 
 logger = get_logger('helpers.civitai')
 
+CIVITAI_API_BASE = "https://civitai.com/api/v1"
+CIVITAI_REQUEST_TIMEOUT_SECONDS = 30
+
 def _get_civitai_json(url):
     """Helper to fetch JSON from Civitai API with error handling."""
     r_json = None
     r_json_error = ""
     try:
-        r = requests.get(url)
+        r = requests.get(url, timeout=CIVITAI_REQUEST_TIMEOUT_SECONDS)
         r_json = r.json()
         r_json_error = r_json.get("error", "")
         if r_json_error:
@@ -32,17 +35,17 @@ def _get_civitai_json(url):
 
 def get_civitai_model_version_json_by_hash(hash_):
     """Get model version JSON by hash from Civitai API."""
-    url = f"https://civitai.com/api/v1/model-versions/by-hash/{hash_}"
+    url = f"{CIVITAI_API_BASE}/model-versions/by-hash/{hash_}"
     return _get_civitai_json(url)
 
 def get_civitai_model_version_json_by_id(the_id):
     """Get model version JSON by ID from Civitai API."""
-    url = f"https://civitai.com/api/v1/model-versions/{the_id}"
+    url = f"{CIVITAI_API_BASE}/model-versions/{the_id}"
     return _get_civitai_json(url)
 
 def get_civitai_model_json(model_id):
     """Get model JSON by model ID from Civitai API."""
-    url = f"https://civitai.com/api/v1/models/{model_id}"
+    url = f"{CIVITAI_API_BASE}/models/{model_id}"
     return _get_civitai_json(url)
 
 def get_model_dict(lora_path, weight=None):
