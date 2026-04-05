@@ -274,6 +274,48 @@ def lmstudio_generate_vision_stream(model: str, prompt: str, keep_alive: int = 0
     )
 
 
+def ollama_preload_model(model: str, keep_alive: float = 60.0) -> bool:
+    """Pre-warm an Ollama model so subsequent generate calls incur no load delay."""
+    ensure_ollama_initialized()
+    return ollama_provider.preload_model(OLLAMA_AVAILABLE, ollama_client, is_ollama_enabled(), model, keep_alive)
+
+
+def ollama_generate_preloaded(model: str, prompt: str, keep_alive: float = 0.0, options=None, system_prompt: str = "") -> str:
+    """Generate from an Ollama model assumed to already be loaded."""
+    ensure_ollama_initialized()
+    return ollama_provider.generate_preloaded(
+        OLLAMA_AVAILABLE,
+        ollama_client,
+        is_ollama_enabled(),
+        model,
+        prompt,
+        keep_alive,
+        options,
+        system_prompt,
+    )
+
+
+def lmstudio_load_model(model: str, keep_alive: int = 0):
+    """Load an LM Studio model and return the model handle. Caller must call lmstudio_unload_model() when done."""
+    ensure_lmstudio_initialized()
+    return lmstudio_provider.load_model(LMSTUDIO_AVAILABLE, lms, is_lmstudio_enabled(), model, keep_alive)
+
+
+def lmstudio_generate_with_model(lms_model, prompt: str, options=None) -> str:
+    """Run text inference on an already-loaded LM Studio model handle."""
+    return lmstudio_provider.generate_with_model(lms_model, lms, prompt, options)
+
+
+def lmstudio_generate_vision_with_model(lms_model, prompt: str, images=None, options=None) -> str:
+    """Run vision inference on an already-loaded LM Studio model handle."""
+    return lmstudio_provider.generate_vision_with_model(lms_model, lms, prompt, images, options)
+
+
+def lmstudio_unload_model(lms_model) -> None:
+    """Unload a previously loaded LM Studio model handle."""
+    lmstudio_provider.unload_model(lms_model)
+
+
 # ============================================================================
 # INITIALIZATION FUNCTIONS
 # ============================================================================

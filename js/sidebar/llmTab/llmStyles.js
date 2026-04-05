@@ -729,6 +729,36 @@ export function addLLMStyles() {
             box-shadow: 0 0 0 2px rgba(74, 158, 255, 0.1);
         }
 
+        /* Model-loading overlay shown inside the response display */
+        .llm-loading-overlay {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            padding: 24px 12px;
+            color: var(--text-secondary, #aaa);
+            font-size: 12px;
+        }
+
+        .llm-loading-spinner {
+            width: 28px;
+            height: 28px;
+            border: 3px solid rgba(74, 158, 255, 0.2);
+            border-top-color: #4a9eff;
+            border-radius: 50%;
+            animation: llm-spin 0.8s linear infinite;
+        }
+
+        @keyframes llm-spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .llm-loading-label {
+            color: #4a9eff;
+            font-weight: 500;
+        }
+
         .llm-placeholder {
             color: var(--text-secondary, #666);
             font-style: italic;

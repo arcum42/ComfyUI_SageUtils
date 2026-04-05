@@ -4,6 +4,7 @@ Handles LLM chat endpoints for Ollama and LM Studio integration.
 """
 
 import json
+from contextvars import ContextVar
 from ..utils.logger import get_logger
 from ..utils.llm import clean_response
 from ..utils.llm import routes_helpers
@@ -14,6 +15,69 @@ logger = get_logger('routes.llm')
 
 # Route list for documentation and registration tracking
 _route_list = []
+_last_llm_error = ContextVar('sageutils_last_llm_error', default=None)
+
+
+def handle_llm_error_callback(payload):
+    """Capture structured LLM errors raised in provider helpers for route responses."""
+    _last_llm_error.set(payload)
+
+
+def _clear_last_llm_error():
+    """Clear any stale LLM error payload before route handling."""
+    _last_llm_error.set(None)
+
+
+def _error_response_with_metadata(message, status=500, error_code='LLM_ERROR', provider=None, operation=None, cause=None):
+    """Return a standardized error response including optional LLM metadata."""
+    extra = {'error_code': error_code}
+    if provider:
+        extra['provider'] = provider
+    if operation:
+        extra['operation'] = operation
+    if cause:
+        extra['cause'] = cause
+    return error_response(message, status=status, **extra)
+
+
+def _error_response_from_exception(prefix, exc, status=500, default_error_code='LLM_ROUTE_ERROR'):
+    """Build a standardized error response from the last structured LLM error (if available)."""
+    payload = _last_llm_error.get()
+    _clear_last_llm_error()
+
+    if payload:
+        message = payload.get('scoped_message') or payload.get('message') or f'{prefix}: {str(exc)}'
+        error_type = str(payload.get('error_type', 'ERROR')).upper()
+        return _error_response_with_metadata(
+            message,
+            status=status,
+            error_code=f'LLM_{error_type}',
+            provider=payload.get('provider'),
+            operation=payload.get('operation'),
+            cause=payload.get('cause'),
+        )
+
+    return _error_response_with_metadata(
+        f'{prefix}: {str(exc)}',
+        status=status,
+        error_code=default_error_code,
+    )
+
+
+def _sse_error_chunk(message, *, error_code='LLM_STREAM_ERROR', provider=None, operation=None, cause=None):
+    """Create a standardized SSE error chunk payload."""
+    payload = {
+        'error': message,
+        'error_code': error_code,
+        'done': True,
+    }
+    if provider:
+        payload['provider'] = provider
+    if operation:
+        payload['operation'] = operation
+    if cause:
+        payload['cause'] = cause
+    return routes_helpers.format_sse_chunk(payload)
 
 
 def register_routes(routes_instance):
@@ -27,12 +91,9 @@ def register_routes(routes_instance):
         int: Number of routes registered
     """
     from ..utils.llm import set_llm_error_reporter
-    
-    # Optional: Wire up error reporter for frontend error dialogs
-    # Uncomment below if frontend is ready to handle error callbacks:
-    # set_llm_error_reporter(handle_llm_error_callback)
-    
-    # For now, errors are logged but not reported to frontend UI
+
+    # Wire up structured LLM error payloads so frontend can display backend messages.
+    set_llm_error_reporter(handle_llm_error_callback)
     
     global _route_list
     _route_list.clear()
@@ -329,12 +390,13 @@ def register_routes(routes_instance):
             }
         """
         try:
+            _clear_last_llm_error()
             data = await request.json()
             
             # Validate generation input
             is_valid, error_msg = routes_helpers.validate_generation_data(data)
             if not is_valid:
-                return error_response(error_msg, status=400)
+                return _error_response_with_metadata(error_msg, status=400, error_code='LLM_VALIDATION_ERROR')
             
             provider = data["provider"].lower()
             model = data["model"]
@@ -352,7 +414,13 @@ def register_routes(routes_instance):
             
             if provider == "ollama":
                 if not llm.OLLAMA_AVAILABLE:
-                    return error_response("Ollama is not available", status=503)
+                    return _error_response_with_metadata(
+                        'Ollama is not available',
+                        status=503,
+                        error_code='LLM_PROVIDER_UNAVAILABLE',
+                        provider='ollama',
+                        operation='generate',
+                    )
                 
                 response_text = llm.ollama_generate(
                     model=model,
@@ -364,7 +432,13 @@ def register_routes(routes_instance):
             
             elif provider == "lmstudio":
                 if not llm.LMSTUDIO_AVAILABLE:
-                    return error_response("LM Studio is not available", status=503)
+                    return _error_response_with_metadata(
+                        'LM Studio is not available',
+                        status=503,
+                        error_code='LLM_PROVIDER_UNAVAILABLE',
+                        provider='lmstudio',
+                        operation='generate',
+                    )
                 
                 response_text = llm.lmstudio_generate(
                     model=model,
@@ -381,10 +455,10 @@ def register_routes(routes_instance):
             
         except ValueError as e:
             logger.error(f"Validation error in generate: {str(e)}")
-            return error_response(str(e), status=400)
+            return _error_response_from_exception('Validation error in generate', e, status=400, default_error_code='LLM_VALIDATION_ERROR')
         except Exception as e:
             logger.error(f"Failed to generate response: {str(e)}")
-            return error_response(f"Failed to generate response: {str(e)}", status=500)
+            return _error_response_from_exception('Failed to generate response', e, status=500, default_error_code='LLM_GENERATION_ERROR')
     
     _route_list.append({
         "method": "POST",
@@ -417,13 +491,18 @@ def register_routes(routes_instance):
             data: {"chunk": "", "done": true, "full_response": "complete text"}
         """
         try:
+            _clear_last_llm_error()
             data = await request.json()
             
             # Validate required fields
             required = ["provider", "model", "prompt"]
             missing = [f for f in required if f not in data]
             if missing:
-                return error_response(f"Missing required fields: {', '.join(missing)}", status=400)
+                return _error_response_with_metadata(
+                    f"Missing required fields: {', '.join(missing)}",
+                    status=400,
+                    error_code='LLM_VALIDATION_ERROR',
+                )
             
             provider = data["provider"].lower()
             model = data["model"]
@@ -433,7 +512,11 @@ def register_routes(routes_instance):
             
             # Validate provider
             if provider not in ["ollama", "lmstudio"]:
-                return error_response(f"Invalid provider: {provider}. Must be 'ollama' or 'lmstudio'", status=400)
+                return _error_response_with_metadata(
+                    f"Invalid provider: {provider}. Must be 'ollama' or 'lmstudio'",
+                    status=400,
+                    error_code='LLM_VALIDATION_ERROR',
+                )
             
             from ..utils import llm_wrapper as llm
             
@@ -451,7 +534,14 @@ def register_routes(routes_instance):
                 # Generate streaming response based on provider
                 if provider == "ollama":
                     if not llm.OLLAMA_AVAILABLE:
-                        await response.write(b'data: {"error": "Ollama is not available", "done": true}\n\n')
+                        error_chunk = _sse_error_chunk(
+                            'Ollama is not available',
+                            error_code='LLM_PROVIDER_UNAVAILABLE',
+                            provider='ollama',
+                            operation='generate_stream',
+                        )
+                        await response.write(error_chunk.encode('utf-8'))
+                        await response.write_eof()
                         return response
                     
                     for chunk_data in llm.ollama_generate_stream(
@@ -470,7 +560,14 @@ def register_routes(routes_instance):
                 
                 elif provider == "lmstudio":
                     if not llm.LMSTUDIO_AVAILABLE:
-                        await response.write(b'data: {"error": "LM Studio is not available", "done": true}\n\n')
+                        error_chunk = _sse_error_chunk(
+                            'LM Studio is not available',
+                            error_code='LLM_PROVIDER_UNAVAILABLE',
+                            provider='lmstudio',
+                            operation='generate_stream',
+                        )
+                        await response.write(error_chunk.encode('utf-8'))
+                        await response.write_eof()
                         return response
                     
                     for chunk_data in llm.lmstudio_generate_stream(
@@ -491,14 +588,22 @@ def register_routes(routes_instance):
                 
             except Exception as e:
                 logger.error(f"Error during streaming: {str(e)}")
-                error_chunk = routes_helpers.format_sse_chunk({"error": str(e), "done": True})
+                payload = _last_llm_error.get()
+                _clear_last_llm_error()
+                error_chunk = _sse_error_chunk(
+                    payload.get('scoped_message') if payload else str(e),
+                    error_code=f"LLM_{str(payload.get('error_type', 'STREAM_ERROR')).upper()}" if payload else 'LLM_STREAM_ERROR',
+                    provider=payload.get('provider') if payload else provider,
+                    operation=payload.get('operation') if payload else 'generate_stream',
+                    cause=payload.get('cause') if payload else None,
+                )
                 await response.write(error_chunk.encode('utf-8'))
                 await response.write_eof()
                 return response
                 
         except Exception as e:
             logger.error(f"Failed to initialize streaming: {str(e)}")
-            return error_response(f"Failed to initialize streaming: {str(e)}", status=500)
+            return _error_response_from_exception('Failed to initialize streaming', e, status=500, default_error_code='LLM_STREAM_INIT_ERROR')
     
     _route_list.append({
         "method": "POST",
@@ -531,12 +636,13 @@ def register_routes(routes_instance):
             }
         """
         try:
+            _clear_last_llm_error()
             data = await request.json()
             
             # Validate vision input
             is_valid, error_msg = routes_helpers.validate_vision_data(data)
             if not is_valid:
-                return error_response(error_msg, status=400)
+                return _error_response_with_metadata(error_msg, status=400, error_code='LLM_VALIDATION_ERROR')
             
             provider = data["provider"].lower()
             model = data["model"]
@@ -554,7 +660,13 @@ def register_routes(routes_instance):
             
             if provider == "ollama":
                 if not llm.OLLAMA_AVAILABLE:
-                    return error_response("Ollama is not available", status=503)
+                    return _error_response_with_metadata(
+                        'Ollama is not available',
+                        status=503,
+                        error_code='LLM_PROVIDER_UNAVAILABLE',
+                        provider='ollama',
+                        operation='vision_generate',
+                    )
                 
                 # Build Ollama vision generation parameters
                 response_parameters = {
@@ -574,13 +686,25 @@ def register_routes(routes_instance):
                 response = llm.ollama_client.generate(**response_parameters)
                 
                 if not response or 'response' not in response:
-                    return error_response("No valid response received from model", status=500)
+                    return _error_response_with_metadata(
+                        'No valid response received from model',
+                        status=500,
+                        error_code='LLM_EMPTY_RESPONSE',
+                        provider='ollama',
+                        operation='vision_generate',
+                    )
                 
                 response_text = clean_response(response['response'])
             
             elif provider == "lmstudio":
                 if not llm.LMSTUDIO_AVAILABLE:
-                    return error_response("LM Studio is not available", status=503)
+                    return _error_response_with_metadata(
+                        'LM Studio is not available',
+                        status=503,
+                        error_code='LLM_PROVIDER_UNAVAILABLE',
+                        provider='lmstudio',
+                        operation='vision_generate',
+                    )
                 
                 # LM Studio requires temp file conversion
                 temp_files = []
@@ -606,7 +730,13 @@ def register_routes(routes_instance):
                         lms_model.unload()
                     
                     if not response:
-                        return error_response("No valid response received from model", status=500)
+                        return _error_response_with_metadata(
+                            'No valid response received from model',
+                            status=500,
+                            error_code='LLM_EMPTY_RESPONSE',
+                            provider='lmstudio',
+                            operation='vision_generate',
+                        )
                     
                     response_text = clean_response(response.content)
                 
@@ -621,10 +751,10 @@ def register_routes(routes_instance):
             
         except ValueError as e:
             logger.error(f"Validation error in vision generate: {str(e)}")
-            return error_response(str(e), status=400)
+            return _error_response_from_exception('Validation error in vision generate', e, status=400, default_error_code='LLM_VALIDATION_ERROR')
         except Exception as e:
             logger.error(f"Failed to generate vision response: {str(e)}")
-            return error_response(f"Failed to generate vision response: {str(e)}", status=500)
+            return _error_response_from_exception('Failed to generate vision response', e, status=500, default_error_code='LLM_VISION_GENERATION_ERROR')
     
     _route_list.append({
         "method": "POST",
@@ -651,12 +781,13 @@ def register_routes(routes_instance):
         Response: Server-Sent Events (SSE) stream
         """
         try:
+            _clear_last_llm_error()
             data = await request.json()
             
             # Validate vision input
             is_valid, error_msg = routes_helpers.validate_vision_data(data)
             if not is_valid:
-                return error_response(error_msg, status=400)
+                return _error_response_with_metadata(error_msg, status=400, error_code='LLM_VALIDATION_ERROR')
             
             provider = data["provider"].lower()
             model = data["model"]
@@ -680,10 +811,14 @@ def register_routes(routes_instance):
             try:
                 if provider == "ollama":
                     if not llm.OLLAMA_AVAILABLE:
-                        error_chunk = routes_helpers.format_sse_chunk(
-                            {"error": "Ollama is not available", "done": True}
+                        error_chunk = _sse_error_chunk(
+                            'Ollama is not available',
+                            error_code='LLM_PROVIDER_UNAVAILABLE',
+                            provider='ollama',
+                            operation='vision_generate_stream',
                         )
                         await response.write(error_chunk.encode('utf-8'))
+                        await response.write_eof()
                         return response
                     
                     # Ollama vision streaming with base64 images
@@ -728,10 +863,14 @@ def register_routes(routes_instance):
                 
                 elif provider == "lmstudio":
                     if not llm.LMSTUDIO_AVAILABLE:
-                        error_chunk = routes_helpers.format_sse_chunk(
-                            {"error": "LM Studio is not available", "done": True}
+                        error_chunk = _sse_error_chunk(
+                            'LM Studio is not available',
+                            error_code='LLM_PROVIDER_UNAVAILABLE',
+                            provider='lmstudio',
+                            operation='vision_generate_stream',
                         )
                         await response.write(error_chunk.encode('utf-8'))
+                        await response.write_eof()
                         return response
                     
                     # LM Studio vision streaming (requires temp files)
@@ -782,14 +921,22 @@ def register_routes(routes_instance):
                 
             except Exception as e:
                 logger.error(f"Error during vision streaming: {str(e)}")
-                error_chunk = routes_helpers.format_sse_chunk({"error": str(e), "done": True})
+                payload = _last_llm_error.get()
+                _clear_last_llm_error()
+                error_chunk = _sse_error_chunk(
+                    payload.get('scoped_message') if payload else str(e),
+                    error_code=f"LLM_{str(payload.get('error_type', 'STREAM_ERROR')).upper()}" if payload else 'LLM_STREAM_ERROR',
+                    provider=payload.get('provider') if payload else provider,
+                    operation=payload.get('operation') if payload else 'vision_generate_stream',
+                    cause=payload.get('cause') if payload else None,
+                )
                 await response.write(error_chunk.encode('utf-8'))
                 await response.write_eof()
                 return response
                 
         except Exception as e:
             logger.error(f"Failed to initialize vision streaming: {str(e)}")
-            return error_response(f"Failed to initialize vision streaming: {str(e)}", status=500)
+            return _error_response_from_exception('Failed to initialize vision streaming', e, status=500, default_error_code='LLM_VISION_STREAM_INIT_ERROR')
     
     _route_list.append({
         "method": "POST",
@@ -1481,7 +1628,215 @@ def register_routes(routes_instance):
         "path": "/sage_llm/presets/generate_with_image",
         "description": "Generate response using preset with image"
     })
-    
+
+    @routes_instance.post('/sage_llm/load_model')
+    @route_error_handler
+    async def load_llm_model(request):
+        """
+        Load a model into memory without generating a response.
+
+        For LM Studio this loads the model handle and immediately unloads it
+        (the purpose is just to confirm the model can be loaded and to log the
+        event).  Pass keep_alive > 0 to keep it resident.
+
+        For Ollama this sends a blank-prompt generate to pre-warm the model so
+        it is resident in GPU memory for subsequent /sage_llm/generate_only
+        calls.
+
+        Request body:
+            {
+                "provider": "ollama" | "lmstudio",
+                "model": str,
+                "keep_alive": float | int  (optional, seconds; default 60)
+            }
+
+        Returns:
+            {
+                "success": true,
+                "loaded": true,
+                "provider": str,
+                "model": str
+            }
+        """
+        try:
+            _clear_last_llm_error()
+            data = await request.json()
+
+            provider = str(data.get("provider", "")).lower()
+            model = str(data.get("model", ""))
+            keep_alive = data.get("keep_alive", 60)
+
+            if not provider or provider not in ("ollama", "lmstudio"):
+                return _error_response_with_metadata(
+                    f"Invalid or missing provider: {provider!r}. Must be 'ollama' or 'lmstudio'",
+                    status=400,
+                    error_code='LLM_VALIDATION_ERROR',
+                )
+            if not model:
+                return _error_response_with_metadata(
+                    "Missing required field: model",
+                    status=400,
+                    error_code='LLM_VALIDATION_ERROR',
+                )
+
+            from ..utils import llm_wrapper as llm
+
+            llm.ensure_llm_initialized()
+
+            if provider == "ollama":
+                if not llm.OLLAMA_AVAILABLE:
+                    return _error_response_with_metadata(
+                        'Ollama is not available',
+                        status=503,
+                        error_code='LLM_PROVIDER_UNAVAILABLE',
+                        provider='ollama',
+                        operation='load_model',
+                    )
+                loaded = llm.ollama_preload_model(model=model, keep_alive=float(keep_alive))
+                if not loaded:
+                    return _error_response_with_metadata(
+                        f"Failed to preload model '{model}' in Ollama",
+                        status=500,
+                        error_code='LLM_LOAD_ERROR',
+                        provider='ollama',
+                        operation='load_model',
+                    )
+
+            elif provider == "lmstudio":
+                if not llm.LMSTUDIO_AVAILABLE:
+                    return _error_response_with_metadata(
+                        'LM Studio is not available',
+                        status=503,
+                        error_code='LLM_PROVIDER_UNAVAILABLE',
+                        provider='lmstudio',
+                        operation='load_model',
+                    )
+                lms_model = llm.lmstudio_load_model(model=model, keep_alive=int(keep_alive))
+                if keep_alive < 1:
+                    llm.lmstudio_unload_model(lms_model)
+
+            return success_response(data={
+                "loaded": True,
+                "provider": provider,
+                "model": model,
+            })
+
+        except Exception as e:
+            logger.error(f"Failed to load model: {str(e)}")
+            return _error_response_from_exception('Failed to load model', e, status=500, default_error_code='LLM_LOAD_ERROR')
+
+    _route_list.append({
+        "method": "POST",
+        "path": "/sage_llm/load_model",
+        "description": "Load a model into memory (Ollama pre-warm / LM Studio load)"
+    })
+
+    @routes_instance.post('/sage_llm/generate_only')
+    @route_error_handler
+    async def generate_only(request):
+        """
+        Generate a response from an already-loaded model.
+
+        Semantically equivalent to /sage_llm/generate but signals to the
+        backend (and logs) that the model is expected to already be in memory.
+        Callers should call /sage_llm/load_model first if they want to separate
+        the two phases.
+
+        Request body:
+            {
+                "provider": "ollama" | "lmstudio",
+                "model": str,
+                "prompt": str,
+                "system_prompt": str  (optional, Ollama only),
+                "keep_alive": float | int  (optional, seconds; default 0),
+                "options": {
+                    "temperature": float,
+                    "seed": int,
+                    ...
+                }
+            }
+
+        Returns:
+            {
+                "success": true,
+                "response": str,
+                "provider": str,
+                "model": str
+            }
+        """
+        try:
+            _clear_last_llm_error()
+            data = await request.json()
+
+            is_valid, error_msg = routes_helpers.validate_generation_data(data)
+            if not is_valid:
+                return _error_response_with_metadata(error_msg, status=400, error_code='LLM_VALIDATION_ERROR')
+
+            provider = data["provider"].lower()
+            model = data["model"]
+            prompt = data["prompt"]
+            system_prompt = data.get("system_prompt", "")
+            keep_alive = data.get("keep_alive", 0)
+            options = data.get("options", {})
+
+            from ..utils import llm_wrapper as llm
+
+            llm.ensure_llm_initialized()
+
+            response_text = ""
+
+            if provider == "ollama":
+                if not llm.OLLAMA_AVAILABLE:
+                    return _error_response_with_metadata(
+                        'Ollama is not available',
+                        status=503,
+                        error_code='LLM_PROVIDER_UNAVAILABLE',
+                        provider='ollama',
+                        operation='generate_only',
+                    )
+                response_text = llm.ollama_generate_preloaded(
+                    model=model,
+                    prompt=prompt,
+                    keep_alive=float(keep_alive),
+                    options=options,
+                    system_prompt=system_prompt,
+                )
+
+            elif provider == "lmstudio":
+                if not llm.LMSTUDIO_AVAILABLE:
+                    return _error_response_with_metadata(
+                        'LM Studio is not available',
+                        status=503,
+                        error_code='LLM_PROVIDER_UNAVAILABLE',
+                        provider='lmstudio',
+                        operation='generate_only',
+                    )
+                lms_model = llm.lmstudio_load_model(model=model, keep_alive=int(keep_alive))
+                try:
+                    response_text = llm.lmstudio_generate_with_model(lms_model, prompt=prompt, options=options)
+                finally:
+                    if keep_alive < 1:
+                        llm.lmstudio_unload_model(lms_model)
+
+            return success_response(data={
+                "response": response_text,
+                "provider": provider,
+                "model": model,
+            })
+
+        except ValueError as e:
+            logger.error(f"Validation error in generate_only: {str(e)}")
+            return _error_response_from_exception('Validation error in generate_only', e, status=400, default_error_code='LLM_VALIDATION_ERROR')
+        except Exception as e:
+            logger.error(f"Failed to generate response: {str(e)}")
+            return _error_response_from_exception('Failed to generate response', e, status=500, default_error_code='LLM_GENERATION_ERROR')
+
+    _route_list.append({
+        "method": "POST",
+        "path": "/sage_llm/generate_only",
+        "description": "Generate text response assuming model is already loaded"
+    })
+
     return len(_route_list)
 
 

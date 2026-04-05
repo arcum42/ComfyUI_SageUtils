@@ -53,6 +53,11 @@ SETTINGS_SCHEMA = {
         "description": "Default LLM provider to use when opening the LLM tab",
         "valid_values": ["ollama", "lmstudio"]
     },
+    "llm_raise_node_exceptions": {
+        "default": False,
+        "type": bool,
+        "description": "When enabled, LLM nodes re-raise provider load/generation exceptions after logging"
+    },
     # Sidebar Tab Visibility Settings
     "show_models_tab": {
         "default": True,

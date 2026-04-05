@@ -54,7 +54,7 @@ def decode_base64_images_to_temp(images_data: list[str]) -> list[str]:
             f'Failed to decode images: {str(e)}',
             provider='routes',
             operation='decode_base64_images_to_temp',
-            cause=e,
+            cause=stringify_llm_error(e),
         )
         # This line is unreachable but satisfies return type checker
         return []

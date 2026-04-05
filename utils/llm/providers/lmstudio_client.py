@@ -6,9 +6,86 @@ from ...llm_cache import get_llm_cache
 from ...logger import get_logger
 from ...helpers_image import tensor_to_temp_image
 from ..common import clean_response, build_lmstudio_config
-from ..errors import raise_llm_error
+from ..errors import raise_llm_error, report_llm_error, stringify_llm_error
 
 logger = get_logger('llm.providers.lmstudio')
+
+
+# ===========================================================================
+# PRIMITIVE FUNCTIONS FOR TWO-PHASE LOADING / GENERATION
+# ===========================================================================
+
+def load_model(lmstudio_available: bool, lms: Any, enabled: bool, model: str, keep_alive: int) -> Any:
+    """Load and return an lms_model handle. Caller is responsible for unloading."""
+    if not lmstudio_available or lms is None:
+        raise_llm_error(ImportError, 'LM Studio is not available.', provider='lmstudio', operation='load_model')
+    if not enabled:
+        raise_llm_error(RuntimeError, 'LM Studio is not enabled.', provider='lmstudio', operation='load_model')
+    logger.info(f"Loading model '{model}'...")
+    lms_model = None
+    try:
+        if keep_alive >= 1:
+            lms_model = lms.llm(model, ttl=keep_alive)
+        else:
+            lms_model = lms.llm(model)
+    except Exception as e:
+        normalized_cause = RuntimeError(stringify_llm_error(e))
+        raise_llm_error(
+            RuntimeError,
+            f"Failed to load model '{model}'",
+            provider='lmstudio',
+            operation='load_model',
+            cause=normalized_cause,
+        )
+    if lms_model is None:
+        raise_llm_error(RuntimeError, f"Failed to load model '{model}'", provider='lmstudio', operation='load_model')
+    logger.info(f"Model '{model}' loaded successfully.")
+    return lms_model
+
+
+def generate_with_model(lms_model: Any, lms: Any, prompt: str, options) -> str:
+    """Run text inference on an already-loaded lms_model."""
+    logger.debug(f'Generating with prompt: {prompt[:200]!r}')
+    chat = lms.Chat()
+    chat.add_user_message(prompt)
+    config = cast(Any, build_lmstudio_config(options or {}))
+    if config:
+        response = lms_model.respond(chat, config=config)
+    else:
+        response = lms_model.respond(chat)
+    if not response:
+        raise_llm_error(ValueError, 'No valid response received from the model.', provider='lmstudio', operation='generate_with_model')
+    result = clean_response(response.content)
+    logger.debug(f'Generation complete. Response length: {len(result)} characters.')
+    return result
+
+
+def generate_vision_with_model(lms_model: Any, lms: Any, prompt: str, images, options) -> str:
+    """Run vision inference on an already-loaded lms_model."""
+    logger.debug(f'Generating vision with prompt: {prompt[:200]!r}')
+    input_images = tensor_to_temp_image(images) if images is not None else []
+    chat = lms.Chat()
+    if not input_images:
+        chat.add_user_message(prompt)
+    else:
+        image_handles = [lms.prepare_image(image) for image in input_images]
+        chat.add_user_message(prompt, images=image_handles)
+    config = cast(Any, build_lmstudio_config(options or {}))
+    if config:
+        response = lms_model.respond(chat, config=config)
+    else:
+        response = lms_model.respond(chat)
+    if not response:
+        raise_llm_error(ValueError, 'No valid response received from the model.', provider='lmstudio', operation='generate_vision_with_model')
+    result = clean_response(response.content)
+    logger.debug(f'Generation complete. Response length: {len(result)} characters.')
+    return result
+
+
+def unload_model(lms_model: Any) -> None:
+    """Unload an lms_model handle."""
+    logger.debug('Unloading model.')
+    lms_model.unload()
 
 
 def is_running(lmstudio_available: bool, lms: Any, enabled: bool) -> bool:
@@ -43,7 +120,7 @@ def get_models(lmstudio_available: bool, lms: Any, enabled: bool) -> list[str]:
             response = lms.list_downloaded_models('llm')
             return [model.model_key for model in response if hasattr(model, 'model_key') and model.model_key is not None]
         except Exception as e:
-            logger.error(f'Error retrieving models from LM Studio: {e}')
+            report_llm_error('Error retrieving models from LM Studio', provider='lmstudio', operation='get_models', cause=e)
             return ['(LM Studio not available)']
 
     cache = get_llm_cache()
@@ -84,7 +161,7 @@ def get_vision_models(lmstudio_available: bool, lms: Any, enabled: bool) -> list
 
             return models
         except Exception as e:
-            logger.error(f'Error retrieving vision models from LM Studio: {e}')
+            report_llm_error('Error retrieving vision models from LM Studio', provider='lmstudio', operation='get_vision_models', cause=e)
             return []
 
     cache = get_llm_cache()
@@ -109,29 +186,15 @@ def generate_vision(
     if model not in model_list:
         raise_llm_error(ValueError, f"Model '{model}' is not available. Available models: {model_list}", provider='lmstudio', operation='generate_vision')
 
-    input_images = tensor_to_temp_image(images) if images is not None else []
     lms_model = None
     try:
-        if keep_alive >= 1:
-            lms_model = lms.llm(model, ttl=keep_alive)
-        else:
-            lms_model = lms.llm(model)
-
-        chat = lms.Chat()
-        if not input_images:
-            chat.add_user_message(prompt)
-        else:
-            image_handles = [lms.prepare_image(image) for image in input_images]
-            chat.add_user_message(prompt, images=image_handles)
-
-        response = lms_model.respond(chat)
+        lms_model = load_model(lmstudio_available, lms, enabled, model, keep_alive)
+        response = generate_vision_with_model(lms_model, lms, prompt, images, options)
         if keep_alive < 1:
-            lms_model.unload()
-        if not response:
-            raise_llm_error(ValueError, 'No valid response received from the model.', provider='lmstudio', operation='generate_vision')
-        return clean_response(response.content)
+            unload_model(lms_model)
+        return response
     except Exception as e:
-        logger.error(f'Error generating response from LM Studio vision model: {e}')
+        report_llm_error('Error generating response from LM Studio vision model', provider='lmstudio', operation='generate_vision', cause=e)
         if lms_model is not None and keep_alive < 1:
             lms_model.unload()
         return ''
@@ -156,24 +219,13 @@ def generate(
 
     lms_model = None
     try:
-        if keep_alive >= 1:
-            lms_model = lms.llm(model, ttl=keep_alive)
-        else:
-            lms_model = lms.llm(model)
-
-        if lms_model is None:
-            raise_llm_error(ValueError, f"Model '{model}' could not be loaded from LM Studio.", provider='lmstudio', operation='generate')
-
-        chat = lms.Chat()
-        chat.add_user_message(prompt)
-        response = lms_model.respond(chat)
+        lms_model = load_model(lmstudio_available, lms, enabled, model, keep_alive)
+        response = generate_with_model(lms_model, lms, prompt, options)
         if keep_alive < 1:
-            lms_model.unload()
-        if not response:
-            raise_llm_error(ValueError, 'No valid response received from the model.', provider='lmstudio', operation='generate')
-        return clean_response(response.content)
+            unload_model(lms_model)
+        return response
     except Exception as e:
-        logger.error(f'Error generating response from LM Studio: {e}')
+        report_llm_error('Error generating response from LM Studio', provider='lmstudio', operation='generate', cause=e)
         if lms_model is not None and keep_alive < 1:
             lms_model.unload()
         return ''
@@ -200,20 +252,10 @@ def generate_vision_refine(
         raise_llm_error(ValueError, f"Model '{model}' is not available. Available models: {model_list}", provider='lmstudio', operation='generate_vision_refine')
 
     seed = (options or {}).get('seed', 0)
-    input_images = tensor_to_temp_image(images) if images is not None else []
     lms_model = None
     try:
-        lms_model = lms.llm(model)
-
-        chat = lms.Chat()
-        if not input_images:
-            chat.add_user_message(prompt)
-        else:
-            image_handles = [lms.prepare_image(image) for image in input_images]
-            chat.add_user_message(prompt, images=image_handles)
-
-        response = lms_model.respond(chat)
-        initial_response = clean_response(response.content)
+        lms_model = load_model(lmstudio_available, lms, enabled, model, 0)
+        initial_response = generate_vision_with_model(lms_model, lms, prompt, images, options)
 
         if refine_model == '':
             refine_model = model
@@ -221,23 +263,19 @@ def generate_vision_refine(
             refine_prompt = prompt
 
         if refine_model != model:
-            lms_model.unload()
-            lms_model = lms.llm(refine_model)
+            unload_model(lms_model)
+            lms_model = load_model(lmstudio_available, lms, enabled, refine_model, 0)
 
-        chat = lms.Chat()
         refine_prompt = f'{refine_prompt}\n{initial_response}'
         refine_options = refine_options or {}
         refine_options['seed'] = seed
-        chat.add_user_message(refine_prompt)
-
-        refined_response = clean_response(lms_model.respond(chat).content)
-
-        if lms_model is not None:
-            lms_model.unload()
+        refined_response = generate_with_model(lms_model, lms, refine_prompt, refine_options)
+        unload_model(lms_model)
+        lms_model = None
 
         return (initial_response, refined_response)
     except Exception as e:
-        logger.error(f'Error generating response from LM Studio model: {e}')
+        report_llm_error('Error generating response from LM Studio model', provider='lmstudio', operation='generate_vision_refine', cause=e)
         if lms_model is not None:
             lms_model.unload()
         return ('', '')
@@ -262,30 +300,11 @@ def generate_stream(
 
     lms_model = None
     try:
-        if keep_alive >= 1:
-            lms_model = lms.llm(model, ttl=keep_alive)
-        else:
-            lms_model = lms.llm(model)
-
-        if lms_model is None:
-            raise_llm_error(ValueError, f"Failed to load model: {model}", provider='lmstudio', operation='generate_stream')
-
-        config = cast(Any, build_lmstudio_config(options or {}))
-        chat = lms.Chat()
-        chat.add_user_message(prompt)
-
-        if config:
-            response = lms_model.respond(chat, config=config)
-        else:
-            response = lms_model.respond(chat)
-
+        lms_model = load_model(lmstudio_available, lms, enabled, model, keep_alive)
+        response_text = generate_with_model(lms_model, lms, prompt, options)
         if keep_alive < 1:
-            lms_model.unload()
+            unload_model(lms_model)
 
-        if not response:
-            raise_llm_error(ValueError, 'No valid response received from the model.', provider='lmstudio', operation='generate_stream')
-
-        response_text = clean_response(response.content)
         chunk_size = 5
         for i in range(0, len(response_text), chunk_size):
             chunk = response_text[i:i + chunk_size]
@@ -300,13 +319,13 @@ def generate_stream(
             'full_response': response_text,
         }
     except Exception as e:
-        logger.error(f'Error streaming response from LM Studio: {e}')
+        report_llm_error('Error streaming response from LM Studio', provider='lmstudio', operation='generate_stream', cause=e)
         if lms_model is not None and keep_alive < 1:
             lms_model.unload()
         yield {
             'chunk': '',
             'done': True,
-            'error': str(e),
+            'error': stringify_llm_error(e),
         }
 
 
@@ -331,31 +350,14 @@ def generate_vision_stream(
     input_images = tensor_to_temp_image(images) if images is not None else []
     lms_model = None
     try:
-        if keep_alive >= 1:
-            lms_model = lms.llm(model, ttl=keep_alive)
-        else:
-            lms_model = lms.llm(model)
-
-        config = cast(Any, build_lmstudio_config(options or {}))
-        chat = lms.Chat()
+        lms_model = load_model(lmstudio_available, lms, enabled, model, keep_alive)
         if not input_images:
             raise_llm_error(ValueError, 'No images provided for vision model.', provider='lmstudio', operation='generate_vision_stream')
 
-        image_handles = [lms.prepare_image(img_path) for img_path in input_images]
-        chat.add_user_message(prompt, images=image_handles)
-
-        if config:
-            response = lms_model.respond(chat, config=config)
-        else:
-            response = lms_model.respond(chat)
-
+        response_text = generate_vision_with_model(lms_model, lms, prompt, images, options)
         if keep_alive < 1:
-            lms_model.unload()
+            unload_model(lms_model)
 
-        if not response:
-            raise_llm_error(ValueError, 'No valid response received from the model.', provider='lmstudio', operation='generate_vision_stream')
-
-        response_text = clean_response(response.content)
         chunk_size = 5
         for i in range(0, len(response_text), chunk_size):
             chunk = response_text[i:i + chunk_size]
@@ -370,11 +372,11 @@ def generate_vision_stream(
             'full_response': response_text,
         }
     except Exception as e:
-        logger.error(f'Error streaming response from LM Studio vision model: {e}')
+        report_llm_error('Error streaming response from LM Studio vision model', provider='lmstudio', operation='generate_vision_stream', cause=e)
         if lms_model is not None and keep_alive < 1:
             lms_model.unload()
         yield {
             'chunk': '',
             'done': True,
-            'error': str(e),
+            'error': stringify_llm_error(e),
         }

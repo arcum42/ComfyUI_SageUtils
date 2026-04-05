@@ -6,6 +6,43 @@
 
 const BASE_URL = '/sage_llm';
 
+function createApiError(message, metadata = {}) {
+    const error = new Error(message || 'Request failed');
+    Object.assign(error, metadata);
+    return error;
+}
+
+function createApiErrorFromPayload(payload, fallbackMessage, status) {
+    const message = payload?.error || payload?.message || fallbackMessage || 'Request failed';
+    const errorCode = payload?.error_code;
+    return createApiError(message, {
+        status,
+        errorCode,
+        error_code: errorCode,
+        provider: payload?.provider,
+        operation: payload?.operation,
+        cause: payload?.cause
+    });
+}
+
+async function createApiErrorFromResponse(response, fallbackMessage) {
+    const fallback = fallbackMessage || `HTTP ${response.status}: ${response.statusText}`;
+
+    try {
+        const contentType = response.headers.get('content-type') || '';
+
+        if (contentType.includes('application/json')) {
+            const payload = await response.json();
+            return createApiErrorFromPayload(payload, fallback, response.status);
+        }
+
+        const text = await response.text();
+        return createApiError(text || fallback, { status: response.status });
+    } catch {
+        return createApiError(fallback, { status: response.status });
+    }
+}
+
 /**
  * Get status of Ollama and LM Studio services
  * @returns {Promise<Object>} - Service status data
@@ -13,10 +50,15 @@ const BASE_URL = '/sage_llm';
 export async function getStatus() {
     try {
         const response = await fetch(`${BASE_URL}/status`);
+
+        if (!response.ok) {
+            throw await createApiErrorFromResponse(response, 'Failed to get status');
+        }
+
         const data = await response.json();
         
         if (!data.success) {
-            throw new Error(data.error || 'Failed to get status');
+            throw createApiErrorFromPayload(data, 'Failed to get status', response.status);
         }
         
         return data.data;
@@ -35,10 +77,15 @@ export async function getModels(force = false) {
     try {
         const url = force ? `${BASE_URL}/models?force=true` : `${BASE_URL}/models`;
         const response = await fetch(url);
+
+        if (!response.ok) {
+            throw await createApiErrorFromResponse(response, 'Failed to fetch models');
+        }
+
         const data = await response.json();
         
         if (!data.success) {
-            throw new Error(data.error || 'Failed to fetch models');
+            throw createApiErrorFromPayload(data, 'Failed to fetch models', response.status);
         }
         
         return data.data;
@@ -57,10 +104,15 @@ export async function getVisionModels(force = false) {
     try {
         const url = force ? `${BASE_URL}/vision_models?force=true` : `${BASE_URL}/vision_models`;
         const response = await fetch(url);
+
+        if (!response.ok) {
+            throw await createApiErrorFromResponse(response, 'Failed to get vision models');
+        }
+
         const data = await response.json();
         
         if (!data.success) {
-            throw new Error(data.error || 'Failed to get vision models');
+            throw createApiErrorFromPayload(data, 'Failed to get vision models', response.status);
         }
         
         return data.data;
@@ -77,10 +129,15 @@ export async function getVisionModels(force = false) {
 export async function getPrompts() {
     try {
         const response = await fetch(`${BASE_URL}/prompts`);
+
+        if (!response.ok) {
+            throw await createApiErrorFromResponse(response, 'Failed to get prompts');
+        }
+
         const data = await response.json();
         
         if (!data.success) {
-            throw new Error(data.error || 'Failed to get prompts');
+            throw createApiErrorFromPayload(data, 'Failed to get prompts', response.status);
         }
         
         return data.data.prompts;
@@ -109,11 +166,15 @@ export async function generateText(params) {
             },
             body: JSON.stringify(params)
         });
+
+        if (!response.ok) {
+            throw await createApiErrorFromResponse(response, 'Generation failed');
+        }
         
         const data = await response.json();
         
         if (!data.success) {
-            throw new Error(data.error || 'Generation failed');
+            throw createApiErrorFromPayload(data, 'Generation failed', response.status);
         }
         
         return data.data;
@@ -146,7 +207,7 @@ export async function generateStream(params, onChunk, onError) {
         });
         
         if (!response.ok) {
-            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            throw await createApiErrorFromResponse(response, `HTTP ${response.status}: ${response.statusText}`);
         }
         
         const reader = response.body.getReader();
@@ -196,7 +257,7 @@ export async function generateStream(params, onChunk, onError) {
                                 // Handle errors in stream
                                 if (data.error) {
                                     if (onError) {
-                                        onError(new Error(data.error));
+                                        onError(createApiErrorFromPayload(data, data.error || 'Streaming failed', response.status));
                                     }
                                     break;
                                 }
@@ -248,11 +309,15 @@ export async function generateVision(params) {
             },
             body: JSON.stringify(params)
         });
+
+        if (!response.ok) {
+            throw await createApiErrorFromResponse(response, 'Vision generation failed');
+        }
         
         const data = await response.json();
         
         if (!data.success) {
-            throw new Error(data.error || 'Vision generation failed');
+            throw createApiErrorFromPayload(data, 'Vision generation failed', response.status);
         }
         
         return data.data;
@@ -286,7 +351,7 @@ export async function generateVisionStream(params, onChunk, onError) {
         });
         
         if (!response.ok) {
-            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            throw await createApiErrorFromResponse(response, `HTTP ${response.status}: ${response.statusText}`);
         }
         
         const reader = response.body.getReader();
@@ -336,7 +401,7 @@ export async function generateVisionStream(params, onChunk, onError) {
                                 // Handle errors in stream
                                 if (data.error) {
                                     if (onError) {
-                                        onError(new Error(data.error));
+                                        onError(createApiErrorFromPayload(data, data.error || 'Vision streaming failed', response.status));
                                     }
                                     break;
                                 }
@@ -403,6 +468,40 @@ export async function urlToBase64(url) {
         return await fileToBase64(blob);
     } catch (error) {
         console.error('Error converting URL to base64:', error);
+        throw error;
+    }
+}
+
+/**
+ * Pre-load a model into memory without generating a response.
+ * For Ollama this pre-warms the model; for LM Studio it loads the handle.
+ * @param {Object} params
+ * @param {string} params.provider - 'ollama' or 'lmstudio'
+ * @param {string} params.model - Model name
+ * @param {number} [params.keep_alive=60] - Seconds to keep model resident (default 60)
+ * @returns {Promise<Object>} - { loaded: true, provider, model }
+ */
+export async function loadModel(params) {
+    try {
+        const response = await fetch(`${BASE_URL}/load_model`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(params),
+        });
+
+        if (!response.ok) {
+            throw await createApiErrorFromResponse(response, 'Model load failed');
+        }
+
+        const data = await response.json();
+
+        if (!data.success) {
+            throw createApiErrorFromPayload(data, 'Model load failed', response.status);
+        }
+
+        return data.data;
+    } catch (error) {
+        console.error('Error loading model:', error);
         throw error;
     }
 }

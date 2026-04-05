@@ -4,8 +4,14 @@
  */
 
 import * as llmApi from '../../llm/llmApi.js';
+import { loadModel } from '../../llm/llmApi.js';
 import { copyTextToSelectedNode } from '../../utils/textCopyUtils.js';
 import { copyTextFromSelectedNode } from '../../utils/textCopyFromNode.js';
+import { alertDialog } from '../../components/dialogManager.js';
+
+let errorDialogOpen = false;
+let lastErrorDialogMessage = '';
+let lastErrorDialogTime = 0;
 
 /**
  * Handle send button click - start generation
@@ -116,31 +122,58 @@ export async function handleSend(state, textarea, responseSection, sendBtn, stop
     if (sendToPromptBtn) sendToPromptBtn.style.display = 'none';
     
     const responseDisplay = responseSection.querySelector('.llm-response-display');
-    responseDisplay.innerHTML = '';
     responseDisplay.classList.add('generating');
-    
+
+    // Phase 1: show loading spinner
+    showLoadingOverlay(responseDisplay, state.model);
+    showStatus(responseSection, 'Loading model...', 'info');
+
+    try {
+        // Pre-load the model so the user sees the phase boundary
+        const keepAlive = state.settings?.keepAlive ?? 60;
+        await loadModel({
+            provider: state.provider,
+            model: state.model,
+            keep_alive: keepAlive,
+        });
+    } catch (loadError) {
+        // Non-fatal: model may already be loaded or preload unsupported — continue
+        console.warn('[LLM] Model preload failed (continuing anyway):', loadError);
+    }
+
+    // Phase 2: switch to generation view
+    responseDisplay.innerHTML = '';
     showStatus(responseSection, 'Generating...', 'info');
-    
+
     try {
         let fullResponse = '';
-        
+
+        // Helper: clear overlay on first real chunk
+        let overlayCleared = false;
+        const clearOverlayOnce = () => {
+            if (!overlayCleared) {
+                overlayCleared = true;
+                responseDisplay.innerHTML = '';
+            }
+        };
+
         // Build options from state settings
         const options = buildGenerationOptions(state);
-        
+
         // Check if we have images (vision mode)
         const hasImages = state.images && state.images.length > 0;
-        
+
         if (hasImages) {
             // Use vision API
             const images = state.images.map(img => img.base64);
-            
+
             // Debug: Log first image info
             console.log('[LLM] Sending images to API:', {
                 count: images.length,
                 firstImageLength: images[0]?.length,
                 firstImagePreview: images[0]?.substring(0, 100)
             });
-            
+
             state.streamController = await llmApi.generateVisionStream(
                 {
                     provider: state.provider,
@@ -153,12 +186,13 @@ export async function handleSend(state, textarea, responseSection, sendBtn, stop
                 // onChunk callback
                 (chunk, done, full) => {
                     if (chunk) {
+                        clearOverlayOnce();
                         fullResponse += chunk;
                         responseDisplay.textContent = fullResponse;
                         // Auto-scroll to bottom
                         responseDisplay.scrollTop = responseDisplay.scrollHeight;
                     }
-                    
+
                     if (done) {
                         onGenerationComplete(state, fullResponse, responseSection, sendBtn, stopBtn, historySection, updateConversationList);
                     }
@@ -181,12 +215,13 @@ export async function handleSend(state, textarea, responseSection, sendBtn, stop
                 // onChunk callback
                 (chunk, done, full) => {
                     if (chunk) {
+                        clearOverlayOnce();
                         fullResponse += chunk;
                         responseDisplay.textContent = fullResponse;
                         // Auto-scroll to bottom
                         responseDisplay.scrollTop = responseDisplay.scrollHeight;
                     }
-                    
+
                     if (done) {
                         onGenerationComplete(state, fullResponse, responseSection, sendBtn, stopBtn, historySection, updateConversationList);
                     }
@@ -197,7 +232,7 @@ export async function handleSend(state, textarea, responseSection, sendBtn, stop
                 }
             );
         }
-        
+
     } catch (error) {
         onGenerationError(state, error, responseSection, sendBtn, stopBtn);
     }
@@ -289,6 +324,29 @@ export function handleCopyFromNode(textarea, app, showNotification) {
     } else {
         showNotification(result.error || 'Please select a CLIPTextEncode or Sage text node first', 'error');
     }
+}
+
+/**
+ * Show a spinner overlay inside the response display while the model loads.
+ * @param {HTMLElement} responseDisplay - The .llm-response-display element
+ * @param {string} modelName - Model name shown in the label
+ */
+function showLoadingOverlay(responseDisplay, modelName) {
+  const overlay = document.createElement('div');
+  overlay.className = 'llm-loading-overlay';
+
+  const spinner = document.createElement('div');
+  spinner.className = 'llm-loading-spinner';
+
+  const label = document.createElement('span');
+  label.className = 'llm-loading-label';
+  label.textContent = `Loading model${modelName ? ': ' + modelName : ''}…`;
+
+  overlay.appendChild(spinner);
+  overlay.appendChild(label);
+
+  responseDisplay.innerHTML = '';
+  responseDisplay.appendChild(overlay);
 }
 
 /**
@@ -418,8 +476,35 @@ function onGenerationError(state, error, responseSection, sendBtn, stopBtn) {
     
     const responseDisplay = responseSection.querySelector('.llm-response-display');
     responseDisplay.classList.remove('generating');
-    
-    showStatus(responseSection, `Error: ${error.message}`, 'error');
+
+    const errorMessage = error?.message || 'An unknown error occurred during generation';
+    showStatus(responseSection, `Error: ${errorMessage}`, 'error');
+    showGenerationErrorDialog(errorMessage);
+}
+
+function showGenerationErrorDialog(message) {
+    if (!message) {
+        return;
+    }
+
+    const now = Date.now();
+    const isRapidDuplicate = message === lastErrorDialogMessage && (now - lastErrorDialogTime) < 1500;
+
+    if (errorDialogOpen || isRapidDuplicate) {
+        return;
+    }
+
+    errorDialogOpen = true;
+    lastErrorDialogMessage = message;
+    lastErrorDialogTime = now;
+
+    alertDialog(message, 'LLM Generation Error')
+        .catch((dialogError) => {
+            console.error('Failed to show LLM error dialog:', dialogError);
+        })
+        .finally(() => {
+            errorDialogOpen = false;
+        });
 }
 
 /**

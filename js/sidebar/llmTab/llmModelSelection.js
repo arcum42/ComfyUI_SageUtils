@@ -4,8 +4,38 @@
  */
 
 import { createSelect } from '../../components/formElements.js';
+import { alertDialog } from '../../components/dialogManager.js';
 import * as llmApi from '../../llm/llmApi.js';
 import { getProviderDisplayName, getProviderStatusClass, getProviderStatusText, formatModelName } from '../../llm/llmProviders.js';
+
+let modelLoadErrorDialogOpen = false;
+let lastModelLoadErrorMessage = '';
+let lastModelLoadErrorTime = 0;
+
+function showModelLoadErrorDialog(message) {
+    if (!message) {
+        return;
+    }
+
+    const now = Date.now();
+    const isRapidDuplicate = message === lastModelLoadErrorMessage && (now - lastModelLoadErrorTime) < 1500;
+
+    if (modelLoadErrorDialogOpen || isRapidDuplicate) {
+        return;
+    }
+
+    modelLoadErrorDialogOpen = true;
+    lastModelLoadErrorMessage = message;
+    lastModelLoadErrorTime = now;
+
+    alertDialog(message, 'LLM Model Load Error')
+        .catch((dialogError) => {
+            console.error('Failed to show LLM model load error dialog:', dialogError);
+        })
+        .finally(() => {
+            modelLoadErrorDialogOpen = false;
+        });
+}
 
 /**
  * Creates the model selection section
@@ -181,9 +211,11 @@ export async function loadModels(state, modelSelection, visionSection, force = f
         
     } catch (error) {
         console.error('Error loading models:', error);
+        const errorMessage = error?.message || 'Failed to load LLM models. Please check provider availability and settings.';
         statusDot.className = 'status-dot status-error';
         statusText.textContent = 'Error loading models';
         modelSelect.innerHTML = '<option value="">Error loading models</option>';
+        showModelLoadErrorDialog(errorMessage);
     } finally {
         modelSelect.disabled = false;
     }

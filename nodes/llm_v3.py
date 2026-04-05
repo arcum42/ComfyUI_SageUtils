@@ -19,14 +19,23 @@ from comfy_api.latest import io
 from comfy_api.latest._io import NodeOutput, Schema
 
 # Import specific utilities instead of wildcard import
+from comfy.utils import ProgressBar
+
 from ..utils.config_manager import llm_prompts
+from ..utils.settings import get_setting
 from ..utils.llm_wrapper import (
     lmstudio_generate,
     lmstudio_generate_vision,
     lmstudio_generate_vision_refine,
+    lmstudio_load_model,
+    lmstudio_generate_with_model,
+    lmstudio_generate_vision_with_model,
+    lmstudio_unload_model,
     ollama_generate,
     ollama_generate_vision,
     ollama_generate_vision_refine,
+    ollama_preload_model,
+    ollama_generate_preloaded,
 )
 from ..utils.performance_fix import (
     get_cached_ollama_models_for_input_types,
@@ -47,6 +56,13 @@ DEFAULT_TEXT_PROMPT = "Write a detailed and coherent description of an image bas
 import logging
 
 from .custom_io_v3 import *
+
+logger = logging.getLogger('sageutils.nodes.llm_v3')
+
+
+def _should_reraise_llm_node_errors() -> bool:
+    """Return whether LLM node exceptions should be re-raised after logging."""
+    return bool(get_setting('llm_raise_node_exceptions', False))
 
 # Current status: Implemented by copilot using the original as reference.
 # Need to review and test.
@@ -244,9 +260,16 @@ class Sage_OllamaLLMPromptText(io.ComfyNode):
 
         options = options or {}
         options["seed"] = seed
+        pbar = ProgressBar(2)
         try:
-            response = ollama_generate(model=model, prompt=prompt, system_prompt=system_prompt, keep_alive=keep_alive, options=options)
+            ollama_preload_model(model=model, keep_alive=keep_alive)
+            pbar.update(1)
+            response = ollama_generate_preloaded(model=model, prompt=prompt, keep_alive=keep_alive, options=options, system_prompt=system_prompt)
+            pbar.update(1)
         except Exception:
+            logger.exception('Ollama text node failed during preload or generation')
+            if _should_reraise_llm_node_errors():
+                raise
             response = ""
         return io.NodeOutput(response)
 
@@ -292,9 +315,16 @@ class Sage_OllamaLLMPromptVision(io.ComfyNode):
 
         options = options or {}
         options["seed"] = seed
+        pbar = ProgressBar(2)
         try:
+            ollama_preload_model(model=model, keep_alive=keep_alive)
+            pbar.update(1)
             response = ollama_generate_vision(model=model, prompt=prompt, system_prompt=system_prompt, images=image, keep_alive=keep_alive, options=options)
+            pbar.update(1)
         except Exception:
+            logger.exception('Ollama vision node failed during preload or generation')
+            if _should_reraise_llm_node_errors():
+                raise
             response = ""
         return io.NodeOutput(response)
 
@@ -343,7 +373,12 @@ class Sage_OllamaLLMPromptVisionRefine(io.ComfyNode):
         if model == "(No Ollama vision models available)" or refine_model == "(Ollama not available)" or not OLLAMA_AVAILABLE:
             return io.NodeOutput("", "")
 
+        pbar = ProgressBar(2)
         try:
+            # Step 1: pre-warm the first model
+            ollama_preload_model(model=model, keep_alive=0)
+            pbar.update(1)
+            # Step 2: generate initial vision response then refine
             initial, refined = ollama_generate_vision_refine(
                 model=model,
                 prompt=prompt,
@@ -353,7 +388,11 @@ class Sage_OllamaLLMPromptVisionRefine(io.ComfyNode):
                 refine_prompt=refine_prompt,
                 refine_options={"seed": refine_seed}
             )
+            pbar.update(1)
         except Exception:
+            logger.exception('Ollama vision refine node failed during preload or generation')
+            if _should_reraise_llm_node_errors():
+                raise
             initial, refined = "", ""
         return io.NodeOutput(initial, refined)
 
@@ -392,9 +431,27 @@ class Sage_LMStudioLLMPromptText(io.ComfyNode):
             return io.NodeOutput("")
 
         options = {"seed": seed}
+        pbar = ProgressBar(2)
+        lms_model = None
         try:
-            response = lmstudio_generate(model=model, prompt=prompt, keep_alive=load_for_seconds, options=options)
+            # Step 1: load model
+            lms_model = lmstudio_load_model(model=model, keep_alive=load_for_seconds)
+            pbar.update(1)
+            # Step 2: generate
+            response = lmstudio_generate_with_model(lms_model, prompt=prompt, options=options)
+            if load_for_seconds < 1:
+                lmstudio_unload_model(lms_model)
+                lms_model = None
+            pbar.update(1)
         except Exception:
+            logger.exception('LM Studio text node failed during load or generation')
+            if lms_model is not None and load_for_seconds < 1:
+                try:
+                    lmstudio_unload_model(lms_model)
+                except Exception:
+                    pass
+            if _should_reraise_llm_node_errors():
+                raise
             response = ""
         return io.NodeOutput(response)
 
@@ -435,9 +492,27 @@ class Sage_LMStudioLLMPromptVision(io.ComfyNode):
             return io.NodeOutput("")
 
         options = {"seed": seed}
+        pbar = ProgressBar(2)
+        lms_model = None
         try:
-            response = lmstudio_generate_vision(model=model, prompt=prompt, keep_alive=load_for_seconds, images=image, options=options)
+            # Step 1: load model
+            lms_model = lmstudio_load_model(model=model, keep_alive=load_for_seconds)
+            pbar.update(1)
+            # Step 2: generate vision response
+            response = lmstudio_generate_vision_with_model(lms_model, prompt=prompt, images=image, options=options)
+            if load_for_seconds < 1:
+                lmstudio_unload_model(lms_model)
+                lms_model = None
+            pbar.update(1)
         except Exception:
+            logger.exception('LM Studio vision node failed during load or generation')
+            if lms_model is not None and load_for_seconds < 1:
+                try:
+                    lmstudio_unload_model(lms_model)
+                except Exception:
+                    pass
+            if _should_reraise_llm_node_errors():
+                raise
             response = ""
         return io.NodeOutput(response)
 
@@ -480,23 +555,38 @@ class Sage_LMStudioLLMPromptVisionRefine(io.ComfyNode):
         image = kwargs.get("image")
         seed = kwargs.get("seed", 0)
         refine_prompt = kwargs.get("refine_prompt", "")
-        refine_model = kwargs.get("refine_model")
+        refine_model = kwargs.get("refine_model") or model
         refine_seed = kwargs.get("refine_seed", 0)
+        actual_refine_prompt = refine_prompt or prompt
 
         if model == "(No LM Studio vision models available)" or refine_model == "(LM Studio not available)":
             return io.NodeOutput("", "")
 
+        pbar = ProgressBar(2)
+        lms_model = None
         try:
-            initial, refined = lmstudio_generate_vision_refine(
-                model=model,
-                prompt=prompt,
-                images=image,
-                options={"seed": seed},
-                refine_model=refine_model,
-                refine_prompt=refine_prompt,
-                refine_options={"seed": refine_seed}
-            )
+            # Step 1: load vision model
+            lms_model = lmstudio_load_model(model=model, keep_alive=0)
+            pbar.update(1)
+            # Step 2: generate initial vision response, then refine
+            initial = lmstudio_generate_vision_with_model(lms_model, prompt=prompt, images=image, options={"seed": seed})
+            if refine_model != model:
+                lmstudio_unload_model(lms_model)
+                lms_model = lmstudio_load_model(model=refine_model, keep_alive=0)
+            combined_refine_prompt = f'{actual_refine_prompt}\n{initial}'
+            refined = lmstudio_generate_with_model(lms_model, prompt=combined_refine_prompt, options={"seed": refine_seed})
+            lmstudio_unload_model(lms_model)
+            lms_model = None
+            pbar.update(1)
         except Exception:
+            logger.exception('LM Studio vision refine node failed during load or generation')
+            if lms_model is not None:
+                try:
+                    lmstudio_unload_model(lms_model)
+                except Exception:
+                    pass
+            if _should_reraise_llm_node_errors():
+                raise
             initial, refined = "", ""
         return io.NodeOutput(initial, refined)
 
