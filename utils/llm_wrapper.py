@@ -298,16 +298,19 @@ def ollama_generate_preloaded(model: str, prompt: str, keep_alive: float = 0.0, 
 def lmstudio_load_model(model: str, keep_alive: int = 0):
     """Load an LM Studio model and return the model handle. Caller must call lmstudio_unload_model() when done."""
     ensure_lmstudio_initialized()
+    print("lmstudio_load_model called with model:", model)
     return lmstudio_provider.load_model(LMSTUDIO_AVAILABLE, lms, is_lmstudio_enabled(), model, keep_alive)
 
 
 def lmstudio_generate_with_model(lms_model, prompt: str, options=None) -> str:
     """Run text inference on an already-loaded LM Studio model handle."""
+    print("lmstudio_generate_with_model called with prompt:", prompt)
     return lmstudio_provider.generate_with_model(lms_model, lms, prompt, options)
 
 
 def lmstudio_generate_vision_with_model(lms_model, prompt: str, images=None, options=None) -> str:
     """Run vision inference on an already-loaded LM Studio model handle."""
+    print("lmstudio_generate_vision_with_model called with prompt:", prompt)
     return lmstudio_provider.generate_vision_with_model(lms_model, lms, prompt, images, options)
 
 
