@@ -873,6 +873,29 @@ export function createCacheSidebar(el) {
                 }
                 return currentSidebarElement._sidebarData.runRegressionChecks(options);
             },
+            smoke: async (options = {}) => {
+                const {
+                    log = false,
+                    delayMs = 0,
+                    throwOnFail = true
+                } = options;
+
+                if (delayMs > 0) {
+                    await new Promise((resolve) => setTimeout(resolve, delayMs));
+                }
+
+                const result = window.SageUtilsSidebarRegression.run({ log });
+                if (result.ok || !throwOnFail) {
+                    return result;
+                }
+
+                const failedChecks = (result.checks || [])
+                    .filter((check) => !check.pass)
+                    .map((check) => check.name)
+                    .join(', ');
+
+                throw new Error(`Sidebar regression smoke check failed: ${failedChecks || 'unknown check failure'}`);
+            },
             snapshot: () => {
                 if (!currentSidebarElement?._sidebarData?.getRegressionSnapshot) {
                     return null;
