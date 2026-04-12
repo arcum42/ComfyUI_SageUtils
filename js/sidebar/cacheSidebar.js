@@ -52,13 +52,153 @@ import { TabManager } from "../components/tabs.js";
 // Import API for settings
 import { api } from '../../../../scripts/api.js';
 
+import {
+    DEFAULT_TAB_VISIBILITY_SETTINGS,
+    normalizeTabVisibilitySettings,
+    toTabVisibilityMap
+} from '../shared/sidebarVisibility.js';
+
 // Import performance timing utilities for telemetry persistence
-import { startTimer, endTimer, javascriptTimer } from "../shared/performanceTimer.js";
+import { startTimer, endTimer, javascriptTimer, shouldSendTimingData, shouldLogTimingDetails } from "../shared/performanceTimer.js";
 
 // Always use Models Tab V2
 
 // Track the current sidebar element for reloading
 let currentSidebarElement = null;
+
+// Global error handlers are shared across sidebar mounts; keep them attached
+// only while at least one sidebar instance is active.
+let globalErrorHandlersRefCount = 0;
+let globalSidebarErrorHandler = null;
+let globalSidebarRejectionHandler = null;
+
+const SIDEBAR_SHELL_STYLE_ID = 'sageutils-sidebar-shell-styles';
+
+function ensureSidebarShellStyles() {
+    if (document.getElementById(SIDEBAR_SHELL_STYLE_ID)) {
+        return;
+    }
+
+    const style = document.createElement('style');
+    style.id = SIDEBAR_SHELL_STYLE_ID;
+    style.textContent = `
+        .sidebar-settings-button {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: #2a2a2a;
+            border: 1px solid #444;
+            border-radius: 4px;
+            color: #ccc;
+            padding: 6px 10px;
+            cursor: pointer;
+            font-size: 18px;
+            transition: all 0.2s ease;
+            z-index: 10;
+            flex-shrink: 0;
+        }
+
+        .sidebar-settings-button:hover {
+            background: #4CAF50;
+            border-color: #4CAF50;
+            transform: translateY(-50%) scale(1.1);
+        }
+
+        .sidebar-settings-indicator {
+            position: absolute;
+            right: 60px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: #2a2a2a;
+            border: 1px solid #444;
+            border-radius: 4px;
+            color: #ddd;
+            padding: 4px 8px;
+            font-size: 12px;
+            opacity: 0.9;
+            z-index: 9;
+        }
+    `;
+
+    document.head.appendChild(style);
+}
+
+function acquireGlobalErrorHandlers() {
+    if (!globalSidebarErrorHandler) {
+        globalSidebarErrorHandler = (event) => {
+            console.error('Sidebar error caught:', event.error);
+            if (event.error) {
+                handleError(event.error, { component: 'Sidebar', operation: 'Global Error Handler' });
+            }
+        };
+    }
+
+    if (!globalSidebarRejectionHandler) {
+        globalSidebarRejectionHandler = (event) => {
+            console.error('Sidebar promise rejection:', event.reason);
+            if (event.reason) {
+                handleError(event.reason, { component: 'Sidebar', operation: 'Promise Rejection' });
+            }
+        };
+    }
+
+    if (globalErrorHandlersRefCount === 0) {
+        window.addEventListener('error', globalSidebarErrorHandler);
+        window.addEventListener('unhandledrejection', globalSidebarRejectionHandler);
+    }
+
+    globalErrorHandlersRefCount += 1;
+
+    return () => {
+        globalErrorHandlersRefCount = Math.max(0, globalErrorHandlersRefCount - 1);
+        if (globalErrorHandlersRefCount === 0) {
+            window.removeEventListener('error', globalSidebarErrorHandler);
+            window.removeEventListener('unhandledrejection', globalSidebarRejectionHandler);
+        }
+    };
+}
+
+function createCleanupRegistry() {
+    const cleanups = new Set();
+
+    const add = (cleanup) => {
+        if (typeof cleanup !== 'function') {
+            return () => {};
+        }
+        cleanups.add(cleanup);
+        return () => cleanups.delete(cleanup);
+    };
+
+    const addInterval = (intervalId) => add(() => clearInterval(intervalId));
+    const addTimeout = (timeoutId) => add(() => clearTimeout(timeoutId));
+    const addObserver = (observer) => {
+        if (!observer || typeof observer.disconnect !== 'function') {
+            return () => {};
+        }
+        return add(() => observer.disconnect());
+    };
+
+    const runAll = () => {
+        cleanups.forEach((cleanup) => {
+            try {
+                cleanup();
+            } catch (error) {
+                console.warn('[Sidebar] Cleanup callback failed:', error);
+            }
+        });
+        cleanups.clear();
+    };
+
+    return {
+        add,
+        addInterval,
+        addTimeout,
+        addObserver,
+        runAll,
+        cleanup: runAll
+    };
+}
 
 /**
  * Load tab visibility settings from the backend
@@ -79,16 +219,11 @@ async function loadTabVisibilitySettings() {
             endTimer('Sidebar.Settings.Parse');
             const jsonEnd = performance.now();
             if (data.success && data.settings) {
-                const settings = data.settings;
+                const settings = normalizeTabVisibilitySettings(data.settings);
                 startTimer('Sidebar.Settings.Map');
                 const mappedStart = performance.now();
                 const result = {
-                    show_models_tab: settings.show_models_tab?.current_value !== false,
-                    show_files_tab: settings.show_files_tab?.current_value !== false,
-                    show_search_tab: settings.show_search_tab?.current_value !== false,
-                    show_gallery_tab: settings.show_gallery_tab?.current_value !== false,
-                    show_prompts_tab: settings.show_prompts_tab?.current_value !== false,
-                    show_llm_tab: settings.show_llm_tab?.current_value !== false,
+                    ...settings,
                     _timing: {
                         fetch_ms: +(t1 - t0).toFixed(2),
                         parse_ms: +(jsonEnd - jsonStart).toFixed(2),
@@ -97,7 +232,9 @@ async function loadTabVisibilitySettings() {
                     }
                 };
                 endTimer('Sidebar.Settings.Map');
-                console.info('[Sidebar] Settings loaded', result._timing);
+                if (shouldLogTimingDetails()) {
+                    console.info('[Sidebar] Settings loaded', result._timing);
+                }
                 endTimer('Sidebar.Settings.Total');
                 return result;
             }
@@ -108,15 +245,12 @@ async function loadTabVisibilitySettings() {
     
     // Return all tabs visible by default
     const fallback = {
-        show_models_tab: true,
-        show_files_tab: true,
-        show_search_tab: true,
-        show_gallery_tab: true,
-        show_prompts_tab: true,
-        show_llm_tab: true,
+        ...DEFAULT_TAB_VISIBILITY_SETTINGS,
         _timing: { fallback: true }
     };
-    console.info('[Sidebar] Using default visibility settings');
+    if (shouldLogTimingDetails()) {
+        console.info('[Sidebar] Using default visibility settings');
+    }
     endTimer('Sidebar.Settings.Total');
     return fallback;
 }
@@ -129,6 +263,8 @@ async function loadTabVisibilitySettings() {
  * @returns {TabManager} Configured TabManager instance
  */
 function createTabManager(container, tabVisibility = {}, tabContentFactories = {}) {
+    ensureSidebarShellStyles();
+
     const tabManager = new TabManager({
         container: container,
         lazyLoad: true,
@@ -173,35 +309,6 @@ function createTabManager(container, tabVisibility = {}, tabContentFactories = {
     settingsButton.innerHTML = '⚙️';
     settingsButton.title = 'Settings';
     settingsButton.className = 'sidebar-settings-button';
-    settingsButton.style.cssText = `
-        position: absolute;
-        right: 10px;
-        top: 50%;
-        transform: translateY(-50%);
-        background: #2a2a2a;
-        border: 1px solid #444;
-        border-radius: 4px;
-        color: #ccc;
-        padding: 6px 10px;
-        cursor: pointer;
-        font-size: 18px;
-        transition: all 0.2s ease;
-        z-index: 10;
-        flex-shrink: 0;
-    `;
-
-    // Hover effect
-    settingsButton.addEventListener('mouseenter', () => {
-        settingsButton.style.background = '#4CAF50';
-        settingsButton.style.borderColor = '#4CAF50';
-        settingsButton.style.transform = 'translateY(-50%) scale(1.1)';
-    });
-
-    settingsButton.addEventListener('mouseleave', () => {
-        settingsButton.style.background = '#2a2a2a';
-        settingsButton.style.borderColor = '#444';
-        settingsButton.style.transform = 'translateY(-50%) scale(1)';
-    });
 
     // Click handler
     settingsButton.addEventListener('click', async () => {
@@ -244,55 +351,32 @@ function createTabManager(container, tabVisibility = {}, tabContentFactories = {
     };
 
     // Check visibility on load and resize
-    setTimeout(checkSettingsButtonVisibility, 100);
+    const settingsVisibilityTimeoutId = setTimeout(checkSettingsButtonVisibility, 100);
+    tabManager.registerCleanup(() => clearTimeout(settingsVisibilityTimeoutId));
     
     // Use ResizeObserver to dynamically check when header size changes
     const resizeObserver = new ResizeObserver(() => {
         checkSettingsButtonVisibility();
     });
     resizeObserver.observe(tabManager.tabHeader);
-    
-    // Store observer for cleanup if needed
-    tabManager.settingsButtonResizeObserver = resizeObserver;
+    tabManager.registerCleanup(() => resizeObserver.disconnect());
     
     return tabManager;
 }
 
-// Track if global error handlers have been registered to prevent duplicates
-let errorHandlersRegistered = false;
-
 /**
  * Initialize the cache sidebar data and state
+ * @param {Object} lifecycle - Cleanup lifecycle helpers for mount-scoped resources
  */
-async function initializeSidebarData() {
+async function initializeSidebarData(lifecycle) {
     try {
         // Set loading state
         actions.setModelsLoading(true);
-        
-        // Set up error handling for the entire sidebar (only once)
-        if (!errorHandlersRegistered) {
-            const sidebarErrorHandler = (event) => {
-                console.error('Sidebar error caught:', event.error);
-                // Only handle error if it exists
-                if (event.error) {
-                    handleError(event.error, { component: 'Sidebar', operation: 'Global Error Handler' });
-                }
-            };
-            
-            const sidebarRejectionHandler = (event) => {
-                console.error('Sidebar promise rejection:', event.reason);
-                // Only handle error if it exists
-                if (event.reason) {
-                    handleError(event.reason, { component: 'Sidebar', operation: 'Promise Rejection' });
-                }
-            };
-            window.addEventListener('error', sidebarErrorHandler);
-            window.addEventListener('unhandledrejection', sidebarRejectionHandler);
-            errorHandlersRegistered = true;
-        }
+
+        lifecycle.add(acquireGlobalErrorHandlers());
         
         // Set up state subscriptions for debugging (optional)
-        subscribe((state, prevState) => {
+        const unsubscribe = subscribe((state, prevState) => {
             // Guard against undefined prevState (initial state)
             if (!prevState) return;
             
@@ -313,6 +397,7 @@ async function initializeSidebarData() {
                 console.debug('Notes loading state changed:', state.notes?.isLoading);
             }
         });
+        lifecycle.add(unsubscribe);
         
         // Check if data is already cached from preload
         const cacheHashReady = DataCache.isReady(CacheKeys.CACHE_HASH);
@@ -372,7 +457,7 @@ async function initializeSidebarData() {
         }
         
         // Set up periodic cache refresh (every 5 minutes)
-        setInterval(async () => {
+        const refreshIntervalId = setInterval(async () => {
             try {
                 const currentState = getState();
                 // Only refresh if not currently loading and a model is selected
@@ -394,6 +479,7 @@ async function initializeSidebarData() {
                 console.warn('Periodic cache refresh failed:', refreshError);
             }
         }, 5 * 60 * 1000); // 5 minutes
+        lifecycle.addInterval(refreshIntervalId);
         
     } catch (error) {
         console.error('Failed to initialize sidebar data:', error);
@@ -410,16 +496,10 @@ async function initializeSidebarData() {
 export function createCacheSidebar(el) {
     // Store reference for potential reload
     currentSidebarElement = el;
+    const lifecycle = createCleanupRegistry();
     
     // Start with safe defaults (all tabs visible) to avoid blank UI on slow startup
-    const defaultVisibility = {
-        show_models_tab: true,
-        show_files_tab: true,
-        show_search_tab: true,
-        show_gallery_tab: true,
-        show_prompts_tab: true,
-        show_llm_tab: true
-    };
+    const defaultVisibility = { ...DEFAULT_TAB_VISIBILITY_SETTINGS };
     let tabVisibility = defaultVisibility;
     let isDestroyed = false;
     const pendingTimeouts = new Set();
@@ -434,6 +514,7 @@ export function createCacheSidebar(el) {
             callback();
         }, delayMs);
         pendingTimeouts.add(timeoutId);
+        lifecycle.addTimeout(timeoutId);
         return timeoutId;
     };
     
@@ -460,25 +541,11 @@ export function createCacheSidebar(el) {
     const settingsIndicator = document.createElement('div');
     settingsIndicator.textContent = 'Loading settings…';
     settingsIndicator.className = 'sidebar-settings-indicator';
-    settingsIndicator.style.cssText = `
-        position: absolute;
-        right: 60px;
-        top: 50%;
-        transform: translateY(-50%);
-        background: #2a2a2a;
-        border: 1px solid #444;
-        border-radius: 4px;
-        color: #ddd;
-        padding: 4px 8px;
-        font-size: 12px;
-        opacity: 0.9;
-        z-index: 9;
-    `;
     // The tabHeader exists post-init inside TabManager
     try { tabManager.tabHeader.appendChild(settingsIndicator); } catch { /* no-op */ }
 
     // Initialize sidebar data and state
-    initializeSidebarData();
+    initializeSidebarData(lifecycle);
     
     // Activate the first visible tab
     tabManager.activateFirstTab();
@@ -488,16 +555,12 @@ export function createCacheSidebar(el) {
     const settingsLoadStart = performance.now();
     loadTabVisibilitySettings().then((settings) => {
         try {
-            tabVisibility = settings || defaultVisibility;
+            tabVisibility = normalizeTabVisibilitySettings(settings || defaultVisibility);
             const mapStart = performance.now();
-            const visibilityMap = {
-                models: tabVisibility.show_models_tab !== false,
-                notes: tabVisibility.show_files_tab !== false,
-                civitai: tabVisibility.show_search_tab !== false,
-                gallery: tabVisibility.show_gallery_tab !== false,
-                promptBuilder: tabVisibility.show_prompts_tab !== false,
-                llm: tabVisibility.show_llm_tab !== false
-            };
+            const visibilityMap = toTabVisibilityMap(tabVisibility, {
+                ensureOneVisible: true,
+                fallbackTabId: 'models'
+            });
 
             // Ensure at least one tab remains visible to avoid a blank sidebar
             const anyVisible = Object.values(visibilityMap).some(v => v);
@@ -529,26 +592,26 @@ export function createCacheSidebar(el) {
             const mapMs = settings?._timing?.map_ms ?? +(mapEnd - mapStart).toFixed(2);
             const updateMs = +(updateEnd - updateStart).toFixed(2);
             const activateMs = +(activateEnd - activateStart).toFixed(2);
-            console.info('[Sidebar] Visibility settings applied', {
-                total_ms: totalMs,
-                fetch_ms: fetchMs,
-                parse_ms: parseMs,
-                map_ms: mapMs,
-                update_visibility_ms: updateMs,
-                activate_ms: activateMs
-            });
+            if (shouldLogTimingDetails()) {
+                console.info('[Sidebar] Visibility settings applied', {
+                    total_ms: totalMs,
+                    fetch_ms: fetchMs,
+                    parse_ms: parseMs,
+                    map_ms: mapMs,
+                    update_visibility_ms: updateMs,
+                    activate_ms: activateMs
+                });
+            }
 
             // Optionally persist timing immediately if telemetry is enabled
-            const shouldSendTiming = localStorage.getItem('sageutils_send_timing') === 'true' || 
-                                     new URLSearchParams(window.location.search).get('sageutils_timing') === '1';
-            if (shouldSendTiming) {
+            if (shouldSendTimingData()) {
                 javascriptTimer.sendTimingDataToServer?.().catch(() => {});
             }
 
             // Remove or update the indicator
             if (settingsIndicator?.parentNode) {
                 settingsIndicator.textContent = `Settings applied in ${totalMs} ms`;
-                setTimeout(() => {
+                scheduleDelayed(() => {
                     try { settingsIndicator.parentNode.removeChild(settingsIndicator); } catch { /* no-op */ }
                 }, 1200);
             }
@@ -643,6 +706,9 @@ export function createCacheSidebar(el) {
                     console.warn('[Sidebar] Error unsubscribing from cross-tab messaging:', err);
                 }
             }
+
+            lifecycle.cleanup();
+
             // Destroy tab manager
             tabManager.destroy();
         }
@@ -693,6 +759,17 @@ export function createCacheSidebar(el) {
                     console.debug(`[Sidebar] Successfully switched to tab: ${tabKey}`);
                 } catch (error) {
                     console.error(`[Sidebar] Error switching to tab '${tabKey}':`, error);
+                }
+            });
+
+            lifecycle.add(() => {
+                if (crossTabUnsubscribe) {
+                    try {
+                        crossTabUnsubscribe();
+                    } catch (err) {
+                        console.warn('[Sidebar] Error unsubscribing from cross-tab messaging:', err);
+                    }
+                    crossTabUnsubscribe = null;
                 }
             });
             

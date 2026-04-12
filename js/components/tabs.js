@@ -33,6 +33,77 @@
  * 
  * tabManager.init();
  */
+const TAB_MANAGER_STYLE_ID = 'sageutils-tab-manager-styles';
+
+function ensureTabManagerStyles() {
+    if (document.getElementById(TAB_MANAGER_STYLE_ID)) {
+        return;
+    }
+
+    const style = document.createElement('style');
+    style.id = TAB_MANAGER_STYLE_ID;
+    style.textContent = `
+        .sage-tabs-header {
+            display: flex;
+            background: #1e1e1e;
+            border-bottom: 2px solid #333;
+            padding: 0 10px;
+            gap: 2px;
+            overflow-x: auto;
+            min-height: 50px;
+            position: relative;
+        }
+
+        .sage-tabs-content-area {
+            flex: 1;
+            overflow: auto;
+        }
+
+        .sage-tab-button {
+            padding: 10px 20px;
+            border: none;
+            background: #2a2a2a;
+            color: #ccc;
+            cursor: pointer;
+            border-radius: 6px 6px 0 0;
+            font-size: 13px;
+            font-weight: normal;
+            transition: all 0.2s ease;
+            border-bottom: 2px solid transparent;
+            position: relative;
+            top: 2px;
+            flex-shrink: 0;
+            transform: translateY(0);
+        }
+
+        .sage-tab-button:hover:not(.active) {
+            background: #3a3a3a;
+            color: white;
+            transform: translateY(-1px);
+        }
+
+        .sage-tab-button.active {
+            background: #4CAF50;
+            color: white;
+            font-weight: bold;
+            border-bottom: 2px solid #4CAF50;
+            transform: translateY(-1px);
+        }
+
+        .sage-tab-container {
+            display: none;
+            height: 100%;
+            overflow: auto;
+        }
+
+        .sage-tab-container.active {
+            display: block;
+        }
+    `;
+
+    document.head.appendChild(style);
+}
+
 export class TabManager {
     /**
      * Create a TabManager
@@ -62,6 +133,88 @@ export class TabManager {
         this.tabContent = null;
         this.tabButtons = new Map(); // tabId -> button element
         this.tabContainers = new Map(); // tabId -> content container
+        this.initializingTabs = new Set();
+        this.cleanupCallbacks = new Set();
+    }
+
+    /**
+     * Normalize tab definition into a lifecycle contract.
+     * Supports legacy factory functions and newer lifecycle objects.
+     * @private
+     * @param {Function|Object} tabDefinition - Function(container) or { mount, unmount, refresh }
+     * @returns {{mount: Function, unmount: Function|null, refresh: Function|null}}
+     */
+    resolveTabLifecycle(tabDefinition) {
+        if (typeof tabDefinition === 'function') {
+            return {
+                mount: tabDefinition,
+                unmount: null,
+                refresh: null
+            };
+        }
+
+        if (tabDefinition && typeof tabDefinition === 'object' && typeof tabDefinition.mount === 'function') {
+            return {
+                mount: tabDefinition.mount,
+                unmount: typeof tabDefinition.unmount === 'function' ? tabDefinition.unmount : null,
+                refresh: typeof tabDefinition.refresh === 'function' ? tabDefinition.refresh : null
+            };
+        }
+
+        throw new Error('TabManager: tab definition must be a function or an object with a mount method');
+    }
+
+    /**
+     * Execute tab refresh if available.
+     * @private
+     * @param {Object} config - Tab configuration
+     */
+    executeTabRefresh(config) {
+        const refreshFn = config?.instance?.refresh || config?.lifecycle?.refresh;
+        if (typeof refreshFn !== 'function') {
+            return;
+        }
+
+        try {
+            refreshFn({ tabId: config.id, tabManager: this });
+        } catch (error) {
+            console.warn(`TabManager: refresh failed for tab '${config.id}':`, error);
+        }
+    }
+
+    /**
+     * Execute tab unmount if available.
+     * @private
+     * @param {Object} config - Tab configuration
+     */
+    executeTabUnmount(config) {
+        const hasMounted = this.initializedTabs.has(config?.id);
+        const unmountFn = config?.instance?.unmount || (hasMounted ? config?.lifecycle?.unmount : null);
+        if (typeof unmountFn !== 'function') {
+            return;
+        }
+
+        try {
+            unmountFn({ tabId: config.id, tabManager: this });
+        } catch (error) {
+            console.warn(`TabManager: unmount failed for tab '${config.id}':`, error);
+        }
+    }
+
+    /**
+     * Register a cleanup callback that should run on destroy.
+     * @param {Function} cleanup - Callback executed during destroy
+     * @returns {Function} Unregister cleanup callback
+     */
+    registerCleanup(cleanup) {
+        if (typeof cleanup !== 'function') {
+            return () => {};
+        }
+
+        this.cleanupCallbacks.add(cleanup);
+        return () => {
+            this.cleanupCallbacks.delete(cleanup);
+        };
     }
     
     /**
@@ -71,30 +224,22 @@ export class TabManager {
         if (!this.container) {
             throw new Error('TabManager: container element is required');
         }
+
+        ensureTabManagerStyles();
         
         // Create tab header
         this.tabHeader = document.createElement('div');
-        this.tabHeader.className = 'tab-header';
-        this.tabHeader.style.cssText = `
-            display: flex;
-            background: #1e1e1e;
-            border-bottom: 2px solid #333;
-            padding: 0 10px;
-            gap: 2px;
-            overflow-x: auto;
-            min-height: 50px;
-            position: relative;
-            ${this.customStyles.header || ''}
-        `;
+        this.tabHeader.className = 'tab-header sage-tabs-header';
+        if (this.customStyles.header) {
+            this.tabHeader.style.cssText = this.customStyles.header;
+        }
         
         // Create tab content area
         this.tabContent = document.createElement('div');
-        this.tabContent.className = 'tab-content-area';
-        this.tabContent.style.cssText = `
-            flex: 1;
-            overflow: auto;
-            ${this.customStyles.content || ''}
-        `;
+        this.tabContent.className = 'tab-content-area sage-tabs-content-area';
+        if (this.customStyles.content) {
+            this.tabContent.style.cssText = this.customStyles.content;
+        }
         
         this.container.appendChild(this.tabHeader);
         this.container.appendChild(this.tabContent);
@@ -106,7 +251,8 @@ export class TabManager {
      * Add a tab to the manager
      * @param {string} id - Unique tab identifier
      * @param {string} label - Tab button label
-     * @param {Function} contentFactory - Function to create tab content: (container) => void
+    * @param {Function|Object} tabDefinition - Legacy factory (container => void) or lifecycle object
+    *                                        with { mount(container, context), optional unmount(context), optional refresh(context) }
      * @param {Object} [options] - Tab options
      * @param {boolean} [options.visible=true] - Whether tab is visible
      * @param {boolean} [options.active=false] - Whether tab should be active initially
@@ -114,7 +260,7 @@ export class TabManager {
      * @param {Object} [options.data] - Custom data associated with tab
      * @returns {TabManager} Returns this for chaining
      */
-    addTab(id, label, contentFactory, options = {}) {
+    addTab(id, label, tabDefinition, options = {}) {
         if (this.tabs.has(id)) {
             console.warn(`TabManager: tab with id '${id}' already exists`);
             return this;
@@ -123,7 +269,8 @@ export class TabManager {
         const tabConfig = {
             id,
             label,
-            contentFactory,
+            lifecycle: this.resolveTabLifecycle(tabDefinition),
+            instance: null,
             visible: options.visible !== false,
             icon: options.icon || '',
             data: options.data || {}
@@ -157,45 +304,15 @@ export class TabManager {
         if (!config) return;
         
         const button = document.createElement('button');
-        button.className = 'tab-button';
+        button.className = 'tab-button sage-tab-button';
         button.dataset.tabId = tabId;
         
         const displayText = config.icon ? `${config.icon} ${config.label}` : config.label;
         button.textContent = displayText;
         
-        button.style.cssText = `
-            padding: 10px 20px;
-            border: none;
-            background: #2a2a2a;
-            color: #ccc;
-            cursor: pointer;
-            border-radius: 6px 6px 0 0;
-            font-size: 13px;
-            font-weight: normal;
-            transition: all 0.2s ease;
-            border-bottom: 2px solid transparent;
-            position: relative;
-            top: 2px;
-            flex-shrink: 0;
-            ${this.customStyles.button || ''}
-        `;
-        
-        // Hover effects
-        button.addEventListener('mouseenter', () => {
-            if (!button.classList.contains('active')) {
-                button.style.background = '#3a3a3a';
-                button.style.color = 'white';
-                button.style.transform = 'translateY(-1px)';
-            }
-        });
-        
-        button.addEventListener('mouseleave', () => {
-            if (!button.classList.contains('active')) {
-                button.style.background = '#2a2a2a';
-                button.style.color = '#ccc';
-                button.style.transform = 'translateY(0)';
-            }
-        });
+        if (this.customStyles.button) {
+            button.style.cssText = this.customStyles.button;
+        }
         
         // Click handler
         button.addEventListener('click', () => this.switchTab(tabId));
@@ -211,13 +328,8 @@ export class TabManager {
      */
     createTabContainer(tabId) {
         const container = document.createElement('div');
-        container.className = 'tab-container';
+        container.className = 'tab-container sage-tab-container';
         container.dataset.tabId = tabId;
-        container.style.cssText = `
-            display: none;
-            height: 100%;
-            overflow: auto;
-        `;
         
         this.tabContainers.set(tabId, container);
         this.tabContent.appendChild(container);
@@ -245,27 +357,25 @@ export class TabManager {
             this.tabButtons.forEach((button, id) => {
                 const isActive = id === tabId;
                 button.classList.toggle('active', isActive);
-                button.style.background = isActive ? '#4CAF50' : '#2a2a2a';
-                button.style.color = isActive ? 'white' : '#ccc';
-                button.style.fontWeight = isActive ? 'bold' : 'normal';
-                button.style.borderBottom = isActive ? '2px solid #4CAF50' : '2px solid transparent';
-                button.style.transform = isActive ? 'translateY(-1px)' : 'translateY(0)';
             });
             
             // Hide all containers
             this.tabContainers.forEach(container => {
-                container.style.display = 'none';
+                container.classList.remove('active');
             });
             
             // Show active container
             const container = this.tabContainers.get(tabId);
             if (container) {
-                container.style.display = 'block';
+                container.classList.add('active');
             }
             
             // Initialize tab content if needed (lazy loading)
             if (this.lazyLoad && !this.initializedTabs.has(tabId)) {
                 this.initializeTab(tabId, true); // Show loading for user-initiated switches
+            } else if (this.initializedTabs.has(tabId)) {
+                // Optional hook for tab content that needs refresh-on-show behavior.
+                this.executeTabRefresh(config);
             }
             
             this.activeTabId = tabId;
@@ -299,6 +409,14 @@ export class TabManager {
             console.debug(`TabManager: Tab '${tabId}' already initialized, skipping`);
             return;
         }
+
+        // Skip duplicate initialization attempts while async mount is in progress.
+        if (this.initializingTabs.has(tabId)) {
+            console.debug(`TabManager: Tab '${tabId}' is already initializing, skipping`);
+            return;
+        }
+
+        this.initializingTabs.add(tabId);
         
         console.debug(`TabManager: Initializing tab '${tabId}'`);
         
@@ -316,10 +434,31 @@ export class TabManager {
             // Initialize content immediately for background loading, with small delay for user-initiated
             const initDelay = showLoading ? 50 : 0;
             
-            setTimeout(() => {
+            setTimeout(async () => {
                 try {
                     container.innerHTML = ''; // Clear loading message
-                    config.contentFactory(container);
+                    const mountResult = await config.lifecycle.mount(container, {
+                        tabId,
+                        tabManager: this,
+                        isBackground: !showLoading
+                    });
+
+                    if (typeof mountResult === 'function') {
+                        config.instance = {
+                            unmount: mountResult,
+                            refresh: null
+                        };
+                    } else if (mountResult && typeof mountResult === 'object') {
+                        config.instance = {
+                            unmount: typeof mountResult.unmount === 'function'
+                                ? mountResult.unmount
+                                : (typeof mountResult.destroy === 'function' ? mountResult.destroy : null),
+                            refresh: typeof mountResult.refresh === 'function' ? mountResult.refresh : null
+                        };
+                    } else {
+                        config.instance = null;
+                    }
+
                     this.initializedTabs.add(tabId);
                     console.debug(`TabManager: Tab '${tabId}' initialized successfully`);
                     
@@ -335,6 +474,8 @@ export class TabManager {
                             <div style="font-size: 14px; opacity: 0.8;">${error.message}</div>
                         </div>
                     `;
+                } finally {
+                    this.initializingTabs.delete(tabId);
                 }
             }, initDelay);
         } catch (error) {
@@ -344,6 +485,7 @@ export class TabManager {
                     Error: ${error.message}
                 </div>
             `;
+            this.initializingTabs.delete(tabId);
         }
     }
     
@@ -353,10 +495,13 @@ export class TabManager {
      * @returns {boolean} True if removal was successful
      */
     removeTab(tabId) {
-        if (!this.tabs.has(tabId)) {
+        const config = this.tabs.get(tabId);
+        if (!config) {
             console.warn(`TabManager: Cannot remove non-existent tab '${tabId}'`);
             return false;
         }
+
+        this.executeTabUnmount(config);
         
         // Remove button
         const button = this.tabButtons.get(tabId);
@@ -375,6 +520,7 @@ export class TabManager {
         // Remove from state
         this.tabs.delete(tabId);
         this.initializedTabs.delete(tabId);
+        this.initializingTabs.delete(tabId);
         
         // If active tab was removed, switch to first available
         if (this.activeTabId === tabId) {
@@ -607,6 +753,26 @@ export class TabManager {
      * Cleanup and destroy the tab manager
      */
     destroy() {
+        // Run externally registered cleanup callbacks first.
+        this.cleanupCallbacks.forEach((cleanup) => {
+            try {
+                cleanup();
+            } catch (error) {
+                console.warn('TabManager: cleanup callback failed:', error);
+            }
+        });
+        this.cleanupCallbacks.clear();
+
+        // Legacy observer compatibility for existing call sites.
+        if (this.settingsButtonResizeObserver && typeof this.settingsButtonResizeObserver.disconnect === 'function') {
+            try {
+                this.settingsButtonResizeObserver.disconnect();
+            } catch (error) {
+                console.warn('TabManager: failed to disconnect settingsButtonResizeObserver:', error);
+            }
+            this.settingsButtonResizeObserver = null;
+        }
+
         // Remove all tabs
         this.getTabIds().forEach(id => this.removeTab(id));
         

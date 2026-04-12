@@ -8,6 +8,19 @@ https://github.com/Comfy-Org/ComfyUI_frontend
 
 Pretty much any of the custom node documentation is going to be relevant.
 
+## Upstream Sync Workflow
+
+To keep local reference docs current, use:
+
+./ref_docs/sync_upstream_docs.sh
+
+This script mirrors the upstream `Comfy-Org/docs` paths below into `ref_docs/upstream_docs/`:
+
+- `custom-nodes`
+- `development`
+
+Details for each sync run are written to `ref_docs/upstream_docs/SYNC_INFO.txt`.
+
 ## Status: All Links Verified ✅ (July 2025)
 
 Backend:

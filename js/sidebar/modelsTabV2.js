@@ -634,7 +634,7 @@ async function openScanDialog() {
 export function createModelsTabV2(container) {
     // Clear container
     container.innerHTML = '';
-    container.className = 'models-tab-v2';
+    container.classList.add('models-tab-v2');
     
     // Set up progress bar (initially hidden)
     const progressBar = createInlineProgressBar({

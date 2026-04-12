@@ -248,7 +248,7 @@ const input = createInput({
 
 **Purpose**: Comprehensive tab management system with lazy loading and state management  
 **Complexity**: Medium  
-**File Size**: 576 lines  
+**File Size**: 700+ lines  
 
 **Dependencies:**
 - No external dependencies - standalone component
@@ -258,7 +258,20 @@ const input = createInput({
 - `TabManager`: Main class for managing tabbed interfaces
   - **Constructor Parameters**: Options object (container, onTabSwitch, onTabInit, lazyLoad, styles)
   - **Returns**: TabManager instance with full tab lifecycle management
-  - **Features**: State tracking, lazy loading, visibility control, event callbacks
+  - **Features**: State tracking, lazy loading, visibility control, event callbacks, tab lifecycle contract support
+
+#### Tab Lifecycle Contract
+
+`addTab()` accepts either:
+
+- Legacy factory: `(container) => void | { destroy() }`
+- Lifecycle object: `{ mount(container, context), optional unmount(context), optional refresh(context) }`
+
+Behavior:
+
+- `mount` is called once when the tab is initialized.
+- `refresh` is called when switching to an already-initialized tab.
+- `unmount` (or legacy `destroy`) is called when removing/destroying tabs.
 
 **Key Methods:**
 
@@ -266,10 +279,10 @@ const input = createInput({
   - **Returns**: TabManager instance (chainable)
   - **Features**: Creates DOM structure for tabs
   
-- `addTab(id, label, contentFactory, options)`: Adds a new tab to the interface
-  - **Parameters**: Tab ID, label text, content factory function, options object
+- `addTab(id, label, tabDefinition, options)`: Adds a new tab to the interface
+  - **Parameters**: Tab ID, label text, factory function or lifecycle object, options object
   - **Returns**: TabManager instance (chainable)
-  - **Features**: Lazy loading support, visibility control, custom styles
+  - **Features**: Lazy loading support, lifecycle contract support, visibility control, custom styles
   
 - `switchTab(tabId)`: Switches to the specified tab, initializing if needed
   - **Parameters**: Tab ID to switch to
@@ -283,6 +296,10 @@ const input = createInput({
 - `activateFirstTab()`: Activates the first visible tab
 - `updateVisibility(settings)`: Updates tab visibility based on settings object
 - `destroy()`: Cleans up all resources and event listeners
+
+#### Initialization Safety
+
+`TabManager` tracks in-progress initializations to prevent duplicate mounts when the same tab is switched rapidly while async mounting is still underway.
 
 #### Background Preloading
 

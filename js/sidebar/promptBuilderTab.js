@@ -15,11 +15,10 @@ import { copyToClipboard } from '../components/clipboard.js';
 export function createPromptBuilderTab(container) {
     // Clear any existing content
     container.innerHTML = '';
-    container.className = 'prompt-builder-tab';
     
     // Create wrapper for better styling
     const wrapper = document.createElement('div');
-    wrapper.className = 'prompt-builder-wrapper';
+    wrapper.className = 'prompt-builder-tab prompt-builder-wrapper';
 
     // Create header
     const header = createHeader();
@@ -891,7 +890,6 @@ export function destroyPromptBuilderTab(container) {
     // Clear container
     if (container) {
         container.innerHTML = '';
-        container.className = '';
     }
 }
 

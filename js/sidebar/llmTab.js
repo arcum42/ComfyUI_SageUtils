@@ -253,11 +253,10 @@ function resetSettingsToDefaults(state, advancedOptions) {
 export async function createLLMTab(container) {
     // Clear any existing content
     container.innerHTML = '';
-    container.className = 'llm-tab';
     
     // Create main wrapper
     const wrapper = document.createElement('div');
-    wrapper.className = 'llm-wrapper';
+    wrapper.className = 'llm-tab llm-wrapper';
     
     // Create all UI sections
     const header = createHeader();
@@ -511,8 +510,13 @@ export async function createLLMTab(container) {
     });
     
     // Return tab utilities
-    return {
-        destroy: () => {
+    let isDestroyed = false;
+    const destroyTab = () => {
+            if (isDestroyed) {
+                return;
+            }
+            isDestroyed = true;
+
             console.log('[LLM Tab] Destroying tab...');
             
             // Cleanup event handlers
@@ -533,6 +537,12 @@ export async function createLLMTab(container) {
             container.innerHTML = '';
             
             console.log('[LLM Tab] Tab destroyed');
-        }
+        };
+
+    return {
+        // New lifecycle contract expected by TabManager.
+        unmount: destroyTab,
+        // Legacy compatibility for existing call sites.
+        destroy: destroyTab
     };
 }

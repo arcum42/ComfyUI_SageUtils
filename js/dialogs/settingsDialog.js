@@ -11,6 +11,11 @@ import { notifications } from '../shared/notifications.js';
 import { app } from '../../../../scripts/app.js';
 import { createCheckbox, createRadioGroup, createInput } from '../components/formElements.js';
 import { javascriptTimer, uiTimer, printTimingReport } from '../shared/performanceTimer.js';
+import {
+  TAB_VISIBILITY_CONFIG,
+  hasTabVisibilityUpdates,
+  normalizeTabVisibilitySettings
+} from '../shared/sidebarVisibility.js';
 
 /**
  * Mapping between backend setting keys and ComfyUI setting IDs
@@ -297,26 +302,17 @@ function createTabVisibilitySection(settings) {
     gap: 10px;
   `;
 
-  // Define tabs with their settings keys and display names
-  const tabs = [
-    { key: 'show_models_tab', label: 'Models' },
-    { key: 'show_files_tab', label: 'Files' },
-    { key: 'show_search_tab', label: 'Search (Civitai)' },
-    { key: 'show_gallery_tab', label: 'Gallery' },
-    { key: 'show_prompts_tab', label: 'Prompts' },
-    { key: 'show_llm_tab', label: 'LLM' }
-  ];
+  const visibilitySettings = normalizeTabVisibilitySettings(settings);
 
   // Create checkbox for each tab
-  tabs.forEach(tab => {
-    const setting = settings[tab.key];
+  TAB_VISIBILITY_CONFIG.forEach((tab) => {
     const { container, checkbox } = createCheckbox(tab.label, {
-      checked: setting ? setting.current_value : true,
-      id: `setting-${tab.key}`
+      checked: visibilitySettings[tab.settingKey],
+      id: `setting-${tab.settingKey}`
     });
     
     // Add setting key to checkbox for saving later
-    checkbox.dataset.settingKey = tab.key;
+    checkbox.dataset.settingKey = tab.settingKey;
     
     container.style.marginBottom = '5px';
     tabsGrid.appendChild(container);
@@ -504,15 +500,7 @@ async function saveSettings(dialog, container, originalSettings) {
     }
 
     // Check if any tab visibility settings changed
-    const tabVisibilityKeys = [
-      'show_models_tab',
-      'show_files_tab', 
-      'show_search_tab',
-      'show_gallery_tab',
-      'show_prompts_tab',
-      'show_llm_tab'
-    ];
-    const tabVisibilityChanged = Object.keys(updates).some(key => tabVisibilityKeys.includes(key));
+    const tabVisibilityChanged = hasTabVisibilityUpdates(updates);
 
     // If tab visibility changed, reload the sidebar
     if (tabVisibilityChanged) {

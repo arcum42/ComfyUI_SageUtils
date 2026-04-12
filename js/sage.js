@@ -13,7 +13,10 @@ import {
     recordInitializationMilestone, 
     completeInitialization,
     printTimingReport,
-    timeFunction 
+  timeFunction,
+  shouldSendTimingData,
+  shouldPrintTimingReport,
+  shouldLogTimingDetails
 } from "./shared/performanceTimer.js";
 
 // Record initialization start
@@ -47,7 +50,9 @@ app.registerExtension({
       
       // Start preloading critical data immediately (non-blocking)
       const preloadStart = performance.now();
-      console.log("[SageUtils] Starting background data preload...");
+      if (shouldLogTimingDetails()) {
+        console.log("[SageUtils] Starting background data preload...");
+      }
       
       // Enable debug mode for cache if query parameter or localStorage flag is set
       const shouldDebugCache = new URLSearchParams(window.location.search).get('sageutils_cache_debug') === '1';
@@ -59,8 +64,10 @@ app.registerExtension({
       // Start preloading in background (don't await)
       DataCache.preloadAll().then(() => {
         const preloadEnd = performance.now();
-        console.log(`[SageUtils] Background preload completed in ${(preloadEnd - preloadStart).toFixed(2)}ms`);
-        console.log(DataCache.getSummary());
+        if (shouldLogTimingDetails()) {
+          console.log(`[SageUtils] Background preload completed in ${(preloadEnd - preloadStart).toFixed(2)}ms`);
+          console.log(DataCache.getSummary());
+        }
       }).catch(error => {
         console.error("[SageUtils] Background preload failed:", error);
       });
@@ -78,33 +85,33 @@ app.registerExtension({
         render: createCacheSidebar
       });
       const sidebarEnd = performance.now();
-      console.log(`Sidebar tab registration took: ${(sidebarEnd - sidebarStart).toFixed(2)}ms`);
+      if (shouldLogTimingDetails()) {
+        console.log(`Sidebar tab registration took: ${(sidebarEnd - sidebarStart).toFixed(2)}ms`);
+      }
       
       recordInitializationMilestone("SIDEBAR_TAB_REGISTERED");
     });
     
     // Complete initialization and optionally send timing data to server
     const totalTime = completeInitialization();
-    console.log(`SageUtils JavaScript initialization completed in ${totalTime.toFixed(4)}ms`);
+    if (shouldLogTimingDetails()) {
+      console.log(`SageUtils JavaScript initialization completed in ${totalTime.toFixed(4)}ms`);
+    }
     
     // Send timing data to server if enabled
-    const shouldSendTiming = localStorage.getItem('sageutils_send_timing') === 'true' || 
-                            new URLSearchParams(window.location.search).get('sageutils_timing') === '1';
-    
-    if (shouldSendTiming) {
+    if (shouldSendTimingData()) {
       try {
         await javascriptTimer.sendTimingDataToServer();
-        console.log("Timing data sent to server");
+        if (shouldLogTimingDetails()) {
+          console.log("Timing data sent to server");
+        }
       } catch (error) {
         console.warn("Failed to send timing data to server:", error);
       }
     }
     
     // Print timing report to console if enabled
-    const shouldPrintReport = localStorage.getItem('sageutils_print_timing') === 'true' || 
-                             new URLSearchParams(window.location.search).get('sageutils_timing_print') === '1';
-    
-    if (shouldPrintReport) {
+    if (shouldPrintTimingReport()) {
       printTimingReport();
     }
   },

@@ -35,8 +35,7 @@ class PerformanceTimer {
         
         if (!this.startTimes.has(operation)) {
             // Only warn if explicitly enabled for debugging
-            if (localStorage.getItem('sageutils_perf_monitoring') === 'true' || 
-                new URLSearchParams(window.location.search).get('sageutils_perf') === '1') {
+            if (shouldLogTimingDetails()) {
                 console.warn(`[TIMING] Timer '${operation}' was never started`);
             }
             return 0.0;
@@ -81,8 +80,7 @@ class PerformanceTimer {
         this.initializationTimes.set(milestone, durationFromStart);
         
         // Only log if explicitly enabled
-        if (this.enabled && (localStorage.getItem('sageutils_perf_monitoring') === 'true' || 
-            new URLSearchParams(window.location.search).get('sageutils_perf') === '1')) {
+        if (this.enabled && shouldLogTimingDetails()) {
             console.log(`[TIMING] Initialization milestone '${milestone}': ${durationFromStart.toFixed(4)}ms from start`);
         }
     }
@@ -99,8 +97,7 @@ class PerformanceTimer {
         this.initializationComplete = true;
         
         // Only log if explicitly enabled
-        if (this.enabled && (localStorage.getItem('sageutils_perf_monitoring') === 'true' || 
-            new URLSearchParams(window.location.search).get('sageutils_perf') === '1')) {
+        if (this.enabled && shouldLogTimingDetails()) {
             console.log(`[TIMING] Total initialization time: ${totalTime.toFixed(4)}ms`);
         }
         return totalTime;
@@ -246,17 +243,41 @@ class PerformanceTimer {
                 })
             });
             
-            if (!response.ok && (localStorage.getItem('sageutils_perf_monitoring') === 'true' || 
-                new URLSearchParams(window.location.search).get('sageutils_perf') === '1')) {
+            if (!response.ok && shouldLogTimingDetails()) {
                 console.warn('[TIMING] Failed to send timing data to server:', response.statusText);
             }
         } catch (error) {
-            if (localStorage.getItem('sageutils_perf_monitoring') === 'true' || 
-                new URLSearchParams(window.location.search).get('sageutils_perf') === '1') {
+            if (shouldLogTimingDetails()) {
                 console.warn('[TIMING] Error sending timing data to server:', error);
             }
         }
     }
+}
+
+function readRuntimeTimingFlags() {
+    const params = new URLSearchParams(window.location.search);
+    return {
+        perfMonitoring: localStorage.getItem('sageutils_perf_monitoring') === 'true' || params.get('sageutils_perf') === '1',
+        sendTiming: localStorage.getItem('sageutils_send_timing') === 'true' || params.get('sageutils_timing') === '1',
+        printTiming: localStorage.getItem('sageutils_print_timing') === 'true' || params.get('sageutils_timing_print') === '1'
+    };
+}
+
+function isPerfMonitoringEnabled() {
+    return readRuntimeTimingFlags().perfMonitoring;
+}
+
+function shouldSendTimingData() {
+    return readRuntimeTimingFlags().sendTiming;
+}
+
+function shouldPrintTimingReport() {
+    return readRuntimeTimingFlags().printTiming;
+}
+
+function shouldLogTimingDetails() {
+    const flags = readRuntimeTimingFlags();
+    return flags.perfMonitoring || flags.printTiming;
 }
 
 // Global timer instances - disabled by default unless explicitly enabled
@@ -264,8 +285,7 @@ const javascriptTimer = new PerformanceTimer("JavaScript");
 const uiTimer = new PerformanceTimer("UI");
 
 // Disable timers by default unless explicitly enabled
-if (!(localStorage.getItem('sageutils_perf_monitoring') === 'true' || 
-      new URLSearchParams(window.location.search).get('sageutils_perf') === '1')) {
+if (!isPerfMonitoringEnabled()) {
     javascriptTimer.disable();
     uiTimer.disable();
 }
@@ -388,6 +408,10 @@ export {
     completeInitialization,
     getTimingReport,
     printTimingReport,
+    isPerfMonitoringEnabled,
+    shouldSendTimingData,
+    shouldPrintTimingReport,
+    shouldLogTimingDetails,
     wrapFunctionWithTiming,
     wrapObjectMethodsWithTiming,
     BrowserPerformanceObserver,
