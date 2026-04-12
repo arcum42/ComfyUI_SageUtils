@@ -150,7 +150,7 @@ export async function getPrompts() {
 /**
  * Generate text response (non-streaming)
  * @param {Object} params - Generation parameters
- * @param {string} params.provider - 'ollama' or 'lmstudio'
+ * @param {string} params.provider - 'ollama', 'lmstudio', or 'native'
  * @param {string} params.model - Model name
  * @param {string} params.prompt - Input prompt
  * @param {string} [params.system_prompt] - Optional system prompt
@@ -187,7 +187,7 @@ export async function generateText(params) {
 /**
  * Generate text response with SSE streaming
  * @param {Object} params - Generation parameters
- * @param {string} params.provider - 'ollama' or 'lmstudio'
+ * @param {string} params.provider - 'ollama', 'lmstudio', or 'native'
  * @param {string} params.model - Model name
  * @param {string} params.prompt - Input prompt
  * @param {string} [params.system_prompt] - Optional system prompt
@@ -292,7 +292,7 @@ export async function generateStream(params, onChunk, onError) {
 /**
  * Generate response with vision (non-streaming)
  * @param {Object} params - Generation parameters
- * @param {string} params.provider - 'ollama' or 'lmstudio'
+ * @param {string} params.provider - 'ollama', 'lmstudio', or 'native'
  * @param {string} params.model - Vision model name
  * @param {string} params.prompt - Input prompt
  * @param {string[]} params.images - Array of base64-encoded images
@@ -330,7 +330,7 @@ export async function generateVision(params) {
 /**
  * Generate response with vision and SSE streaming
  * @param {Object} params - Generation parameters
- * @param {string} params.provider - 'ollama' or 'lmstudio'
+ * @param {string} params.provider - 'ollama', 'lmstudio', or 'native'
  * @param {string} params.model - Vision model name
  * @param {string} params.prompt - Input prompt
  * @param {string[]} params.images - Array of base64-encoded images
@@ -474,9 +474,9 @@ export async function urlToBase64(url) {
 
 /**
  * Pre-load a model into memory without generating a response.
- * For Ollama this pre-warms the model; for LM Studio it loads the handle.
+ * For Ollama this pre-warms the model; for LM Studio it loads the handle; for Native it validates the selected CLIP.
  * @param {Object} params
- * @param {string} params.provider - 'ollama' or 'lmstudio'
+ * @param {string} params.provider - 'ollama', 'lmstudio', or 'native'
  * @param {string} params.model - Model name
  * @param {number} [params.keep_alive=60] - Seconds to keep model resident (default 60)
  * @returns {Promise<Object>} - { loaded: true, provider, model }

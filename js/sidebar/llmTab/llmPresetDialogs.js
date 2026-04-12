@@ -438,7 +438,8 @@ async function showPresetEditor(state, modelSelection, advancedOptions, inputSec
             const select = createSelect({
                 items: [
                     { value: 'ollama', text: 'Ollama' },
-                    { value: 'lmstudio', text: 'LM Studio' }
+                    { value: 'lmstudio', text: 'LM Studio' },
+                    { value: 'native', text: 'Native (CLIP)' }
                 ],
                 className: 'llm-select llm-preset-provider-select'
             });

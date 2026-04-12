@@ -583,7 +583,7 @@ class Sage_AceAdvOptions(io.ComfyNode):
             node_id="Sage_AceAdvOptions",
             display_name="Ace Advanced Options",
             description="Advanced options for Ace Step 1.5 audio encoding. These options can be used to fine-tune the behavior of the audio encoding process.",
-            category="Sage Utils/conditioning",
+            category="Sage Utils/clip-cond/ace",
             inputs=[
                 io.Combo.Input("language", options=["en", "ja", "zh", "es", "de", "fr", "pt", "ru", "it", "nl", "pl", "tr", "vi", "cs", "fa", "id", "ko", "uk", "hu", "ar", "sv", "ro", "el"]),
                 io.Float.Input("cfg_scale", default=2.0, min=0.0, max=100.0, step=0.1, advanced=True),
@@ -624,7 +624,7 @@ class Sage_Ace15AudioEncode(io.ComfyNode):
             node_id="Sage_Ace15AudioEncode",
             display_name="Ace Step 1.5 Audio Encode",
             description="Encodes an audio clip into a conditioning using the Ace Step 1.5 model. This is used to create a conditioning from an audio reference.",
-            category="Sage Utils/conditioning",
+            category="Sage Utils/clip-cond/ace",
             inputs=[
                 io.Clip.Input("clip"),
                 io.String.Input("tags", force_input=True, multiline=True, dynamic_prompts=True),

@@ -50,8 +50,8 @@ SETTINGS_SCHEMA = {
     "default_llm_provider": {
         "default": "ollama",
         "type": str,
-        "description": "Default LLM provider to use when opening the LLM tab",
-        "valid_values": ["ollama", "lmstudio"]
+        "description": "Default LLM provider to use for LLM sidebar and provider-switching LLM v3 nodes",
+        "valid_values": ["ollama", "lmstudio", "native"]
     },
     "llm_raise_node_exceptions": {
         "default": False,

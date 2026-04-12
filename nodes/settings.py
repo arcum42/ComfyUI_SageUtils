@@ -79,7 +79,7 @@ class Sage_SettingsManager:
             
             # Group settings by category
             categories = {
-                "LLM Integration": ["enable_ollama", "enable_lmstudio", "ollama_use_custom_url", 
+                "LLM Integration": ["default_llm_provider", "enable_ollama", "enable_lmstudio", "ollama_use_custom_url", 
                                   "ollama_custom_url", "lmstudio_use_custom_url", "lmstudio_custom_url"]
             }
             

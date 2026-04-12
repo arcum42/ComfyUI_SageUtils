@@ -27,6 +27,37 @@ import { createAdvancedOptions } from './llmTab/llmAdvancedOptions.js';
 import { applyPresetToUI } from './llmTab/llmPresetDialogs.js';
 import { setupEventHandlers, cleanupEventHandlers } from './llmTab/llmEventHandlers.js';
 
+const LLM_TAB_PROMPT_KEY = 'llm_tab_prompt_text';
+const LLM_LAST_PROVIDER_KEY = 'llm_last_selected_provider';
+
+function loadSavedPromptText() {
+    try {
+        return localStorage.getItem(LLM_TAB_PROMPT_KEY) || '';
+    } catch {
+        return '';
+    }
+}
+
+function savePromptText(value) {
+    try {
+        localStorage.setItem(LLM_TAB_PROMPT_KEY, value || '');
+    } catch (error) {
+        console.warn('[LLM Tab] Failed to persist prompt text:', error);
+    }
+}
+
+function loadLastSelectedProvider() {
+    try {
+        const provider = localStorage.getItem(LLM_LAST_PROVIDER_KEY);
+        if (provider === 'ollama' || provider === 'lmstudio' || provider === 'native') {
+            return provider;
+        }
+    } catch {
+        // Ignore storage access errors and fall back to defaults.
+    }
+    return null;
+}
+
 function isLlmDebugEnabled() {
     try {
         if (typeof window === 'undefined') {
@@ -49,7 +80,7 @@ function logLlmDebug(...args) {
 
 /**
  * Load default LLM provider from settings
- * @returns {Promise<string>} Default provider ('ollama' or 'lmstudio')
+ * @returns {Promise<string>} Default provider ('ollama', 'lmstudio', or 'native')
  */
 async function loadDefaultProvider() {
     try {
@@ -66,7 +97,7 @@ async function loadDefaultProvider() {
                 const provider = setting.current_value || setting.default;
                 logLlmDebug('[LLM Tab] Resolved provider value:', provider);
                 
-                if (provider === 'ollama' || provider === 'lmstudio') {
+                if (provider === 'ollama' || provider === 'lmstudio' || provider === 'native') {
                     logLlmDebug(`[LLM Tab] Loading default LLM provider: ${provider}`);
                     return provider;
                 } else {
@@ -311,13 +342,15 @@ async function createLLMTabVanilla(container) {
     
     // Load default provider from settings
     const defaultProvider = await loadDefaultProvider();
+    const sessionProvider = loadLastSelectedProvider();
+    const initialProvider = sessionProvider || defaultProvider;
     
     // Initialize tab state
     const state = {
-        provider: defaultProvider,
+        provider: initialProvider,
         model: null,
-        models: { ollama: [], lmstudio: [] },
-        visionModels: { ollama: [], lmstudio: [] },
+        models: { ollama: [], lmstudio: [], native: [] },
+        visionModels: { ollama: [], lmstudio: [], native: [] },
         generating: false,
         streamController: null,
         // Vision support
@@ -370,6 +403,23 @@ async function createLLMTabVanilla(container) {
             hasVisionModel,
             display: visionSection.style.display
         });
+    }
+
+    // Restore prompt text persisted across sidebar remounts.
+    const promptTextarea = inputSection.querySelector('.llm-textarea');
+    if (promptTextarea) {
+        const savedPrompt = loadSavedPromptText();
+        if (savedPrompt) {
+            promptTextarea.value = savedPrompt;
+            promptTextarea.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+
+        const persistPromptHandler = () => {
+            savePromptText(promptTextarea.value);
+        };
+        promptTextarea.addEventListener('input', persistPromptHandler);
+        state._promptPersistHandler = persistPromptHandler;
+        state._promptTextarea = promptTextarea;
     }
     
     // Update UI from loaded settings
@@ -541,6 +591,11 @@ async function createLLMTabVanilla(container) {
             
             // Cleanup event handlers
             cleanupEventHandlers(state);
+
+            if (state._promptTextarea && state._promptPersistHandler) {
+                state._promptTextarea.removeEventListener('input', state._promptPersistHandler);
+                savePromptText(state._promptTextarea.value);
+            }
             
             // Cleanup cross-tab messaging
             if (typeof textSubscription === 'function') textSubscription();

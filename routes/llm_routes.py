@@ -1,6 +1,6 @@
 """
 LLM Routes Module
-Handles LLM chat endpoints for Ollama and LM Studio integration.
+Handles LLM chat endpoints for Ollama, LM Studio, and Native CLIP integration.
 """
 
 import json
@@ -16,6 +16,28 @@ logger = get_logger('routes.llm')
 # Route list for documentation and registration tracking
 _route_list = []
 _last_llm_error = ContextVar('sageutils_last_llm_error', default=None)
+
+
+def _ensure_promptserver_progress_context():
+    """Ensure PromptServer progress hook state exists for direct native generation calls.
+
+    Native CLIP generation from routes can run outside queued prompt execution,
+    where ComfyUI's global progress hook may still expect these attributes.
+    """
+    try:
+        from server import PromptServer
+
+        server_instance = getattr(PromptServer, 'instance', None)
+        if server_instance is None:
+            return
+
+        if not hasattr(server_instance, 'last_prompt_id'):
+            server_instance.last_prompt_id = 'sageutils_llm_sidebar'
+
+        if not hasattr(server_instance, 'last_node_id'):
+            server_instance.last_node_id = 'sageutils_llm_native'
+    except Exception as e:
+        logger.debug(f"PromptServer progress context setup skipped: {e}")
 
 
 def handle_llm_error_callback(payload):
@@ -80,6 +102,78 @@ def _sse_error_chunk(message, *, error_code='LLM_STREAM_ERROR', provider=None, o
     return routes_helpers.format_sse_chunk(payload)
 
 
+def _native_chunk_text(text: str, chunk_size: int = 8):
+    """Yield fixed-size chunks for simulated streaming responses."""
+    if not text:
+        return
+    for i in range(0, len(text), chunk_size):
+        yield text[i:i + chunk_size]
+
+
+def _get_native_clip_models() -> list[str]:
+    """Return available native CLIP text encoder models for sidebar provider selection."""
+    try:
+        import folder_paths
+        models = folder_paths.get_filename_list("text_encoders") or []
+        return sorted([m for m in models if isinstance(m, str) and m])
+    except Exception as e:
+        logger.warning(f"Failed to list native CLIP models: {e}")
+        return []
+
+
+def _load_native_clip(clip_name: str):
+    """Load a single CLIP text encoder via ComfyUI's native CLIP loader."""
+    import nodes as comfy_nodes
+
+    loader = comfy_nodes.CLIPLoader()
+    loaded = loader.load_clip(clip_name=clip_name, type="stable_diffusion", device="default")
+    if isinstance(loaded, (tuple, list)) and loaded:
+        return loaded[0]
+    return loaded
+
+
+def _native_generate_response(model: str, prompt: str, system_prompt: str, options: dict) -> str:
+    """Generate text with a native CLIP model selected from the text_encoders directory."""
+    if not model:
+        raise ValueError("Missing CLIP model for native provider")
+
+    clip = _load_native_clip(model)
+    if clip is None:
+        raise RuntimeError(f"Failed to load native CLIP model '{model}'")
+
+    _ensure_promptserver_progress_context()
+
+    full_prompt = prompt or ""
+    if system_prompt:
+        full_prompt = f"{system_prompt.strip()}\n\n{full_prompt}"
+
+    seed = int(options.get("seed", 0) or 0)
+    sampling_seed = None if seed < 0 else seed
+    max_length = int(options.get("max_length", options.get("max_tokens", 256)) or 256)
+    max_length = max(1, min(max_length, 4096))
+
+    tokens = clip.tokenize(
+        full_prompt,
+        skip_template=False,
+        min_length=1,
+        thinking=bool(options.get("thinking", False)),
+    )
+    generated_ids = clip.generate(
+        tokens,
+        do_sample=bool(options.get("do_sample", True)),
+        max_length=max_length,
+        temperature=float(options.get("temperature", 0.7)),
+        top_k=int(options.get("top_k", 64)),
+        top_p=float(options.get("top_p", 0.95)),
+        min_p=float(options.get("min_p", 0.05)),
+        repetition_penalty=float(options.get("repetition_penalty", 1.05)),
+        presence_penalty=float(options.get("presence_penalty", 0.0)),
+        seed=sampling_seed,
+    )
+    generated_text = clip.decode(generated_ids, skip_special_tokens=True)
+    return clean_response(generated_text)
+
+
 def register_routes(routes_instance):
     """
     Register LLM-related routes.
@@ -102,7 +196,7 @@ def register_routes(routes_instance):
     @route_error_handler
     async def get_llm_status(request):
         """
-        Check if Ollama and LM Studio are available and enabled.
+        Check if Ollama, LM Studio, and Native providers are available and enabled.
         
         Returns:
             {
@@ -116,6 +210,10 @@ def register_routes(routes_instance):
                     "available": bool,
                     "enabled": bool,
                     "url": str (if custom)
+                },
+                "native": {
+                    "available": bool,
+                    "enabled": bool
                 }
             }
         """
@@ -136,6 +234,8 @@ def register_routes(routes_instance):
             # Check availability
             ollama_available = llm.OLLAMA_AVAILABLE and ollama_enabled
             lmstudio_available = llm.LMSTUDIO_AVAILABLE and lmstudio_enabled
+            native_models = _get_native_clip_models()
+            native_available = len(native_models) > 0
             
             # Get custom URLs if applicable
             ollama_info = {
@@ -152,10 +252,16 @@ def register_routes(routes_instance):
             
             if get_setting("lmstudio_use_custom_url", False):
                 lmstudio_info["url"] = get_setting("lmstudio_custom_url", "")
+
+            native_info = {
+                "available": native_available,
+                "enabled": True,
+            }
             
             return success_response(data={
                 "ollama": ollama_info,
-                "lmstudio": lmstudio_info
+                "lmstudio": lmstudio_info,
+                "native": native_info,
             })
             
         except Exception as e:
@@ -172,7 +278,7 @@ def register_routes(routes_instance):
     @route_error_handler
     async def get_llm_models(request):
         """
-        Get available text models from Ollama and LM Studio.
+        Get available text models from Ollama, LM Studio, and Native CLIP.
         
         Query params:
             force: bool - Force re-initialization of LLM providers (default: False)
@@ -182,11 +288,13 @@ def register_routes(routes_instance):
                 "success": true,
                 "models": {
                     "ollama": ["model1", "model2", ...],
-                    "lmstudio": ["model1", "model2", ...]
+                    "lmstudio": ["model1", "model2", ...],
+                    "native": ["clip1.safetensors", ...]
                 },
                 "status": {
                     "ollama_available": bool,
-                    "lmstudio_available": bool
+                    "lmstudio_available": bool,
+                    "native_available": bool
                 }
             }
         """
@@ -210,6 +318,7 @@ def register_routes(routes_instance):
             # Get models from both providers
             ollama_models = []
             lmstudio_models = []
+            native_models = _get_native_clip_models()
             
             ollama_enabled = get_setting("enable_ollama", True)
             lmstudio_enabled = get_setting("enable_lmstudio", True)
@@ -231,11 +340,13 @@ def register_routes(routes_instance):
             return success_response(data={
                 "models": {
                     "ollama": ollama_models,
-                    "lmstudio": lmstudio_models
+                    "lmstudio": lmstudio_models,
+                    "native": native_models,
                 },
                 "status": {
                     "ollama_available": len(ollama_models) > 0,
-                    "lmstudio_available": len(lmstudio_models) > 0
+                    "lmstudio_available": len(lmstudio_models) > 0,
+                    "native_available": len(native_models) > 0,
                 }
             })
             
@@ -263,11 +374,13 @@ def register_routes(routes_instance):
                 "success": true,
                 "models": {
                     "ollama": ["llava", "bakllava", ...],
-                    "lmstudio": ["llava-v1.6", ...]
+                    "lmstudio": ["llava-v1.6", ...],
+                    "native": []
                 },
                 "status": {
                     "ollama_available": bool,
-                    "lmstudio_available": bool
+                    "lmstudio_available": bool,
+                    "native_available": bool
                 }
             }
         """
@@ -291,6 +404,7 @@ def register_routes(routes_instance):
             # Get vision models from both providers
             ollama_models = []
             lmstudio_models = []
+            native_models = []
             
             ollama_enabled = get_setting("enable_ollama", True)
             lmstudio_enabled = get_setting("enable_lmstudio", True)
@@ -312,11 +426,13 @@ def register_routes(routes_instance):
             return success_response(data={
                 "models": {
                     "ollama": ollama_models,
-                    "lmstudio": lmstudio_models
+                    "lmstudio": lmstudio_models,
+                    "native": native_models,
                 },
                 "status": {
                     "ollama_available": len(ollama_models) > 0,
-                    "lmstudio_available": len(lmstudio_models) > 0
+                    "lmstudio_available": len(lmstudio_models) > 0,
+                    "native_available": False,
                 }
             })
             
@@ -370,7 +486,7 @@ def register_routes(routes_instance):
         
         Request body:
             {
-                "provider": "ollama" | "lmstudio",
+                "provider": "ollama" | "lmstudio" | "native",
                 "model": str,
                 "prompt": str,
                 "system_prompt": str (optional),
@@ -446,6 +562,24 @@ def register_routes(routes_instance):
                     keep_alive=0,
                     options=options
                 )
+
+            elif provider == "native":
+                available_native = _get_native_clip_models()
+                if model not in available_native:
+                    return _error_response_with_metadata(
+                        f"Native CLIP model '{model}' is not available",
+                        status=404,
+                        error_code='LLM_MODEL_NOT_FOUND',
+                        provider='native',
+                        operation='generate',
+                    )
+
+                response_text = _native_generate_response(
+                    model=model,
+                    prompt=prompt,
+                    system_prompt=system_prompt,
+                    options=options,
+                )
             
             return success_response(data={
                 "response": response_text,
@@ -474,7 +608,7 @@ def register_routes(routes_instance):
         
         Request body:
             {
-                "provider": "ollama" | "lmstudio",
+                "provider": "ollama" | "lmstudio" | "native",
                 "model": str,
                 "prompt": str,
                 "system_prompt": str (optional),
@@ -511,9 +645,9 @@ def register_routes(routes_instance):
             options = data.get("options", {})
             
             # Validate provider
-            if provider not in ["ollama", "lmstudio"]:
+            if provider not in ["ollama", "lmstudio", "native"]:
                 return _error_response_with_metadata(
-                    f"Invalid provider: {provider}. Must be 'ollama' or 'lmstudio'",
+                    f"Invalid provider: {provider}. Must be 'ollama', 'lmstudio', or 'native'",
                     status=400,
                     error_code='LLM_VALIDATION_ERROR',
                 )
@@ -582,6 +716,42 @@ def register_routes(routes_instance):
                         
                         if chunk_data.get("done", False):
                             break
+
+                elif provider == "native":
+                    available_native = _get_native_clip_models()
+                    if model not in available_native:
+                        error_chunk = _sse_error_chunk(
+                            f"Native CLIP model '{model}' is not available",
+                            error_code='LLM_MODEL_NOT_FOUND',
+                            provider='native',
+                            operation='generate_stream',
+                        )
+                        await response.write(error_chunk.encode('utf-8'))
+                        await response.write_eof()
+                        return response
+
+                    response_text = _native_generate_response(
+                        model=model,
+                        prompt=prompt,
+                        system_prompt=system_prompt,
+                        options=options,
+                    )
+
+                    for chunk in _native_chunk_text(response_text):
+                        chunk_data = {
+                            "chunk": chunk,
+                            "done": False,
+                        }
+                        sse_data = routes_helpers.format_sse_chunk(chunk_data)
+                        await response.write(sse_data.encode('utf-8'))
+
+                    final_data = {
+                        "chunk": "",
+                        "done": True,
+                        "full_response": response_text,
+                    }
+                    sse_data = routes_helpers.format_sse_chunk(final_data)
+                    await response.write(sse_data.encode('utf-8'))
                 
                 await response.write_eof()
                 return response
@@ -1645,7 +1815,7 @@ def register_routes(routes_instance):
 
         Request body:
             {
-                "provider": "ollama" | "lmstudio",
+                "provider": "ollama" | "lmstudio" | "native",
                 "model": str,
                 "keep_alive": float | int  (optional, seconds; default 60)
             }
@@ -1666,9 +1836,9 @@ def register_routes(routes_instance):
             model = str(data.get("model", ""))
             keep_alive = data.get("keep_alive", 60)
 
-            if not provider or provider not in ("ollama", "lmstudio"):
+            if not provider or provider not in ("ollama", "lmstudio", "native"):
                 return _error_response_with_metadata(
-                    f"Invalid or missing provider: {provider!r}. Must be 'ollama' or 'lmstudio'",
+                    f"Invalid or missing provider: {provider!r}. Must be 'ollama', 'lmstudio', or 'native'",
                     status=400,
                     error_code='LLM_VALIDATION_ERROR',
                 )
@@ -1715,6 +1885,18 @@ def register_routes(routes_instance):
                 if keep_alive < 1:
                     llm.lmstudio_unload_model(lms_model)
 
+            elif provider == "native":
+                available_native = _get_native_clip_models()
+                if model not in available_native:
+                    return _error_response_with_metadata(
+                        f"Native CLIP model '{model}' is not available",
+                        status=404,
+                        error_code='LLM_MODEL_NOT_FOUND',
+                        provider='native',
+                        operation='load_model',
+                    )
+                # Native models are loaded on demand for generation; this validates selection.
+
             return success_response(data={
                 "loaded": True,
                 "provider": provider,
@@ -1744,7 +1926,7 @@ def register_routes(routes_instance):
 
         Request body:
             {
-                "provider": "ollama" | "lmstudio",
+                "provider": "ollama" | "lmstudio" | "native",
                 "model": str,
                 "prompt": str,
                 "system_prompt": str  (optional, Ollama only),
@@ -1817,6 +1999,24 @@ def register_routes(routes_instance):
                 finally:
                     if keep_alive < 1:
                         llm.lmstudio_unload_model(lms_model)
+
+            elif provider == "native":
+                available_native = _get_native_clip_models()
+                if model not in available_native:
+                    return _error_response_with_metadata(
+                        f"Native CLIP model '{model}' is not available",
+                        status=404,
+                        error_code='LLM_MODEL_NOT_FOUND',
+                        provider='native',
+                        operation='generate_only',
+                    )
+
+                response_text = _native_generate_response(
+                    model=model,
+                    prompt=prompt,
+                    system_prompt=system_prompt,
+                    options=options,
+                )
 
             return success_response(data={
                 "response": response_text,

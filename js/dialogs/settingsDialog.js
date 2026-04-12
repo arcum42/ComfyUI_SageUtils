@@ -1,7 +1,7 @@
 /**
  * Settings Dialog
  * Provides a UI for configuring SageUtils settings
- * Currently focuses on LLM provider configuration (Ollama and LM Studio)
+ * Currently focuses on LLM provider configuration (Ollama, LM Studio, and Native)
  */
 
 import { api } from '../../../../scripts/api.js';
@@ -220,7 +220,7 @@ function createDefaultProviderSelector(settings) {
   group.appendChild(label);
 
   const description = document.createElement('div');
-  description.textContent = 'Select which provider to use by default when opening the LLM tab';
+  description.textContent = 'Select which provider to use by default in the LLM tab and provider-switching LLM v3 nodes';
   description.style.cssText = `
     color: #888;
     font-size: 12px;
@@ -236,7 +236,8 @@ function createDefaultProviderSelector(settings) {
   // Create radio button group
   const radioItems = [
     { value: 'ollama', label: 'Ollama' },
-    { value: 'lmstudio', label: 'LM Studio' }
+    { value: 'lmstudio', label: 'LM Studio' },
+    { value: 'native', label: 'Native (CLIP)' }
   ];
 
   const { container: radioContainer } = createRadioGroup('default_llm_provider', radioItems, {

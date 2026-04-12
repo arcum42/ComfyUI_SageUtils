@@ -377,6 +377,14 @@ function buildGenerationOptions(state) {
         options.topPSampling = state.settings.lmsTopP;
         options.repeatPenalty = state.settings.lmsRepeatPenalty;
         options.minPSampling = state.settings.lmsMinP;
+    } else if (state.provider === 'native') {
+        options.do_sample = true;
+        options.max_length = state.settings.maxTokens;
+        options.top_k = state.settings.topK;
+        options.top_p = state.settings.topP;
+        options.min_p = state.settings.lmsMinP;
+        options.repetition_penalty = state.settings.repeatPenalty;
+        options.presence_penalty = state.settings.presencePenalty;
     }
     
     return options;

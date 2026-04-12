@@ -35,6 +35,7 @@ async function loadSageSettings() {
         return {
             enable_ollama: { current_value: true },
             enable_lmstudio: { current_value: true },
+            default_llm_provider: { current_value: 'ollama' },
             ollama_use_custom_url: { current_value: false },
             ollama_custom_url: { current_value: "" },
             lmstudio_use_custom_url: { current_value: false },
@@ -88,6 +89,7 @@ app.registerExtension({
         // Set current values for all settings from server
         // Map backend keys to the new frontend setting IDs
         const keyToIdMap = {
+            'default_llm_provider': 'SageUtils.LLM Providers.default_llm_provider',
             'enable_lmstudio': 'SageUtils.LLM Providers.enable_lmstudio',
             'enable_ollama': 'SageUtils.LLM Providers.enable_ollama',
             'ollama_custom_url': 'SageUtils.Local Custom Ollama URL.ollama_custom_url',
@@ -112,6 +114,18 @@ app.registerExtension({
     },
 
     settings: [
+        {
+            id: "SageUtils.LLM Providers.default_llm_provider",
+            name: "Default LLM Provider",
+            type: "combo",
+            defaultValue: "ollama",
+            options: ["ollama", "lmstudio", "native"],
+            tooltip: "Default provider used by the LLM sidebar and provider-switching LLM v3 nodes",
+            onChange: async (newVal, oldVal) => {
+                console.log(`Default LLM provider changed from ${oldVal} to ${newVal}`);
+                await saveSageSetting('default_llm_provider', newVal);
+            }
+        },
         {
             id: "SageUtils.LLM Providers.enable_lmstudio",
             name: "Enable LM Studio Integration",

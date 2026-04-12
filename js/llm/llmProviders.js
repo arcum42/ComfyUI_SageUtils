@@ -1,11 +1,11 @@
 /**
  * LLM Provider-Specific Logic
- * Handles differences between Ollama and LM Studio
+ * Handles differences between Ollama, LM Studio, and Native providers
  */
 
 /**
  * Build generation options for a specific provider
- * @param {string} provider - 'ollama' or 'lmstudio'
+ * @param {string} provider - 'ollama', 'lmstudio', or 'native'
  * @param {Object} settings - Settings object
  * @returns {Object} - Provider-specific options object
  */
@@ -33,6 +33,14 @@ export function buildProviderOptions(provider, settings) {
         options.topPSampling = settings.lmsTopP;
         options.repeatPenalty = settings.lmsRepeatPenalty;
         options.minPSampling = settings.lmsMinP;
+    } else if (provider === 'native') {
+        options.do_sample = true;
+        options.max_length = settings.maxTokens;
+        options.top_k = settings.topK;
+        options.top_p = settings.topP;
+        options.min_p = settings.lmsMinP;
+        options.repetition_penalty = settings.repeatPenalty;
+        options.presence_penalty = settings.presencePenalty;
     }
 
     return options;
@@ -40,7 +48,7 @@ export function buildProviderOptions(provider, settings) {
 
 /**
  * Get provider-specific default settings
- * @param {string} provider - 'ollama' or 'lmstudio'
+ * @param {string} provider - 'ollama', 'lmstudio', or 'native'
  * @returns {Object} - Provider-specific defaults
  */
 export function getProviderDefaults(provider) {
@@ -71,6 +79,15 @@ export function getProviderDefaults(provider) {
             lmsRepeatPenalty: 1.1,
             lmsMinP: 0.05
         };
+    } else if (provider === 'native') {
+        return {
+            ...commonDefaults,
+            topK: 64,
+            topP: 0.95,
+            lmsMinP: 0.05,
+            repeatPenalty: 1.05,
+            presencePenalty: 0.0
+        };
     }
 
     return commonDefaults;
@@ -100,7 +117,8 @@ export function isVisionModel(model, provider, visionModels) {
 export function getProviderDisplayName(provider) {
     const names = {
         'ollama': 'Ollama',
-        'lmstudio': 'LM Studio'
+        'lmstudio': 'LM Studio',
+        'native': 'Native (CLIP)'
     };
     return names[provider] || provider;
 }
@@ -163,7 +181,7 @@ export function validateProviderConfig(provider, model, models) {
         return { valid: false, error: 'No provider selected' };
     }
 
-    if (!['ollama', 'lmstudio'].includes(provider)) {
+    if (!['ollama', 'lmstudio', 'native'].includes(provider)) {
         return { valid: false, error: `Invalid provider: ${provider}` };
     }
 
@@ -216,6 +234,15 @@ export function getProviderParameterDescriptions(provider) {
             lmsRepeatPenalty: 'Penalty for repeating tokens.',
             lmsMinP: 'Minimum probability threshold for token selection.'
         };
+    } else if (provider === 'native') {
+        return {
+            ...common,
+            topK: 'Limits next token selection to top K tokens.',
+            topP: 'Nucleus sampling: cumulative probability threshold.',
+            lmsMinP: 'Minimum probability floor for candidate tokens.',
+            repeatPenalty: 'Penalty for repeating tokens.',
+            presencePenalty: 'Encourages introducing new tokens/topics.'
+        };
     }
 
     return common;
@@ -233,6 +260,8 @@ export function getProviderSettingKeys(provider) {
         return [...common, 'numKeep', 'numPredict', 'topK', 'topP', 'repeatLastN', 'repeatPenalty', 'presencePenalty', 'frequencyPenalty'];
     } else if (provider === 'lmstudio') {
         return [...common, 'lmsTopK', 'lmsTopP', 'lmsRepeatPenalty', 'lmsMinP'];
+    } else if (provider === 'native') {
+        return [...common, 'topK', 'topP', 'lmsMinP', 'repeatPenalty', 'presencePenalty'];
     }
 
     return common;
@@ -257,5 +286,6 @@ export function formatModelName(model, isVision) {
 export function parseProviderFromUrl(url) {
     if (url.includes('ollama')) return 'ollama';
     if (url.includes('lmstudio') || url.includes('localhost:1234')) return 'lmstudio';
+    if (url.includes('native')) return 'native';
     return null;
 }

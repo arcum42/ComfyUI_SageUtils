@@ -4,11 +4,13 @@
  */
 
 import { handleSend, handleStop, handleCopy, handleCopyToNode, handleCopyFromNode } from './llmGenerationHandler.js';
-import { loadModels, updateModelDropdown, loadPresets } from './llmModelSelection.js';
+import { loadModels, updateModelDropdown, loadPresets, rememberProviderModel } from './llmModelSelection.js';
 import { showSavePresetDialog, showManagePresetsDialog } from './llmPresetDialogs.js';
 import { clearAllImages, handleFileUpload } from './llmVisionSection.js';
 import { saveSettings } from '../../llm/llmSettings.js';
 import { isVisionModel } from '../../llm/llmProviders.js';
+
+const LLM_LAST_PROVIDER_KEY = 'llm_last_selected_provider';
 
 /**
  * Setup all event handlers for the LLM tab
@@ -79,7 +81,13 @@ export function setupEventHandlers(
     // Provider change
     providerSelect.addEventListener('change', async () => {
         state.provider = providerSelect.value;
-        updateModelDropdown(state, modelSelect, state.provider);
+        try {
+            localStorage.setItem(LLM_LAST_PROVIDER_KEY, state.provider);
+        } catch (error) {
+            console.warn('[LLM] Failed to persist last selected provider:', error);
+        }
+        const preferredModel = state.lastModelsByProvider?.[state.provider] || null;
+        updateModelDropdown(state, modelSelect, state.provider, preferredModel);
         await loadModels(state, modelSelection, visionSection); // Reload to update status
         
         // Show/hide provider-specific settings
@@ -92,6 +100,7 @@ export function setupEventHandlers(
     // Model change
     modelSelect.addEventListener('change', () => {
         state.model = modelSelect.value;
+        rememberProviderModel(state, state.provider, state.model);
         
         // Update vision section visibility
         updateVisionSectionVisibility(state, visionSection);

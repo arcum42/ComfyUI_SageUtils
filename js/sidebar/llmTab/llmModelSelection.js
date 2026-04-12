@@ -8,6 +8,26 @@ import { alertDialog } from '../../components/dialogManager.js';
 import * as llmApi from '../../llm/llmApi.js';
 import { getProviderDisplayName, getProviderStatusClass, getProviderStatusText, formatModelName } from '../../llm/llmProviders.js';
 
+const LLM_LAST_MODELS_KEY = 'llm_last_models_by_provider';
+
+function loadLastModelsByProvider() {
+    try {
+        const raw = localStorage.getItem(LLM_LAST_MODELS_KEY);
+        const parsed = raw ? JSON.parse(raw) : {};
+        return parsed && typeof parsed === 'object' ? parsed : {};
+    } catch {
+        return {};
+    }
+}
+
+function saveLastModelsByProvider(lastModelsByProvider) {
+    try {
+        localStorage.setItem(LLM_LAST_MODELS_KEY, JSON.stringify(lastModelsByProvider || {}));
+    } catch (error) {
+        console.warn('Failed to save provider model memory:', error);
+    }
+}
+
 let modelLoadErrorDialogOpen = false;
 let lastModelLoadErrorMessage = '';
 let lastModelLoadErrorTime = 0;
@@ -56,7 +76,8 @@ export function createModelSelection() {
     const providerSelect = createSelect({
         items: [
             { value: 'ollama', text: 'Ollama' },
-            { value: 'lmstudio', text: 'LM Studio' }
+            { value: 'lmstudio', text: 'LM Studio' },
+            { value: 'native', text: 'Native (CLIP)' }
         ],
         className: 'llm-select llm-provider-select'
     });
@@ -166,6 +187,10 @@ export async function loadModels(state, modelSelection, visionSection, force = f
     const statusText = statusIndicator.querySelector('.status-text');
     
     try {
+        if (!state.lastModelsByProvider) {
+            state.lastModelsByProvider = loadLastModelsByProvider();
+        }
+
         // Show loading state
         modelSelect.innerHTML = '<option value="">Loading models...</option>';
         modelSelect.disabled = true;
@@ -192,7 +217,8 @@ export async function loadModels(state, modelSelection, visionSection, force = f
         statusText.textContent = statusTextValue;
         
         // Populate model dropdown
-        updateModelDropdown(state, modelSelect, currentProvider);
+        const preferredModel = state.lastModelsByProvider?.[currentProvider] || null;
+        updateModelDropdown(state, modelSelect, currentProvider, preferredModel);
         
         // Update vision section visibility based on selected model
         if (visionSection) {
@@ -227,12 +253,13 @@ export async function loadModels(state, modelSelection, visionSection, force = f
  * @param {HTMLSelectElement} modelSelect - Model select element
  * @param {string} provider - Selected provider
  */
-export function updateModelDropdown(state, modelSelect, provider) {
+export function updateModelDropdown(state, modelSelect, provider, preferredModel = null) {
     const models = state.models[provider] || [];
     const visionModels = state.visionModels[provider] || [];
     
     if (models.length === 0) {
-        modelSelect.innerHTML = '<option value="">No models available</option>';
+        const emptyText = provider === 'native' ? 'No CLIP models available' : 'No models available';
+        modelSelect.innerHTML = `<option value="">${emptyText}</option>`;
         state.model = null;
         return;
     }
@@ -246,8 +273,28 @@ export function updateModelDropdown(state, modelSelect, provider) {
         return `<option value="${model}">${displayName}</option>`;
     }).join('');
     
-    // Select first model by default
-    state.model = models[0];
+    const rememberedModel = preferredModel || state.lastModelsByProvider?.[provider] || null;
+    if (rememberedModel && models.includes(rememberedModel)) {
+        state.model = rememberedModel;
+        modelSelect.value = rememberedModel;
+    } else {
+        state.model = models[0];
+        modelSelect.value = state.model;
+    }
+
+    state.lastModelsByProvider = state.lastModelsByProvider || {};
+    state.lastModelsByProvider[provider] = state.model;
+    saveLastModelsByProvider(state.lastModelsByProvider);
+}
+
+export function rememberProviderModel(state, provider, model) {
+    if (!provider || !model) {
+        return;
+    }
+
+    state.lastModelsByProvider = state.lastModelsByProvider || loadLastModelsByProvider();
+    state.lastModelsByProvider[provider] = model;
+    saveLastModelsByProvider(state.lastModelsByProvider);
 }
 
 /**

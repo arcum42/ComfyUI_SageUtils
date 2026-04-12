@@ -47,6 +47,14 @@ from .lmstudio_v3 import (
 
 logger = logging.getLogger('sageutils.nodes.llm_v3')
 
+_PROVIDER_LABEL_BY_KEY = {
+    "ollama": "Ollama",
+    "lmstudio": "LM Studio",
+    "native": "Native",
+}
+
+_PROVIDER_KEY_BY_LABEL = {v.lower(): k for k, v in _PROVIDER_LABEL_BY_KEY.items()}
+
 # Default vision prompt for LLMs.
 DEFAULT_VISION_PROMPT = "Write a detailed description for this image. Use precise, unambiguous language. Avoid vague or general terms. This is going to be used as input for an AI image generator, so do not include anything other than the description, and do not break things into sections or use markdown."
 
@@ -214,7 +222,7 @@ class Sage_LLMPromptText(io.ComfyNode):
             ]),
         ]
 
-        provider_options = [
+        provider_options = _ordered_provider_options([
             io.DynamicCombo.Option(
                 "Ollama",
                 [
@@ -232,7 +240,7 @@ class Sage_LLMPromptText(io.ComfyNode):
                 ],
             ),
             io.DynamicCombo.Option("Native", native_inputs),
-        ]
+        ])
 
         return io.Schema(
             node_id="Sage_LLMPromptText",
@@ -255,7 +263,7 @@ class Sage_LLMPromptText(io.ComfyNode):
         prompt = kwargs.get("prompt", DEFAULT_TEXT_PROMPT)
         seed = kwargs.get("seed", 0)
         provider_data = kwargs.get("provider") or {}
-        provider = provider_data.get("provider", "Ollama")
+        provider = _normalize_provider_label(provider_data.get("provider"))
         native_sampling = _get_native_sampling_config(provider_data)
 
         try:
@@ -329,7 +337,7 @@ class Sage_LLMPromptVision(io.ComfyNode):
             ]),
         ]
 
-        provider_options = [
+        provider_options = _ordered_provider_options([
             io.DynamicCombo.Option(
                 "Ollama",
                 [
@@ -347,7 +355,7 @@ class Sage_LLMPromptVision(io.ComfyNode):
                 ],
             ),
             io.DynamicCombo.Option("Native", native_inputs),
-        ]
+        ])
 
         return io.Schema(
             node_id="Sage_LLMPromptVision",
@@ -371,7 +379,7 @@ class Sage_LLMPromptVision(io.ComfyNode):
         image = kwargs.get("image")
         seed = kwargs.get("seed", 0)
         provider_data = kwargs.get("provider") or {}
-        provider = provider_data.get("provider", "Ollama")
+        provider = _normalize_provider_label(provider_data.get("provider"))
         native_sampling = _get_native_sampling_config(provider_data)
 
         try:
@@ -457,7 +465,7 @@ class Sage_LLMPromptVisionRefine(io.ComfyNode):
             ]),
         ]
 
-        provider_options = [
+        provider_options = _ordered_provider_options([
             io.DynamicCombo.Option(
                 "Ollama",
                 [
@@ -473,7 +481,7 @@ class Sage_LLMPromptVisionRefine(io.ComfyNode):
                 ],
             ),
             io.DynamicCombo.Option("Native", native_inputs),
-        ]
+        ])
 
         return io.Schema(
             node_id="Sage_LLMPromptVisionRefine",
@@ -502,7 +510,7 @@ class Sage_LLMPromptVisionRefine(io.ComfyNode):
         refine_prompt = kwargs.get("refine_prompt", "")
         refine_seed = kwargs.get("refine_seed", 0)
         provider_data = kwargs.get("provider") or {}
-        provider = provider_data.get("provider", "Ollama")
+        provider = _normalize_provider_label(provider_data.get("provider"))
         native_sampling = _get_native_sampling_config(provider_data)
 
         try:
@@ -574,6 +582,55 @@ class Sage_LLMPromptVisionRefine(io.ComfyNode):
 def _should_reraise_llm_node_errors() -> bool:
     """Return whether LLM node exceptions should be re-raised after logging."""
     return bool(get_setting('llm_raise_node_exceptions', False))
+
+
+def _get_default_provider_key() -> str:
+    """Return the configured default provider key for both nodes and sidebar interoperability."""
+    value = str(get_setting('default_llm_provider', 'ollama') or 'ollama').strip().lower()
+    if value not in _PROVIDER_LABEL_BY_KEY:
+        return 'ollama'
+    return value
+
+
+def _normalize_provider_label(provider_value) -> str:
+    """Normalize dynamic combo/provider strings into one of the expected provider labels."""
+    if provider_value is None:
+        return _PROVIDER_LABEL_BY_KEY[_get_default_provider_key()]
+
+    normalized = str(provider_value).strip().lower()
+    if normalized in _PROVIDER_LABEL_BY_KEY:
+        return _PROVIDER_LABEL_BY_KEY[normalized]
+
+    key = _PROVIDER_KEY_BY_LABEL.get(normalized)
+    if key:
+        return _PROVIDER_LABEL_BY_KEY[key]
+
+    return _PROVIDER_LABEL_BY_KEY[_get_default_provider_key()]
+
+
+def _ordered_provider_options(options: list[io.DynamicCombo.Option]) -> list[io.DynamicCombo.Option]:
+    """Order provider options so the configured default provider appears first in the UI."""
+    if not options:
+        return options
+
+    key_by_label = {
+        "ollama": "Ollama",
+        "lmstudio": "LM Studio",
+        "native": "Native",
+    }
+    default_label = key_by_label.get(_get_default_provider_key(), "Ollama")
+
+    options_by_label = {opt.key: opt for opt in options}
+    ordered = []
+    if default_label in options_by_label:
+        ordered.append(options_by_label[default_label])
+
+    for label in ("Ollama", "LM Studio", "Native"):
+        option = options_by_label.get(label)
+        if option and option not in ordered:
+            ordered.append(option)
+
+    return ordered
 
 
 def _get_native_sampling_config(provider_data: dict) -> dict:
