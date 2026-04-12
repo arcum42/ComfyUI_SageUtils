@@ -270,7 +270,7 @@ function resetSettingsToDefaults(state, advancedOptions) {
  * @param {HTMLElement} container - The container element for the tab
  * @returns {Object} - Tab utility object with destroy method
  */
-export async function createLLMTab(container) {
+async function createLLMTabVanilla(container) {
     // Clear any existing content
     container.innerHTML = '';
     
@@ -565,4 +565,9 @@ export async function createLLMTab(container) {
         // Legacy compatibility for existing call sites.
         destroy: destroyTab
     };
+}
+
+export async function createLLMTab(container) {
+    // React pilot path is currently disabled; always use stable vanilla implementation.
+    return createLLMTabVanilla(container);
 }
