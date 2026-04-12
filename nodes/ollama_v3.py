@@ -70,7 +70,7 @@ class Sage_OllamaAdvancedOptions(io.ComfyNode):
 
 
 class Sage_OllamaLLMPromptText(io.ComfyNode):
-    """Send a prompt to an Ollama language model and get a response."""
+    """Provider-specific text generation node using the Ollama backend."""
     @classmethod
     def define_schema(cls):
         models = get_cached_ollama_models_for_input_types()
@@ -80,7 +80,7 @@ class Sage_OllamaLLMPromptText(io.ComfyNode):
         return io.Schema(
             node_id="Sage_OllamaLLMPromptText",
             display_name="Ollama LLM Prompt (Text)",
-            description="Send a prompt to a language model and get a response. The model must be installed via Ollama.",
+            description="Provider-specific text generation node for Ollama models.",
             category="Sage Utils/LLM/Ollama",
             inputs=[
                 io.String.Input("prompt", display_name="prompt", default=DEFAULT_TEXT_PROMPT, multiline=True),
@@ -124,7 +124,7 @@ class Sage_OllamaLLMPromptText(io.ComfyNode):
 
 
 class Sage_OllamaLLMPromptVision(io.ComfyNode):
-    """Send a prompt with image to an Ollama vision model and get a response."""
+    """Provider-specific vision generation node using the Ollama backend."""
     @classmethod
     def define_schema(cls):
         models = get_cached_ollama_vision_models_for_input_types()
@@ -134,7 +134,7 @@ class Sage_OllamaLLMPromptVision(io.ComfyNode):
         return io.Schema(
             node_id="Sage_OllamaLLMPromptVision",
             display_name="Ollama LLM Prompt (Vision)",
-            description="Send a prompt to a language model and get a response. Optionally, you can provide an image/s to the model if it supports multimodal input. The model must be installed via Ollama.",
+            description="Provider-specific vision generation node for Ollama models.",
             category="Sage Utils/LLM/Ollama",
             inputs=[
                 io.String.Input("prompt", display_name="prompt", default=DEFAULT_VISION_PROMPT, multiline=True),
@@ -180,7 +180,7 @@ class Sage_OllamaLLMPromptVision(io.ComfyNode):
 
 
 class Sage_OllamaLLMPromptVisionRefine(io.ComfyNode):
-    """Send a prompt with image to an Ollama vision model, then refine the response."""
+    """Provider-specific vision-refine node using the Ollama backend."""
     @classmethod
     def define_schema(cls):
         models = get_cached_ollama_vision_models_for_input_types()
@@ -194,7 +194,7 @@ class Sage_OllamaLLMPromptVisionRefine(io.ComfyNode):
         return io.Schema(
             node_id="Sage_OllamaLLMPromptVisionRefine",
             display_name="Ollama LLM Prompt (Vision) Refined",
-            description="Send a prompt to a language model and get a response. Optionally, you can provide an image/s to the model if it supports multimodal input. The model must be installed via Ollama.",
+            description="Provider-specific vision-refine node for Ollama models.",
             category="Sage Utils/LLM/Ollama",
             inputs=[
                 io.String.Input("prompt", default=DEFAULT_VISION_PROMPT, multiline=True),

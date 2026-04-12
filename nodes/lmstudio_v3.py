@@ -34,7 +34,7 @@ def _should_reraise_llm_node_errors() -> bool:
 
 
 class Sage_LMStudioLLMPromptText(io.ComfyNode):
-    """Send a prompt to an LM Studio language model and get a response."""
+    """Provider-specific text generation node using the LM Studio backend."""
     @classmethod
     def define_schema(cls):
         models = get_cached_lmstudio_models_for_input_types()
@@ -44,7 +44,7 @@ class Sage_LMStudioLLMPromptText(io.ComfyNode):
         return io.Schema(
             node_id="Sage_LMStudioLLMPromptText",
             display_name="LM Studio LLM Prompt (Text)",
-            description="Send a prompt to a language model and get a response. The model must be installed via LM Studio.",
+            description="Provider-specific text generation node for LM Studio models.",
             category="Sage Utils/LLM/LM Studio",
             inputs=[
                 io.String.Input("prompt", display_name="prompt", default=DEFAULT_TEXT_PROMPT, multiline=True),
@@ -64,7 +64,7 @@ class Sage_LMStudioLLMPromptText(io.ComfyNode):
         seed = kwargs.get("seed", 0)
         load_for_seconds = kwargs.get("load_for_seconds", 0)
 
-        if model == "(LM Studio not available)":
+        if not model or model == "(LM Studio not available)":
             return io.NodeOutput("")
 
         options = {"seed": seed}
@@ -94,7 +94,7 @@ class Sage_LMStudioLLMPromptText(io.ComfyNode):
 
 
 class Sage_LMStudioLLMPromptVision(io.ComfyNode):
-    """Send a prompt with image to an LM Studio vision model and get a response."""
+    """Provider-specific vision generation node using the LM Studio backend."""
     @classmethod
     def define_schema(cls):
         models = get_cached_lmstudio_vision_models_for_input_types()
@@ -104,7 +104,7 @@ class Sage_LMStudioLLMPromptVision(io.ComfyNode):
         return io.Schema(
             node_id="Sage_LMStudioLLMPromptVision",
             display_name="LM Studio LLM Prompt (Vision)",
-            description="Send a prompt to a language model and get a response. Optionally, you can provide an image/s to the model if it supports multimodal input. The model must be installed via LM Studio.",
+            description="Provider-specific vision generation node for LM Studio models.",
             category="Sage Utils/LLM/LM Studio",
             inputs=[
                 io.String.Input("prompt", display_name="prompt", default=DEFAULT_VISION_PROMPT, multiline=True),
@@ -126,7 +126,7 @@ class Sage_LMStudioLLMPromptVision(io.ComfyNode):
         seed = kwargs.get("seed", 0)
         load_for_seconds = kwargs.get("load_for_seconds", 0)
 
-        if model == "(No LM Studio vision models available)":
+        if not model or model == "(No LM Studio vision models available)":
             return io.NodeOutput("")
 
         options = {"seed": seed}
@@ -156,7 +156,7 @@ class Sage_LMStudioLLMPromptVision(io.ComfyNode):
 
 
 class Sage_LMStudioLLMPromptVisionRefine(io.ComfyNode):
-    """Send a prompt with image to an LM Studio vision model, then refine the response."""
+    """Provider-specific vision-refine node using the LM Studio backend."""
     @classmethod
     def define_schema(cls):
         models = get_cached_lmstudio_vision_models_for_input_types()
@@ -170,7 +170,7 @@ class Sage_LMStudioLLMPromptVisionRefine(io.ComfyNode):
         return io.Schema(
             node_id="Sage_LMStudioLLMPromptVisionRefine",
             display_name="LM Studio LLM Prompt (Vision) Refined",
-            description="Send a prompt to a language model and get a response. Optionally, you can provide an image/s to the model if it supports multimodal input. The model must be installed via LM Studio.",
+            description="Provider-specific vision-refine node for LM Studio models.",
             category="Sage Utils/LLM/LM Studio",
             inputs=[
                 io.String.Input("prompt", default=DEFAULT_VISION_PROMPT, multiline=True),
@@ -198,7 +198,12 @@ class Sage_LMStudioLLMPromptVisionRefine(io.ComfyNode):
         refine_seed = kwargs.get("refine_seed", 0)
         actual_refine_prompt = refine_prompt or prompt
 
-        if model == "(No LM Studio vision models available)" or refine_model == "(LM Studio not available)":
+        if (
+            not model
+            or not refine_model
+            or model == "(No LM Studio vision models available)"
+            or refine_model == "(LM Studio not available)"
+        ):
             return io.NodeOutput("", "")
 
         pbar = ProgressBar(2)
