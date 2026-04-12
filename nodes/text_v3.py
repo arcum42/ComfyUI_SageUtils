@@ -11,6 +11,7 @@ import string
 from ..utils.prompt_utils import clean_text, get_save_file_path
 from ..utils.sage_utils import sage_wildcard_path
 from ..utils.path_manager import path_manager
+from ..utils.config_manager import sage_styles
 
 from dynamicprompts.generators import RandomPromptGenerator
 from dynamicprompts.wildcards.wildcard_manager import WildcardManager
@@ -22,6 +23,55 @@ from ..utils.constants import (
     PONY_V7_RATING,
     PONY_SOURCE
 )
+
+
+def _build_style_lookup(styles_data):
+    model_to_styles = {}
+    style_lookup = {}
+
+    if not isinstance(styles_data, list):
+        return model_to_styles, style_lookup
+
+    for item in styles_data:
+        if not isinstance(item, dict):
+            continue
+
+        model = str(item.get("model", "")).strip()
+        style = str(item.get("style", "")).strip()
+        if not model or not style:
+            continue
+
+        if model not in model_to_styles:
+            model_to_styles[model] = []
+
+        if style not in model_to_styles[model]:
+            model_to_styles[model].append(style)
+
+        style_lookup[(model, style)] = {
+            "positive": str(item.get("positive", "") or ""),
+            "negative": str(item.get("negative", "") or "")
+        }
+
+    return model_to_styles, style_lookup
+
+
+STYLE_MODELS, STYLE_LOOKUP = _build_style_lookup(sage_styles)
+
+
+def _apply_style_template(style_template: str, user_prompt: str) -> str:
+    style_template = str(style_template or "").strip()
+    user_prompt = str(user_prompt or "").strip()
+
+    if not style_template:
+        return user_prompt
+
+    if "{prompt}" in style_template:
+        return style_template.replace("{prompt}", user_prompt)
+
+    if user_prompt:
+        return f"{style_template}, {user_prompt}"
+
+    return style_template
 
 class Sage_NumberToStr(io.ComfyNode):
     @classmethod
@@ -512,6 +562,66 @@ class Sage_PonyStyle(io.ComfyNode):
         styled_text = ", ".join(style)
         return io.NodeOutput(styled_text)
 
+
+class Sage_StylePromptFromConfig(io.ComfyNode):
+    @classmethod
+    def define_schema(cls):
+        dynamic_options = []
+        for model_name in STYLE_MODELS:
+            styles_for_model = STYLE_MODELS.get(model_name, [])
+            default_style = styles_for_model[0] if styles_for_model else "None"
+
+            dynamic_options.append(
+                io.DynamicCombo.Option(model_name, [
+                    io.Combo.Input("style", display_name="style", options=styles_for_model or ["None"], default=default_style)
+                ])
+            )
+
+        if not dynamic_options:
+            dynamic_options = [
+                io.DynamicCombo.Option("No models", [
+                    io.Combo.Input("style", display_name="style", options=["No styles"], default="No styles")
+                ])
+            ]
+
+        return io.Schema(
+            node_id="Sage_StylePromptFromConfig",
+            display_name="Style Prompt From Config",
+            description="Builds positive and negative prompts from sage_styles.json. If a style template contains {prompt}, your input is inserted there; otherwise your input is appended with ', '.",
+            category="Sage Utils/text",
+            inputs=[
+                io.DynamicCombo.Input("model", options=dynamic_options),
+                io.String.Input("positive", display_name="positive", force_input=True, multiline=True, tooltip="User positive prompt text to insert into the style template (or append if no {prompt} token exists)."),
+                io.String.Input("negative", display_name="negative", force_input=True, multiline=True, tooltip="User negative prompt text to insert into the style template (or append if no {prompt} token exists).")
+            ],
+            outputs=[
+                io.String.Output("positive_prompt", display_name="positive_prompt"),
+                io.String.Output("negative_prompt", display_name="negative_prompt")
+            ]
+        )
+
+    @classmethod
+    def execute(cls, **kwargs):
+        model_data = kwargs.get("model", {})
+        positive = kwargs.get("positive", "")
+        negative = kwargs.get("negative", "")
+
+        selected_model = ""
+        selected_style = ""
+
+        if isinstance(model_data, dict):
+            selected_model = str(model_data.get("model", "")).strip()
+            selected_style = str(model_data.get("style", "")).strip()
+
+        style_data = STYLE_LOOKUP.get((selected_model, selected_style), {})
+        style_positive = style_data.get("positive", "")
+        style_negative = style_data.get("negative", "")
+
+        out_positive = _apply_style_template(style_positive, positive)
+        out_negative = _apply_style_template(style_negative, negative)
+
+        return io.NodeOutput(out_positive, out_negative)
+
 class Sage_SaveText(io.ComfyNode):
     @classmethod
     def define_schema(cls):
@@ -985,6 +1095,7 @@ TEXT_NODES = [
     Sage_SetTextWithNum, 
     Sage_TextSwitch, 
     Sage_CleanText, 
+    Sage_StylePromptFromConfig,
     Sage_PonyStyle, 
     Sage_PonyPrefix,
     Sage_SaveText,
