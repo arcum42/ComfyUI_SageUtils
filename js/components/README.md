@@ -303,13 +303,15 @@ Behavior:
 
 #### Background Preloading
 
-`preloadTabsDuringIdle(options)` initializes uninitialized, non-active tabs in the background using `requestIdleCallback` (with a `setTimeout` fallback). One tab is initialized per idle callback to keep the UI responsive. Options:
+`preloadTabsDuringIdle(options)` initializes uninitialized, non-active tabs in the background using `requestIdleCallback` (with a `setTimeout` fallback). One tab is initialized per idle callback to keep the UI responsive. The method returns a session object with `cancel()` so callers can stop preloading during teardown/reload. Options:
 
 - `priority: string[]` — tab IDs to initialize first
 - `timeout: number` — maximum wait for an idle callback before forcing execution
 - `maxIdleTime: number` — retained for API compatibility (no longer used as a strict `timeRemaining()` gate)
 
 This avoids repeated retry logging and ensures steady progress even on busy UIs.
+
+Pending tab mount timers are also tracked internally and canceled on `destroy()` to prevent late async mount callbacks from mutating removed containers.
 
 **Standalone Functions:**
 

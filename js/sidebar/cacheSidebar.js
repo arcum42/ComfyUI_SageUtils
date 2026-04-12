@@ -503,11 +503,29 @@ export function createCacheSidebar(el) {
     let tabVisibility = defaultVisibility;
     let isDestroyed = false;
     const pendingTimeouts = new Set();
+    let backgroundTabPreload = null;
+    let galleryPreloadToken = 0;
+
+    const cancelBackgroundTabPreload = () => {
+        if (!backgroundTabPreload || typeof backgroundTabPreload.cancel !== 'function') {
+            backgroundTabPreload = null;
+            return;
+        }
+
+        try {
+            backgroundTabPreload.cancel();
+        } catch (error) {
+            console.warn('[Sidebar] Failed to cancel background tab preload:', error);
+        }
+
+        backgroundTabPreload = null;
+    };
 
     // Track delayed callbacks so cleanup can cancel them safely.
     const scheduleDelayed = (callback, delayMs) => {
-        const timeoutId = setTimeout(() => {
+        let timeoutId = setTimeout(() => {
             pendingTimeouts.delete(timeoutId);
+            timeoutId = null;
             if (isDestroyed) {
                 return;
             }
@@ -515,7 +533,18 @@ export function createCacheSidebar(el) {
         }, delayMs);
         pendingTimeouts.add(timeoutId);
         lifecycle.addTimeout(timeoutId);
-        return timeoutId;
+
+        return {
+            cancel() {
+                if (timeoutId === null) {
+                    return;
+                }
+
+                clearTimeout(timeoutId);
+                pendingTimeouts.delete(timeoutId);
+                timeoutId = null;
+            }
+        };
     };
     
     // Create main container
@@ -554,6 +583,10 @@ export function createCacheSidebar(el) {
     // This prevents a blank sidebar if the settings endpoint is slow or unavailable at startup
     const settingsLoadStart = performance.now();
     loadTabVisibilitySettings().then((settings) => {
+        if (isDestroyed) {
+            return;
+        }
+
         try {
             tabVisibility = normalizeTabVisibilitySettings(settings || defaultVisibility);
             const mapStart = performance.now();
@@ -622,26 +655,31 @@ export function createCacheSidebar(el) {
             }
         }
     }).catch((e) => {
+        if (isDestroyed) {
+            return;
+        }
+
         console.warn('[Sidebar] Visibility settings load failed, using defaults:', e);
         if (settingsIndicator?.parentNode) {
             try { settingsIndicator.parentNode.removeChild(settingsIndicator); } catch { /* no-op */ }
         }
     });
     
-    // Start background preloading of other tabs during idle time
-    // Priority order: commonly used tabs first
+    // Start tab preloading first so the most likely tab switches are warmed before
+    // lower-priority data fetches begin competing for the same startup window.
     scheduleDelayed(() => {
         console.debug('[Sidebar] Starting background tab preloading...');
-        tabManager.preloadTabsDuringIdle({
+        backgroundTabPreload = tabManager.preloadTabsDuringIdle({
             maxIdleTime: 20,  // Lower threshold to ensure we have real idle time
             timeout: 5000,    // Longer timeout to wait for idle periods
             priority: ['llm', 'gallery', 'promptBuilder', 'notes', 'civitai']
         });
-    }, 2000); // Wait 2 seconds after initial load to ensure UI is responsive
+    }, 1500); // Give the initial tab time to settle before idle warmup starts.
     
-    // Preload gallery images in the background for better UX
-    // This loads the default folder (usually 'notes') so data is ready when user clicks Gallery tab
+    // Gallery data preload runs after tab warmup so it can hydrate shared state without
+    // outranking interactive tab initialization during early sidebar startup.
     scheduleDelayed(() => {
+        const currentPreloadToken = ++galleryPreloadToken;
         const defaultFolder = actions ? (typeof actions.selectedFolder === 'function' ? actions.selectedFolder() : 'notes') : 'notes';
         const savedFolder = selectors.selectedFolder ? selectors.selectedFolder() : defaultFolder;
         const galleryFolder = savedFolder !== 'custom' ? savedFolder : 'notes'; // Don't auto-load custom folders
@@ -650,6 +688,10 @@ export function createCacheSidebar(el) {
         const cacheKey = `galleryImages:${galleryFolder}`;
         if (DataCache.isReady(cacheKey)) {
             console.debug(`[Sidebar] Gallery images for '${galleryFolder}' already preloaded`);
+
+            if (isDestroyed || currentPreloadToken !== galleryPreloadToken) {
+                return;
+            }
             
             // Store in state management
             const cachedData = DataCache.get(cacheKey);
@@ -669,6 +711,10 @@ export function createCacheSidebar(el) {
                 console.debug(`[Sidebar Gallery Preload] ${msg}`);
             }
         }).then((result) => {
+            if (isDestroyed || currentPreloadToken !== galleryPreloadToken) {
+                return;
+            }
+
             console.debug(`[Sidebar] Gallery preload complete for '${galleryFolder}' folder`);
             
             // Store in cache for future use
@@ -680,17 +726,93 @@ export function createCacheSidebar(el) {
                 actions.setFolders(result.folders || []);
             }
         }).catch(err => {
+            if (isDestroyed || currentPreloadToken !== galleryPreloadToken) {
+                return;
+            }
+
             console.warn(`[Sidebar] Gallery preload failed (non-critical):`, err);
         });
-    }, 1500); // Slightly longer delay to let tab preloading start first
+    }, 2000); // Delay data preload until after tab warmup has been scheduled.
     
     // Store references for potential external access
+    const getRegressionSnapshot = () => {
+        const visibleTabIds = tabManager.getVisibleTabIds();
+        const activeTabId = tabManager.getActiveTab();
+        const activeContainers = Array.from(tabManager.tabContainers.entries())
+            .filter(([, container]) => container.classList.contains('active'))
+            .map(([tabId, container]) => ({ tabId, childCount: container.children.length }));
+
+        return {
+            isDestroyed,
+            visibleTabIds,
+            activeTabId,
+            activeContainers,
+            initializedTabIds: Array.from(tabManager.initializedTabs),
+            pendingInitCount: tabManager.pendingInitTimeouts?.size || 0,
+            hasScheduledTabPreload: !!backgroundTabPreload,
+            pendingDelayedCallbacks: pendingTimeouts.size
+        };
+    };
+
+    const runRegressionChecks = ({ log = true } = {}) => {
+        const snapshot = getRegressionSnapshot();
+        const checks = [
+            {
+                name: 'single-active-container',
+                pass: snapshot.activeContainers.length <= 1,
+                details: `active=${snapshot.activeContainers.length}`
+            },
+            {
+                name: 'active-tab-visible',
+                pass: !snapshot.activeTabId || snapshot.visibleTabIds.includes(snapshot.activeTabId),
+                details: `activeTab=${snapshot.activeTabId || 'none'}`
+            },
+            {
+                name: 'active-container-matches-active-tab',
+                pass: snapshot.activeContainers.length === 0
+                    || snapshot.activeContainers[0].tabId === snapshot.activeTabId,
+                details: snapshot.activeContainers.length > 0
+                    ? `container=${snapshot.activeContainers[0].tabId}, activeTab=${snapshot.activeTabId}`
+                    : 'no active container'
+            },
+            {
+                name: 'no-pending-init-after-destroy',
+                pass: !snapshot.isDestroyed || snapshot.pendingInitCount === 0,
+                details: `destroyed=${snapshot.isDestroyed}, pendingInit=${snapshot.pendingInitCount}`
+            }
+        ];
+
+        const result = {
+            ok: checks.every((check) => check.pass),
+            timestamp: new Date().toISOString(),
+            checks,
+            snapshot
+        };
+
+        if (log) {
+            console.groupCollapsed(`[Sidebar Regression] ${result.ok ? 'PASS' : 'FAIL'} @ ${result.timestamp}`);
+            console.table(checks.map((check) => ({
+                check: check.name,
+                pass: check.pass,
+                details: check.details
+            })));
+            console.log('Snapshot:', snapshot);
+            console.groupEnd();
+        }
+
+        return result;
+    };
+
     el._sidebarData = {
         tabManager,
         switchTab: (tabId) => tabManager.switchTab(tabId),
         initializedTabs: tabManager.initializedTabs,
+        getRegressionSnapshot,
+        runRegressionChecks,
         cleanup: () => {
             isDestroyed = true;
+            galleryPreloadToken += 1;
+            cancelBackgroundTabPreload();
 
             pendingTimeouts.forEach((timeoutId) => {
                 clearTimeout(timeoutId);
@@ -713,6 +835,26 @@ export function createCacheSidebar(el) {
             tabManager.destroy();
         }
     };
+
+    if (typeof window !== 'undefined') {
+        window.SageUtilsSidebarRegression = {
+            run: (options = {}) => {
+                if (!currentSidebarElement?._sidebarData?.runRegressionChecks) {
+                    return {
+                        ok: false,
+                        checks: [{ name: 'sidebar-mounted', pass: false, details: 'No sidebar instance found' }]
+                    };
+                }
+                return currentSidebarElement._sidebarData.runRegressionChecks(options);
+            },
+            snapshot: () => {
+                if (!currentSidebarElement?._sidebarData?.getRegressionSnapshot) {
+                    return null;
+                }
+                return currentSidebarElement._sidebarData.getRegressionSnapshot();
+            }
+        };
+    }
     
     // Subscribe to cross-tab messaging for tab switching
     // Use a slight delay to ensure all components are fully initialized

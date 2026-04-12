@@ -135,6 +135,9 @@ export class TabManager {
         this.tabContainers = new Map(); // tabId -> content container
         this.initializingTabs = new Set();
         this.cleanupCallbacks = new Set();
+        this.pendingInitTimeouts = new Map();
+        this.activePreloadSession = null;
+        this.isDestroyed = false;
     }
 
     /**
@@ -216,6 +219,80 @@ export class TabManager {
             this.cleanupCallbacks.delete(cleanup);
         };
     }
+
+    /**
+     * Cancel a pending initialization timeout.
+     * @private
+     * @param {string} tabId - Tab ID
+     */
+    cancelPendingInit(tabId) {
+        const timeoutId = this.pendingInitTimeouts.get(tabId);
+        if (timeoutId === undefined) {
+            return;
+        }
+
+        clearTimeout(timeoutId);
+        this.pendingInitTimeouts.delete(tabId);
+        this.initializingTabs.delete(tabId);
+    }
+
+    /**
+     * Cancel all pending initialization timeouts.
+     * @private
+     */
+    cancelAllPendingInits() {
+        this.pendingInitTimeouts.forEach((timeoutId) => {
+            clearTimeout(timeoutId);
+        });
+        this.pendingInitTimeouts.clear();
+        this.initializingTabs.clear();
+    }
+
+    /**
+     * Dispose a mount result that resolved after the tab manager was torn down.
+     * @private
+     * @param {string} tabId - Tab ID
+     * @param {Function|Object|null} mountResult - Resolved mount result
+     */
+    cleanupDeferredMountResult(tabId, mountResult) {
+        const cleanup = typeof mountResult === 'function'
+            ? mountResult
+            : (typeof mountResult?.unmount === 'function'
+                ? mountResult.unmount
+                : (typeof mountResult?.destroy === 'function' ? mountResult.destroy : null));
+
+        if (typeof cleanup !== 'function') {
+            return;
+        }
+
+        try {
+            cleanup({ tabId, tabManager: this });
+        } catch (error) {
+            console.warn(`TabManager: deferred cleanup failed for tab '${tabId}':`, error);
+        }
+    }
+
+    /**
+     * Cancel the active background preload session, if any.
+     */
+    cancelScheduledPreloads() {
+        const session = this.activePreloadSession;
+        if (!session) {
+            return;
+        }
+
+        session.cancelled = true;
+
+        if (session.idleCallbackId !== null && typeof cancelIdleCallback === 'function') {
+            cancelIdleCallback(session.idleCallbackId);
+        }
+
+        if (session.timeoutId !== null) {
+            clearTimeout(session.timeoutId);
+        }
+
+        this.activePreloadSession = null;
+    }
     
     /**
      * Initialize the tab manager - creates header and content areas
@@ -225,6 +302,7 @@ export class TabManager {
             throw new Error('TabManager: container element is required');
         }
 
+        this.isDestroyed = false;
         ensureTabManagerStyles();
         
         // Create tab header
@@ -434,7 +512,14 @@ export class TabManager {
             // Initialize content immediately for background loading, with small delay for user-initiated
             const initDelay = showLoading ? 50 : 0;
             
-            setTimeout(async () => {
+            const timeoutId = setTimeout(async () => {
+                this.pendingInitTimeouts.delete(tabId);
+
+                if (this.isDestroyed || !this.tabs.has(tabId) || this.tabContainers.get(tabId) !== container) {
+                    this.initializingTabs.delete(tabId);
+                    return;
+                }
+
                 try {
                     container.innerHTML = ''; // Clear loading message
                     const mountResult = await config.lifecycle.mount(container, {
@@ -442,6 +527,11 @@ export class TabManager {
                         tabManager: this,
                         isBackground: !showLoading
                     });
+
+                    if (this.isDestroyed || !this.tabs.has(tabId) || this.tabContainers.get(tabId) !== container) {
+                        this.cleanupDeferredMountResult(tabId, mountResult);
+                        return;
+                    }
 
                     if (typeof mountResult === 'function') {
                         config.instance = {
@@ -478,6 +568,8 @@ export class TabManager {
                     this.initializingTabs.delete(tabId);
                 }
             }, initDelay);
+
+            this.pendingInitTimeouts.set(tabId, timeoutId);
         } catch (error) {
             console.error(`TabManager: Error setting up initialization for tab '${tabId}':`, error);
             container.innerHTML = `
@@ -501,6 +593,7 @@ export class TabManager {
             return false;
         }
 
+        this.cancelPendingInit(tabId);
         this.executeTabUnmount(config);
         
         // Remove button
@@ -649,6 +742,8 @@ export class TabManager {
      * @param {string[]} [options.priority] - Array of tab IDs to prioritize for preloading
      */
     preloadTabsDuringIdle(options = {}) {
+        this.cancelScheduledPreloads();
+
         const maxIdleTime = options.maxIdleTime || 50; // kept for API compatibility (no longer a hard gate)
         const timeout = options.timeout || 2000;
         const priorityTabs = options.priority || [];
@@ -660,7 +755,7 @@ export class TabManager {
         
         if (uninitializedTabs.length === 0) {
             console.debug('[TabManager] All tabs already initialized');
-            return;
+            return { cancel: () => {} };
         }
         
         // Sort tabs by priority
@@ -680,11 +775,36 @@ export class TabManager {
         });
         
         console.debug(`[TabManager] Starting background preload for ${sortedTabs.length} tabs:`, sortedTabs);
+
+        const session = {
+            cancelled: false,
+            idleCallbackId: null,
+            timeoutId: null,
+            cancel: () => {
+                if (this.activePreloadSession !== session) {
+                    return;
+                }
+                this.cancelScheduledPreloads();
+            }
+        };
+        this.activePreloadSession = session;
+
+        const finishSession = () => {
+            if (this.activePreloadSession === session) {
+                this.activePreloadSession = null;
+            }
+        };
         
         // Use requestIdleCallback to initialize tabs during idle time
         const preloadNextTab = (index) => {
+            if (session.cancelled || this.isDestroyed) {
+                finishSession();
+                return;
+            }
+
             if (index >= sortedTabs.length) {
                 console.debug('[TabManager] Background preload complete');
+                finishSession();
                 return;
             }
             
@@ -699,7 +819,14 @@ export class TabManager {
             
             // Check if browser supports requestIdleCallback
             if (typeof requestIdleCallback === 'function') {
-                requestIdleCallback(() => {
+                session.idleCallbackId = requestIdleCallback(() => {
+                    session.idleCallbackId = null;
+
+                    if (session.cancelled || this.isDestroyed) {
+                        finishSession();
+                        return;
+                    }
+
                     // Skip if tab was initialized while waiting
                     if (this.initializedTabs.has(tabId)) {
                         console.debug(`[TabManager] Tab '${tabId}' already initialized, skipping preload`);
@@ -716,7 +843,14 @@ export class TabManager {
             } else {
                 // Fallback for browsers without requestIdleCallback
                 console.debug(`[TabManager] Preloading tab '${tabId}' using setTimeout fallback`);
-                setTimeout(() => {
+                session.timeoutId = setTimeout(() => {
+                    session.timeoutId = null;
+
+                    if (session.cancelled || this.isDestroyed) {
+                        finishSession();
+                        return;
+                    }
+
                     if (!this.initializedTabs.has(tabId)) {
                         this.initializeTab(tabId, false); // No loading message for background
                     }
@@ -727,6 +861,7 @@ export class TabManager {
         
         // Start preloading
         preloadNextTab(0);
+        return session;
     }
     
     /**
@@ -753,6 +888,10 @@ export class TabManager {
      * Cleanup and destroy the tab manager
      */
     destroy() {
+        this.isDestroyed = true;
+        this.cancelScheduledPreloads();
+        this.cancelAllPendingInits();
+
         // Run externally registered cleanup callbacks first.
         this.cleanupCallbacks.forEach((cleanup) => {
             try {
