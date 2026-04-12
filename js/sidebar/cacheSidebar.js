@@ -74,6 +74,36 @@ let globalSidebarRejectionHandler = null;
 
 const SIDEBAR_SHELL_STYLE_ID = 'sageutils-sidebar-shell-styles';
 
+function isSidebarDebugEnabled() {
+    try {
+        if (shouldLogTimingDetails()) {
+            return true;
+        }
+
+        if (typeof window === 'undefined') {
+            return false;
+        }
+
+        const debugFlag = window.localStorage?.getItem('sageutils_sidebar_debug') === 'true';
+        const queryFlag = new URLSearchParams(window.location.search).get('sage_sidebar_debug') === '1';
+        return debugFlag || queryFlag;
+    } catch {
+        return shouldLogTimingDetails();
+    }
+}
+
+function logSidebarDebug(...args) {
+    if (isSidebarDebugEnabled()) {
+        console.debug(...args);
+    }
+}
+
+function logSidebarInfo(...args) {
+    if (isSidebarDebugEnabled()) {
+        console.info(...args);
+    }
+}
+
 function ensureSidebarShellStyles() {
     if (document.getElementById(SIDEBAR_SHELL_STYLE_ID)) {
         return;
@@ -248,9 +278,7 @@ async function loadTabVisibilitySettings() {
         ...DEFAULT_TAB_VISIBILITY_SETTINGS,
         _timing: { fallback: true }
     };
-    if (shouldLogTimingDetails()) {
-        console.info('[Sidebar] Using default visibility settings');
-    }
+    logSidebarInfo('[Sidebar] Using default visibility settings');
     endTimer('Sidebar.Settings.Total');
     return fallback;
 }
@@ -269,10 +297,10 @@ function createTabManager(container, tabVisibility = {}, tabContentFactories = {
         container: container,
         lazyLoad: true,
         onTabSwitch: (tabId) => {
-            console.debug(`Switched to tab: ${tabId}`);
+            logSidebarDebug(`Switched to tab: ${tabId}`);
         },
         onTabInit: (tabId) => {
-            console.debug(`Initialized tab: ${tabId}`);
+            logSidebarDebug(`Initialized tab: ${tabId}`);
         }
     });
     
@@ -382,19 +410,19 @@ async function initializeSidebarData(lifecycle) {
             
             // Only log significant state changes
             if (state.activeTab !== prevState.activeTab) {
-                console.debug('Active tab changed:', prevState.activeTab, '->', state.activeTab);
+                logSidebarDebug('Active tab changed:', prevState.activeTab, '->', state.activeTab);
             }
             
             if (state.models?.selectedHash !== prevState.models?.selectedHash) {
-                console.debug('Selected model changed:', prevState.models?.selectedHash, '->', state.models?.selectedHash);
+                logSidebarDebug('Selected model changed:', prevState.models?.selectedHash, '->', state.models?.selectedHash);
             }
             
             if (state.models?.isLoading !== prevState.models?.isLoading) {
-                console.debug('Models loading state changed:', state.models?.isLoading);
+                logSidebarDebug('Models loading state changed:', state.models?.isLoading);
             }
             
             if (state.notes?.isLoading !== prevState.notes?.isLoading) {
-                console.debug('Notes loading state changed:', state.notes?.isLoading);
+                logSidebarDebug('Notes loading state changed:', state.notes?.isLoading);
             }
         });
         lifecycle.add(unsubscribe);
@@ -404,7 +432,7 @@ async function initializeSidebarData(lifecycle) {
         const cacheInfoReady = DataCache.isReady(CacheKeys.CACHE_INFO);
         
         if (cacheHashReady && cacheInfoReady) {
-            console.debug('[Sidebar] Using preloaded cache data');
+            logSidebarDebug('[Sidebar] Using preloaded cache data');
             
             // Get cached data
             const hashData = DataCache.get(CacheKeys.CACHE_HASH);
@@ -413,13 +441,13 @@ async function initializeSidebarData(lifecycle) {
             // Store in state management
             actions.setCacheData({ hash: hashData, info: infoData });
             
-            console.debug('Cache data loaded from preload', {
+            logSidebarDebug('Cache data loaded from preload', {
                 hashEntries: Object.keys(hashData).length,
                 infoEntries: Object.keys(infoData).length
             });
         } else {
             // Fallback: Load cache data if not preloaded
-            console.debug('[Sidebar] Cache not preloaded, loading now...');
+            logSidebarDebug('[Sidebar] Cache not preloaded, loading now...');
             
             try {
                 const [hashData, infoData] = await Promise.all([
@@ -434,7 +462,7 @@ async function initializeSidebarData(lifecycle) {
                 // Store in state management
                 actions.setCacheData({ hash: hashData, info: infoData });
                 
-                console.debug('Cache data loaded', {
+                logSidebarDebug('Cache data loaded', {
                     hashEntries: Object.keys(hashData).length,
                     infoEntries: Object.keys(infoData).length
                 });
@@ -448,7 +476,7 @@ async function initializeSidebarData(lifecycle) {
         try {
             const response = await fetch('/sage_cache/stats');
             if (response.ok) {
-                console.debug('Cache API connection verified');
+                logSidebarDebug('Cache API connection verified');
             } else {
                 console.warn('Cache API connection issue:', response.status);
             }
@@ -473,7 +501,7 @@ async function initializeSidebarData(lifecycle) {
                     
                     // Update state
                     actions.setCacheData({ hash: hashData, info: infoData });
-                    console.debug('Periodic cache refresh completed');
+                    logSidebarDebug('Periodic cache refresh completed');
                 }
             } catch (refreshError) {
                 console.warn('Periodic cache refresh failed:', refreshError);
@@ -625,16 +653,14 @@ export function createCacheSidebar(el) {
             const mapMs = settings?._timing?.map_ms ?? +(mapEnd - mapStart).toFixed(2);
             const updateMs = +(updateEnd - updateStart).toFixed(2);
             const activateMs = +(activateEnd - activateStart).toFixed(2);
-            if (shouldLogTimingDetails()) {
-                console.info('[Sidebar] Visibility settings applied', {
-                    total_ms: totalMs,
-                    fetch_ms: fetchMs,
-                    parse_ms: parseMs,
-                    map_ms: mapMs,
-                    update_visibility_ms: updateMs,
-                    activate_ms: activateMs
-                });
-            }
+            logSidebarInfo('[Sidebar] Visibility settings applied', {
+                total_ms: totalMs,
+                fetch_ms: fetchMs,
+                parse_ms: parseMs,
+                map_ms: mapMs,
+                update_visibility_ms: updateMs,
+                activate_ms: activateMs
+            });
 
             // Optionally persist timing immediately if telemetry is enabled
             if (shouldSendTimingData()) {
@@ -668,7 +694,7 @@ export function createCacheSidebar(el) {
     // Start tab preloading first so the most likely tab switches are warmed before
     // lower-priority data fetches begin competing for the same startup window.
     scheduleDelayed(() => {
-        console.debug('[Sidebar] Starting background tab preloading...');
+        logSidebarDebug('[Sidebar] Starting background tab preloading...');
         backgroundTabPreload = tabManager.preloadTabsDuringIdle({
             maxIdleTime: 20,  // Lower threshold to ensure we have real idle time
             timeout: 5000,    // Longer timeout to wait for idle periods
@@ -687,7 +713,7 @@ export function createCacheSidebar(el) {
         // Check if already preloaded in cache
         const cacheKey = `galleryImages:${galleryFolder}`;
         if (DataCache.isReady(cacheKey)) {
-            console.debug(`[Sidebar] Gallery images for '${galleryFolder}' already preloaded`);
+            logSidebarDebug(`[Sidebar] Gallery images for '${galleryFolder}' already preloaded`);
 
             if (isDestroyed || currentPreloadToken !== galleryPreloadToken) {
                 return;
@@ -698,24 +724,24 @@ export function createCacheSidebar(el) {
             if (cachedData && cachedData.images) {
                 actions.setImages(cachedData.images);
                 actions.setFolders(cachedData.folders || []);
-                console.debug(`[Sidebar] Gallery cache hit: ${cachedData.images.length} images, ${cachedData.folders?.length || 0} folders`);
+                logSidebarDebug(`[Sidebar] Gallery cache hit: ${cachedData.images.length} images, ${cachedData.folders?.length || 0} folders`);
             }
             return;
         }
         
-        console.debug(`[Sidebar] Preloading gallery images from '${galleryFolder}' folder in background...`);
+        logSidebarDebug(`[Sidebar] Preloading gallery images from '${galleryFolder}' folder in background...`);
         
         loadImagesFromFolder(galleryFolder, null, (msg) => {
             // Only log start and completion messages, skip progress updates to reduce console noise
             if (msg.includes('Loading images from') || msg.includes('Error') || msg.includes('Complete')) {
-                console.debug(`[Sidebar Gallery Preload] ${msg}`);
+                logSidebarDebug(`[Sidebar Gallery Preload] ${msg}`);
             }
         }).then((result) => {
             if (isDestroyed || currentPreloadToken !== galleryPreloadToken) {
                 return;
             }
 
-            console.debug(`[Sidebar] Gallery preload complete for '${galleryFolder}' folder`);
+            logSidebarDebug(`[Sidebar] Gallery preload complete for '${galleryFolder}' folder`);
             
             // Store in cache for future use
             DataCache.set(cacheKey, result);
@@ -892,13 +918,13 @@ export function createCacheSidebar(el) {
                     return;
                 }
                 
-                console.debug(`[Sidebar] Received cross-tab switch request for '${tabId}' from ${source}, mapped to '${tabKey}'`);
+                logSidebarDebug(`[Sidebar] Received cross-tab switch request for '${tabId}' from ${source}, mapped to '${tabKey}'`);
                 
                 // Switch to the requested tab using TabManager
                 try {
                     tabManager.switchTab(tabKey);
                     bus.publish(MessageTypes.TAB_SWITCHED, { tabId: tabKey, source: 'sidebar' });
-                    console.debug(`[Sidebar] Successfully switched to tab: ${tabKey}`);
+                    logSidebarDebug(`[Sidebar] Successfully switched to tab: ${tabKey}`);
                 } catch (error) {
                     console.error(`[Sidebar] Error switching to tab '${tabKey}':`, error);
                 }
@@ -915,7 +941,7 @@ export function createCacheSidebar(el) {
                 }
             });
             
-            console.debug('[Sidebar] Subscribed to cross-tab switch requests');
+            logSidebarDebug('[Sidebar] Subscribed to cross-tab switch requests');
         }).catch(err => {
             console.warn('[Sidebar] Failed to load cross-tab messaging:', err);
         });
@@ -932,7 +958,7 @@ export async function reloadCacheSidebar() {
         return;
     }
     
-    console.log('Reloading sidebar with updated settings...');
+    logSidebarDebug('Reloading sidebar with updated settings...');
     
     // Clear the current sidebar content
     currentSidebarElement.innerHTML = '';
@@ -940,5 +966,5 @@ export async function reloadCacheSidebar() {
     // Recreate the sidebar
     await createCacheSidebar(currentSidebarElement);
     
-    console.log('Sidebar reloaded successfully');
+    logSidebarDebug('Sidebar reloaded successfully');
 }

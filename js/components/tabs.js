@@ -35,6 +35,26 @@
  */
 const TAB_MANAGER_STYLE_ID = 'sageutils-tab-manager-styles';
 
+function isTabDebugEnabled() {
+    try {
+        if (typeof window === 'undefined') {
+            return false;
+        }
+
+        const debugFlag = window.localStorage?.getItem('sageutils_tab_debug') === 'true';
+        const queryFlag = new URLSearchParams(window.location.search).get('sage_tab_debug') === '1';
+        return debugFlag || queryFlag;
+    } catch {
+        return false;
+    }
+}
+
+function logTabDebug(...args) {
+    if (isTabDebugEnabled()) {
+        console.debug(...args);
+    }
+}
+
 function ensureTabManagerStyles() {
     if (document.getElementById(TAB_MANAGER_STYLE_ID)) {
         return;
@@ -484,19 +504,19 @@ export class TabManager {
         
         // Skip if already initialized
         if (this.initializedTabs.has(tabId)) {
-            console.debug(`TabManager: Tab '${tabId}' already initialized, skipping`);
+            logTabDebug(`TabManager: Tab '${tabId}' already initialized, skipping`);
             return;
         }
 
         // Skip duplicate initialization attempts while async mount is in progress.
         if (this.initializingTabs.has(tabId)) {
-            console.debug(`TabManager: Tab '${tabId}' is already initializing, skipping`);
+            logTabDebug(`TabManager: Tab '${tabId}' is already initializing, skipping`);
             return;
         }
 
         this.initializingTabs.add(tabId);
         
-        console.debug(`TabManager: Initializing tab '${tabId}'`);
+        logTabDebug(`TabManager: Initializing tab '${tabId}'`);
         
         try {
             // Show loading state only if requested (skip for background preloading)
@@ -550,7 +570,7 @@ export class TabManager {
                     }
 
                     this.initializedTabs.add(tabId);
-                    console.debug(`TabManager: Tab '${tabId}' initialized successfully`);
+                    logTabDebug(`TabManager: Tab '${tabId}' initialized successfully`);
                     
                     // Callback
                     if (this.onTabInit) {
@@ -754,7 +774,7 @@ export class TabManager {
         );
         
         if (uninitializedTabs.length === 0) {
-            console.debug('[TabManager] All tabs already initialized');
+            logTabDebug('[TabManager] All tabs already initialized');
             return { cancel: () => {} };
         }
         
@@ -774,7 +794,7 @@ export class TabManager {
             return 0;
         });
         
-        console.debug(`[TabManager] Starting background preload for ${sortedTabs.length} tabs:`, sortedTabs);
+        logTabDebug(`[TabManager] Starting background preload for ${sortedTabs.length} tabs:`, sortedTabs);
 
         const session = {
             cancelled: false,
@@ -803,7 +823,7 @@ export class TabManager {
             }
 
             if (index >= sortedTabs.length) {
-                console.debug('[TabManager] Background preload complete');
+                logTabDebug('[TabManager] Background preload complete');
                 finishSession();
                 return;
             }
@@ -812,7 +832,7 @@ export class TabManager {
             
             // Skip if tab was initialized by user interaction in the meantime
             if (this.initializedTabs.has(tabId)) {
-                console.debug(`[TabManager] Tab '${tabId}' already initialized, skipping preload`);
+                logTabDebug(`[TabManager] Tab '${tabId}' already initialized, skipping preload`);
                 preloadNextTab(index + 1);
                 return;
             }
@@ -829,12 +849,12 @@ export class TabManager {
 
                     // Skip if tab was initialized while waiting
                     if (this.initializedTabs.has(tabId)) {
-                        console.debug(`[TabManager] Tab '${tabId}' already initialized, skipping preload`);
+                        logTabDebug(`[TabManager] Tab '${tabId}' already initialized, skipping preload`);
                         preloadNextTab(index + 1);
                         return;
                     }
                     
-                    console.debug(`[TabManager] Preloading tab '${tabId}' during idle time`);
+                    logTabDebug(`[TabManager] Preloading tab '${tabId}' during idle time`);
                     this.initializeTab(tabId, false); // No loading message for background
                     
                     // Schedule next tab
@@ -842,7 +862,7 @@ export class TabManager {
                 }, { timeout });
             } else {
                 // Fallback for browsers without requestIdleCallback
-                console.debug(`[TabManager] Preloading tab '${tabId}' using setTimeout fallback`);
+                logTabDebug(`[TabManager] Preloading tab '${tabId}' using setTimeout fallback`);
                 session.timeoutId = setTimeout(() => {
                     session.timeoutId = null;
 

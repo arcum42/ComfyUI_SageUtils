@@ -27,6 +27,26 @@ import { createAdvancedOptions } from './llmTab/llmAdvancedOptions.js';
 import { applyPresetToUI } from './llmTab/llmPresetDialogs.js';
 import { setupEventHandlers, cleanupEventHandlers } from './llmTab/llmEventHandlers.js';
 
+function isLlmDebugEnabled() {
+    try {
+        if (typeof window === 'undefined') {
+            return false;
+        }
+
+        const debugFlag = window.localStorage?.getItem('sageutils_llm_debug') === 'true';
+        const queryFlag = new URLSearchParams(window.location.search).get('sage_llm_debug') === '1';
+        return debugFlag || queryFlag;
+    } catch {
+        return false;
+    }
+}
+
+function logLlmDebug(...args) {
+    if (isLlmDebugEnabled()) {
+        console.debug(...args);
+    }
+}
+
 /**
  * Load default LLM provider from settings
  * @returns {Promise<string>} Default provider ('ollama' or 'lmstudio')
@@ -36,18 +56,18 @@ async function loadDefaultProvider() {
         const response = await api.fetchApi('/sage_utils/settings');
         if (response.ok) {
             const data = await response.json();
-            console.log('[LLM Tab] Settings API response:', data);
+            logLlmDebug('[LLM Tab] Settings API response:', data);
             
             if (data.success && data.settings && data.settings.default_llm_provider) {
                 const setting = data.settings.default_llm_provider;
-                console.log('[LLM Tab] default_llm_provider setting:', setting);
+                logLlmDebug('[LLM Tab] default_llm_provider setting:', setting);
                 
                 // Try current_value first, then fall back to default
                 const provider = setting.current_value || setting.default;
-                console.log('[LLM Tab] Resolved provider value:', provider);
+                logLlmDebug('[LLM Tab] Resolved provider value:', provider);
                 
                 if (provider === 'ollama' || provider === 'lmstudio') {
-                    console.log(`[LLM Tab] Loading default LLM provider: ${provider}`);
+                    logLlmDebug(`[LLM Tab] Loading default LLM provider: ${provider}`);
                     return provider;
                 } else {
                     console.warn(`[LLM Tab] Invalid provider value: ${provider}, using ollama`);
@@ -104,7 +124,7 @@ async function initializeTab(state, wrapper, modelSelection, visionSection, inpu
             updateConversationList
         );
         
-        console.log('[LLM Tab] Initialization complete');
+        logLlmDebug('[LLM Tab] Initialization complete');
     } catch (error) {
         console.error('[LLM Tab] Initialization failed:', error);
         showStatus(responseSection, 'Failed to initialize LLM tab', 'error');
@@ -120,7 +140,7 @@ async function loadPrompts(state) {
         const llmApi = await import('../llm/llmApi.js');
         const prompts = await llmApi.getPrompts();
         state.prompts = prompts;
-        console.log('[LLM Tab] Loaded prompts:', prompts);
+        logLlmDebug('[LLM Tab] Loaded prompts:', prompts);
         return prompts;
     } catch (error) {
         console.error('[LLM Tab] Failed to load prompts:', error);
@@ -163,7 +183,7 @@ async function loadAndInitializeHistory(state, historySection, responseSection) 
             }
         }
         
-        console.log('[LLM Tab] Loaded conversation history:', state.conversationHistory?.length || 0, 'conversations');
+        logLlmDebug('[LLM Tab] Loaded conversation history:', state.conversationHistory?.length || 0, 'conversations');
     } catch (error) {
         console.error('[LLM Tab] Failed to load conversation history:', error);
         state.conversationHistory = [];
@@ -242,7 +262,7 @@ function resetSettingsToDefaults(state, advancedOptions) {
     state.settings = getDefaultSettings();
     saveSettings(state.settings);
     updateUIFromSettings(state.settings, advancedOptions);
-    console.log('[LLM Tab] Settings reset to defaults');
+    logLlmDebug('[LLM Tab] Settings reset to defaults');
 }
 
 /**
@@ -335,7 +355,7 @@ export async function createLLMTab(container) {
     // Set the provider dropdown to match the loaded default
     const providerSelect = modelSelection.querySelector('.llm-provider-select');
     if (providerSelect && state.provider) {
-        console.log(`[LLM Tab] Setting provider dropdown to: ${state.provider}`);
+        logLlmDebug(`[LLM Tab] Setting provider dropdown to: ${state.provider}`);
         providerSelect.value = state.provider;
         // Trigger change event to update model list (this will also update vision section)
         providerSelect.dispatchEvent(new Event('change'));
@@ -344,7 +364,7 @@ export async function createLLMTab(container) {
         const { isVisionModel } = await import('../llm/llmProviders.js');
         const hasVisionModel = state.model && isVisionModel(state.model, state.provider, state.visionModels);
         visionSection.style.display = hasVisionModel ? 'block' : 'none';
-        console.log('[LLM Tab] Initial vision section state:', {
+        logLlmDebug('[LLM Tab] Initial vision section state:', {
             model: state.model,
             provider: state.provider,
             hasVisionModel,
@@ -362,8 +382,8 @@ export async function createLLMTab(container) {
     const { getEventBus, MessageTypes } = await import('../shared/crossTabMessaging.js');
     const bus = getEventBus();
     
-    console.log('[LLM Tab] Setting up cross-tab message subscriptions');
-    console.log('[LLM Tab] Available MessageTypes:', MessageTypes);
+    logLlmDebug('[LLM Tab] Setting up cross-tab message subscriptions');
+    logLlmDebug('[LLM Tab] Available MessageTypes:', MessageTypes);
     
     // Shared handler for incoming prompt text messages
     const handleIncomingPromptText = (data) => {
@@ -381,21 +401,21 @@ export async function createLLMTab(container) {
         handleIncomingPromptText(data);
     });
     
-    console.log('[LLM Tab] Text subscription created');
+    logLlmDebug('[LLM Tab] Text subscription created');
     
     // Handle images from Gallery
     const imageSubscription = bus.subscribe(MessageTypes.IMAGE_TRANSFER, async (eventData) => {
-        console.log('[LLM Tab] IMAGE_TRANSFER handler called!', eventData);
+        logLlmDebug('[LLM Tab] IMAGE_TRANSFER handler called!', eventData);
         
         // Extract the actual data from the event wrapper
         const data = eventData.data || eventData;
         
         if (!data.images || !Array.isArray(data.images)) {
-            console.log('[LLM Tab] No valid images array in data:', data);
+            logLlmDebug('[LLM Tab] No valid images array in data:', data);
             return;
         }
         
-        console.log('[LLM Tab] Received IMAGE_TRANSFER:', {
+        logLlmDebug('[LLM Tab] Received IMAGE_TRANSFER:', {
             imageCount: data.images.length,
             source: data.source,
             firstImage: data.images[0]
@@ -517,7 +537,7 @@ export async function createLLMTab(container) {
             }
             isDestroyed = true;
 
-            console.log('[LLM Tab] Destroying tab...');
+            logLlmDebug('[LLM Tab] Destroying tab...');
             
             // Cleanup event handlers
             cleanupEventHandlers(state);
@@ -536,7 +556,7 @@ export async function createLLMTab(container) {
             // Clear container
             container.innerHTML = '';
             
-            console.log('[LLM Tab] Tab destroyed');
+            logLlmDebug('[LLM Tab] Tab destroyed');
         };
 
     return {
