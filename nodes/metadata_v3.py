@@ -24,6 +24,7 @@ from ..utils.model_cache import cache
 from ..utils.model_info import collect_resource_hashes, model_name_and_hash_as_str, _get_model_name_from_info, _get_model_hash_from_info
 from ..utils.config_manager import metadata_templates
 from ..utils.logger import get_logger
+from ..utils.constants import SAGE_UTILS_CAT
 
 logger = get_logger('nodes.metadata')
 
@@ -44,7 +45,7 @@ class Sage_ConstructMetadataFlexible(io.ComfyNode):
             node_id="Sage_ConstructMetadataFlexible",
             display_name="Construct Metadata Flexible",
             description="Flexible metadata constructor supporting multiple styles: A1111 Full (with LoRA hashes), A1111 Lite (simplified, only includes models on Civitai), Simple (No models or LoRAs) as well as any others defined in metadata_templates.",
-            category="Sage Utils/metadata",
+            category=f"{SAGE_UTILS_CAT}/metadata",
             inputs=[
                 ModelInfo.Input("model_info", display_name="model_info"),
                 io.String.Input("positive_string", display_name="positive_string", default=""),

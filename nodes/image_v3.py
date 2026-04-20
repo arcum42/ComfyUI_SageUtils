@@ -28,7 +28,7 @@ import comfy.cli_args
 from comfy_api.latest import io, ui
 from comfy_execution.graph_utils import GraphBuilder
 
-from ..utils.constants import QUICK_ASPECT_RATIOS, MAX_RESOLUTION
+from ..utils.constants import QUICK_ASPECT_RATIOS, MAX_RESOLUTION, SAGE_UTILS_CAT
 from ..utils.helpers_image import calc_padding, resize_needed, image_manipulate
 
 from .custom_io_v3 import AdvAudioInfo
@@ -42,7 +42,7 @@ class Sage_EmptyLatentImagePassthrough(io.ComfyNode):
             node_id="Sage_EmptyLatentImagePassthrough",
             display_name="Empty Latent Image Passthrough",
             description="Passes through an empty latent image.",
-            category="Sage Utils/image",
+            category=f"{SAGE_UTILS_CAT}/image",
             inputs=[
                 io.Int.Input("width", display_name="width", default=1024),
                 io.Int.Input("height", display_name="height", default=1024),
@@ -84,7 +84,7 @@ class Sage_EmptyAceStep15LatentAudio(io.ComfyNode):
             node_id="Sage_EmptyAceStep15LatentAudio",
             display_name="Empty Ace Step 1.5 Audio Passthrough",
             description="Creates an empty latent audio tensor for Ace Step 1.5 models.",
-            category="Sage Utils/audio",
+            category=f"{SAGE_UTILS_CAT}/audio",
             inputs=[
                 io.Float.Input("seconds", display_name="seconds", default=120.0, min=1.0, max=1000.0, step=0.01),
                 io.Int.Input("batch_size", display_name="batch_size", default=1),
@@ -118,7 +118,7 @@ class Sage_SaveImageWithMetadata(io.ComfyNode):
             node_id="Sage_SaveImageWithMetadata",
             display_name="Save Image With Metadata",
             description="Saves images to disk with embedded metadata.",
-            category="Sage Utils/image",
+            category=f"{SAGE_UTILS_CAT}/image",
             is_output_node=True,
             inputs=[
                 io.Image.Input("images", display_name="images", tooltip="The images to save."),
@@ -237,7 +237,7 @@ class Sage_LoadImage(io.ComfyNode):
             node_id="Sage_LoadImage",
             display_name="Load Image",
             description="Loads an image from a specified file path.",
-            category="Sage Utils/image",
+            category=f"{SAGE_UTILS_CAT}/image",
             is_output_node=True,
             inputs=[],
             outputs=[
@@ -294,7 +294,7 @@ class Sage_CropImage(io.ComfyNode):
             node_id="Sage_CropImage",
             display_name="Crop Image",
             description="Crops an image based on specified coordinates.",
-            category="Sage Utils/image",
+            category=f"{SAGE_UTILS_CAT}/image",
             inputs=[
                 io.Image.Input("image", display_name="image", tooltip="The image to crop."),
                 io.Int.Input("left", display_name="left", default=0, tooltip="The left coordinate for cropping."),
@@ -358,7 +358,7 @@ class Sage_GuessResolutionByRatio(io.ComfyNode):
             node_id="Sage_GuessResolutionByRatio",
             display_name="Guess Resolution By Ratio",
             description="Based on the input width and height, guess a resolution that matches one of the common aspect ratios. The output is rounded to the nearest multiple of 64.",
-            category="Sage Utils/image",
+            category=f"{SAGE_UTILS_CAT}/image",
             inputs=[
                 io.Int.Input("width", min = 64, max = 8192, default=1024, step = 1, tooltip="The input width."),
                 io.Int.Input("height", min = 64, max = 8192, default=1024, step = 1, tooltip="The input height."),
@@ -411,7 +411,7 @@ class Sage_QuickResPicker(io.ComfyNode):
             node_id="Sage_QuickResPicker",
             display_name="Quick Resolution Picker",
             description="Quickly pick image resolution based on aspect ratio and orientation.",
-            category="Sage Utils/image",
+            category=f"{SAGE_UTILS_CAT}/image",
             inputs=[
                 io.Combo.Input("aspect_ratio", display_name="Aspect Ratio", default="1:1", options=list(QUICK_ASPECT_RATIOS.keys()), tooltip="The aspect ratio."),
                 io.Combo.Input("orientation", display_name="Orientation", default="Landscape", options=["Portrait", "Landscape"], tooltip="The orientation of the image."),
@@ -452,7 +452,7 @@ class Sage_CubiqImageResize(io.ComfyNode):
             node_id="Sage_CubiqImageResize",
             display_name="Cubiq Image Resize",
             description="Resizes an image using Cubiq interpolation.",
-            category="Sage Utils/image",
+            category=f"{SAGE_UTILS_CAT}/image",
             inputs=[
                 io.Image.Input("image", display_name="image", tooltip="The image to resize."),
                 io.Int.Input("width", display_name="width", default=1024, min = 0, max = MAX_RESOLUTION, step = 1, tooltip="The target width."),
@@ -550,7 +550,7 @@ class Sage_ReferenceImage(io.ComfyNode):
             node_id="Sage_ReferenceImage",
             display_name="Reference Image",
             description="This node sets the guiding latent for an edit model. If the model supports it you can chain multiple to set multiple reference images.",
-            category="Sage Utils/image",
+            category=f"{SAGE_UTILS_CAT}/image",
             enable_expand=True,
             inputs=[
                 io.Conditioning.Input("conditioning", display_name="conditioning", tooltip="The input conditioning."),
@@ -583,7 +583,7 @@ class Sage_AceAdvOptions(io.ComfyNode):
             node_id="Sage_AceAdvOptions",
             display_name="Ace Advanced Options",
             description="Advanced options for Ace Step 1.5 audio encoding. These options can be used to fine-tune the behavior of the audio encoding process.",
-            category="Sage Utils/clip-cond/ace",
+            category=f"{SAGE_UTILS_CAT}/clip-cond/ace",
             inputs=[
                 io.Combo.Input("language", options=["en", "ja", "zh", "es", "de", "fr", "pt", "ru", "it", "nl", "pl", "tr", "vi", "cs", "fa", "id", "ko", "uk", "hu", "ar", "sv", "ro", "el"]),
                 io.Float.Input("cfg_scale", default=2.0, min=0.0, max=100.0, step=0.1, advanced=True),
@@ -624,7 +624,7 @@ class Sage_Ace15AudioEncode(io.ComfyNode):
             node_id="Sage_Ace15AudioEncode",
             display_name="Ace Step 1.5 Audio Encode",
             description="Encodes an audio clip into a conditioning using the Ace Step 1.5 model. This is used to create a conditioning from an audio reference.",
-            category="Sage Utils/clip-cond/ace",
+            category=f"{SAGE_UTILS_CAT}/clip-cond/ace",
             inputs=[
                 io.Clip.Input("clip"),
                 io.String.Input("tags", force_input=True, multiline=True, dynamic_prompts=True),

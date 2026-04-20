@@ -16,6 +16,7 @@ SAMPLER_OPTIONS = list(cast(Iterable[str], SAMPLERS))
 SCHEDULER_OPTIONS = list(cast(Iterable[str], SCHEDULERS))
 
 from ..utils.helpers_image import vae_decode, vae_decode_tiled
+from ..utils.constants import SAGE_UTILS_CAT
 
 from .custom_io_v3 import *
 
@@ -27,7 +28,7 @@ class Sage_SamplerSelector(io.ComfyNode):
             node_id="Sage_SamplerSelector",
             display_name="Sampler Selector",
             description="Selects a sampler for use in the pipeline.",
-            category="Sage Utils/sampler",
+            category=f"{SAGE_UTILS_CAT}/sampler",
             inputs=[
                 io.Combo.Input("sampler_name", display_name="sampler_name", options=SAMPLER_OPTIONS, default="dpmpp_2m")
             ],
@@ -49,7 +50,7 @@ class Sage_SchedulerSelector(io.ComfyNode):
             node_id="Sage_SchedulerSelector",
             display_name="Scheduler Selector",
             description="Selects a scheduler for use in the pipeline, and passes the steps to be used in the KSampler.",
-            category="Sage Utils/sampler",
+            category=f"{SAGE_UTILS_CAT}/sampler",
             inputs=[
                 io.Int.Input("steps", display_name="steps", default=20, min=1, max=10000),
                 io.Combo.Input("scheduler_name", display_name="scheduler_name", options=SCHEDULER_OPTIONS, default="beta")
@@ -74,7 +75,7 @@ class Sage_SamplerInfo(io.ComfyNode):
             node_id="Sage_SamplerInfo",
             display_name="KSampler Info",
             description="Grabs most of the sampler info. Should be routed both to the Construct Metadata node and the KSampler w/ Sampler Info node.",
-            category="Sage Utils/sampler",
+            category=f"{SAGE_UTILS_CAT}/sampler",
             inputs=[
                 io.Int.Input("seed", display_name="seed", default=0, min=0, max=0xffffffffffffffff),
                 io.Int.Input("steps", display_name="steps", default=20, min=1, max=10000),
@@ -117,7 +118,7 @@ class Sage_SamplerInfoNoCFG(io.ComfyNode):
             node_id="Sage_SamplerInfoNoCFG",
             display_name="KSampler Info (No CFG)",
             description="Grabs most of the sampler info (with cfg at 1.0). Should be routed both to the Construct Metadata node and the KSampler w/ Sampler Info node.",
-            category="Sage Utils/sampler",
+            category=f"{SAGE_UTILS_CAT}/sampler",
             inputs=[
                 io.Int.Input("seed", display_name="seed", default=0, min=0, max=0xffffffffffffffff),
                 io.Int.Input("steps", display_name="steps", default=20, min=1, max=10000),
@@ -158,7 +159,7 @@ class Sage_AdvSamplerInfo(io.ComfyNode):
             node_id="Sage_AdvSamplerInfo",
             display_name="Adv KSampler Info",
             description="Adds more optional values to the KSampler.",
-            category="Sage Utils/sampler",
+            category=f"{SAGE_UTILS_CAT}/sampler",
             inputs=[
                 io.Boolean.Input("add_noise", display_name="add_noise", default=True),
                 io.Int.Input("start_at_step", display_name="start_at_step", default=0, min=0, max=10000),
@@ -223,7 +224,7 @@ class Sage_KSampler(io.ComfyNode):
             node_id="Sage_KSampler",
             display_name="KSampler w/ Sampler Info",
             description="Uses the provided model, positive and negative conditioning to denoise the latent image. Designed to work with the Sampler info node.",
-            category="Sage Utils/sampler",
+            category=f"{SAGE_UTILS_CAT}/sampler",
             inputs=[
                 io.Model.Input("model", display_name="model"),
                 SamplerInfo.Input("sampler_info", display_name="sampler_info"),
@@ -257,7 +258,7 @@ class Sage_KSamplerTiledDecoder(io.ComfyNode):
             node_id="Sage_KSamplerTiledDecoder",
             display_name="KSampler + Tiled Decoder",
             description="Uses the provided model, positive and negative conditioning to denoise the latent image, and generate an image with the provided vae. Designed to work with the Sampler info node. Will tile if tiling info is provided.",
-            category="Sage Utils/sampler",
+            category=f"{SAGE_UTILS_CAT}/sampler",
             inputs=[
                 io.Model.Input("model", display_name="model"),
                 SamplerInfo.Input("sampler_info", display_name="sampler_info"),
@@ -310,7 +311,7 @@ class Sage_KSamplerAudioDecoder(io.ComfyNode):
             node_id="Sage_KSamplerAudioDecoder",
             display_name="KSampler + Audio Decoder",
             description="Uses the provided model, positive and negative conditioning to denoise the latent audio, and generate audio with the provided vae. Designed to work with the Sampler info node.",
-            category="Sage Utils/sampler",
+            category=f"{SAGE_UTILS_CAT}/sampler",
             inputs=[
                 io.Model.Input("model", display_name="model"),
                 SamplerInfo.Input("sampler_info", display_name="sampler_info"),

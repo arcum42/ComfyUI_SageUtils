@@ -29,6 +29,7 @@ from ..utils.performance_fix import (
     get_cached_lmstudio_models_for_input_types,
     get_cached_lmstudio_vision_models_for_input_types,
 )
+from ..utils.constants import SAGE_UTILS_CAT
 
 from .custom_io_v3 import *
 from .ollama_v3 import (
@@ -94,7 +95,7 @@ class Sage_ConstructLLMPrompt(io.ComfyNode):
             node_id="Sage_ConstructLLMPrompt",
             display_name="Construct LLM Prompt",
             description="Construct a prompt for an LLM based on the provided image and prompt.",
-            category="Sage Utils/LLM",
+            category=f"{SAGE_UTILS_CAT}/LLM",
             inputs=schema_inputs,
             outputs=[
                 io.String.Output("out_prompt", display_name="prompt")
@@ -169,7 +170,7 @@ class Sage_ConstructLLMPromptExtra(io.ComfyNode):
             node_id="Sage_ConstructLLMPromptExtra",
             display_name="Construct LLM Prompt Extra",
             description="Construct extra instructions for an LLM based on the provided options.",
-            category="Sage Utils/LLM",
+            category=f"{SAGE_UTILS_CAT}/LLM",
             inputs=schema_inputs,
             outputs=[
                 io.String.Output("extra", display_name="extra")
@@ -246,7 +247,7 @@ class Sage_LLMPromptText(io.ComfyNode):
             node_id="Sage_LLMPromptText",
             display_name="LLM Prompt (Text)",
             description="Unified provider-switching text generation node for Ollama, LM Studio, and Native CLIP.",
-            category="Sage Utils/LLM",
+            category=f"{SAGE_UTILS_CAT}/LLM",
             inputs=[
                 io.String.Input("prompt", display_name="prompt", default=DEFAULT_TEXT_PROMPT, multiline=True),
                 io.DynamicCombo.Input("provider", display_name="provider", options=provider_options, tooltip="Pick the backend provider and its model/runtime settings."),
@@ -361,7 +362,7 @@ class Sage_LLMPromptVision(io.ComfyNode):
             node_id="Sage_LLMPromptVision",
             display_name="LLM Prompt (Vision)",
             description="Unified provider-switching vision generation node for Ollama, LM Studio, and Native CLIP.",
-            category="Sage Utils/LLM",
+            category=f"{SAGE_UTILS_CAT}/LLM",
             inputs=[
                 io.String.Input("prompt", display_name="prompt", default=DEFAULT_VISION_PROMPT, multiline=True),
                 io.Image.Input("image", display_name="image"),
@@ -487,7 +488,7 @@ class Sage_LLMPromptVisionRefine(io.ComfyNode):
             node_id="Sage_LLMPromptVisionRefine",
             display_name="LLM Prompt (Vision) Refined",
             description="Unified provider-switching vision-refine node that outputs both initial and refined responses.",
-            category="Sage Utils/LLM",
+            category=f"{SAGE_UTILS_CAT}/LLM",
             inputs=[
                 io.String.Input("prompt", display_name="prompt", default=DEFAULT_VISION_PROMPT, multiline=True),
                 io.Image.Input("image", display_name="image"),

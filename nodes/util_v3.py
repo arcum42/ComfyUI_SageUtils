@@ -16,6 +16,7 @@ import folder_paths
 import gc
 
 from ..utils.logger import get_logger
+from ..utils.constants import SAGE_UTILS_CAT
 from .custom_io_v3 import *
 
 logger = get_logger('nodes.util')
@@ -30,7 +31,7 @@ class Sage_FreeMemory(io.ComfyNode):
             node_id="Sage_FreeMemory",
             display_name="Free Memory",
             description="Unload models, run garbage collection, and empty caches when enabled.",
-            category="Sage Utils/util",
+            category=f"{SAGE_UTILS_CAT}/util",
             inputs=[
                 io.Boolean.Input("free_memory", display_name="free_memory", default=False),
                 io.AnyType.Input("value", display_name="value")
@@ -58,7 +59,7 @@ class Sage_LogicalSwitch(io.ComfyNode):
             node_id="Sage_LogicalSwitch",
             display_name="Logical Switch",
             description="Select between two inputs based on the condition; only the needed branch is evaluated when lazy.",
-            category="Sage Utils/util",
+            category=f"{SAGE_UTILS_CAT}/util",
             is_deprecated=True,
             inputs=[
                 io.Boolean.Input("condition", display_name="condition", default=True),
@@ -114,7 +115,7 @@ class Sage_ModelInfo(io.ComfyNode):
             node_id="Sage_ModelInfo",
             display_name="Model Info",
             description="Pull the civitai model info, and return what the base model is, the name with version, the url, the url for the latest version, and a preview image.",
-            category="Sage Utils/model/info",
+            category=f"{SAGE_UTILS_CAT}/model/info",
             inputs=[
                 ModelInfo.Input("model_info", display_name="model_info")
             ],
@@ -171,7 +172,7 @@ class Sage_ModelInfoDisplay(io.ComfyNode):
             node_id="Sage_ModelInfoDisplay",
             display_name="Model Info Display",
             description="Display model information in a formatted markdown block with civitai details, base model, name, version, and links.",
-            category="Sage Utils/model/info",
+            category=f"{SAGE_UTILS_CAT}/model/info",
             is_output_node=True,
             inputs=[
                 ModelInfo.Input("model_info", display_name="model_info")
@@ -295,7 +296,7 @@ class Sage_LoraStackInfoDisplay(io.ComfyNode):
             node_id="Sage_LoraStackInfoDisplay",
             display_name="LoRA Stack Info Display",
             description="Display information for all LoRAs in a lora_stack as formatted markdown with civitai details, weights, and links.",
-            category="Sage Utils/model/info",
+            category=f"{SAGE_UTILS_CAT}/model/info",
             is_output_node=True,
             inputs=[
                 LoraStack.Input("lora_stack", display_name="lora_stack")
@@ -437,7 +438,7 @@ class Sage_MultiModelPicker(io.ComfyNode):
             node_id="Sage_MultiModelPicker",
             display_name="Multi Model Picker",
             description="Select one model_info from a list by index.",
-            category="Sage Utils/model",
+            category=f"{SAGE_UTILS_CAT}/model",
             inputs=[
                 io.Int.Input("index", display_name="index", default=0, min=0, max=100, step=1, tooltip="0-based index into provided model list"),
                 io.Autogrow.Input("model_template", template=autogrow_template)
@@ -468,7 +469,7 @@ class Sage_CollectKeywordsFromLoraStack(io.ComfyNode):
             node_id="Sage_CollectKeywordsFromLoraStack",
             display_name="Collect Keywords From LoRA Stack",
             description="Collect keywords from all LoRAs in a stack.",
-            category="Sage Utils/lora",
+            category=f"{SAGE_UTILS_CAT}/lora",
             inputs=[
                 LoraStack.Input("lora_stack", display_name="lora_stack")
             ],
@@ -492,7 +493,7 @@ class Sage_CheckLorasForUpdates(io.ComfyNode):
             node_id="Sage_CheckLorasForUpdates",
             display_name="Check LoRAs For Updates",
             description="Check if LoRAs in the stack have updates available on Civitai.",
-            category="Sage Utils/lora",
+            category=f"{SAGE_UTILS_CAT}/lora",
             is_output_node=True,
             inputs=[
                 LoraStack.Input("lora_stack", display_name="lora_stack"),
@@ -542,7 +543,7 @@ class Sage_PercentageToFloat(io.ComfyNode):
             node_id="Sage_PercentageToFloat",
             display_name="Percentage To Float",
             description="Convert a percentage value (0-100) to a float (0.0-1.0).",
-            category="Sage Utils/util",
+            category=f"{SAGE_UTILS_CAT}/util",
             inputs=[
                 io.Float.Input("percentage", display_name="percentage", default=0.0, min=0.0, max=100.0)
             ],

@@ -14,7 +14,8 @@ from ..utils.constants import (
     LUMINA2_SYSTEM_PROMPT_TIP,
     PONY_V6_RATING,
     PONY_V7_RATING,
-    PONY_SOURCE
+    PONY_SOURCE,
+    SAGE_UTILS_CAT
 )
 
 def _build_style_lookup(styles_data):
@@ -91,7 +92,7 @@ class Sage_StylePromptFromConfig(io.ComfyNode):
             node_id="Sage_StylePromptFromConfig",
             display_name="Style Prompt From Config",
             description="Builds positive and negative prompts from sage_styles.json. If a style template contains {prompt}, your input is inserted there; otherwise your input is appended with ', '.",
-            category="Sage Utils/text/prompt/style",
+            category=f"{SAGE_UTILS_CAT}/text/prompt/style",
             inputs=[
                 io.DynamicCombo.Input("model", options=dynamic_options),
                 io.String.Input("positive", display_name="positive", force_input=True, multiline=True, tooltip="User positive prompt text to insert into the style template (or append if no {prompt} token exists)."),
@@ -137,7 +138,7 @@ class Sage_HiDreamE1_Instruction(io.ComfyNode):
             node_id="Sage_HiDreamE1_Instruction",
             display_name="HiDream E1 Instruction",
             description="Generates a prompt for HiDream E1 based on the given instruction and description.",
-            category="Sage Utils/text/prompt/hidream",
+            category=f"{SAGE_UTILS_CAT}/text/prompt/hidream",
             inputs=[
                 io.String.Input("instruction", display_name="instruction", multiline=True),
                 io.String.Input("description", display_name="description", multiline=True)
@@ -175,7 +176,7 @@ class Sage_LuminaPromptText(io.ComfyNode):
             node_id="Sage_PromptText",
             display_name="Prompt Text (Lumina 2)",
             description="Combines a system prompt and a user prompt into a single prompt, with <Prompt Start> between them.",
-            category="Sage Utils/text/prompt/lumina2",
+            category=f"{SAGE_UTILS_CAT}/text/prompt/lumina2",
             inputs=[
                 io.String.Input("system", display_name="system", force_input=True, multiline=True),
                 io.String.Input("prompt", display_name="prompt", force_input=True, multiline=True)
@@ -200,7 +201,7 @@ class Sage_LuminaSystemPrompt(io.ComfyNode):
             node_id="Sage_SystemPrompt",
             display_name="System Prompt (Lumina 2)",
             description="Picks the system prompt based on the selected option.",
-            category="Sage Utils/text/prompt/lumina2",
+            category=f"{SAGE_UTILS_CAT}/text/prompt/lumina2",
             inputs=[
                 io.Combo.Input("system", display_name="system", options=list(LUMINA2_SYSTEM_PROMPTS_V2.keys()), default="superior", tooltip=LUMINA2_SYSTEM_PROMPT_TIP)
             ],
@@ -224,7 +225,7 @@ class Sage_PonyStyle(io.ComfyNode):
             node_id="Sage_PonyStyle",
             display_name="Pony Style",
             description="Adds the chosen three letter artist styles from Pony v6.",
-            category="Sage Utils/text/prompt/pony",
+            category=f"{SAGE_UTILS_CAT}/text/prompt/pony",
             
             inputs=[
                 io.MultiCombo.Input("style", display_name="style", options=pony_strings, chip=True, placeholder="Pony Style")
@@ -256,7 +257,7 @@ class Sage_PonySource(io.ComfyNode):
             node_id="Sage_PonySource",
             display_name="Pony Source",
             description="Creates a source string for pony prompts based on the given source.",
-            category="Sage Utils/text/prompt/pony",
+            category=f"{SAGE_UTILS_CAT}/text/prompt/pony",
             inputs=[
                 io.Combo.Input("source", display_name="source", options=PONY_SOURCE, default="none")
             ],
@@ -281,7 +282,7 @@ class Sage_PonyScore(io.ComfyNode):
             node_id="Sage_PonyScore",
             display_name="Pony Score",
             description="Creates a score string for pony prompts based on the given start and end scores.",
-            category="Sage Utils/text/prompt/pony",
+            category=f"{SAGE_UTILS_CAT}/text/prompt/pony",
             inputs=[
                 io.Int.Input("score_start", display_name="score_start", default=9, min=0, max=9, step=1),
                 io.Int.Input("score_end", display_name="score_end", default=4, min=0, max=9, step=1),
@@ -317,7 +318,7 @@ class Sage_PonyRatingv6(io.ComfyNode):
             node_id="Sage_PonyRatingv6",
             display_name="Pony Rating (v6)",
             description="Creates a rating string for pony prompts based on the given rating. (v6 style)",
-            category="Sage Utils/text/prompt/pony",
+            category=f"{SAGE_UTILS_CAT}/text/prompt/pony",
             inputs=[
                 io.Combo.Input("rating", display_name="rating", options=PONY_V6_RATING, default="none")
             ],
@@ -341,7 +342,7 @@ class Sage_PonyPrefix(io.ComfyNode):
             node_id="Sage_PonyPrefix",
             display_name="Pony Prefix",
             description="Generates a prefix for pony-related content.",
-            category="Sage Utils/text/prompt/pony",
+            category=f"{SAGE_UTILS_CAT}/text/prompt/pony",
             inputs=[
                 io.Boolean.Input("add_score", display_name="add_score", default=False),
                 io.Int.Input("score_start", display_name="Score Start", default=9),
@@ -386,7 +387,7 @@ class Sage_PonyStyleCluster(io.ComfyNode):
             node_id="Sage_PonyStyleCluster",
             display_name="Pony Style Cluster",
             description="Creates a style cluster string for pony prompts based on the given style cluster number.",
-            category="Sage Utils/text/prompt/pony",
+            category=f"{SAGE_UTILS_CAT}/text/prompt/pony",
             inputs=[
                 io.Int.Input("style_cluster", display_name="style_cluster", default=1, min=1, max=2048, step=1)
             ],
@@ -408,7 +409,7 @@ class Sage_PonyRatingv7(io.ComfyNode):
             node_id="Sage_PonyRatingv7",
             display_name="Pony Rating (v7)",
             description="Creates a rating string for pony prompts based on the given rating. (v7 style)",
-            category="Sage Utils/text/prompt/pony",
+            category=f"{SAGE_UTILS_CAT}/text/prompt/pony",
             inputs=[
                 io.Combo.Input("rating", display_name="rating", options=PONY_V7_RATING, default="none")
             ],

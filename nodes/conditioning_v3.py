@@ -13,7 +13,7 @@ from comfy.utils import ProgressBar
 
 # Import specific utilities from source modules
 from ..utils.prompt_utils import condition_text, clean_if_needed
-from ..utils.constants import LUMINA2_SYSTEM_PROMPT, LUMINA2_SYSTEM_PROMPT_TIP, PROMPT_START
+from ..utils.constants import LUMINA2_SYSTEM_PROMPT, LUMINA2_SYSTEM_PROMPT_TIP, PROMPT_START, SAGE_UTILS_CAT
 
 
 def _apply_conditioning_operation(conditioning, operation: dict):
@@ -54,7 +54,7 @@ class Sage_CombineConditioning(io.ComfyNode):
             node_id="Sage_CombineConditioning",
             display_name="Combine Conditioning",
             description="Combines multiple conditionings into a single conditioning.",
-            category="Sage Utils/clip-cond",
+            category=f"{SAGE_UTILS_CAT}/clip-cond",
             inputs=[
                 io.DynamicCombo.Input("operation", display_name="operation", options=[
                     io.DynamicCombo.Option("none", []),
@@ -113,7 +113,7 @@ class Sage_AverageConditioning(io.ComfyNode):
             node_id="Sage_AverageConditioning",
             display_name="Average Conditioning",
             description="Averages multiple conditioning inputs into one conditioning.",
-            category="Sage Utils/clip-cond",
+            category=f"{SAGE_UTILS_CAT}/clip-cond",
             enable_expand=True,
             inputs=[
                 io.Autogrow.Input("conditionings", template=autogrow_template),
@@ -170,7 +170,7 @@ class Sage_ZeroConditioning(io.ComfyNode):
             node_id="Sage_ZeroConditioning",
             display_name="Zero Conditioning",
             description="Returns zeroed out conditioning.",
-            category="Sage Utils/clip-cond",
+            category=f"{SAGE_UTILS_CAT}/clip-cond",
             inputs=[
                 io.Clip.Input(id="clip", display_name="clip", tooltip="The CLIP model used for encoding.")
             ],
@@ -193,7 +193,7 @@ class Sage_SingleCLIPTextEncode(io.ComfyNode):
             node_id="Sage_SingleCLIPTextEncode",
             display_name="Single CLIP Text Encode",
             description="Turns text into conditioning, and passes through the prompt. Zeros any input not hooked up.",
-            category="Sage Utils/clip-cond",
+            category=f"{SAGE_UTILS_CAT}/clip-cond",
             inputs=[
                 io.Clip.Input(id="clip", display_name="clip", tooltip="The CLIP model used for encoding the text."),
                 io.String.Input(id="text", display_name="text", force_input=True, multiline=True, dynamic_prompts=True, tooltip="The positive prompt's text.")
@@ -229,7 +229,7 @@ class Sage_CombineCLIPTextEncode(io.ComfyNode):
             node_id="Sage_CombineCLIPTextEncode",
             display_name="Combine CLIP Text Encode",
             description="Encodes multiple text inputs with CLIP and combines them into one conditioning.",
-            category="Sage Utils/clip-cond",
+            category=f"{SAGE_UTILS_CAT}/clip-cond",
             inputs=[
                 io.Clip.Input(id="clip", display_name="clip", tooltip="The CLIP model used for encoding the text."),
                 io.DynamicCombo.Input("operation", display_name="operation", options=[
@@ -289,7 +289,7 @@ class Sage_CombineCLIPMultilineTextEncode(io.ComfyNode):
             node_id="Sage_CombineCLIPMultilineTextEncode",
             display_name="Combine CLIP Multiline Text Encode",
             description="Encodes each non-empty line of multiline text with CLIP and combines them into one conditioning.",
-            category="Sage Utils/clip-cond",
+            category=f"{SAGE_UTILS_CAT}/clip-cond",
             inputs=[
                 io.Clip.Input(id="clip", display_name="clip", tooltip="The CLIP model used for encoding the text."),
                 io.Combo.Input(id="mode", display_name="mode", options=["combine", "average"], default="combine", tooltip="How to merge line conditionings."),
@@ -375,7 +375,7 @@ class Sage_MultiplyConditioningStrength(io.ComfyNode):
             node_id="Sage_MultiplyConditioningStrength",
             display_name="Multiply Conditioning Strength",
             description="Multiplies conditioning strength by a float value.",
-            category="Sage Utils/clip-cond",
+            category=f"{SAGE_UTILS_CAT}/clip-cond",
             inputs=[
                 io.Conditioning.Input(id="conditioning", display_name="conditioning", tooltip="The conditioning to scale."),
                 io.DynamicCombo.Input("operation", display_name="operation", options=[
@@ -411,7 +411,7 @@ class Sage_NormalizeConditioningStrength(io.ComfyNode):
             node_id="Sage_NormalizeConditioningStrength",
             display_name="Normalize Conditioning Strength",
             description="Normalizes conditioning strengths to a target magnitude.",
-            category="Sage Utils/clip-cond",
+            category=f"{SAGE_UTILS_CAT}/clip-cond",
             inputs=[
                 io.Conditioning.Input(id="conditioning", display_name="conditioning", tooltip="The conditioning to normalize."),
                 io.Combo.Input(id="norm", display_name="norm", options=["l1", "max_abs"], default="l1", tooltip="Normalization strategy."),
@@ -459,7 +459,7 @@ class Sage_DualCLIPTextEncode(io.ComfyNode):
             node_id="Sage_DualCLIPTextEncode",
             display_name="Dual CLIP Text Encode",
             description="Turns a positive and negative prompt into conditionings, and passes through the prompts. Saves space over two CLIP Text Encoders, and zeros any input not hooked up.",
-            category="Sage Utils/clip-cond",
+            category=f"{SAGE_UTILS_CAT}/clip-cond",
             inputs=[
                 io.Clip.Input(id="clip", display_name="clip", tooltip="The CLIP model used for encoding the text."),
                 io.Boolean.Input(id="clean", display_name="clean", default=True, tooltip="Clean up the text, getting rid of extra spaces, commas, etc."),
@@ -506,7 +506,7 @@ class Sage_DualCLIPTextEncodeLumina2(io.ComfyNode):
             node_id="Sage_DualCLIPTextEncodeLumina2",
             display_name="Dual CLIP Text Encode Lumina 2",
             description="Turns a positive and negative prompt into conditionings, and passes through the prompts. Saves space over two CLIP Text Encoders, and zeros any input not hooked up.",
-            category="Sage Utils/clip-cond",
+            category=f"{SAGE_UTILS_CAT}/clip-cond",
             inputs=[
                 io.Clip.Input(id="clip", display_name="clip", tooltip="The CLIP model used for encoding the text."),
                 io.Combo.Input(id="system_prompt", display_name="system_prompt", options=list(LUMINA2_SYSTEM_PROMPT.keys()), default="superior", tooltip=LUMINA2_SYSTEM_PROMPT_TIP),
@@ -553,7 +553,7 @@ class Sage_SingleCLIPTextImageEncode(io.ComfyNode):
             node_id="Sage_SingleCLIPTextImageEncode",
             display_name="Single CLIP Text Image Encode",
             description="Turns a prompt into conditioning, and passes through the prompt. Zeros any input not hooked up.",
-            category="Sage Utils/clip-cond",
+            category=f"{SAGE_UTILS_CAT}/clip-cond",
             enable_expand=True,
             inputs=[
                 io.Clip.Input(id="clip", display_name="clip", tooltip="The CLIP model used for encoding the text."),
@@ -602,7 +602,7 @@ class Sage_DualCLIPTextEncodeQwen(io.ComfyNode):
             node_id="Sage_DualCLIPTextEncodeQwen",
             display_name="Dual CLIP Text Encode Qwen",
             description="Turns a positive and negative prompt into conditionings, and passes through the prompts. Saves space over two Qwen Image Edit Text Encoders, and zeros any input not hooked up.",
-            category="Sage Utils/clip-cond",
+            category=f"{SAGE_UTILS_CAT}/clip-cond",
             enable_expand=True,
             inputs=[
                 io.Clip.Input(id="clip", display_name="clip", tooltip="The CLIP model used for encoding the text."),

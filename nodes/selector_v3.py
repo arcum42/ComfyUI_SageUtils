@@ -21,6 +21,7 @@ from ..utils.model_discovery import get_model_list
 from .custom_io_v3 import *
 
 from ..utils.logger import get_logger
+from ..utils.constants import SAGE_UTILS_CAT
 
 logger = get_logger('nodes.selector')
 
@@ -128,7 +129,7 @@ class Sage_CheckpointSelector(io.ComfyNode):
             node_id="Sage_CheckpointSelector",
             display_name="Checkpoint Selector",
             description="Selects a checkpoint from a list.",
-            category="Sage Utils/selector",
+            category=f"{SAGE_UTILS_CAT}/selector",
             inputs=[
                 io.Combo.Input("ckpt_name", display_name="ckpt_name", options=get_model_list("checkpoints")),
             ],
@@ -150,7 +151,7 @@ class Sage_UNETSelector(io.ComfyNode):
             node_id="Sage_UNETSelector",
             display_name="UNET Selector",
             description="Selects a UNET model from a list.",
-            category="Sage Utils/selector",
+            category=f"{SAGE_UTILS_CAT}/selector",
             inputs=[
                 io.Combo.Input("unet_name", display_name="unet_name", options=get_model_list("unet")),
                 io.Combo.Input("weight_dtype", display_name="weight_dtype", options=weight_dtype_options, default="default"),
@@ -174,7 +175,7 @@ class Sage_VAESelector(io.ComfyNode):
             node_id="Sage_VAESelector",
             display_name="VAE Selector",
             description="Selects a VAE model from a list.",
-            category="Sage Utils/selector",
+            category=f"{SAGE_UTILS_CAT}/selector",
             inputs=[
                 io.Combo.Input("vae_name", display_name="vae_name", options=get_model_list("vae")),
             ],
@@ -197,7 +198,7 @@ class Sage_CLIPSelector(io.ComfyNode):
             node_id="Sage_CLIPSelector",
             display_name="CLIP Selector",
             description="Selects a CLIP model from a list.",
-            category="Sage Utils/selector",
+            category=f"{SAGE_UTILS_CAT}/selector",
             inputs=[
                 io.Combo.Input("clip_name", display_name="clip_name", options=get_model_list("clip")),
                 io.Combo.Input("clip_type", display_name="clip_type", options=single_clip_loader_options, default="chroma"),
@@ -222,7 +223,7 @@ class Sage_DualCLIPSelector(io.ComfyNode):
             node_id="Sage_DualCLIPSelector",
             display_name="Dual CLIP Selector",
             description="Selects two CLIP models from a list.",
-            category="Sage Utils/selector",
+            category=f"{SAGE_UTILS_CAT}/selector",
             inputs=[
                 io.Combo.Input("clip_name_1", display_name="clip_name_1", options=clip_list),
                 io.Combo.Input("clip_name_2", display_name="clip_name_2", options=clip_list),
@@ -248,7 +249,7 @@ class Sage_TripleCLIPSelector(io.ComfyNode):
             node_id="Sage_TripleCLIPSelector",
             display_name="Triple CLIP Selector",
             description="Selects three CLIP models from a list.",
-            category="Sage Utils/selector",
+            category=f"{SAGE_UTILS_CAT}/selector",
             inputs=[
                 io.Combo.Input("clip_name_1", display_name="clip_name_1", options=clip_list),
                 io.Combo.Input("clip_name_2", display_name="clip_name_2", options=clip_list),
@@ -273,7 +274,7 @@ class Sage_QuadCLIPSelector(io.ComfyNode):
             node_id="Sage_QuadCLIPSelector",
             display_name="Quad CLIP Selector",
             description="Selects four CLIP models from a list.",
-            category="Sage Utils/selector",
+            category=f"{SAGE_UTILS_CAT}/selector",
             inputs=[
                 io.Combo.Input("clip_name_1", display_name="clip_name_1", options=clip_list),
                 io.Combo.Input("clip_name_2", display_name="clip_name_2", options=clip_list),
@@ -306,7 +307,7 @@ class Sage_FlexibleCLIPSelector(io.ComfyNode):
             node_id="Sage_FlexibleCLIPSelector",
             display_name="Flexible CLIP Selector",
             description="Selects a flexible number of CLIP models from a list.",
-            category="Sage Utils/selector",
+            category=f"{SAGE_UTILS_CAT}/selector",
             inputs=[
                 io.DynamicCombo.Input("num_of_clips", display_name="num_of_clips", options=dynamic_options)
             ],
@@ -342,7 +343,7 @@ class Sage_MultiSelectorFlexibleClip(io.ComfyNode):
             node_id="Sage_MultiSelectorFlexibleClip",
             display_name="Multi Selector Flexible CLIP",
             description="Selects checkpoint, UNET, VAE, and a flexible number of CLIP models from lists.",
-            category="Sage Utils/selector",
+            category=f"{SAGE_UTILS_CAT}/selector",
             inputs=[
                 io.Combo.Input("unet_name", display_name="unet_name", options=unet_options),
                 io.Combo.Input("weight_dtype", display_name="weight_dtype", options=weight_dtype_options, default="default"),
@@ -378,7 +379,7 @@ class Sage_MultiSelectorSingleClip(io.ComfyNode):
             node_id="Sage_MultiSelectorSingleClip",
             display_name="Multi Selector Single CLIP",
             description="Selects checkpoint, UNET, VAE, and single CLIP models from lists.",
-            category="Sage Utils/selector",
+            category=f"{SAGE_UTILS_CAT}/selector",
             inputs=[
                 io.Combo.Input("unet_name", display_name="unet_name", options=get_model_list("unet")),
                 io.Combo.Input("weight_dtype", display_name="weight_dtype", options=weight_dtype_options, default="default"),
@@ -403,7 +404,7 @@ class Sage_MultiSelectorDoubleClip(io.ComfyNode):
             node_id="Sage_MultiSelectorDoubleClip",
             display_name="Multi Selector Double CLIP",
             description="Selects checkpoint, UNET, VAE, and two CLIP models from lists.",
-            category="Sage Utils/selector",
+            category=f"{SAGE_UTILS_CAT}/selector",
             inputs=[
                 io.Combo.Input("unet_name", display_name="unet_name", options=get_model_list("unet")),
                 io.Combo.Input("weight_dtype", display_name="weight_dtype", options=weight_dtype_options, default="default"),
@@ -429,7 +430,7 @@ class Sage_MultiSelectorTripleClip(io.ComfyNode):
             node_id="Sage_MultiSelectorTripleClip",
             display_name="Multi Selector Triple CLIP",
             description="Selects checkpoint, UNET, VAE, and three CLIP models from lists.",
-            category="Sage Utils/selector",
+            category=f"{SAGE_UTILS_CAT}/selector",
             inputs=[
                 io.Combo.Input("unet_name", display_name="unet_name", options=get_model_list("unet")),
                 io.Combo.Input("weight_dtype", display_name="weight_dtype", options=weight_dtype_options, default="default"),
@@ -455,7 +456,7 @@ class Sage_MultiSelectorQuadClip(io.ComfyNode):
             node_id="Sage_MultiSelectorQuadClip",
             display_name="Multi Selector Quad CLIP",
             description="Selects checkpoint, UNET, VAE, and four CLIP models from lists.",
-            category="Sage Utils/selector",
+            category=f"{SAGE_UTILS_CAT}/selector",
             inputs=[
                 io.Combo.Input("unet_name", display_name="unet_name", options=get_model_list("unet")),
                 io.Combo.Input("weight_dtype", display_name="weight_dtype", options=weight_dtype_options, default="default"),
@@ -482,7 +483,7 @@ class Sage_ModelShifts(io.ComfyNode):
             node_id="Sage_ModelShifts",
             display_name="Model Shifts",
             description="Get the model shifts and free_u2 settings to apply to the model. This is used by the model loader node.",
-            category="Sage Utils/model",
+            category=f"{SAGE_UTILS_CAT}/model",
             inputs=[
                 io.DynamicCombo.Input("settings", options=[
                     io.DynamicCombo.Option("Shift Only", [
@@ -557,7 +558,7 @@ class Sage_ModelShiftOnly(io.ComfyNode):
             node_id="Sage_ModelShiftOnly",
             display_name="Model Shift Only",
             description="Get the model shifts to apply to the model. This is used by the model loader node.",
-            category="Sage Utils/model",
+            category=f"{SAGE_UTILS_CAT}/model",
             inputs=[
                 io.Combo.Input("shift_type", display_name="shift_type", options=["None", "x1", "x1000"], default="None", tooltip="The type of shift to apply to the model. x1 for Auraflow and Lumina2, x1000 for other models."),
                 io.Float.Input("shift", display_name="shift", default=3.0, min=0.0, max=100.0, step=0.01)
@@ -588,7 +589,7 @@ class Sage_FreeU2(io.ComfyNode):
             node_id="Sage_FreeU2",
             display_name="FreeU v2",
             description="Get the free_u2 settings to apply to the model.",
-            category="Sage Utils/model",
+            category=f"{SAGE_UTILS_CAT}/model",
             inputs=[
                 io.Boolean.Input("freeu_v2", display_name="freeu_v2", default=False),
                 io.Float.Input("b1", display_name="b1", default=1.3, min=0.0, max=10.0, step=0.01),
@@ -628,7 +629,7 @@ class Sage_TilingInfo(io.ComfyNode):
             node_id="Sage_TilingInfo",
             display_name="Tiling Info",
             description="Adds tiling information to the KSampler.",
-            category="Sage Utils/sampler",
+            category=f"{SAGE_UTILS_CAT}/sampler",
             inputs=[
                 io.Int.Input("tile_size", display_name="tile_size", default=512, min=64, max=4096, step=32),
                 io.Int.Input("overlap", display_name="overlap", default=64, min=0, max=4096, step=32),
@@ -658,7 +659,7 @@ class Sage_UnetClipVaeToModelInfo(io.ComfyNode):
             node_id="Sage_UnetClipVaeToModelInfo",
             display_name="UNET CLIP VAE To Model Info",
             description="Returns a list with the unets, clips, and vae in it to be loaded.",
-            category="Sage Utils/model",
+            category=f"{SAGE_UTILS_CAT}/model",
             inputs=[
                 UnetInfo.Input("unet_info", display_name="unet_info"),
                 ClipInfo.Input("clip_info", display_name="clip_info"),
@@ -684,7 +685,7 @@ class Sage_LoraStack(io.ComfyNode):
             node_id="Sage_LoraStack",
             display_name="Lora Stack",
             description="Choose a lora with weights, and add it to a lora_stack. Compatible with other node packs that have lora_stacks.",
-            category="Sage Utils/lora",
+            category=f"{SAGE_UTILS_CAT}/lora",
             inputs=[
                 io.Boolean.Input("enabled", display_name="enabled", default=False),
                 io.Combo.Input("lora_name", display_name="lora_name", options=get_model_list("loras")),
@@ -721,7 +722,7 @@ class Sage_QuickLoraStack(io.ComfyNode):
             node_id="Sage_QuickLoraStack",
             display_name="Quick Lora Stack",
             description="A simplified version of the lora stack node, without the clip_weight.",
-            category="Sage Utils/lora",
+            category=f"{SAGE_UTILS_CAT}/lora",
             inputs=[
                 io.Boolean.Input("enabled", display_name="enabled", default=True),
                 io.Combo.Input("lora_name", display_name="lora_name", options=get_model_list("loras")),
@@ -762,7 +763,7 @@ class Sage_TripleLoraStack(io.ComfyNode):
             node_id="Sage_TripleLoraStack",
             display_name="Lora Stack (x3)",
             description="Choose three loras with weights, and add them to a lora_stack.",
-            category="Sage Utils/lora",
+            category=f"{SAGE_UTILS_CAT}/lora",
             inputs=_build_lora_schema_inputs(cls.NUM_OF_ENTRIES, lora_list, is_quick=False),
             outputs=[
                 LoraStack.Output("out_lora_stack", display_name="lora_stack")
@@ -802,7 +803,7 @@ class Sage_SixLoraStack(Sage_TripleLoraStack):
             node_id="Sage_SixLoraStack",
             display_name="Lora Stack (x6)",
             description="Choose six loras with weights, and add them to a lora_stack.",
-            category="Sage Utils/lora",
+            category=f"{SAGE_UTILS_CAT}/lora",
             inputs=_build_lora_schema_inputs(cls.NUM_OF_ENTRIES, lora_list, is_quick=False),
             outputs=[
                 LoraStack.Output("out_lora_stack", display_name="lora_stack")
@@ -826,7 +827,7 @@ class Sage_NineLoraStack(Sage_TripleLoraStack):
             node_id="Sage_NineLoraStack",
             display_name="Lora Stack (x9)",
             description="Choose nine loras with weights, and add them to a lora_stack.",
-            category="Sage Utils/lora",
+            category=f"{SAGE_UTILS_CAT}/lora",
             inputs=_build_lora_schema_inputs(cls.NUM_OF_ENTRIES, lora_list, is_quick=False),
             outputs=[
                 LoraStack.Output("out_lora_stack", display_name="lora_stack")
@@ -851,7 +852,7 @@ class Sage_TripleQuickLoraStack(io.ComfyNode):
             node_id="Sage_TripleQuickLoraStack",
             display_name="Quick Lora Stack (x3)",
             description="Choose three loras with model weight only, and add them to a lora_stack.",
-            category="Sage Utils/lora",
+            category=f"{SAGE_UTILS_CAT}/lora",
             inputs=_build_lora_schema_inputs(cls.NUM_OF_ENTRIES, lora_list, is_quick=True),
             outputs=[
                 LoraStack.Output("out_lora_stack", display_name="lora_stack")
@@ -889,7 +890,7 @@ class Sage_QuickSixLoraStack(Sage_TripleQuickLoraStack):
             node_id="Sage_QuickSixLoraStack",
             display_name="Quick Lora Stack (x6)",
             description="Choose six loras with model weight only, and add them to a lora_stack.",
-            category="Sage Utils/lora",
+            category=f"{SAGE_UTILS_CAT}/lora",
             inputs=_build_lora_schema_inputs(cls.NUM_OF_ENTRIES, lora_list, is_quick=True),
             outputs=[
                 LoraStack.Output("out_lora_stack", display_name="lora_stack")
@@ -913,7 +914,7 @@ class Sage_QuickNineLoraStack(Sage_TripleQuickLoraStack):
             node_id="Sage_QuickNineLoraStack",
             display_name="Quick Lora Stack (x9)",
             description="Choose nine loras with model weight only, and add them to a lora_stack.",
-            category="Sage Utils/lora",
+            category=f"{SAGE_UTILS_CAT}/lora",
             inputs=_build_lora_schema_inputs(cls.NUM_OF_ENTRIES, lora_list, is_quick=True),
             outputs=[
                 LoraStack.Output("out_lora_stack", display_name="lora_stack")
@@ -935,7 +936,7 @@ class Sage_StackLoraStack(io.ComfyNode):
             node_id="Sage_StackLoraStack",
             display_name="Combine Lora Stacks",
             description="Combine multiple lora stacks into one. This is useful for combining loras from different sources.",
-            category="Sage Utils/lora",
+            category=f"{SAGE_UTILS_CAT}/lora",
             inputs=[
                 io.Autogrow.Input("lora_stack", template=autogrow_template)
             ],

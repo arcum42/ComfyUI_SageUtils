@@ -17,6 +17,7 @@ from ..utils.performance_fix import (
     get_cached_ollama_vision_models_for_input_types,
 )
 from ..utils.settings import get_setting
+from ..utils.constants import SAGE_UTILS_CAT
 
 import logging
 
@@ -47,7 +48,7 @@ class Sage_OllamaAdvancedOptions(io.ComfyNode):
             node_id="Sage_OllamaAdvancedOptions",
             display_name="Ollama Advanced Options",
             description="Get advanced options for LLMs.",
-            category="Sage Utils/LLM/Ollama",
+            category=f"{SAGE_UTILS_CAT}/LLM/Ollama",
             inputs=[
                 io.Int.Input("num_keep", display_name="num_keep", default=0, min=0, max=100, step=1),
                 io.Int.Input("num_predict", display_name="num_predict", default=-1, min=-1, max=2048, step=1),
@@ -81,7 +82,7 @@ class Sage_OllamaLLMPromptText(io.ComfyNode):
             node_id="Sage_OllamaLLMPromptText",
             display_name="Ollama LLM Prompt (Text)",
             description="Provider-specific text generation node for Ollama models.",
-            category="Sage Utils/LLM/Ollama",
+            category=f"{SAGE_UTILS_CAT}/LLM/Ollama",
             inputs=[
                 io.String.Input("prompt", display_name="prompt", default=DEFAULT_TEXT_PROMPT, multiline=True),
                 io.Combo.Input("model", display_name="model", options=sorted(models)),
@@ -135,7 +136,7 @@ class Sage_OllamaLLMPromptVision(io.ComfyNode):
             node_id="Sage_OllamaLLMPromptVision",
             display_name="Ollama LLM Prompt (Vision)",
             description="Provider-specific vision generation node for Ollama models.",
-            category="Sage Utils/LLM/Ollama",
+            category=f"{SAGE_UTILS_CAT}/LLM/Ollama",
             inputs=[
                 io.String.Input("prompt", display_name="prompt", default=DEFAULT_VISION_PROMPT, multiline=True),
                 io.Combo.Input("model", display_name="model", options=sorted(models)),
@@ -195,7 +196,7 @@ class Sage_OllamaLLMPromptVisionRefine(io.ComfyNode):
             node_id="Sage_OllamaLLMPromptVisionRefine",
             display_name="Ollama LLM Prompt (Vision) Refined",
             description="Provider-specific vision-refine node for Ollama models.",
-            category="Sage Utils/LLM/Ollama",
+            category=f"{SAGE_UTILS_CAT}/LLM/Ollama",
             inputs=[
                 io.String.Input("prompt", default=DEFAULT_VISION_PROMPT, multiline=True),
                 io.Combo.Input("model", options=sorted(models)),

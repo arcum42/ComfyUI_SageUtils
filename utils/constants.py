@@ -6,6 +6,9 @@ These constants help maintain consistency and avoid hardcoded values in multiple
 
 import nodes
 
+# Top-level ComfyUI category prefix for all Sage Utils nodes
+SAGE_UTILS_CAT = "Sage Utils"
+
 # Supported model file extensions (based on ComfyUI's supported_pt_extensions)
 # These are the file types that ComfyUI can load as models
 # Additional extensions (.gguf, .nf4) supported via custom extensions

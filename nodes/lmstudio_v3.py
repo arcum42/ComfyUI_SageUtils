@@ -16,6 +16,7 @@ from ..utils.performance_fix import (
     get_cached_lmstudio_vision_models_for_input_types,
 )
 from ..utils.settings import get_setting
+from ..utils.constants import SAGE_UTILS_CAT
 
 import logging
 
@@ -45,7 +46,7 @@ class Sage_LMStudioLLMPromptText(io.ComfyNode):
             node_id="Sage_LMStudioLLMPromptText",
             display_name="LM Studio LLM Prompt (Text)",
             description="Provider-specific text generation node for LM Studio models.",
-            category="Sage Utils/LLM/LM Studio",
+            category=f"{SAGE_UTILS_CAT}/LLM/LM Studio",
             inputs=[
                 io.String.Input("prompt", display_name="prompt", default=DEFAULT_TEXT_PROMPT, multiline=True),
                 io.Combo.Input("model", display_name="model", options=sorted(models)),
@@ -105,7 +106,7 @@ class Sage_LMStudioLLMPromptVision(io.ComfyNode):
             node_id="Sage_LMStudioLLMPromptVision",
             display_name="LM Studio LLM Prompt (Vision)",
             description="Provider-specific vision generation node for LM Studio models.",
-            category="Sage Utils/LLM/LM Studio",
+            category=f"{SAGE_UTILS_CAT}/LLM/LM Studio",
             inputs=[
                 io.String.Input("prompt", display_name="prompt", default=DEFAULT_VISION_PROMPT, multiline=True),
                 io.Combo.Input("model", display_name="model", options=sorted(models)),
@@ -171,7 +172,7 @@ class Sage_LMStudioLLMPromptVisionRefine(io.ComfyNode):
             node_id="Sage_LMStudioLLMPromptVisionRefine",
             display_name="LM Studio LLM Prompt (Vision) Refined",
             description="Provider-specific vision-refine node for LM Studio models.",
-            category="Sage Utils/LLM/LM Studio",
+            category=f"{SAGE_UTILS_CAT}/LLM/LM Studio",
             inputs=[
                 io.String.Input("prompt", default=DEFAULT_VISION_PROMPT, multiline=True),
                 io.Combo.Input("model", options=sorted(models)),

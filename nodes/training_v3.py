@@ -23,6 +23,7 @@ import pathlib
 import os
 import hashlib
 import node_helpers
+from ..utils.constants import SAGE_UTILS_CAT
 
 # ============================================================================
 # ============================================================================
@@ -38,7 +39,7 @@ class Sage_Load_Dataset_From_Folder(io.ComfyNode):
             node_id="Sage_Load_Dataset_From_Folder",
             display_name="Load Dataset From Folder",
             description="Loads images and paired captions from a folder; applies optional prefix/suffix.",
-            category="Sage Utils/train",
+            category=f"{SAGE_UTILS_CAT}/train",
             inputs=[
                 io.String.Input("dataset_path", display_name="dataset_path"),
                 io.String.Input("prefix", display_name="prefix", default="", optional=True),
@@ -141,7 +142,7 @@ class Sage_TrainingCaptionsToConditioning(io.ComfyNode):
             node_id="Sage_TrainingCaptionsToConditioning",
             display_name="Training Captions To Conditioning",
             description="Encodes captions with a CLIP model to produce conditioning vectors for training workflows.",
-            category="Sage Utils/train",
+            category=f"{SAGE_UTILS_CAT}/train",
             inputs=[
                 io.Clip.Input("clip", display_name="clip"),
                 io.String.Input("captions", display_name="captions")
