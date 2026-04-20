@@ -658,6 +658,7 @@ class Sage_DualCLIPTextEncodeQwen(io.ComfyNode):
         )
 
 CONDITIONING_NODES = [
+    # clip conditioning nodes
     Sage_CombineConditioning,
     Sage_AverageConditioning,
     Sage_MultiplyConditioningStrength,

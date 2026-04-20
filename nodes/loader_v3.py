@@ -356,12 +356,17 @@ class Sage_UNETLoRALoader(io.ComfyNode):
 # ============================================================================
 
 MODEL_NODES = [
+    # model loader nodes
     Sage_LoadModelFromInfo,
     Sage_UNETLoaderFromInfo,
     Sage_CLIPLoaderFromInfo,
     Sage_ChromaCLIPLoaderFromInfo,
     Sage_VAELoaderFromInfo,
+
+    # lora loader nodes
     Sage_LoraStackLoader,
+
+    # model loader nodes
     Sage_ModelLoraStackLoader,
     Sage_UNETLoRALoader
 ]

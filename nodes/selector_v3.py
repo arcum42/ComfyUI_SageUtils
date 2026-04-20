@@ -963,6 +963,7 @@ class Sage_StackLoraStack(io.ComfyNode):
 # ============================================================================
 
 SELECTOR_NODES = [
+    # selector nodes
     Sage_CheckpointSelector,
     Sage_UNETSelector,
     Sage_VAESelector,
@@ -976,10 +977,14 @@ SELECTOR_NODES = [
     Sage_MultiSelectorQuadClip,
     Sage_FlexibleCLIPSelector,
     Sage_MultiSelectorFlexibleClip,
+
+    # model utility nodes
     Sage_ModelShifts,
     Sage_ModelShiftOnly,
     Sage_FreeU2,
     Sage_UnetClipVaeToModelInfo,
+
+    # lora stack nodes
     Sage_LoraStack,
     Sage_QuickLoraStack,
     Sage_TripleLoraStack,
@@ -988,5 +993,7 @@ SELECTOR_NODES = [
     Sage_QuickSixLoraStack,
     Sage_QuickNineLoraStack,
     Sage_StackLoraStack,
+
+    # sampler utility nodes
     Sage_TilingInfo
 ]

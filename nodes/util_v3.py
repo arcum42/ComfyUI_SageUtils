@@ -560,13 +560,22 @@ class Sage_PercentageToFloat(io.ComfyNode):
 # ============================================================================
 
 UTIL_NODES = [
+    # utility nodes
     Sage_FreeMemory,
     Sage_LogicalSwitch,
+
+    # model info nodes
     Sage_ModelInfo,
     Sage_ModelInfoDisplay,
     Sage_LoraStackInfoDisplay,
+
+    # model picker nodes
     Sage_MultiModelPicker,
+
+    # lora helper nodes
     Sage_CollectKeywordsFromLoraStack,
     Sage_CheckLorasForUpdates,
+
+    # utility nodes
     Sage_PercentageToFloat
 ]

@@ -249,6 +249,7 @@ class Sage_OllamaLLMPromptVisionRefine(io.ComfyNode):
 
 
 OLLAMA_NODES = [
+    # ollama llm nodes
     Sage_OllamaAdvancedOptions,
     Sage_OllamaLLMPromptText,
     Sage_OllamaLLMPromptVision,

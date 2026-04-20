@@ -682,8 +682,13 @@ class Sage_Ace15AudioEncode(io.ComfyNode):
         return io.NodeOutput(conditioning)
 
 IMAGE_NODES = [
+    # image nodes
     Sage_EmptyLatentImagePassthrough,
+
+    # audio nodes
     Sage_EmptyAceStep15LatentAudio,
+
+    # image nodes
     Sage_LoadImage,
     Sage_SaveImageWithMetadata,
     Sage_CropImage,
@@ -691,6 +696,8 @@ IMAGE_NODES = [
     Sage_QuickResPicker,
     Sage_CubiqImageResize,
     Sage_ReferenceImage,
+
+    # ace conditioning nodes
     Sage_AceAdvOptions,
     Sage_Ace15AudioEncode,
 ]

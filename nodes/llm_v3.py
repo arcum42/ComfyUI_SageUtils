@@ -697,6 +697,7 @@ def _native_generate_text(
 # ============================================================================
 
 LLM_NODES = [
+    # core llm nodes
     Sage_ConstructLLMPrompt,
     Sage_ConstructLLMPromptExtra,
     Sage_LLMPromptText,

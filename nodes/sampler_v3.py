@@ -351,6 +351,7 @@ class Sage_KSamplerAudioDecoder(io.ComfyNode):
         return io.NodeOutput(latent_result[0], {"waveform": audio, "sample_rate": 44100})
 
 SAMPLER_NODES = [
+    # sampler nodes
     Sage_SamplerSelector,
     Sage_SchedulerSelector,
     Sage_SamplerInfo,

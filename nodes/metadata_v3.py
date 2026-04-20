@@ -240,5 +240,6 @@ class Sage_ConstructMetadataFlexible(io.ComfyNode):
 # ============================================================================
 
 METADATA_NODES = [
+    # metadata nodes
     Sage_ConstructMetadataFlexible
 ]

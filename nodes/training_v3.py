@@ -192,6 +192,7 @@ class Sage_TrainingCaptionsToConditioning(io.ComfyNode):
 # ============================================================================
 
 TRAINING_NODES = [
+    # training nodes
     Sage_Load_Dataset_From_Folder,
     Sage_TrainingCaptionsToConditioning
 ]

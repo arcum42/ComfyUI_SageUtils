@@ -236,6 +236,7 @@ class Sage_LMStudioLLMPromptVisionRefine(io.ComfyNode):
 
 
 LMSTUDIO_NODES = [
+    # lm studio llm nodes
     Sage_LMStudioLLMPromptText,
     Sage_LMStudioLLMPromptVision,
     Sage_LMStudioLLMPromptVisionRefine,
