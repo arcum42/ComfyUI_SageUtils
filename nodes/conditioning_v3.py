@@ -15,6 +15,246 @@ from comfy.utils import ProgressBar
 from ..utils.prompt_utils import condition_text, clean_if_needed
 from ..utils.constants import LUMINA2_SYSTEM_PROMPT, LUMINA2_SYSTEM_PROMPT_TIP, PROMPT_START, SAGE_UTILS_CAT
 
+# Text encoding nodes
+
+class Sage_SingleCLIPTextEncode(io.ComfyNode):
+    @classmethod
+    def define_schema(cls):
+        return io.Schema(
+            node_id="Sage_SingleCLIPTextEncode",
+            display_name="Single CLIP Text Encode",
+            description="Turns text into conditioning, and passes through the prompt. Zeros any input not hooked up.",
+            category=f"{SAGE_UTILS_CAT}/clip/encode/text",
+            inputs=[
+                io.Clip.Input(id="clip", display_name="clip", tooltip="The CLIP model used for encoding the text."),
+                io.String.Input(id="text", display_name="text", force_input=True, multiline=True, dynamic_prompts=True, tooltip="The positive prompt's text.")
+            ],
+            outputs=[
+                io.Conditioning.Output(id="conditioning", display_name="conditioning", tooltip="A conditioning containing the embedded text used to guide the diffusion model."),
+                io.String.Output(id="text_output", display_name="text", tooltip="The positive prompt's text.")
+            ]
+        )
+
+    @classmethod
+    def execute(cls, **kwargs) -> NodeOutput:
+        clip = kwargs.get("clip")
+        text = kwargs.get("text")
+        if clip is None:
+            raise ValueError("Clip input is required.")
+        if isinstance(clip, tuple):
+            clip = clip[0]
+        conditioning = condition_text(clip, text)
+        return io.NodeOutput(conditioning, text or "")
+
+
+class Sage_DualCLIPTextEncode(io.ComfyNode):
+    @classmethod
+    def define_schema(cls):
+        return io.Schema(
+            node_id="Sage_DualCLIPTextEncode",
+            display_name="Dual CLIP Text Encode",
+            description="Turns a positive and negative prompt into conditionings, and passes through the prompts. Saves space over two CLIP Text Encoders, and zeros any input not hooked up.",
+            category=f"{SAGE_UTILS_CAT}/clip/encode/text",
+            inputs=[
+                io.Clip.Input(id="clip", display_name="clip", tooltip="The CLIP model used for encoding the text."),
+                io.Boolean.Input(id="clean", display_name="clean", default=True, tooltip="Clean up the text, getting rid of extra spaces, commas, etc."),
+                io.String.Input(id="pos", display_name="pos", optional=True, force_input=True, multiline=True, dynamic_prompts=True, tooltip="The positive prompt's text."),
+                io.String.Input(id="neg", display_name="neg", optional=True, force_input=True, multiline=True, dynamic_prompts=True, tooltip="The negative prompt's text.")
+            ],
+            outputs=[
+                io.Conditioning.Output(id="positive", display_name="positive", tooltip="A conditioning containing the embedded text used to guide the diffusion model."),
+                io.Conditioning.Output(id="negative", display_name="negative", tooltip="A conditioning containing the embedded text used to guide the diffusion model."),
+                io.String.Output(id="pos_text", display_name="pos_text", tooltip="The positive prompt's text."),
+                io.String.Output(id="neg_text", display_name="neg_text", tooltip="The negative prompt's text.")
+            ]
+        )
+
+    @classmethod
+    def execute(cls, **kwargs) -> NodeOutput:
+        clip = kwargs.get("clip")
+        clean = kwargs.get("clean", True)
+        pos = kwargs.get("pos", "")
+        neg = kwargs.get("neg", "")
+        pbar = ProgressBar(2)
+
+        if clip is None:
+            raise ValueError("Clip input is required.")
+        if isinstance(clip, tuple):
+            clip = clip[0]
+        pos = clean_if_needed(pos, clean)
+        neg = clean_if_needed(neg, clean)
+        if isinstance(clip, tuple):
+            clip = clip[0]
+    
+        pbar.update(1)
+        pos_cond = condition_text(clip, pos)
+
+        pbar.update(1)
+        neg_cond = condition_text(clip, neg)
+
+        return io.NodeOutput(pos_cond, neg_cond, pos or "", neg or "")
+
+class Sage_DualCLIPTextEncodeLumina2(io.ComfyNode):
+    @classmethod
+    def define_schema(cls):
+        return io.Schema(
+            node_id="Sage_DualCLIPTextEncodeLumina2",
+            display_name="Dual CLIP Text Encode Lumina 2",
+            description="Turns a positive and negative prompt into conditionings, and passes through the prompts. Saves space over two CLIP Text Encoders, and zeros any input not hooked up.",
+            category=f"{SAGE_UTILS_CAT}/clip/encode/text",
+            inputs=[
+                io.Clip.Input(id="clip", display_name="clip", tooltip="The CLIP model used for encoding the text."),
+                io.Combo.Input(id="system_prompt", display_name="system_prompt", options=list(LUMINA2_SYSTEM_PROMPT.keys()), default="superior", tooltip=LUMINA2_SYSTEM_PROMPT_TIP),
+                io.Boolean.Input(id="clean", display_name="clean", default=True, tooltip="Clean up the text, getting rid of extra spaces, commas, etc."),
+                io.String.Input(id="pos", display_name="pos", optional=True, force_input=True, multiline=True, dynamic_prompts=True, tooltip="The positive prompt's text."),
+                io.String.Input(id="neg", display_name="neg", optional=True, force_input=True, multiline=True, dynamic_prompts=True, tooltip="The negative prompt's text."),
+            ],
+            outputs=[
+                io.Conditioning.Output(id="positive", display_name="positive", tooltip="A conditioning containing the embedded text used to guide the diffusion model."),
+                io.Conditioning.Output(id="negative", display_name="negative", tooltip="A conditioning containing the embedded text used to guide the diffusion model."),
+                io.String.Output(id="pos_text", display_name="pos_text", tooltip="The positive prompt's text."),
+                io.String.Output(id="neg_text", display_name="neg_text", tooltip="The negative prompt's text.")
+            ]
+        )
+
+    @classmethod
+    def execute(cls, **kwargs) -> NodeOutput:
+        clip = kwargs.get("clip")
+        system_prompt = kwargs.get("system_prompt", "superior")
+        clean = kwargs.get("clean", True)
+        pos = kwargs.get("pos", "")
+        neg = kwargs.get("neg", "")
+
+        pbar = ProgressBar(2)
+        sys_prompt = LUMINA2_SYSTEM_PROMPT[system_prompt]
+        pos = f'{sys_prompt}{PROMPT_START}{pos}' if pos is not None else None
+        neg = f'{sys_prompt}{PROMPT_START}{neg}' if neg is not None else None
+        pos = clean_if_needed(pos, clean)
+        neg = clean_if_needed(neg, clean)
+        if isinstance(clip, tuple):
+            clip = clip[0]
+    
+        pbar.update(1)
+        pos_cond = condition_text(clip, pos)
+
+        pbar.update(1)
+        neg_cond = condition_text(clip, neg)
+        return io.NodeOutput(pos_cond, neg_cond, pos or "", neg or "")
+
+# Text with image encoding nodes
+
+class Sage_SingleCLIPTextImageEncode(io.ComfyNode):
+    @classmethod
+    def define_schema(cls):
+        return io.Schema(
+            node_id="Sage_SingleCLIPTextImageEncode",
+            display_name="Single CLIP Text Image Encode",
+            description="Turns a prompt into conditioning, and passes through the prompt. Zeros any input not hooked up.",
+            category=f"{SAGE_UTILS_CAT}/clip/encode/image",
+            enable_expand=True,
+            inputs=[
+                io.Clip.Input(id="clip", display_name="clip", tooltip="The CLIP model used for encoding the text."),
+                io.Boolean.Input(id="clean", display_name="clean", default=True, tooltip="Clean up the text, getting rid of extra spaces, commas, etc."),
+                io.Vae.Input(id="vae", display_name="vae", optional=True, tooltip="The VAE model used for encoding the reference image."),
+                io.String.Input(id="text", display_name="text", optional=True, force_input=True, multiline=True, dynamic_prompts=True, tooltip="The prompt's text."),
+                io.Image.Input(id="image", display_name="image", optional=True, tooltip="The prompt's image.")
+            ],
+            outputs=[
+                io.Conditioning.Output(id="conditioning", display_name="conditioning", tooltip="A conditioning containing the embedded text used to guide the diffusion model."),
+                io.String.Output(id="text", display_name="text", tooltip="The positive prompt's text.")
+            ]
+        )
+
+    @classmethod
+    def execute(cls, **kwargs) -> NodeOutput:
+        clip = kwargs.get("clip")
+        clean = kwargs.get("clean", True)
+        vae = kwargs.get("vae", None)
+        text = kwargs.get("text", "")
+        image = kwargs.get("image", None)
+
+        if isinstance(clip, tuple):
+            clip = clip[0]
+
+        text = clean_if_needed(text, clean)
+
+        graph = GraphBuilder()
+
+        clip_node = graph.node("TextEncodeQwenImageEdit", clip=clip, prompt=text, vae=vae, image=image)
+        cond = clip_node.out(0)
+        if text is None and image is None:
+            text = ""
+            pos_zero_node = graph.node("ConditioningZeroOut", conditioning=clip_node.out(0))
+            cond = pos_zero_node.out(0)
+
+        return io.NodeOutput(
+            cond, text or "",
+            expand=graph.finalize()
+        )
+
+class Sage_DualCLIPTextEncodeQwen(io.ComfyNode):
+    @classmethod
+    def define_schema(cls):
+        return io.Schema(
+            node_id="Sage_DualCLIPTextEncodeQwen",
+            display_name="Dual CLIP Text Encode Qwen",
+            description="Turns a positive and negative prompt into conditionings, and passes through the prompts. Saves space over two Qwen Image Edit Text Encoders, and zeros any input not hooked up.",
+            category=f"{SAGE_UTILS_CAT}/clip/encode/image",
+            enable_expand=True,
+            inputs=[
+                io.Clip.Input(id="clip", display_name="clip", tooltip="The CLIP model used for encoding the text."),
+                io.Boolean.Input(id="clean", display_name="clean", default=True, tooltip="Clean up the text, getting rid of extra spaces, commas, etc."),
+                io.Vae.Input(id="vae", display_name="vae", optional=True, tooltip="The VAE model used for encoding the reference image."),
+                io.String.Input(id="pos", display_name="pos", optional=True, force_input=True, multiline=True, dynamic_prompts=True, tooltip="The positive prompt's text."),
+                io.String.Input(id="neg", display_name="neg", optional=True, force_input=True, multiline=True, dynamic_prompts=True, tooltip="The negative prompt's text."),
+                io.Image.Input(id="pos_image", display_name="pos_image", optional=True, tooltip="The positive prompt's image."),
+                io.Image.Input(id="neg_image", display_name="neg_image", optional=True, tooltip="The negative prompt's image.")
+            ],
+            outputs=[
+                io.Conditioning.Output(id="positive", display_name="positive", tooltip="A conditioning containing the embedded text used to guide the diffusion model."),
+                io.Conditioning.Output(id="negative", display_name="negative", tooltip="A conditioning containing the embedded text used to guide the diffusion model."),
+                io.String.Output(id="pos_text", display_name="pos_text", tooltip="The positive prompt's text."),
+                io.String.Output(id="neg_text", display_name="neg_text", tooltip="The negative prompt's text.")
+            ]
+        )
+
+    @classmethod
+    def execute(cls, **kwargs) -> NodeOutput:
+        clip = kwargs.get("clip")
+        clean = kwargs.get("clean", True)
+        vae = kwargs.get("vae", None)
+        pos = kwargs.get("pos", "")
+        pos_image = kwargs.get("pos_image", None)
+        neg = kwargs.get("neg", "")
+        neg_image = kwargs.get("neg_image", None)
+
+        if isinstance(clip, tuple):
+            clip = clip[0]
+
+        pos = clean_if_needed(pos, clean)
+        neg = clean_if_needed(neg, clean)
+
+        graph = GraphBuilder()
+
+        pos_node = graph.node("TextEncodeQwenImageEdit", clip=clip, prompt=pos, vae=vae, image=pos_image)
+        pos_cond = pos_node.out(0)
+        if pos is None and pos_image is None:
+            pos = ""
+            pos_zero_node = graph.node("ConditioningZeroOut", conditioning=pos_node.out(0))
+            pos_cond = pos_zero_node.out(0)
+        neg_node = graph.node("TextEncodeQwenImageEdit", clip=clip, prompt=neg, vae=vae, image=neg_image)
+        neg_cond = neg_node.out(0)
+        if neg is None and neg_image is None:
+            neg = ""
+            neg_zero_node = graph.node("ConditioningZeroOut", conditioning=neg_node.out(0))
+            neg_cond = neg_zero_node.out(0)
+
+        return io.NodeOutput(
+            pos_cond, neg_cond, pos or "", neg or "",
+            expand=graph.finalize()
+        )
+
+# Conditioning manipulation nodes
 
 def _apply_conditioning_operation(conditioning, operation: dict):
     op_mode = operation.get("operation", "none")
@@ -40,6 +280,28 @@ def _apply_conditioning_operation(conditioning, operation: dict):
         scaled.append([token, new_meta])
     return scaled
 
+class Sage_ZeroConditioning(io.ComfyNode):
+    @classmethod
+    def define_schema(cls):
+        return io.Schema(
+            node_id="Sage_ZeroConditioning",
+            display_name="Zero Conditioning",
+            description="Returns zeroed out conditioning.",
+            category=f"{SAGE_UTILS_CAT}/clip/conditioning",
+            inputs=[
+                io.Clip.Input(id="clip", display_name="clip", tooltip="The CLIP model used for encoding.")
+            ],
+            outputs=[
+                io.Conditioning.Output(id="conditioning", display_name="conditioning", tooltip="A conditioning containing all zeros.")
+            ]
+        )
+
+    @classmethod
+    def execute(cls, **kwargs) -> NodeOutput:
+        clip = kwargs.get("clip")
+        if clip is None:
+            raise ValueError("Clip input is required.")
+        return io.NodeOutput(condition_text(clip))
 
 class Sage_CombineConditioning(io.ComfyNode):
     @classmethod
@@ -54,7 +316,7 @@ class Sage_CombineConditioning(io.ComfyNode):
             node_id="Sage_CombineConditioning",
             display_name="Combine Conditioning",
             description="Combines multiple conditionings into a single conditioning.",
-            category=f"{SAGE_UTILS_CAT}/clip-cond",
+            category=f"{SAGE_UTILS_CAT}/clip/conditioning",
             inputs=[
                 io.DynamicCombo.Input("operation", display_name="operation", options=[
                     io.DynamicCombo.Option("none", []),
@@ -113,7 +375,7 @@ class Sage_AverageConditioning(io.ComfyNode):
             node_id="Sage_AverageConditioning",
             display_name="Average Conditioning",
             description="Averages multiple conditioning inputs into one conditioning.",
-            category=f"{SAGE_UTILS_CAT}/clip-cond",
+            category=f"{SAGE_UTILS_CAT}/clip/conditioning",
             enable_expand=True,
             inputs=[
                 io.Autogrow.Input("conditionings", template=autogrow_template),
@@ -162,60 +424,6 @@ class Sage_AverageConditioning(io.ComfyNode):
             expand=graph.finalize(),
         )
 
-
-class Sage_ZeroConditioning(io.ComfyNode):
-    @classmethod
-    def define_schema(cls):
-        return io.Schema(
-            node_id="Sage_ZeroConditioning",
-            display_name="Zero Conditioning",
-            description="Returns zeroed out conditioning.",
-            category=f"{SAGE_UTILS_CAT}/clip-cond",
-            inputs=[
-                io.Clip.Input(id="clip", display_name="clip", tooltip="The CLIP model used for encoding.")
-            ],
-            outputs=[
-                io.Conditioning.Output(id="conditioning", display_name="conditioning", tooltip="A conditioning containing all zeros.")
-            ]
-        )
-
-    @classmethod
-    def execute(cls, **kwargs) -> NodeOutput:
-        clip = kwargs.get("clip")
-        if clip is None:
-            raise ValueError("Clip input is required.")
-        return io.NodeOutput(condition_text(clip))
-
-class Sage_SingleCLIPTextEncode(io.ComfyNode):
-    @classmethod
-    def define_schema(cls):
-        return io.Schema(
-            node_id="Sage_SingleCLIPTextEncode",
-            display_name="Single CLIP Text Encode",
-            description="Turns text into conditioning, and passes through the prompt. Zeros any input not hooked up.",
-            category=f"{SAGE_UTILS_CAT}/clip-cond",
-            inputs=[
-                io.Clip.Input(id="clip", display_name="clip", tooltip="The CLIP model used for encoding the text."),
-                io.String.Input(id="text", display_name="text", force_input=True, multiline=True, dynamic_prompts=True, tooltip="The positive prompt's text.")
-            ],
-            outputs=[
-                io.Conditioning.Output(id="conditioning", display_name="conditioning", tooltip="A conditioning containing the embedded text used to guide the diffusion model."),
-                io.String.Output(id="text_output", display_name="text", tooltip="The positive prompt's text.")
-            ]
-        )
-
-    @classmethod
-    def execute(cls, **kwargs) -> NodeOutput:
-        clip = kwargs.get("clip")
-        text = kwargs.get("text")
-        if clip is None:
-            raise ValueError("Clip input is required.")
-        if isinstance(clip, tuple):
-            clip = clip[0]
-        conditioning = condition_text(clip, text)
-        return io.NodeOutput(conditioning, text or "")
-
-
 class Sage_CombineCLIPTextEncode(io.ComfyNode):
     @classmethod
     def define_schema(cls):
@@ -229,7 +437,7 @@ class Sage_CombineCLIPTextEncode(io.ComfyNode):
             node_id="Sage_CombineCLIPTextEncode",
             display_name="Combine CLIP Text Encode",
             description="Encodes multiple text inputs with CLIP and combines them into one conditioning.",
-            category=f"{SAGE_UTILS_CAT}/clip-cond",
+            category=f"{SAGE_UTILS_CAT}/clip/helpers",
             inputs=[
                 io.Clip.Input(id="clip", display_name="clip", tooltip="The CLIP model used for encoding the text."),
                 io.DynamicCombo.Input("operation", display_name="operation", options=[
@@ -289,7 +497,7 @@ class Sage_CombineCLIPMultilineTextEncode(io.ComfyNode):
             node_id="Sage_CombineCLIPMultilineTextEncode",
             display_name="Combine CLIP Multiline Text Encode",
             description="Encodes each non-empty line of multiline text with CLIP and combines them into one conditioning.",
-            category=f"{SAGE_UTILS_CAT}/clip-cond",
+            category=f"{SAGE_UTILS_CAT}/clip/helpers",
             inputs=[
                 io.Clip.Input(id="clip", display_name="clip", tooltip="The CLIP model used for encoding the text."),
                 io.Combo.Input(id="mode", display_name="mode", options=["combine", "average"], default="combine", tooltip="How to merge line conditionings."),
@@ -375,7 +583,7 @@ class Sage_MultiplyConditioningStrength(io.ComfyNode):
             node_id="Sage_MultiplyConditioningStrength",
             display_name="Multiply Conditioning Strength",
             description="Multiplies conditioning strength by a float value.",
-            category=f"{SAGE_UTILS_CAT}/clip-cond",
+            category=f"{SAGE_UTILS_CAT}/clip/conditioning",
             inputs=[
                 io.Conditioning.Input(id="conditioning", display_name="conditioning", tooltip="The conditioning to scale."),
                 io.DynamicCombo.Input("operation", display_name="operation", options=[
@@ -411,7 +619,7 @@ class Sage_NormalizeConditioningStrength(io.ComfyNode):
             node_id="Sage_NormalizeConditioningStrength",
             display_name="Normalize Conditioning Strength",
             description="Normalizes conditioning strengths to a target magnitude.",
-            category=f"{SAGE_UTILS_CAT}/clip-cond",
+            category=f"{SAGE_UTILS_CAT}/clip/conditioning",
             inputs=[
                 io.Conditioning.Input(id="conditioning", display_name="conditioning", tooltip="The conditioning to normalize."),
                 io.Combo.Input(id="norm", display_name="norm", options=["l1", "max_abs"], default="l1", tooltip="Normalization strategy."),
@@ -452,223 +660,24 @@ class Sage_NormalizeConditioningStrength(io.ComfyNode):
 
         return io.NodeOutput(normalized)
 
-class Sage_DualCLIPTextEncode(io.ComfyNode):
-    @classmethod
-    def define_schema(cls):
-        return io.Schema(
-            node_id="Sage_DualCLIPTextEncode",
-            display_name="Dual CLIP Text Encode",
-            description="Turns a positive and negative prompt into conditionings, and passes through the prompts. Saves space over two CLIP Text Encoders, and zeros any input not hooked up.",
-            category=f"{SAGE_UTILS_CAT}/clip-cond",
-            inputs=[
-                io.Clip.Input(id="clip", display_name="clip", tooltip="The CLIP model used for encoding the text."),
-                io.Boolean.Input(id="clean", display_name="clean", default=True, tooltip="Clean up the text, getting rid of extra spaces, commas, etc."),
-                io.String.Input(id="pos", display_name="pos", optional=True, force_input=True, multiline=True, dynamic_prompts=True, tooltip="The positive prompt's text."),
-                io.String.Input(id="neg", display_name="neg", optional=True, force_input=True, multiline=True, dynamic_prompts=True, tooltip="The negative prompt's text.")
-            ],
-            outputs=[
-                io.Conditioning.Output(id="positive", display_name="positive", tooltip="A conditioning containing the embedded text used to guide the diffusion model."),
-                io.Conditioning.Output(id="negative", display_name="negative", tooltip="A conditioning containing the embedded text used to guide the diffusion model."),
-                io.String.Output(id="pos_text", display_name="pos_text", tooltip="The positive prompt's text."),
-                io.String.Output(id="neg_text", display_name="neg_text", tooltip="The negative prompt's text.")
-            ]
-        )
-
-    @classmethod
-    def execute(cls, **kwargs) -> NodeOutput:
-        clip = kwargs.get("clip")
-        clean = kwargs.get("clean", True)
-        pos = kwargs.get("pos", "")
-        neg = kwargs.get("neg", "")
-        pbar = ProgressBar(2)
-
-        if clip is None:
-            raise ValueError("Clip input is required.")
-        if isinstance(clip, tuple):
-            clip = clip[0]
-        pos = clean_if_needed(pos, clean)
-        neg = clean_if_needed(neg, clean)
-        if isinstance(clip, tuple):
-            clip = clip[0]
-    
-        pbar.update(1)
-        pos_cond = condition_text(clip, pos)
-
-        pbar.update(1)
-        neg_cond = condition_text(clip, neg)
-
-        return io.NodeOutput(pos_cond, neg_cond, pos or "", neg or "")
-
-class Sage_DualCLIPTextEncodeLumina2(io.ComfyNode):
-    @classmethod
-    def define_schema(cls):
-        return io.Schema(
-            node_id="Sage_DualCLIPTextEncodeLumina2",
-            display_name="Dual CLIP Text Encode Lumina 2",
-            description="Turns a positive and negative prompt into conditionings, and passes through the prompts. Saves space over two CLIP Text Encoders, and zeros any input not hooked up.",
-            category=f"{SAGE_UTILS_CAT}/clip-cond",
-            inputs=[
-                io.Clip.Input(id="clip", display_name="clip", tooltip="The CLIP model used for encoding the text."),
-                io.Combo.Input(id="system_prompt", display_name="system_prompt", options=list(LUMINA2_SYSTEM_PROMPT.keys()), default="superior", tooltip=LUMINA2_SYSTEM_PROMPT_TIP),
-                io.Boolean.Input(id="clean", display_name="clean", default=True, tooltip="Clean up the text, getting rid of extra spaces, commas, etc."),
-                io.String.Input(id="pos", display_name="pos", optional=True, force_input=True, multiline=True, dynamic_prompts=True, tooltip="The positive prompt's text."),
-                io.String.Input(id="neg", display_name="neg", optional=True, force_input=True, multiline=True, dynamic_prompts=True, tooltip="The negative prompt's text."),
-            ],
-            outputs=[
-                io.Conditioning.Output(id="positive", display_name="positive", tooltip="A conditioning containing the embedded text used to guide the diffusion model."),
-                io.Conditioning.Output(id="negative", display_name="negative", tooltip="A conditioning containing the embedded text used to guide the diffusion model."),
-                io.String.Output(id="pos_text", display_name="pos_text", tooltip="The positive prompt's text."),
-                io.String.Output(id="neg_text", display_name="neg_text", tooltip="The negative prompt's text.")
-            ]
-        )
-
-    @classmethod
-    def execute(cls, **kwargs) -> NodeOutput:
-        clip = kwargs.get("clip")
-        system_prompt = kwargs.get("system_prompt", "superior")
-        clean = kwargs.get("clean", True)
-        pos = kwargs.get("pos", "")
-        neg = kwargs.get("neg", "")
-
-        pbar = ProgressBar(2)
-        sys_prompt = LUMINA2_SYSTEM_PROMPT[system_prompt]
-        pos = f'{sys_prompt}{PROMPT_START}{pos}' if pos is not None else None
-        neg = f'{sys_prompt}{PROMPT_START}{neg}' if neg is not None else None
-        pos = clean_if_needed(pos, clean)
-        neg = clean_if_needed(neg, clean)
-        if isinstance(clip, tuple):
-            clip = clip[0]
-    
-        pbar.update(1)
-        pos_cond = condition_text(clip, pos)
-
-        pbar.update(1)
-        neg_cond = condition_text(clip, neg)
-        return io.NodeOutput(pos_cond, neg_cond, pos or "", neg or "")
-
-class Sage_SingleCLIPTextImageEncode(io.ComfyNode):
-    @classmethod
-    def define_schema(cls):
-        return io.Schema(
-            node_id="Sage_SingleCLIPTextImageEncode",
-            display_name="Single CLIP Text Image Encode",
-            description="Turns a prompt into conditioning, and passes through the prompt. Zeros any input not hooked up.",
-            category=f"{SAGE_UTILS_CAT}/clip-cond",
-            enable_expand=True,
-            inputs=[
-                io.Clip.Input(id="clip", display_name="clip", tooltip="The CLIP model used for encoding the text."),
-                io.Boolean.Input(id="clean", display_name="clean", default=True, tooltip="Clean up the text, getting rid of extra spaces, commas, etc."),
-                io.Vae.Input(id="vae", display_name="vae", optional=True, tooltip="The VAE model used for encoding the reference image."),
-                io.String.Input(id="text", display_name="text", optional=True, force_input=True, multiline=True, dynamic_prompts=True, tooltip="The prompt's text."),
-                io.Image.Input(id="image", display_name="image", optional=True, tooltip="The prompt's image.")
-            ],
-            outputs=[
-                io.Conditioning.Output(id="conditioning", display_name="conditioning", tooltip="A conditioning containing the embedded text used to guide the diffusion model."),
-                io.String.Output(id="text", display_name="text", tooltip="The positive prompt's text.")
-            ]
-        )
-
-    @classmethod
-    def execute(cls, **kwargs) -> NodeOutput:
-        clip = kwargs.get("clip")
-        clean = kwargs.get("clean", True)
-        vae = kwargs.get("vae", None)
-        text = kwargs.get("text", "")
-        image = kwargs.get("image", None)
-
-        if isinstance(clip, tuple):
-            clip = clip[0]
-
-        text = clean_if_needed(text, clean)
-
-        graph = GraphBuilder()
-
-        clip_node = graph.node("TextEncodeQwenImageEdit", clip=clip, prompt=text, vae=vae, image=image)
-        cond = clip_node.out(0)
-        if text is None and image is None:
-            text = ""
-            pos_zero_node = graph.node("ConditioningZeroOut", conditioning=clip_node.out(0))
-            cond = pos_zero_node.out(0)
-
-        return io.NodeOutput(
-            cond, text or "",
-            expand=graph.finalize()
-        )
-
-class Sage_DualCLIPTextEncodeQwen(io.ComfyNode):
-    @classmethod
-    def define_schema(cls):
-        return io.Schema(
-            node_id="Sage_DualCLIPTextEncodeQwen",
-            display_name="Dual CLIP Text Encode Qwen",
-            description="Turns a positive and negative prompt into conditionings, and passes through the prompts. Saves space over two Qwen Image Edit Text Encoders, and zeros any input not hooked up.",
-            category=f"{SAGE_UTILS_CAT}/clip-cond",
-            enable_expand=True,
-            inputs=[
-                io.Clip.Input(id="clip", display_name="clip", tooltip="The CLIP model used for encoding the text."),
-                io.Boolean.Input(id="clean", display_name="clean", default=True, tooltip="Clean up the text, getting rid of extra spaces, commas, etc."),
-                io.Vae.Input(id="vae", display_name="vae", optional=True, tooltip="The VAE model used for encoding the reference image."),
-                io.String.Input(id="pos", display_name="pos", optional=True, force_input=True, multiline=True, dynamic_prompts=True, tooltip="The positive prompt's text."),
-                io.String.Input(id="neg", display_name="neg", optional=True, force_input=True, multiline=True, dynamic_prompts=True, tooltip="The negative prompt's text."),
-                io.Image.Input(id="pos_image", display_name="pos_image", optional=True, tooltip="The positive prompt's image."),
-                io.Image.Input(id="neg_image", display_name="neg_image", optional=True, tooltip="The negative prompt's image.")
-            ],
-            outputs=[
-                io.Conditioning.Output(id="positive", display_name="positive", tooltip="A conditioning containing the embedded text used to guide the diffusion model."),
-                io.Conditioning.Output(id="negative", display_name="negative", tooltip="A conditioning containing the embedded text used to guide the diffusion model."),
-                io.String.Output(id="pos_text", display_name="pos_text", tooltip="The positive prompt's text."),
-                io.String.Output(id="neg_text", display_name="neg_text", tooltip="The negative prompt's text.")
-            ]
-        )
-
-    @classmethod
-    def execute(cls, **kwargs) -> NodeOutput:
-        clip = kwargs.get("clip")
-        clean = kwargs.get("clean", True)
-        vae = kwargs.get("vae", None)
-        pos = kwargs.get("pos", "")
-        pos_image = kwargs.get("pos_image", None)
-        neg = kwargs.get("neg", "")
-        neg_image = kwargs.get("neg_image", None)
-
-        if isinstance(clip, tuple):
-            clip = clip[0]
-
-        pos = clean_if_needed(pos, clean)
-        neg = clean_if_needed(neg, clean)
-
-        graph = GraphBuilder()
-
-        pos_node = graph.node("TextEncodeQwenImageEdit", clip=clip, prompt=pos, vae=vae, image=pos_image)
-        pos_cond = pos_node.out(0)
-        if pos is None and pos_image is None:
-            pos = ""
-            pos_zero_node = graph.node("ConditioningZeroOut", conditioning=pos_node.out(0))
-            pos_cond = pos_zero_node.out(0)
-        neg_node = graph.node("TextEncodeQwenImageEdit", clip=clip, prompt=neg, vae=vae, image=neg_image)
-        neg_cond = neg_node.out(0)
-        if neg is None and neg_image is None:
-            neg = ""
-            neg_zero_node = graph.node("ConditioningZeroOut", conditioning=neg_node.out(0))
-            neg_cond = neg_zero_node.out(0)
-
-        return io.NodeOutput(
-            pos_cond, neg_cond, pos or "", neg or "",
-            expand=graph.finalize()
-        )
-
 CONDITIONING_NODES = [
     # clip conditioning nodes
+    # encoding nodes
+    # text
+    Sage_SingleCLIPTextEncode,
+    Sage_DualCLIPTextEncode,
+    Sage_DualCLIPTextEncodeLumina2,
+    
+    # image 
+    Sage_SingleCLIPTextImageEncode,
+    Sage_DualCLIPTextEncodeQwen,
+    
+    # utility nodes
+    Sage_ZeroConditioning,
     Sage_CombineConditioning,
     Sage_AverageConditioning,
     Sage_MultiplyConditioningStrength,
     Sage_NormalizeConditioningStrength,
-    Sage_ZeroConditioning,
-    Sage_SingleCLIPTextEncode,
     Sage_CombineCLIPTextEncode,
-    Sage_CombineCLIPMultilineTextEncode,
-    Sage_DualCLIPTextEncode,
-    Sage_DualCLIPTextEncodeLumina2,
-    Sage_DualCLIPTextEncodeQwen,
-    Sage_SingleCLIPTextImageEncode
+    Sage_CombineCLIPMultilineTextEncode
 ]
