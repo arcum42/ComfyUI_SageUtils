@@ -12,8 +12,12 @@ from comfy_execution.graph_utils import GraphBuilder
 from comfy.utils import ProgressBar
 
 # Import specific utilities from source modules
+from ..utils.logger import get_logger
 from ..utils.prompt_utils import condition_text, clean_if_needed
 from ..utils.constants import LUMINA2_SYSTEM_PROMPT, LUMINA2_SYSTEM_PROMPT_TIP, PROMPT_START, SAGE_UTILS_CAT
+from .custom_io_v3 import AdvAudioInfo
+
+logger = get_logger('nodes.conditioning')
 
 # Text encoding nodes
 

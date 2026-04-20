@@ -19,11 +19,22 @@ from .nodes.text_v3 import *
 from .nodes.training_v3 import *
 from .nodes.util_v3 import *
 from .nodes.prompts_v3 import *
+from .nodes.audio_v3 import *
 
 NODE_LIST = []
-NODE_LIST = NODE_LIST + TEXT_NODES + PROMPT_NODES + CONDITIONING_NODES + LLM_NODES + IMAGE_NODES + \
-    MODEL_NODES + METADATA_NODES + SELECTOR_NODES + TRAINING_NODES + UTIL_NODES + \
-    SAMPLER_NODES 
+NODE_LIST = NODE_LIST + \
+    AUDIO_NODES + \
+    TEXT_NODES + \
+    PROMPT_NODES + \
+    LLM_NODES + \
+    CONDITIONING_NODES + \
+    IMAGE_NODES + \
+    SELECTOR_NODES + \
+    MODEL_NODES + \
+    SAMPLER_NODES + \
+    METADATA_NODES + \
+    TRAINING_NODES + \
+    UTIL_NODES
 
 class SageExtension(ComfyExtension):
     @override
