@@ -115,7 +115,7 @@ class Sage_ModelInfo(io.ComfyNode):
             node_id="Sage_ModelInfo",
             display_name="Model Info",
             description="Pull the civitai model info, and return what the base model is, the name with version, the url, the url for the latest version, and a preview image.",
-            category=f"{SAGE_UTILS_CAT}/model/info",
+            category=f"{SAGE_UTILS_CAT}/info",
             inputs=[
                 ModelInfo.Input("model_info", display_name="model_info")
             ],
@@ -296,7 +296,7 @@ class Sage_LoraStackInfoDisplay(io.ComfyNode):
             node_id="Sage_LoraStackInfoDisplay",
             display_name="LoRA Stack Info Display",
             description="Display information for all LoRAs in a lora_stack as formatted markdown with civitai details, weights, and links.",
-            category=f"{SAGE_UTILS_CAT}/model/info",
+            category=f"{SAGE_UTILS_CAT}/info",
             is_output_node=True,
             inputs=[
                 LoraStack.Input("lora_stack", display_name="lora_stack")
@@ -438,7 +438,7 @@ class Sage_MultiModelPicker(io.ComfyNode):
             node_id="Sage_MultiModelPicker",
             display_name="Multi Model Picker",
             description="Select one model_info from a list by index.",
-            category=f"{SAGE_UTILS_CAT}/model",
+            category=f"{SAGE_UTILS_CAT}/util",
             inputs=[
                 io.Int.Input("index", display_name="index", default=0, min=0, max=100, step=1, tooltip="0-based index into provided model list"),
                 io.Autogrow.Input("model_template", template=autogrow_template)

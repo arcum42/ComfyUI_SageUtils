@@ -213,6 +213,12 @@
             "type": "boolean",
             "prompt": "Describe only the most important elements. Omit unnecessary details."
         },
+        "avoid_flowery_language": {
+            "name": "Avoid Flowery Language",
+            "category": "style",
+            "type": "boolean",
+            "prompt": "Use straightforward, unembellished language. Avoid flowery, poetic, or overly elaborate phrasing."
+        },
         "exclude_watermarks": {
             "name": "Exclude Watermarks",
             "category": "content_focus",

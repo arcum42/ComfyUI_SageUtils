@@ -40,7 +40,7 @@ class Sage_LoadModelFromInfo(io.ComfyNode):
             node_id="Sage_LoadModelFromInfo",
             display_name="Load Models",
             description="Load model components from model info using GraphBuilder.",
-            category=f"{SAGE_UTILS_CAT}/model",
+            category=f"{SAGE_UTILS_CAT}/loader",
             enable_expand=True,
             inputs=[
                 ModelInfo.Input("model_info", display_name="model_info"),
@@ -76,9 +76,9 @@ class Sage_UNETLoaderFromInfo(io.ComfyNode):
     def define_schema(cls):
         return io.Schema(
             node_id="Sage_UNETLoaderFromInfo",
-            display_name="Load UNET Model <- Info",
+            display_name="Load UNET",
             description="Load the UNET model component from unet_info.",
-            category=f"{SAGE_UTILS_CAT}/model",
+            category=f"{SAGE_UTILS_CAT}/loader",
             enable_expand=True,
             inputs=[
                 UnetInfo.Input("unet_info", display_name="unet_info")
@@ -111,9 +111,9 @@ class Sage_CLIPLoaderFromInfo(io.ComfyNode):
     def define_schema(cls):
         return io.Schema(
             node_id="Sage_CLIPLoaderFromInfo",
-            display_name="Load CLIP Model <- Info",
+            display_name="Load CLIP",
             description="Load the CLIP model component from clip_info.",
-            category=f"{SAGE_UTILS_CAT}/model",
+            category=f"{SAGE_UTILS_CAT}/loader",
             enable_expand=True,
             inputs=[
                 ClipInfo.Input("clip_info", display_name="clip_info")
@@ -146,7 +146,7 @@ class Sage_ChromaCLIPLoaderFromInfo(io.ComfyNode):
             node_id="Sage_ChromaCLIPLoaderFromInfo",
             display_name="Load CLIP (w/ Chroma T5 Options)",
             description="Load the CLIP model component from clip_info, and apply T5 tokenizer options with min padding of 1, and min length of 0.",
-            category=f"{SAGE_UTILS_CAT}/model",
+            category=f"{SAGE_UTILS_CAT}/loader",
             enable_expand=True,
             inputs=[
                 ClipInfo.Input("clip_info", display_name="clip_info")
@@ -177,9 +177,9 @@ class Sage_VAELoaderFromInfo(io.ComfyNode):
     def define_schema(cls):
         return io.Schema(
             node_id="Sage_VAELoaderFromInfo",
-            display_name="Load VAE Model <- Info",
+            display_name="Load VAE",
             description="Load the VAE model component from vae_info.",
-            category=f"{SAGE_UTILS_CAT}/model",
+            category=f"{SAGE_UTILS_CAT}/loader",
             enable_expand=True,
             inputs=[
                 VaeInfo.Input("vae_info", display_name="vae_info")
@@ -213,7 +213,7 @@ class Sage_LoraStackLoader(io.ComfyNode):
             node_id="Sage_LoraStackLoader",
             display_name="Lora Stack Loader",
             description="Accept a lora_stack with Model and Clip, and apply all the loras in the stack at once.",
-            category=f"{SAGE_UTILS_CAT}/lora",
+            category=f"{SAGE_UTILS_CAT}/loader",
             enable_expand=True,
             inputs=[
                 io.Model.Input("model", display_name="model"),
@@ -261,7 +261,7 @@ class Sage_ModelLoraStackLoader(io.ComfyNode):
             node_id="Sage_ModelLoraStackLoader",
             display_name="Load Models + Loras",
             description="Load model components from model info using GraphBuilder and apply LoRA stack.",
-            category=f"{SAGE_UTILS_CAT}/model",
+            category=f"{SAGE_UTILS_CAT}/loader",
             enable_expand=True,
             inputs=[
                 ModelInfo.Input("model_info", display_name="model_info"),
@@ -309,7 +309,7 @@ class Sage_UNETLoRALoader(io.ComfyNode):
             node_id="Sage_UNETLoRALoader",
             display_name="Load UNET + LoRA (Model Only)",
             description="Apply LoRA stack and model shifts to an already loaded UNET model. No clip modifications.",
-            category=f"{SAGE_UTILS_CAT}/model",
+            category=f"{SAGE_UTILS_CAT}/loader",
             enable_expand=True,
             inputs=[
                 UnetInfo.Input("unet_info", display_name="unet_info"),
@@ -357,17 +357,12 @@ class Sage_UNETLoRALoader(io.ComfyNode):
 # ============================================================================
 
 MODEL_NODES = [
-    # model loader nodes
+    Sage_ModelLoraStackLoader,
     Sage_LoadModelFromInfo,
+    Sage_LoraStackLoader,
     Sage_UNETLoaderFromInfo,
+    Sage_UNETLoRALoader,
     Sage_CLIPLoaderFromInfo,
     Sage_ChromaCLIPLoaderFromInfo,
-    Sage_VAELoaderFromInfo,
-
-    # lora loader nodes
-    Sage_LoraStackLoader,
-
-    # model loader nodes
-    Sage_ModelLoraStackLoader,
-    Sage_UNETLoRALoader
+    Sage_VAELoaderFromInfo
 ]

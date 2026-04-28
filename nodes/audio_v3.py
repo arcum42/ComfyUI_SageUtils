@@ -12,7 +12,7 @@ from ..utils.logger import get_logger
 from ..utils.constants import SAGE_UTILS_CAT
 from .custom_io_v3 import AdvAudioInfo
 
-logger = get_logger('nodes.conditioning')
+logger = get_logger('nodes.audio')
 
 
 class Sage_EmptyAceStep15LatentAudio(io.ComfyNode):

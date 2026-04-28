@@ -33,6 +33,100 @@ from ..utils.helpers_image import calc_padding, resize_needed, image_manipulate
 
 logger = get_logger('nodes.image')
 
+# Resolution
+
+class Sage_GuessResolutionByRatio(io.ComfyNode):
+    @classmethod
+    def define_schema(cls):
+        return io.Schema(
+            node_id="Sage_GuessResolutionByRatio",
+            display_name="Guess Resolution By Ratio",
+            description="Based on the input width and height, guess a resolution that matches one of the common aspect ratios. The output is rounded to the nearest multiple of 64.",
+            category=f"{SAGE_UTILS_CAT}/image/res",
+            inputs=[
+                io.Int.Input("width", min = 64, max = 8192, default=1024, step = 1, tooltip="The input width."),
+                io.Int.Input("height", min = 64, max = 8192, default=1024, step = 1, tooltip="The input height."),
+                ],
+            outputs=[
+                io.Int.Output("new_width", display_name="width", tooltip="The guessed width."),
+                io.Int.Output("new_height", display_name="height", tooltip="The guessed height."),
+            ]
+        )
+
+    @classmethod
+    def execute(cls, **kwargs):
+        width = kwargs.get("width", 1024)
+        height = kwargs.get("height", 1024)
+
+        # Calculate the aspect ratio of the input dimensions, and pick dimensions that are closest to it.
+        landscape = width > height
+        if landscape:
+            width, height = height, width
+
+        input_aspect_ratio = width / height
+        closest_ratio = None
+        closest_diff = float('inf')
+        for ratio, (w, h) in QUICK_ASPECT_RATIOS.items():
+            ratio_aspect = w / h
+            diff = abs(input_aspect_ratio - ratio_aspect)
+            if diff < closest_diff:
+                closest_diff = diff
+                closest_ratio = (w, h)
+        if closest_ratio is None:
+            logger.info("No close resolution found, defaulting to 1024x1024.")
+            return io.NodeOutput(1024, 1024)
+        width, height = closest_ratio
+
+        # Round to the nearest multiple of 64
+        width = int(round(width / 64) * 64)
+        height = int(round(height / 64) * 64)
+        
+        if landscape:
+            width, height = height, width
+
+        logger.info(f"Guessed resolution: {width}x{height}")
+
+        return io.NodeOutput(width, height)
+
+class Sage_QuickResPicker(io.ComfyNode):
+    @classmethod
+    def define_schema(cls):
+        return io.Schema(
+            node_id="Sage_QuickResPicker",
+            display_name="Quick Resolution Picker",
+            description="Quickly pick image resolution based on aspect ratio and orientation.",
+            category=f"{SAGE_UTILS_CAT}/image/res",
+            inputs=[
+                io.Combo.Input("aspect_ratio", display_name="Aspect Ratio", default="1:1", options=list(QUICK_ASPECT_RATIOS.keys()), tooltip="The aspect ratio."),
+                io.Combo.Input("orientation", display_name="Orientation", default="Landscape", options=["Portrait", "Landscape"], tooltip="The orientation of the image."),
+                io.Float.Input("multiplier", display_name="Multiplier", default=1.0, min = 0.1, max = 10.0, step = 0.1, round = 0.001, tooltip="The multiplier for the base resolution."),
+            ],
+            outputs=[
+                io.Int.Output("width", display_name="width", tooltip="The selected width."),
+                io.Int.Output("height", display_name="height", tooltip="The selected height."),
+            ]
+        )
+
+    @classmethod
+    def execute(cls, **kwargs):
+        aspect_ratio = kwargs.get("aspect_ratio", "1:1")
+        orientation = kwargs.get("orientation", "Landscape")
+        multiplier = kwargs.get("multiplier", 1.0)
+
+        if aspect_ratio not in QUICK_ASPECT_RATIOS:
+            aspect_ratio = "1:1"  # Default to 1:1 if not found
+            logger.info(f"Aspect ratio '{aspect_ratio}' not found, defaulting to 1:1.")
+
+        width, height = QUICK_ASPECT_RATIOS[aspect_ratio]
+        if orientation == "Landscape":
+            width, height = height, width
+
+        width = int(round(width * multiplier / 64) * 64)
+        height = int(round(height * multiplier / 64) * 64)
+
+        return io.NodeOutput(width, height)
+
+# Latents
 class Sage_EmptyLatentImagePassthrough(io.ComfyNode):
     @classmethod
     def define_schema(cls):
@@ -59,19 +153,20 @@ class Sage_EmptyLatentImagePassthrough(io.ComfyNode):
         width = kwargs.get("width", 1024)
         height = kwargs.get("height", 1024)
         batch_size = kwargs.get("batch_size", 1)
-        type = kwargs.get("type", "4_channel")
+        latent_type = kwargs.get("type", "4_channel")
         device = comfy.model_management.intermediate_device()
+        dtype = comfy.model_management.intermediate_dtype()
         latent = None
 
-        if type == "4_channel":
-            latent = torch.zeros([batch_size, 4, height // 8, width // 8], device=device)
-        elif type == "16_channel":
-            latent = torch.zeros([batch_size, 16, height // 8, width // 8], device=device)
-        elif type == "radiance":
-            latent = torch.zeros([batch_size, 3, height, width], device=device)
+        if latent_type == "4_channel":
+            latent = torch.zeros([batch_size, 4, height // 8, width // 8], device=device, dtype=dtype)
+        elif latent_type == "16_channel":
+            latent = torch.zeros([batch_size, 16, height // 8, width // 8], device=device, dtype=dtype)
+        elif latent_type == "radiance":
+            latent = torch.zeros([batch_size, 3, height, width], device=device, dtype=dtype)
         else:
-            logger.info(f"Unknown latent type '{type}', defaulting to 4_channel.")
-            latent = torch.zeros([batch_size, 4, height // 8, width // 8], device=device)
+            logger.info(f"Unknown latent type '{latent_type}', defaulting to 4_channel.")
+            latent = torch.zeros([batch_size, 4, height // 8, width // 8], device=device, dtype=dtype)
 
         return io.NodeOutput({"samples":latent}, width, height)
 
@@ -89,7 +184,7 @@ class Sage_SaveImageWithMetadata(io.ComfyNode):
             node_id="Sage_SaveImageWithMetadata",
             display_name="Save Image With Metadata",
             description="Saves images to disk with embedded metadata.",
-            category=f"{SAGE_UTILS_CAT}/image",
+            category=f"{SAGE_UTILS_CAT}/image/file",
             is_output_node=True,
             inputs=[
                 io.Image.Input("images", display_name="images", tooltip="The images to save."),
@@ -208,7 +303,7 @@ class Sage_LoadImage(io.ComfyNode):
             node_id="Sage_LoadImage",
             display_name="Load Image",
             description="Loads an image from a specified file path.",
-            category=f"{SAGE_UTILS_CAT}/image",
+            category=f"{SAGE_UTILS_CAT}/image/file",
             is_output_node=True,
             inputs=[],
             outputs=[
@@ -265,7 +360,7 @@ class Sage_CropImage(io.ComfyNode):
             node_id="Sage_CropImage",
             display_name="Crop Image",
             description="Crops an image based on specified coordinates.",
-            category=f"{SAGE_UTILS_CAT}/image",
+            category=f"{SAGE_UTILS_CAT}/image/manipulation",
             inputs=[
                 io.Image.Input("image", display_name="image", tooltip="The image to crop."),
                 io.Int.Input("left", display_name="left", default=0, tooltip="The left coordinate for cropping."),
@@ -322,100 +417,6 @@ class Sage_CropImage(io.ComfyNode):
         cropped_image = cls.crop(image, left, top, right, bottom)
         return io.NodeOutput(cropped_image)
 
-class Sage_GuessResolutionByRatio(io.ComfyNode):
-    @classmethod
-    def define_schema(cls):
-        return io.Schema(
-            node_id="Sage_GuessResolutionByRatio",
-            display_name="Guess Resolution By Ratio",
-            description="Based on the input width and height, guess a resolution that matches one of the common aspect ratios. The output is rounded to the nearest multiple of 64.",
-            category=f"{SAGE_UTILS_CAT}/image",
-            inputs=[
-                io.Int.Input("width", min = 64, max = 8192, default=1024, step = 1, tooltip="The input width."),
-                io.Int.Input("height", min = 64, max = 8192, default=1024, step = 1, tooltip="The input height."),
-                ],
-            outputs=[
-                io.Int.Output("new_width", display_name="width", tooltip="The guessed width."),
-                io.Int.Output("new_height", display_name="height", tooltip="The guessed height."),
-            ]
-        )
-
-    @classmethod
-    def execute(cls, **kwargs):
-        width = kwargs.get("width", 1024)
-        height = kwargs.get("height", 1024)
-
-        # Calculate the aspect ratio of the input dimensions, and pick dimensions that are closest to it.
-        landscape = width > height
-        if landscape:
-            width, height = height, width
-
-        input_aspect_ratio = width / height
-        closest_ratio = None
-        closest_diff = float('inf')
-        for ratio, (w, h) in QUICK_ASPECT_RATIOS.items():
-            ratio_aspect = w / h
-            diff = abs(input_aspect_ratio - ratio_aspect)
-            if diff < closest_diff:
-                closest_diff = diff
-                closest_ratio = (w, h)
-        if closest_ratio is None:
-            logger.info("No close resolution found, defaulting to 1024x1024.")
-            return io.NodeOutput(1024, 1024)
-        width, height = closest_ratio
-
-        # Round to the nearest multiple of 64
-        width = int(round(width / 64) * 64)
-        height = int(round(height / 64) * 64)
-        
-        if landscape:
-            width, height = height, width
-
-        logger.info(f"Guessed resolution: {width}x{height}")
-
-        return io.NodeOutput(width, height)
-
-class Sage_QuickResPicker(io.ComfyNode):
-    @classmethod
-    def define_schema(cls):
-        return io.Schema(
-            node_id="Sage_QuickResPicker",
-            display_name="Quick Resolution Picker",
-            description="Quickly pick image resolution based on aspect ratio and orientation.",
-            category=f"{SAGE_UTILS_CAT}/image",
-            inputs=[
-                io.Combo.Input("aspect_ratio", display_name="Aspect Ratio", default="1:1", options=list(QUICK_ASPECT_RATIOS.keys()), tooltip="The aspect ratio."),
-                io.Combo.Input("orientation", display_name="Orientation", default="Landscape", options=["Portrait", "Landscape"], tooltip="The orientation of the image."),
-                io.Float.Input("multiplier", display_name="Multiplier", default=1.0, min = 0.1, max = 10.0, step = 0.1, round = 0.001, tooltip="The multiplier for the base resolution."),
-            ],
-            outputs=[
-                io.Int.Output("width", display_name="width", tooltip="The selected width."),
-                io.Int.Output("height", display_name="height", tooltip="The selected height."),
-            ]
-        )
-
-    @classmethod
-    def execute(cls, **kwargs):
-        aspect_ratio = kwargs.get("aspect_ratio", "1:1")
-        orientation = kwargs.get("orientation", "Landscape")
-        multiplier = kwargs.get("multiplier", 1.0)
-
-        if aspect_ratio not in QUICK_ASPECT_RATIOS:
-            aspect_ratio = "1:1"  # Default to 1:1 if not found
-            logger.info(f"Aspect ratio '{aspect_ratio}' not found, defaulting to 1:1.")
-
-        width, height = QUICK_ASPECT_RATIOS[aspect_ratio]
-        if orientation == "Landscape":
-            width, height = height, width
-
-        width = int(round(width * multiplier / 64) * 64)
-        height = int(round(height * multiplier / 64) * 64)
-
-        return io.NodeOutput(width, height)
-
-# Sketch out node skeletons and implement later.
-# All of these have to be looked at and re-implemented to some degree.
-
 class Sage_CubiqImageResize(io.ComfyNode):
     @classmethod
     def define_schema(cls):
@@ -423,7 +424,7 @@ class Sage_CubiqImageResize(io.ComfyNode):
             node_id="Sage_CubiqImageResize",
             display_name="Cubiq Image Resize",
             description="Resizes an image using Cubiq interpolation.",
-            category=f"{SAGE_UTILS_CAT}/image",
+            category=f"{SAGE_UTILS_CAT}/image/manipulation",
             inputs=[
                 io.Image.Input("image", display_name="image", tooltip="The image to resize."),
                 io.Int.Input("width", display_name="width", default=1024, min = 0, max = MAX_RESOLUTION, step = 1, tooltip="The target width."),
@@ -514,47 +515,21 @@ class Sage_CubiqImageResize(io.ComfyNode):
 
         return io.NodeOutput(outputs, width, height)
 
-class Sage_ReferenceImage(io.ComfyNode):
-    @classmethod
-    def define_schema(cls):
-        return io.Schema(
-            node_id="Sage_ReferenceImage",
-            display_name="Reference Image",
-            description="This node sets the guiding latent for an edit model. If the model supports it you can chain multiple to set multiple reference images.",
-            category=f"{SAGE_UTILS_CAT}/image",
-            enable_expand=True,
-            inputs=[
-                io.Conditioning.Input("conditioning", display_name="conditioning", tooltip="The input conditioning."),
-                io.Image.Input("image", display_name="image", tooltip="The reference image."),
-                io.Vae.Input("vae", display_name="vae", tooltip="The VAE model for encoding the image."),
-            ],
-            outputs=[
-                io.Conditioning.Output("out_conditioning", display_name="conditioning", tooltip="The output conditioning."),
-                io.Latent.Output("out_latent", display_name="latent", tooltip="The encoded latent."),
-            ]
-        )
-
-    @classmethod
-    def execute(cls, **kwargs):
-        conditioning = kwargs.get("conditioning")
-        image = kwargs.get("image")
-        vae = kwargs.get("vae")
-
-        # Create a subgraph using GraphBuilder to properly handle reference latent processing
-        graph = GraphBuilder()
-        encoder_node = graph.node("VAEEncode", pixels=image, vae=vae)
-        ref_latent_node = graph.node("ReferenceLatent", conditioning=conditioning, latent=encoder_node.out(0))
-
-        return io.NodeOutput(ref_latent_node.out(0), encoder_node.out(0), expand=graph.finalize())
-
 IMAGE_NODES = [
     # image nodes
-    Sage_EmptyLatentImagePassthrough,
-    Sage_LoadImage,
-    Sage_SaveImageWithMetadata,
-    Sage_CropImage,
+    
+    #resolution
     Sage_GuessResolutionByRatio,
     Sage_QuickResPicker,
-    Sage_CubiqImageResize,
-    Sage_ReferenceImage,
+    
+    # latent
+    Sage_EmptyLatentImagePassthrough,
+    
+    # file
+    Sage_LoadImage,
+    Sage_SaveImageWithMetadata,
+    
+    # manipulation
+    Sage_CropImage,
+    Sage_CubiqImageResize
 ]

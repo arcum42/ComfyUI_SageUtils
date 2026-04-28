@@ -258,6 +258,40 @@ class Sage_DualCLIPTextEncodeQwen(io.ComfyNode):
             expand=graph.finalize()
         )
 
+
+class Sage_ReferenceImage(io.ComfyNode):
+    @classmethod
+    def define_schema(cls):
+        return io.Schema(
+            node_id="Sage_ReferenceImage",
+            display_name="Reference Image",
+            description="This node sets the guiding latent for an edit model. If the model supports it you can chain multiple to set multiple reference images.",
+            category=f"{SAGE_UTILS_CAT}/clip/encode/image",
+            enable_expand=True,
+            inputs=[
+                io.Conditioning.Input("conditioning", display_name="conditioning", tooltip="The input conditioning."),
+                io.Image.Input("image", display_name="image", tooltip="The reference image."),
+                io.Vae.Input("vae", display_name="vae", tooltip="The VAE model for encoding the image."),
+            ],
+            outputs=[
+                io.Conditioning.Output("out_conditioning", display_name="conditioning", tooltip="The output conditioning."),
+                io.Latent.Output("out_latent", display_name="latent", tooltip="The encoded latent."),
+            ]
+        )
+
+    @classmethod
+    def execute(cls, **kwargs):
+        conditioning = kwargs.get("conditioning")
+        image = kwargs.get("image")
+        vae = kwargs.get("vae")
+
+        # Create a subgraph using GraphBuilder to properly handle reference latent processing
+        graph = GraphBuilder()
+        encoder_node = graph.node("VAEEncode", pixels=image, vae=vae)
+        ref_latent_node = graph.node("ReferenceLatent", conditioning=conditioning, latent=encoder_node.out(0))
+
+        return io.NodeOutput(ref_latent_node.out(0), encoder_node.out(0), expand=graph.finalize())
+
 # Conditioning manipulation nodes
 
 def _apply_conditioning_operation(conditioning, operation: dict):
@@ -675,6 +709,7 @@ CONDITIONING_NODES = [
     # image 
     Sage_SingleCLIPTextImageEncode,
     Sage_DualCLIPTextEncodeQwen,
+    Sage_ReferenceImage,
     
     # utility nodes
     Sage_ZeroConditioning,

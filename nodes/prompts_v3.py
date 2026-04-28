@@ -3,7 +3,9 @@
 # with a lot of nodes that are only tangentially related to text processing..
 
 from __future__ import annotations
+import json
 from comfy_api.latest import io
+from ..utils.logger import get_logger
 
 # Import specific utilities from source modules
 from ..utils.prompt_utils import clean_text
@@ -17,6 +19,8 @@ from ..utils.constants import (
     PONY_SOURCE,
     SAGE_UTILS_CAT
 )
+
+logger = get_logger('nodes.prompts')
 
 def _build_style_lookup(styles_data):
     model_to_styles = {}
@@ -192,6 +196,42 @@ class Sage_LuminaPromptText(io.ComfyNode):
         prompt = kwargs.get("prompt", "")
         combined_prompt = f"{system}{PROMPT_START}{prompt}"
         return io.NodeOutput(combined_prompt)
+
+# The ernie prompt enhancer model is a fine tuned ministral 3. 
+class Sage_ErniePromptEnhancerPrompt(io.ComfyNode):
+    @classmethod
+    def define_schema(cls):
+        return io.Schema(
+            node_id="Sage_ErniePromptEnhancerPrompt",
+            display_name="Ernie Prompt Enhancer Prompt",
+            description="Builds a prompt for the Ernie Prompt Enhancer model based on a prompt, image width, and image height. Connect to an LLM mode using native with a clip for Ernie's prompt enhancer, or the TextGenerate node in core. Uses the example prompt.",
+            category=f"{SAGE_UTILS_CAT}/text/prompt/ernie",
+            inputs=[
+                io.String.Input("prompt", display_name="prompt", force_input=True, multiline=True),
+                io.Int.Input("width", display_name="width", default=1024, min=1, max=8192),
+                io.Int.Input("height", display_name="height", default=1024, min=1, max=8192)
+            ],
+            outputs=[
+                io.String.Output("enhanced_prompt", display_name="enhanced_prompt")
+            ]
+        )
+
+    @classmethod
+    def execute(cls, **kwargs):
+        prompt = kwargs.get("prompt", "")
+        width = kwargs.get("width", 1024)
+        height = kwargs.get("height", 1024)
+
+        escaped_prompt = json.dumps(str(prompt or ""), ensure_ascii=False)[1:-1]
+        ernie_prompt = (
+                '<s>[SYSTEM_PROMPT]你是一个专业的文生图 Prompt 增强助手。你将收到用户的简短图片描述及目标生成分辨率，请据此扩写为一段内容丰富、细节充分的视觉描述，以帮助文生图模型生成高质量的图片。仅输出增强后的描述，不要包含任何解释或前缀。[/SYSTEM_PROMPT][INST]{"prompt": "$str_0", "width": $str_1, "height": $str_2}[/INST]'
+                .replace("$str_0", escaped_prompt)
+                .replace("$str_1", str(width))
+                .replace("$str_2", str(height))
+            )
+        
+        enhanced_prompt = ernie_prompt.strip()
+        return io.NodeOutput(enhanced_prompt)
 
 class Sage_LuminaSystemPrompt(io.ComfyNode):
     """Picks the system prompt based on the selected option."""
@@ -429,6 +469,9 @@ class Sage_PonyRatingv7(io.ComfyNode):
 PROMPT_NODES = [
     # prompt style nodes
     Sage_StylePromptFromConfig,
+    
+    # prompt / Ernie specific
+    Sage_ErniePromptEnhancerPrompt,
     
     # prompt / HiDream specific
     Sage_HiDreamE1_Instruction,
