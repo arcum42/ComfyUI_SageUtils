@@ -6,6 +6,7 @@ import re
 
 import folder_paths
 import torch
+import comfy.model_management
 
 from .logger import get_logger
 
@@ -129,12 +130,14 @@ def condition_text(clip, text=None):
     tokens = clip.tokenize(text)
     output = clip.encode_from_tokens(tokens, return_pooled=True, return_dict=True)
     cond = output.pop('cond')
+    device = comfy.model_management.intermediate_device()
+    dtype = comfy.model_management.intermediate_dtype()
 
     if zero_text:
         pooled_output = output.get('pooled_output')
         if pooled_output is not None:
-            output['pooled_output'] = torch.zeros_like(pooled_output)
-        return [[torch.zeros_like(cond), output]]
+            output['pooled_output'] = torch.zeros_like(pooled_output, device=device, dtype=dtype)
+        return [[torch.zeros_like(cond, device=device, dtype=dtype), output]]
 
     return [[cond, output]]
 
