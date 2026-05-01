@@ -240,6 +240,10 @@ class Sage_SaveImageWithMetadata(io.ComfyNode):
         filename_prefix = kwargs.get("filename_prefix", "image_")
         save_text = kwargs.get("save_text", False)
 
+        if images is None or len(images) == 0:
+            logger.info("No images provided to Sage_SaveImageWithMetadata.")
+            return io.NodeOutput([], ui={"images": []})
+
         metadata = {
             "include_node_metadata": kwargs.get("include_node_metadata", True),
             "include_extra_pnginfo_metadata": kwargs.get("include_extra_pnginfo_metadata", False),
@@ -253,7 +257,7 @@ class Sage_SaveImageWithMetadata(io.ComfyNode):
             filename_prefix_lines = filename_prefix.splitlines()
             filename_prefix = ''.join(filename_prefix_lines)
         filename_prefix += cls.prefix_append
-        full_output_folder, filename, counter, subfolder, filename_prefix = (
+        full_output_folder, base_filename, counter, subfolder, filename_prefix = (
             folder_paths.get_save_image_path(
                 filename_prefix, cls.output_dir, images[0].shape[1], images[0].shape[0]
             )
@@ -265,9 +269,9 @@ class Sage_SaveImageWithMetadata(io.ComfyNode):
             final_metadata = cls.set_metadata(metadata)
             metatext = cls.metadata_as_text(metadata)
 
-            filename_with_batch_num = filename.replace("%batch_num%", str(batch_number))
-            filename = f"{filename_with_batch_num}_{counter:05}_.png"
-            img_path = os.path.join(full_output_folder, filename)
+            filename_with_batch_num = base_filename.replace("%batch_num%", str(batch_number))
+            output_filename = f"{filename_with_batch_num}_{counter:05}_.png"
+            img_path = os.path.join(full_output_folder, output_filename)
             txt_path = os.path.join(full_output_folder, f"{filename_with_batch_num}_{counter:05}_.txt")
 
             img.save(img_path, pnginfo=final_metadata, compress_level=cls.compress_level)
@@ -275,7 +279,7 @@ class Sage_SaveImageWithMetadata(io.ComfyNode):
                 with open(txt_path, 'w', encoding='utf-8') as f:
                     f.write(f"{metatext}")
             results.append(
-                {"filename": filename, "subfolder": subfolder, "type": cls.type}
+                {"filename": output_filename, "subfolder": subfolder, "type": cls.type}
             )
             counter += 1
 
