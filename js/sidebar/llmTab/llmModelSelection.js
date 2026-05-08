@@ -77,6 +77,9 @@ export function createModelSelection() {
         items: [
             { value: 'ollama', text: 'Ollama' },
             { value: 'lmstudio', text: 'LM Studio' },
+            { value: 'lmstudio_rest', text: 'LM Studio (REST)' },
+            { value: 'ollama_rest', text: 'Ollama (REST)' },
+            { value: 'openai', text: 'OpenAI' },
             { value: 'native', text: 'Native (CLIP)' }
         ],
         className: 'llm-select llm-provider-select'

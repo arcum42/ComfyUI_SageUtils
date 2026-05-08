@@ -1,0 +1,331 @@
+"""OpenAI-compatible REST provider using the /v1 API.
+
+Works with OpenAI, Azure OpenAI, and any other OpenAI-compatible endpoint
+(e.g., LocalAI, vLLM, Groq, Together AI, etc.).
+"""
+
+import os
+from typing import Any, Dict, Optional
+
+from ..cache import get_llm_cache
+from ...logger import get_logger
+from ..common import clean_response
+from ..errors import raise_llm_error, report_llm_error, stringify_llm_error
+from ..rest import iter_text_chunks, normalize_base_url, normalize_image_data_url, request_json, with_bearer_auth
+
+logger = get_logger('llm.providers.openai')
+
+_PROVIDER_NAME = 'openai'
+_DEFAULT_BASE_URL = 'https://api.openai.com'
+_UNAVAILABLE_MESSAGE = '(OpenAI not available)'
+
+# Models known to support vision (image input). This list is supplemented by
+# name-based heuristics so it doesn't need to be exhaustive.
+_KNOWN_VISION_MODEL_PREFIXES = (
+    'gpt-4o',
+    'gpt-4-turbo',
+    'gpt-4-vision',
+    'o1',
+    'o3',
+    'o4',
+    'claude-',
+    'gemini-',
+    'llava',
+    'vision',
+    'minicpm-v',
+    'qwen-vl',
+    'qwen2-vl',
+    'qwen2.5-vl',
+)
+
+
+def _unavailable_models() -> list[str]:
+    return [_UNAVAILABLE_MESSAGE]
+
+
+def _is_unavailable(enabled: bool) -> bool:
+    return not enabled
+
+
+def _get_base_url() -> str:
+    from ...settings import get_setting
+
+    use_custom = bool(get_setting('openai_use_custom_url', False))
+    custom_url = str(get_setting('openai_base_url', '')) if use_custom else ''
+    return normalize_base_url(custom_url, _DEFAULT_BASE_URL)
+
+
+def _get_api_key() -> str:
+    from ...settings import get_setting
+
+    # Prefer explicit setting, then environment variable
+    key = str(get_setting('openai_api_key', '')).strip()
+    if not key:
+        key = os.environ.get('OPENAI_API_KEY', '').strip()
+    return key
+
+
+def _get_headers() -> Dict[str, str]:
+    return with_bearer_auth({}, _get_api_key())
+
+
+def _extract_model_id(model_obj: Any) -> Optional[str]:
+    if not isinstance(model_obj, dict):
+        return None
+
+    for key in ('id', 'model', 'name'):
+        value = model_obj.get(key)
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+
+    return None
+
+
+def _extract_models_payload(response: Any) -> list[dict[str, Any]]:
+    """Extract model list from OpenAI /v1/models response."""
+    if isinstance(response, dict):
+        for key in ('data', 'models', 'items'):
+            value = response.get(key)
+            if isinstance(value, list):
+                return [item for item in value if isinstance(item, dict)]
+
+    if isinstance(response, list):
+        return [item for item in response if isinstance(item, dict)]
+
+    return []
+
+
+def _is_vision_model(model_obj: dict[str, Any], model_name: str) -> bool:
+    """Detect vision capability from OpenAI model metadata."""
+    # Some compatible endpoints expose a capabilities field
+    capabilities = model_obj.get('capabilities') or model_obj.get('features') or []
+    if isinstance(capabilities, list):
+        if any(str(c).lower() in ('vision', 'image_input', 'images') for c in capabilities):
+            return True
+    if isinstance(capabilities, dict):
+        if capabilities.get('vision') is True or capabilities.get('image_input') is True:
+            return True
+
+    lowered = model_name.lower()
+    return any(prefix in lowered for prefix in _KNOWN_VISION_MODEL_PREFIXES)
+
+
+def _build_messages(prompt: str, system_prompt: str = '') -> list[dict[str, Any]]:
+    messages = []
+    if system_prompt:
+        messages.append({'role': 'system', 'content': system_prompt})
+    messages.append({'role': 'user', 'content': prompt})
+    return messages
+
+
+def _build_vision_messages(prompt: str, images, system_prompt: str = '') -> list[dict[str, Any]]:
+    """Build OpenAI-format messages with inline images."""
+    messages = []
+    if system_prompt:
+        messages.append({'role': 'system', 'content': system_prompt})
+
+    image_entries = images if isinstance(images, list) else [images]
+
+    content_parts: list[dict[str, Any]] = [{'type': 'text', 'text': prompt}]
+    for img in image_entries:
+        data_url = normalize_image_data_url(str(img))
+        content_parts.append({'type': 'image_url', 'image_url': {'url': data_url}})
+
+    messages.append({'role': 'user', 'content': content_parts})
+    return messages
+
+
+def _build_options(options: Optional[dict[str, Any]]) -> dict[str, Any]:
+    input_options = options or {}
+    result: dict[str, Any] = {}
+
+    option_map = {
+        'temperature': 'temperature',
+        'top_p': 'top_p',
+        'topP': 'top_p',
+        'topPSampling': 'top_p',
+        'max_tokens': 'max_completion_tokens',
+        'maxTokens': 'max_completion_tokens',
+        'max_output_tokens': 'max_completion_tokens',
+        'max_completion_tokens': 'max_completion_tokens',
+        'seed': 'seed',
+        'presence_penalty': 'presence_penalty',
+        'frequency_penalty': 'frequency_penalty',
+    }
+
+    for key, mapped_key in option_map.items():
+        if key in input_options and input_options[key] is not None:
+            result[mapped_key] = input_options[key]
+
+    return result
+
+
+def _extract_response_text(response: Any) -> str:
+    """Extract assistant content from an OpenAI /v1/chat/completions response."""
+    if isinstance(response, dict):
+        choices = response.get('choices')
+        if isinstance(choices, list) and choices:
+            first = choices[0]
+            if isinstance(first, dict):
+                message = first.get('message')
+                if isinstance(message, dict):
+                    content = message.get('content')
+                    if isinstance(content, str):
+                        return content
+
+    return ''
+
+
+def is_running(enabled: bool) -> bool:
+    """Check if the OpenAI-compatible server is reachable."""
+    if _is_unavailable(enabled):
+        return False
+
+    try:
+        request_json('GET', _get_base_url(), '/v1/models', headers=_get_headers(), timeout=10.0)
+        return True
+    except Exception:
+        return False
+
+
+def get_models(enabled: bool) -> list[str]:
+    """Retrieve a list of available models from the OpenAI-compatible endpoint."""
+    if _is_unavailable(enabled):
+        return _unavailable_models()
+
+    def _fetch_models() -> list[str]:
+        try:
+            response = request_json('GET', _get_base_url(), '/v1/models', headers=_get_headers())
+            models_payload = _extract_models_payload(response)
+            models: list[str] = []
+            for model_obj in models_payload:
+                model_id = _extract_model_id(model_obj)
+                if model_id:
+                    models.append(model_id)
+            return sorted(models)
+        except Exception as e:
+            report_llm_error('Error retrieving models from OpenAI', provider=_PROVIDER_NAME, operation='get_models', cause=e)
+            return _unavailable_models()
+
+    cache = get_llm_cache()
+    return cache.get_model_list(
+        _PROVIDER_NAME,
+        'models',
+        _fetch_models,
+        label='OpenAI models',
+    )
+
+
+def get_vision_models(enabled: bool) -> list[str]:
+    """Retrieve a list of available vision models from the OpenAI-compatible endpoint."""
+    if _is_unavailable(enabled):
+        return _unavailable_models()
+
+    def _fetch_vision_models(cache_instance) -> list[str]:
+        try:
+            response = request_json('GET', _get_base_url(), '/v1/models', headers=_get_headers())
+            models_payload = _extract_models_payload(response)
+            vision_models: list[str] = []
+
+            for model_obj in models_payload:
+                model_id = _extract_model_id(model_obj)
+                if not model_id:
+                    continue
+
+                cached_vision = cache_instance.get_model_capability(_PROVIDER_NAME, model_id)
+                if cached_vision is not None:
+                    if cached_vision:
+                        vision_models.append(model_id)
+                    continue
+
+                is_vision = _is_vision_model(model_obj, model_id)
+                cache_instance.set_model_capability(_PROVIDER_NAME, model_id, is_vision)
+                if is_vision:
+                    vision_models.append(model_id)
+
+            return sorted(vision_models)
+        except Exception as e:
+            report_llm_error('Error retrieving vision models from OpenAI', provider=_PROVIDER_NAME, operation='get_vision_models', cause=e)
+            return []
+
+    cache = get_llm_cache()
+    return cache.get_model_list(
+        _PROVIDER_NAME,
+        'vision_models',
+        _fetch_vision_models,
+        label='OpenAI vision models',
+        pass_self=True,
+    )
+
+
+def generate(enabled: bool, model: str, prompt: str, options=None, system_prompt: str = '') -> str:
+    """Generate a response from an OpenAI-compatible model using /v1/chat/completions."""
+    if _is_unavailable(enabled):
+        raise_llm_error(ImportError, 'OpenAI provider is not enabled.', provider=_PROVIDER_NAME, operation='generate')
+
+    payload: dict[str, Any] = {
+        'model': model,
+        'messages': _build_messages(prompt, system_prompt),
+        'stream': False,
+    }
+    payload.update(_build_options(options))
+
+    try:
+        response = request_json('POST', _get_base_url(), '/v1/chat/completions', payload=payload, headers=_get_headers())
+        response_text = _extract_response_text(response)
+        if not response_text:
+            raise_llm_error(ValueError, 'No valid response received from OpenAI.', provider=_PROVIDER_NAME, operation='generate')
+        return clean_response(response_text)
+    except Exception as e:
+        report_llm_error('Error generating response from OpenAI', provider=_PROVIDER_NAME, operation='generate', cause=e)
+        return ''
+
+
+def generate_vision(enabled: bool, model: str, prompt: str, images=None, options=None, system_prompt: str = '') -> str:
+    """Generate a vision response from an OpenAI-compatible model."""
+    if _is_unavailable(enabled):
+        raise_llm_error(ImportError, 'OpenAI provider is not enabled.', provider=_PROVIDER_NAME, operation='generate_vision')
+
+    if images is None:
+        raise_llm_error(ValueError, 'No images provided for vision model.', provider=_PROVIDER_NAME, operation='generate_vision')
+
+    payload: dict[str, Any] = {
+        'model': model,
+        'messages': _build_vision_messages(prompt, images, system_prompt),
+        'stream': False,
+    }
+    payload.update(_build_options(options))
+
+    try:
+        response = request_json('POST', _get_base_url(), '/v1/chat/completions', payload=payload, headers=_get_headers())
+        response_text = _extract_response_text(response)
+        if not response_text:
+            raise_llm_error(ValueError, 'No valid response received from OpenAI.', provider=_PROVIDER_NAME, operation='generate_vision')
+        return clean_response(response_text)
+    except Exception as e:
+        report_llm_error('Error generating vision response from OpenAI', provider=_PROVIDER_NAME, operation='generate_vision', cause=e)
+        return ''
+
+
+def generate_stream(enabled: bool, model: str, prompt: str, options=None, system_prompt: str = ''):
+    """Generate a simulated streaming response from an OpenAI-compatible model."""
+    try:
+        response_text = generate(enabled, model, prompt, options=options, system_prompt=system_prompt)
+        for chunk in iter_text_chunks(response_text, chunk_size=5):
+            yield {'chunk': chunk, 'done': False}
+        yield {'chunk': '', 'done': True, 'full_response': response_text}
+    except Exception as e:
+        report_llm_error('Error in OpenAI streaming', provider=_PROVIDER_NAME, operation='generate_stream', cause=e)
+        yield {'chunk': '', 'done': True, 'full_response': '', 'error': stringify_llm_error(e)}
+
+
+def generate_vision_stream(enabled: bool, model: str, prompt: str, images=None, options=None, system_prompt: str = ''):
+    """Generate a simulated streaming vision response from an OpenAI-compatible model."""
+    try:
+        response_text = generate_vision(enabled, model, prompt, images=images, options=options, system_prompt=system_prompt)
+        for chunk in iter_text_chunks(response_text, chunk_size=5):
+            yield {'chunk': chunk, 'done': False}
+        yield {'chunk': '', 'done': True, 'full_response': response_text}
+    except Exception as e:
+        report_llm_error('Error in OpenAI vision streaming', provider=_PROVIDER_NAME, operation='generate_vision_stream', cause=e)
+        yield {'chunk': '', 'done': True, 'full_response': '', 'error': stringify_llm_error(e)}

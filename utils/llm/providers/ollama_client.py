@@ -1,13 +1,15 @@
-"""Ollama provider operations extracted from llm_wrapper.py."""
+"""Ollama provider operations extracted from llm/service.py."""
 
 from typing import Any
 
-from ...llm_cache import get_llm_cache
+from ..cache import get_llm_cache
 from ...logger import get_logger
 from ..common import clean_response, build_response_parameters
 from ..errors import raise_llm_error, report_llm_error, stringify_llm_error
 
 logger = get_logger('llm.providers.ollama')
+
+_PROVIDER_NAME = 'ollama'
 
 _OLLAMA_UNAVAILABLE_MESSAGE = '(Ollama not available)'
 
@@ -40,7 +42,7 @@ def get_vision_models(ollama_available: bool, ollama_client: Any, enabled: bool)
 
                 logger.debug(f'Checking model: {model.model}')
 
-                cached_vision = cache_instance.is_ollama_vision_model(model.model)
+                cached_vision = cache_instance.get_model_capability(_PROVIDER_NAME, model.model)
                 if cached_vision is not None:
                     logger.debug(f'Model {model.model} cached as vision: {cached_vision}')
                     if cached_vision:
@@ -60,7 +62,7 @@ def get_vision_models(ollama_available: bool, ollama_client: Any, enabled: bool)
                         logger.debug(f'Failed to get capabilities for {model.model}: {e}')
 
                 logger.debug(f'Caching vision capability for {model.model}: {is_vision}')
-                cache_instance._set_ollama_vision_capability_unlocked(model.model, is_vision)
+                cache_instance.set_model_capability(_PROVIDER_NAME, model.model, is_vision)
                 if is_vision:
                     models.append(model.model)
 
@@ -71,7 +73,13 @@ def get_vision_models(ollama_available: bool, ollama_client: Any, enabled: bool)
             return []
 
     cache = get_llm_cache()
-    return cache.get_ollama_vision_models(_fetch_ollama_vision_models)
+    return cache.get_model_list(
+        _PROVIDER_NAME,
+        'vision_models',
+        _fetch_ollama_vision_models,
+        label='Ollama vision models',
+        pass_self=True,
+    )
 
 
 def get_models(ollama_available: bool, ollama_client: Any, enabled: bool) -> list[str]:
@@ -94,7 +102,12 @@ def get_models(ollama_available: bool, ollama_client: Any, enabled: bool) -> lis
 
     cache = get_llm_cache()
     logger.debug('Fetching Ollama models from cache...')
-    return cache.get_ollama_models(_fetch_ollama_models)
+    return cache.get_model_list(
+        _PROVIDER_NAME,
+        'models',
+        _fetch_ollama_models,
+        label='Ollama models',
+    )
 
 
 # ===========================================================================

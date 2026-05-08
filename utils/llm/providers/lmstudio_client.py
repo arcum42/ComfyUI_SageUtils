@@ -1,14 +1,16 @@
-"""LM Studio provider operations extracted from llm_wrapper.py."""
+"""LM Studio provider operations extracted from llm/service.py."""
 
 from typing import Any, cast
 
-from ...llm_cache import get_llm_cache
+from ..cache import get_llm_cache
 from ...logger import get_logger
 from ...helpers_image import tensor_to_temp_image
 from ..common import clean_response, build_lmstudio_config
 from ..errors import raise_llm_error, report_llm_error, stringify_llm_error
 
 logger = get_logger('llm.providers.lmstudio')
+
+_PROVIDER_NAME = 'lmstudio'
 
 
 # ===========================================================================
@@ -124,7 +126,12 @@ def get_models(lmstudio_available: bool, lms: Any, enabled: bool) -> list[str]:
             return ['(LM Studio not available)']
 
     cache = get_llm_cache()
-    return cache.get_lmstudio_models(_fetch_lmstudio_models)
+    return cache.get_model_list(
+        _PROVIDER_NAME,
+        'models',
+        _fetch_lmstudio_models,
+        label='LM Studio models',
+    )
 
 
 def get_vision_models(lmstudio_available: bool, lms: Any, enabled: bool) -> list[str]:
@@ -148,14 +155,14 @@ def get_vision_models(lmstudio_available: bool, lms: Any, enabled: bool) -> list
                 if not (hasattr(model, 'model_key') and model.model_key is not None):
                     continue
 
-                cached_vision = cache_instance.is_lmstudio_vision_model(model.model_key)
+                cached_vision = cache_instance.get_model_capability(_PROVIDER_NAME, model.model_key)
                 if cached_vision is not None:
                     if cached_vision:
                         models.append(model.model_key)
                     continue
 
                 is_vision = hasattr(model, 'info') and getattr(model.info, 'vision', False)
-                cache_instance._set_lmstudio_vision_capability_unlocked(model.model_key, is_vision)
+                cache_instance.set_model_capability(_PROVIDER_NAME, model.model_key, is_vision)
                 if is_vision:
                     models.append(model.model_key)
 
@@ -165,7 +172,13 @@ def get_vision_models(lmstudio_available: bool, lms: Any, enabled: bool) -> list
             return []
 
     cache = get_llm_cache()
-    return cache.get_lmstudio_vision_models(_fetch_lmstudio_vision_models)
+    return cache.get_model_list(
+        _PROVIDER_NAME,
+        'vision_models',
+        _fetch_lmstudio_vision_models,
+        label='LM Studio vision models',
+        pass_self=True,
+    )
 
 
 def generate_vision(

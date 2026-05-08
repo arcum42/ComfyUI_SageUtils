@@ -1,4 +1,4 @@
-"""Provider availability checks extracted from llm_wrapper.py."""
+"""Provider availability checks extracted from llm/service.py."""
 
 
 def _is_provider_enabled(feature_key: str) -> bool:
@@ -25,3 +25,18 @@ def is_ollama_enabled() -> bool:
 def is_lmstudio_enabled() -> bool:
     """Check if LM Studio is enabled in settings."""
     return _is_provider_enabled('enable_lmstudio')
+
+
+def is_lmstudio_rest_enabled() -> bool:
+    """Check if LM Studio REST provider is enabled in settings."""
+    return _is_provider_enabled('enable_lmstudio_rest')
+
+
+def is_ollama_rest_enabled() -> bool:
+    """Check if Ollama REST provider is enabled in settings."""
+    return _is_provider_enabled('enable_ollama_rest')
+
+
+def is_openai_enabled() -> bool:
+    """Check if OpenAI (or compatible) provider is enabled in settings."""
+    return _is_provider_enabled('enable_openai')

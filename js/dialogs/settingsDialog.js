@@ -22,6 +22,12 @@ import {
  */
 const SETTING_KEY_TO_ID_MAP = {
   'enable_lmstudio': 'SageUtils.LLM Providers.enable_lmstudio',
+  'enable_lmstudio_rest': 'SageUtils.LLM Providers.enable_lmstudio_rest',
+  'enable_ollama_rest': 'SageUtils.LLM Providers.enable_ollama_rest',
+  'enable_openai': 'SageUtils.LLM Providers.enable_openai',
+  'openai_api_key': 'SageUtils.OpenAI.openai_api_key',
+  'openai_use_custom_url': 'SageUtils.OpenAI.openai_use_custom_url',
+  'openai_base_url': 'SageUtils.OpenAI.openai_base_url',
   'enable_ollama': 'SageUtils.LLM Providers.enable_ollama',
   'ollama_custom_url': 'SageUtils.Local Custom Ollama URL.ollama_custom_url',
   'ollama_use_custom_url': 'SageUtils.Local Custom Ollama URL.ollama_use_custom_url',
@@ -237,6 +243,10 @@ function createDefaultProviderSelector(settings) {
   const radioItems = [
     { value: 'ollama', label: 'Ollama' },
     { value: 'lmstudio', label: 'LM Studio' },
+    { value: 'lmstudio_rest', label: 'LM Studio (REST)' },
+    { value: 'lmstudio_rest', label: 'LM Studio (REST)' },
+    { value: 'ollama_rest', label: 'Ollama (REST)' },
+    { value: 'openai', label: 'OpenAI' },
     { value: 'native', label: 'Native (CLIP)' }
   ];
 

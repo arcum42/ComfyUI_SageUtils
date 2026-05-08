@@ -49,7 +49,8 @@ function savePromptText(value) {
 function loadLastSelectedProvider() {
     try {
         const provider = localStorage.getItem(LLM_LAST_PROVIDER_KEY);
-        if (provider === 'ollama' || provider === 'lmstudio' || provider === 'native') {
+        if (provider === 'ollama' || provider === 'lmstudio' || provider === 'lmstudio_rest' ||
+            provider === 'ollama_rest' || provider === 'openai' || provider === 'native') {
             return provider;
         }
     } catch {
@@ -80,7 +81,7 @@ function logLlmDebug(...args) {
 
 /**
  * Load default LLM provider from settings
- * @returns {Promise<string>} Default provider ('ollama', 'lmstudio', or 'native')
+ * @returns {Promise<string>} Default provider ('ollama', 'lmstudio', 'lmstudio_rest', or 'native')
  */
 async function loadDefaultProvider() {
     try {
@@ -97,7 +98,8 @@ async function loadDefaultProvider() {
                 const provider = setting.current_value || setting.default;
                 logLlmDebug('[LLM Tab] Resolved provider value:', provider);
                 
-                if (provider === 'ollama' || provider === 'lmstudio' || provider === 'native') {
+                if (provider === 'ollama' || provider === 'lmstudio' || provider === 'lmstudio_rest' ||
+                    provider === 'ollama_rest' || provider === 'openai' || provider === 'native') {
                     logLlmDebug(`[LLM Tab] Loading default LLM provider: ${provider}`);
                     return provider;
                 } else {
@@ -349,8 +351,9 @@ async function createLLMTabVanilla(container) {
     const state = {
         provider: initialProvider,
         model: null,
-        models: { ollama: [], lmstudio: [], native: [] },
-        visionModels: { ollama: [], lmstudio: [], native: [] },
+        models: { ollama: [], lmstudio: [], lmstudio_rest: [], native: [] },
+        models: { ollama: [], lmstudio: [], lmstudio_rest: [], ollama_rest: [], openai: [], native: [] },
+        visionModels: { ollama: [], lmstudio: [], lmstudio_rest: [], ollama_rest: [], openai: [], native: [] },
         generating: false,
         streamController: null,
         // Vision support

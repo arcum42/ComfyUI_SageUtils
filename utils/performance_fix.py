@@ -11,7 +11,15 @@ The fix: Create lightweight cached versions that don't block during node registr
 from typing import List
 
 from .logger import get_logger
+from .llm.cache import get_llm_cache
+
 logger = get_logger('performance.fix')
+
+
+def _get_cached_models(provider: str, list_key: str) -> List[str] | None:
+    """Return cached provider model list without triggering network fetch."""
+    cache = get_llm_cache()
+    return cache.peek_model_list(provider, list_key)
 
 def get_cached_ollama_models_for_input_types() -> List[str]:
     """
@@ -19,12 +27,9 @@ def get_cached_ollama_models_for_input_types() -> List[str]:
     Falls back to placeholder if no cache available.
     """
     try:
-        from .llm_cache import get_llm_cache
-        cache = get_llm_cache()
-        
-        # Check if we have cached data (without triggering fetch)
-        if hasattr(cache, '_ollama_models') and cache._ollama_models is not None:
-            return cache._ollama_models.copy()
+        cached = _get_cached_models('ollama', 'models')
+        if cached is not None:
+            return cached
         
         # Return placeholder - models will be populated when cache is populated
         return ["(Loading Ollama models...)"]
@@ -38,12 +43,9 @@ def get_cached_lmstudio_models_for_input_types() -> List[str]:
     Falls back to placeholder if no cache available.
     """
     try:
-        from .llm_cache import get_llm_cache
-        cache = get_llm_cache()
-        
-        # Check if we have cached data (without triggering fetch)
-        if hasattr(cache, '_lmstudio_models') and cache._lmstudio_models is not None:
-            return cache._lmstudio_models.copy()
+        cached = _get_cached_models('lmstudio', 'models')
+        if cached is not None:
+            return cached
         
         # Return placeholder - models will be populated when cache is populated
         return ["(Loading LM Studio models...)"]
@@ -57,12 +59,9 @@ def get_cached_ollama_vision_models_for_input_types() -> List[str]:
     Falls back to placeholder if no cache available.
     """
     try:
-        from .llm_cache import get_llm_cache
-        cache = get_llm_cache()
-        
-        # Check if we have cached data (without triggering fetch)
-        if hasattr(cache, '_ollama_vision_models') and cache._ollama_vision_models is not None:
-            return cache._ollama_vision_models.copy()
+        cached = _get_cached_models('ollama', 'vision_models')
+        if cached is not None:
+            return cached
         
         # Return placeholder - models will be populated when cache is populated
         return ["(Loading Ollama vision models...)"]
@@ -76,18 +75,111 @@ def get_cached_lmstudio_vision_models_for_input_types() -> List[str]:
     Falls back to placeholder if no cache available.
     """
     try:
-        from .llm_cache import get_llm_cache
-        cache = get_llm_cache()
-        
-        # Check if we have cached data (without triggering fetch)
-        if hasattr(cache, '_lmstudio_vision_models') and cache._lmstudio_vision_models is not None:
-            return cache._lmstudio_vision_models.copy()
+        cached = _get_cached_models('lmstudio', 'vision_models')
+        if cached is not None:
+            return cached
         
         # Return placeholder - models will be populated when cache is populated
         return ["(Loading LM Studio vision models...)"]
     except Exception as e:
         logger.debug(f"Failed to get cached LM Studio vision models for INPUT_TYPES: {e}")
         return ["(LM Studio vision models unavailable)"]
+
+
+def get_cached_lmstudio_rest_models_for_input_types() -> List[str]:
+    """
+    Lightweight version for INPUT_TYPES - returns cached LM Studio REST models without network calls.
+    Falls back to placeholder if no cache available.
+    """
+    try:
+        cached = _get_cached_models('lmstudio_rest', 'models')
+        if cached is not None:
+            return cached
+
+        return ["(Loading LM Studio REST models...)"]
+    except Exception as e:
+        logger.debug(f"Failed to get cached LM Studio REST models for INPUT_TYPES: {e}")
+        return ["(LM Studio REST models unavailable)"]
+
+
+def get_cached_lmstudio_rest_vision_models_for_input_types() -> List[str]:
+    """
+    Lightweight version for INPUT_TYPES - returns cached LM Studio REST vision models without network calls.
+    Falls back to placeholder if no cache available.
+    """
+    try:
+        cached = _get_cached_models('lmstudio_rest', 'vision_models')
+        if cached is not None:
+            return cached
+
+        return ["(Loading LM Studio REST vision models...)"]
+    except Exception as e:
+        logger.debug(f"Failed to get cached LM Studio REST vision models for INPUT_TYPES: {e}")
+        return ["(LM Studio REST vision models unavailable)"]
+
+
+def get_cached_ollama_rest_models_for_input_types() -> List[str]:
+    """
+    Lightweight version for INPUT_TYPES - returns cached Ollama REST models without network calls.
+    Falls back to placeholder if no cache available.
+    """
+    try:
+        cached = _get_cached_models('ollama_rest', 'models')
+        if cached is not None:
+            return cached
+
+        return ["(Loading Ollama REST models...)"]
+    except Exception as e:
+        logger.debug(f"Failed to get cached Ollama REST models for INPUT_TYPES: {e}")
+        return ["(Ollama REST models unavailable)"]
+
+
+def get_cached_ollama_rest_vision_models_for_input_types() -> List[str]:
+    """
+    Lightweight version for INPUT_TYPES - returns cached Ollama REST vision models without network calls.
+    Falls back to placeholder if no cache available.
+    """
+    try:
+        cached = _get_cached_models('ollama_rest', 'vision_models')
+        if cached is not None:
+            return cached
+
+        return ["(Loading Ollama REST vision models...)"]
+    except Exception as e:
+        logger.debug(f"Failed to get cached Ollama REST vision models for INPUT_TYPES: {e}")
+        return ["(Ollama REST vision models unavailable)"]
+
+
+def get_cached_openai_models_for_input_types() -> List[str]:
+    """
+    Lightweight version for INPUT_TYPES - returns cached OpenAI models without network calls.
+    Falls back to placeholder if no cache available.
+    """
+    try:
+        cached = _get_cached_models('openai', 'models')
+        if cached is not None:
+            return cached
+
+        return ["(Loading OpenAI models...)"]
+    except Exception as e:
+        logger.debug(f"Failed to get cached OpenAI models for INPUT_TYPES: {e}")
+        return ["(OpenAI models unavailable)"]
+
+
+def get_cached_openai_vision_models_for_input_types() -> List[str]:
+    """
+    Lightweight version for INPUT_TYPES - returns cached OpenAI vision models without network calls.
+    Falls back to placeholder if no cache available.
+    """
+    try:
+        cached = _get_cached_models('openai', 'vision_models')
+        if cached is not None:
+            return cached
+
+        return ["(Loading OpenAI vision models...)"]
+    except Exception as e:
+        logger.debug(f"Failed to get cached OpenAI vision models for INPUT_TYPES: {e}")
+        return ["(OpenAI vision models unavailable)"]
 
 # Background task to populate cache without blocking startup
 def populate_llm_cache_async():
@@ -99,14 +191,20 @@ def populate_llm_cache_async():
     
     def _populate_cache():
         try:
-            from . import llm_wrapper as llm
+            from .llm import service as llm
             logger.info("Starting background LLM cache population...")
             
             # These calls will populate the cache asynchronously
             llm.get_ollama_models()
-            llm.get_lmstudio_models() 
+            llm.get_lmstudio_models()
+            llm.get_lmstudio_rest_models()
+            llm.get_ollama_rest_models()
+            llm.get_openai_models()
             llm.get_ollama_vision_models()
             llm.get_lmstudio_vision_models()
+            llm.get_lmstudio_rest_vision_models()
+            llm.get_ollama_rest_vision_models()
+            llm.get_openai_vision_models()
             
             logger.info("Background LLM cache population completed")
         except Exception as e:

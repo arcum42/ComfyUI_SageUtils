@@ -219,7 +219,7 @@ def register_routes(routes_instance):
         """
         try:
             from ..utils.settings import get_setting
-            from ..utils import llm_wrapper as llm
+            from ..utils.llm import service as llm
             
             # Ensure initialization has been attempted
             try:
@@ -230,10 +230,16 @@ def register_routes(routes_instance):
             # Check settings
             ollama_enabled = get_setting("enable_ollama", True)
             lmstudio_enabled = get_setting("enable_lmstudio", True)
+            lmstudio_rest_enabled = get_setting("enable_lmstudio_rest", False)
+            ollama_rest_enabled = get_setting("enable_ollama_rest", False)
+            openai_enabled = get_setting("enable_openai", False)
             
             # Check availability
             ollama_available = llm.OLLAMA_AVAILABLE and ollama_enabled
             lmstudio_available = llm.LMSTUDIO_AVAILABLE and lmstudio_enabled
+            lmstudio_rest_available = llm.LMSTUDIO_REST_AVAILABLE and lmstudio_rest_enabled
+            ollama_rest_available = llm.OLLAMA_REST_AVAILABLE and ollama_rest_enabled
+            openai_available = llm.OPENAI_AVAILABLE and openai_enabled
             native_models = _get_native_clip_models()
             native_available = len(native_models) > 0
             
@@ -246,12 +252,28 @@ def register_routes(routes_instance):
                 "available": lmstudio_available,
                 "enabled": lmstudio_enabled
             }
+            lmstudio_rest_info = {
+                "available": lmstudio_rest_available,
+                "enabled": lmstudio_rest_enabled,
+            }
+            ollama_rest_info = {
+                "available": ollama_rest_available,
+                "enabled": ollama_rest_enabled,
+            }
+            openai_info = {
+                "available": openai_available,
+                "enabled": openai_enabled,
+            }
             
             if get_setting("ollama_use_custom_url", False):
                 ollama_info["url"] = get_setting("ollama_custom_url", "")
             
             if get_setting("lmstudio_use_custom_url", False):
                 lmstudio_info["url"] = get_setting("lmstudio_custom_url", "")
+                lmstudio_rest_info["url"] = get_setting("lmstudio_custom_url", "")
+
+            if get_setting("openai_use_custom_url", False):
+                openai_info["url"] = get_setting("openai_base_url", "")
 
             native_info = {
                 "available": native_available,
@@ -261,6 +283,9 @@ def register_routes(routes_instance):
             return success_response(data={
                 "ollama": ollama_info,
                 "lmstudio": lmstudio_info,
+                "lmstudio_rest": lmstudio_rest_info,
+                "ollama_rest": ollama_rest_info,
+                "openai": openai_info,
                 "native": native_info,
             })
             
@@ -299,7 +324,7 @@ def register_routes(routes_instance):
             }
         """
         try:
-            from ..utils import llm_wrapper as llm
+            from ..utils.llm import service as llm
             from ..utils.settings import get_setting
             from ..utils.llm.routes_helpers import get_compatible_models
             
@@ -308,9 +333,7 @@ def register_routes(routes_instance):
             
             if force:
                 logger.info("Force re-initializing LLM providers...")
-                # Reset initialization flags to force re-init
-                llm._ollama_initialized = False
-                llm._lmstudio_initialized = False
+                llm.reset_llm_initialization_state()
             
             # Initialize LLM services if needed
             llm.ensure_llm_initialized()
@@ -318,10 +341,14 @@ def register_routes(routes_instance):
             # Get models from both providers
             ollama_models = []
             lmstudio_models = []
+            lmstudio_rest_models = []
             native_models = _get_native_clip_models()
             
             ollama_enabled = get_setting("enable_ollama", True)
             lmstudio_enabled = get_setting("enable_lmstudio", True)
+            lmstudio_rest_enabled = get_setting("enable_lmstudio_rest", False)
+            ollama_rest_enabled = get_setting("enable_ollama_rest", False)
+            openai_enabled = get_setting("enable_openai", False)
             
             if ollama_enabled and llm.OLLAMA_AVAILABLE:
                 try:
@@ -336,16 +363,46 @@ def register_routes(routes_instance):
                     lmstudio_models = get_compatible_models('lmstudio', models)
                 except Exception as e:
                     logger.warning(f"Failed to get LM Studio models: {e}")
+
+            if lmstudio_rest_enabled and llm.LMSTUDIO_REST_AVAILABLE:
+                try:
+                    models = llm.get_lmstudio_rest_models()
+                    lmstudio_rest_models = get_compatible_models('lmstudio_rest', models)
+                except Exception as e:
+                    logger.warning(f"Failed to get LM Studio REST models: {e}")
+
+            ollama_rest_models = []
+            openai_models = []
+
+            if ollama_rest_enabled and llm.OLLAMA_REST_AVAILABLE:
+                try:
+                    models = llm.get_ollama_rest_models()
+                    ollama_rest_models = get_compatible_models('ollama_rest', models)
+                except Exception as e:
+                    logger.warning(f"Failed to get Ollama REST models: {e}")
+
+            if openai_enabled and llm.OPENAI_AVAILABLE:
+                try:
+                    models = llm.get_openai_models()
+                    openai_models = get_compatible_models('openai', models)
+                except Exception as e:
+                    logger.warning(f"Failed to get OpenAI models: {e}")
             
             return success_response(data={
                 "models": {
                     "ollama": ollama_models,
                     "lmstudio": lmstudio_models,
+                    "lmstudio_rest": lmstudio_rest_models,
+                    "ollama_rest": ollama_rest_models,
+                    "openai": openai_models,
                     "native": native_models,
                 },
                 "status": {
                     "ollama_available": len(ollama_models) > 0,
                     "lmstudio_available": len(lmstudio_models) > 0,
+                    "lmstudio_rest_available": len(lmstudio_rest_models) > 0,
+                    "ollama_rest_available": len(ollama_rest_models) > 0,
+                    "openai_available": len(openai_models) > 0,
                     "native_available": len(native_models) > 0,
                 }
             })
@@ -385,7 +442,7 @@ def register_routes(routes_instance):
             }
         """
         try:
-            from ..utils import llm_wrapper as llm
+            from ..utils.llm import service as llm
             from ..utils.settings import get_setting
             from ..utils.llm.routes_helpers import get_compatible_models
             
@@ -394,9 +451,7 @@ def register_routes(routes_instance):
             
             if force:
                 logger.info("Force re-initializing LLM providers for vision models...")
-                # Reset initialization flags to force re-init
-                llm._ollama_initialized = False
-                llm._lmstudio_initialized = False
+                llm.reset_llm_initialization_state()
             
             # Initialize LLM services if needed
             llm.ensure_llm_initialized()
@@ -404,10 +459,14 @@ def register_routes(routes_instance):
             # Get vision models from both providers
             ollama_models = []
             lmstudio_models = []
+            lmstudio_rest_models = []
             native_models = []
             
             ollama_enabled = get_setting("enable_ollama", True)
             lmstudio_enabled = get_setting("enable_lmstudio", True)
+            lmstudio_rest_enabled = get_setting("enable_lmstudio_rest", False)
+            ollama_rest_enabled = get_setting("enable_ollama_rest", False)
+            openai_enabled = get_setting("enable_openai", False)
             
             if ollama_enabled and llm.OLLAMA_AVAILABLE:
                 try:
@@ -422,16 +481,46 @@ def register_routes(routes_instance):
                     lmstudio_models = get_compatible_models('lmstudio', models)
                 except Exception as e:
                     logger.warning(f"Failed to get LM Studio vision models: {e}")
+
+            if lmstudio_rest_enabled and llm.LMSTUDIO_REST_AVAILABLE:
+                try:
+                    models = llm.get_lmstudio_rest_vision_models()
+                    lmstudio_rest_models = get_compatible_models('lmstudio_rest', models)
+                except Exception as e:
+                    logger.warning(f"Failed to get LM Studio REST vision models: {e}")
+
+            ollama_rest_models = []
+            openai_vision_models = []
+
+            if ollama_rest_enabled and llm.OLLAMA_REST_AVAILABLE:
+                try:
+                    models = llm.get_ollama_rest_vision_models()
+                    ollama_rest_models = get_compatible_models('ollama_rest', models)
+                except Exception as e:
+                    logger.warning(f"Failed to get Ollama REST vision models: {e}")
+
+            if openai_enabled and llm.OPENAI_AVAILABLE:
+                try:
+                    models = llm.get_openai_vision_models()
+                    openai_vision_models = get_compatible_models('openai', models)
+                except Exception as e:
+                    logger.warning(f"Failed to get OpenAI vision models: {e}")
             
             return success_response(data={
                 "models": {
                     "ollama": ollama_models,
                     "lmstudio": lmstudio_models,
+                    "lmstudio_rest": lmstudio_rest_models,
+                    "ollama_rest": ollama_rest_models,
+                    "openai": openai_vision_models,
                     "native": native_models,
                 },
                 "status": {
                     "ollama_available": len(ollama_models) > 0,
                     "lmstudio_available": len(lmstudio_models) > 0,
+                    "lmstudio_rest_available": len(lmstudio_rest_models) > 0,
+                    "ollama_rest_available": len(ollama_rest_models) > 0,
+                    "openai_available": len(openai_vision_models) > 0,
                     "native_available": False,
                 }
             })
@@ -520,7 +609,7 @@ def register_routes(routes_instance):
             system_prompt = data.get("system_prompt", "")
             options = data.get("options", {})
             
-            from ..utils import llm_wrapper as llm
+            from ..utils.llm import service as llm
             
             # Initialize LLM services if needed
             llm.ensure_llm_initialized()
@@ -561,6 +650,58 @@ def register_routes(routes_instance):
                     prompt=prompt,
                     keep_alive=0,
                     options=options
+                )
+
+            elif provider == "lmstudio_rest":
+                if not llm.LMSTUDIO_REST_AVAILABLE:
+                    return _error_response_with_metadata(
+                        'LM Studio REST is not available',
+                        status=503,
+                        error_code='LLM_PROVIDER_UNAVAILABLE',
+                        provider='lmstudio_rest',
+                        operation='generate',
+                    )
+
+                response_text = llm.lmstudio_rest_generate(
+                    model=model,
+                    prompt=prompt,
+                    keep_alive=0,
+                    options=options,
+                    system_prompt=system_prompt,
+                )
+
+            elif provider == "ollama_rest":
+                if not llm.OLLAMA_REST_AVAILABLE:
+                    return _error_response_with_metadata(
+                        'Ollama REST is not available',
+                        status=503,
+                        error_code='LLM_PROVIDER_UNAVAILABLE',
+                        provider='ollama_rest',
+                        operation='generate',
+                    )
+
+                response_text = llm.ollama_rest_generate(
+                    model=model,
+                    prompt=prompt,
+                    options=options,
+                    system_prompt=system_prompt,
+                )
+
+            elif provider == "openai":
+                if not llm.OPENAI_AVAILABLE:
+                    return _error_response_with_metadata(
+                        'OpenAI provider is not available',
+                        status=503,
+                        error_code='LLM_PROVIDER_UNAVAILABLE',
+                        provider='openai',
+                        operation='generate',
+                    )
+
+                response_text = llm.openai_generate(
+                    model=model,
+                    prompt=prompt,
+                    options=options,
+                    system_prompt=system_prompt,
                 )
 
             elif provider == "native":
@@ -645,14 +786,14 @@ def register_routes(routes_instance):
             options = data.get("options", {})
             
             # Validate provider
-            if provider not in ["ollama", "lmstudio", "native"]:
+            if provider not in ["ollama", "lmstudio", "lmstudio_rest", "ollama_rest", "openai", "native"]:
                 return _error_response_with_metadata(
-                    f"Invalid provider: {provider}. Must be 'ollama', 'lmstudio', or 'native'",
+                    f"Invalid provider: {provider}. Must be 'ollama', 'lmstudio', 'lmstudio_rest', 'ollama_rest', 'openai', or 'native'",
                     status=400,
                     error_code='LLM_VALIDATION_ERROR',
                 )
             
-            from ..utils import llm_wrapper as llm
+            from ..utils.llm import service as llm
             
             # Initialize LLM services if needed
             llm.ensure_llm_initialized()
@@ -714,6 +855,79 @@ def register_routes(routes_instance):
                         sse_data = routes_helpers.format_sse_chunk(chunk_data)
                         await response.write(sse_data.encode('utf-8'))
                         
+                        if chunk_data.get("done", False):
+                            break
+
+                elif provider == "lmstudio_rest":
+                    if not llm.LMSTUDIO_REST_AVAILABLE:
+                        error_chunk = _sse_error_chunk(
+                            'LM Studio REST is not available',
+                            error_code='LLM_PROVIDER_UNAVAILABLE',
+                            provider='lmstudio_rest',
+                            operation='generate_stream',
+                        )
+                        await response.write(error_chunk.encode('utf-8'))
+                        await response.write_eof()
+                        return response
+
+                    for chunk_data in llm.lmstudio_rest_generate_stream(
+                        model=model,
+                        prompt=prompt,
+                        keep_alive=0,
+                        options=options,
+                        system_prompt=system_prompt,
+                    ):
+                        sse_data = routes_helpers.format_sse_chunk(chunk_data)
+                        await response.write(sse_data.encode('utf-8'))
+
+                        if chunk_data.get("done", False):
+                            break
+
+                elif provider == "ollama_rest":
+                    if not llm.OLLAMA_REST_AVAILABLE:
+                        error_chunk = _sse_error_chunk(
+                            'Ollama REST is not available',
+                            error_code='LLM_PROVIDER_UNAVAILABLE',
+                            provider='ollama_rest',
+                            operation='generate_stream',
+                        )
+                        await response.write(error_chunk.encode('utf-8'))
+                        await response.write_eof()
+                        return response
+
+                    for chunk_data in llm.ollama_rest_generate_stream(
+                        model=model,
+                        prompt=prompt,
+                        options=options,
+                        system_prompt=system_prompt,
+                    ):
+                        sse_data = routes_helpers.format_sse_chunk(chunk_data)
+                        await response.write(sse_data.encode('utf-8'))
+
+                        if chunk_data.get("done", False):
+                            break
+
+                elif provider == "openai":
+                    if not llm.OPENAI_AVAILABLE:
+                        error_chunk = _sse_error_chunk(
+                            'OpenAI provider is not available',
+                            error_code='LLM_PROVIDER_UNAVAILABLE',
+                            provider='openai',
+                            operation='generate_stream',
+                        )
+                        await response.write(error_chunk.encode('utf-8'))
+                        await response.write_eof()
+                        return response
+
+                    for chunk_data in llm.openai_generate_stream(
+                        model=model,
+                        prompt=prompt,
+                        options=options,
+                        system_prompt=system_prompt,
+                    ):
+                        sse_data = routes_helpers.format_sse_chunk(chunk_data)
+                        await response.write(sse_data.encode('utf-8'))
+
                         if chunk_data.get("done", False):
                             break
 
@@ -821,7 +1035,7 @@ def register_routes(routes_instance):
             system_prompt = data.get("system_prompt", "")
             options = data.get("options", {})
             
-            from ..utils import llm_wrapper as llm
+            from ..utils.llm import service as llm
             
             # Initialize LLM services if needed
             llm.ensure_llm_initialized()
@@ -912,6 +1126,61 @@ def register_routes(routes_instance):
                 
                 finally:
                     routes_helpers.cleanup_temp_files(temp_files)
+
+            elif provider == "lmstudio_rest":
+                if not llm.LMSTUDIO_REST_AVAILABLE:
+                    return _error_response_with_metadata(
+                        'LM Studio REST is not available',
+                        status=503,
+                        error_code='LLM_PROVIDER_UNAVAILABLE',
+                        provider='lmstudio_rest',
+                        operation='vision_generate',
+                    )
+
+                response_text = llm.lmstudio_rest_generate_vision(
+                    model=model,
+                    prompt=prompt,
+                    keep_alive=0,
+                    images=images_data,
+                    options=options,
+                    system_prompt=system_prompt,
+                )
+
+            elif provider == "ollama_rest":
+                if not llm.OLLAMA_REST_AVAILABLE:
+                    return _error_response_with_metadata(
+                        'Ollama REST is not available',
+                        status=503,
+                        error_code='LLM_PROVIDER_UNAVAILABLE',
+                        provider='ollama_rest',
+                        operation='vision_generate',
+                    )
+
+                response_text = llm.ollama_rest_generate_vision(
+                    model=model,
+                    prompt=prompt,
+                    images=images_data,
+                    options=options,
+                    system_prompt=system_prompt,
+                )
+
+            elif provider == "openai":
+                if not llm.OPENAI_AVAILABLE:
+                    return _error_response_with_metadata(
+                        'OpenAI provider is not available',
+                        status=503,
+                        error_code='LLM_PROVIDER_UNAVAILABLE',
+                        provider='openai',
+                        operation='vision_generate',
+                    )
+
+                response_text = llm.openai_generate_vision(
+                    model=model,
+                    prompt=prompt,
+                    images=images_data,
+                    options=options,
+                    system_prompt=system_prompt,
+                )
             
             return success_response(data={
                 "response": response_text,
@@ -966,7 +1235,7 @@ def register_routes(routes_instance):
             system_prompt = data.get("system_prompt", "")
             options = data.get("options", {})
             
-            from ..utils import llm_wrapper as llm
+            from ..utils.llm import service as llm
             
             # Initialize LLM services if needed
             llm.ensure_llm_initialized()
@@ -1085,6 +1354,82 @@ def register_routes(routes_instance):
                     
                     finally:
                         routes_helpers.cleanup_temp_files(temp_files)
+
+                elif provider == "lmstudio_rest":
+                    if not llm.LMSTUDIO_REST_AVAILABLE:
+                        error_chunk = _sse_error_chunk(
+                            'LM Studio REST is not available',
+                            error_code='LLM_PROVIDER_UNAVAILABLE',
+                            provider='lmstudio_rest',
+                            operation='vision_generate_stream',
+                        )
+                        await response.write(error_chunk.encode('utf-8'))
+                        await response.write_eof()
+                        return response
+
+                    for chunk_data in llm.lmstudio_rest_generate_vision_stream(
+                        model=model,
+                        prompt=prompt,
+                        keep_alive=0,
+                        images=images_data,
+                        options=options,
+                        system_prompt=system_prompt,
+                    ):
+                        sse_data = routes_helpers.format_sse_chunk(chunk_data)
+                        await response.write(sse_data.encode('utf-8'))
+
+                        if chunk_data.get('done', False):
+                            break
+
+                elif provider == "ollama_rest":
+                    if not llm.OLLAMA_REST_AVAILABLE:
+                        error_chunk = _sse_error_chunk(
+                            'Ollama REST is not available',
+                            error_code='LLM_PROVIDER_UNAVAILABLE',
+                            provider='ollama_rest',
+                            operation='vision_generate_stream',
+                        )
+                        await response.write(error_chunk.encode('utf-8'))
+                        await response.write_eof()
+                        return response
+
+                    for chunk_data in llm.ollama_rest_generate_vision_stream(
+                        model=model,
+                        prompt=prompt,
+                        images=images_data,
+                        options=options,
+                        system_prompt=system_prompt,
+                    ):
+                        sse_data = routes_helpers.format_sse_chunk(chunk_data)
+                        await response.write(sse_data.encode('utf-8'))
+
+                        if chunk_data.get('done', False):
+                            break
+
+                elif provider == "openai":
+                    if not llm.OPENAI_AVAILABLE:
+                        error_chunk = _sse_error_chunk(
+                            'OpenAI provider is not available',
+                            error_code='LLM_PROVIDER_UNAVAILABLE',
+                            provider='openai',
+                            operation='vision_generate_stream',
+                        )
+                        await response.write(error_chunk.encode('utf-8'))
+                        await response.write_eof()
+                        return response
+
+                    for chunk_data in llm.openai_generate_vision_stream(
+                        model=model,
+                        prompt=prompt,
+                        images=images_data,
+                        options=options,
+                        system_prompt=system_prompt,
+                    ):
+                        sse_data = routes_helpers.format_sse_chunk(chunk_data)
+                        await response.write(sse_data.encode('utf-8'))
+
+                        if chunk_data.get('done', False):
+                            break
                 
                 await response.write_eof()
                 return response
@@ -1557,7 +1902,7 @@ def register_routes(routes_instance):
         try:
             from pathlib import Path
             from ..utils import sage_users_path
-            from ..utils import llm_wrapper as llm
+            from ..utils.llm import service as llm
             from ..utils.config_manager import llm_prompts
             
             data = await request.json()
@@ -1776,6 +2121,19 @@ def register_routes(routes_instance):
                             os.unlink(temp_path)
                         except:
                             pass
+
+            elif provider == "lmstudio_rest":
+                if not llm.LMSTUDIO_REST_AVAILABLE:
+                    return error_response("LM Studio REST is not available", status=503)
+
+                response_text = llm.lmstudio_rest_generate_vision(
+                    model=model,
+                    prompt=prompt_text,
+                    keep_alive=int(settings.get('keepAlive', 0) or 0),
+                    images=images_data,
+                    options=options,
+                    system_prompt=system_prompt_text,
+                )
             
             return success_response({
                 "response": response_text,
@@ -1836,9 +2194,9 @@ def register_routes(routes_instance):
             model = str(data.get("model", ""))
             keep_alive = data.get("keep_alive", 60)
 
-            if not provider or provider not in ("ollama", "lmstudio", "native"):
+            if not provider or provider not in ("ollama", "lmstudio", "lmstudio_rest", "native"):
                 return _error_response_with_metadata(
-                    f"Invalid or missing provider: {provider!r}. Must be 'ollama', 'lmstudio', or 'native'",
+                    f"Invalid or missing provider: {provider!r}. Must be 'ollama', 'lmstudio', 'lmstudio_rest', or 'native'",
                     status=400,
                     error_code='LLM_VALIDATION_ERROR',
                 )
@@ -1849,7 +2207,7 @@ def register_routes(routes_instance):
                     error_code='LLM_VALIDATION_ERROR',
                 )
 
-            from ..utils import llm_wrapper as llm
+            from ..utils.llm import service as llm
 
             llm.ensure_llm_initialized()
 
@@ -1884,6 +2242,27 @@ def register_routes(routes_instance):
                 lms_model = llm.lmstudio_load_model(model=model, keep_alive=int(keep_alive))
                 if keep_alive < 1:
                     llm.lmstudio_unload_model(lms_model)
+
+            elif provider == "lmstudio_rest":
+                if not llm.LMSTUDIO_REST_AVAILABLE:
+                    return _error_response_with_metadata(
+                        'LM Studio REST is not available',
+                        status=503,
+                        error_code='LLM_PROVIDER_UNAVAILABLE',
+                        provider='lmstudio_rest',
+                        operation='load_model',
+                    )
+                loaded = llm.lmstudio_rest_load_model(model=model, keep_alive=int(keep_alive))
+                if not loaded:
+                    return _error_response_with_metadata(
+                        f"Failed to load model '{model}' in LM Studio REST",
+                        status=500,
+                        error_code='LLM_LOAD_ERROR',
+                        provider='lmstudio_rest',
+                        operation='load_model',
+                    )
+                if keep_alive < 1:
+                    llm.lmstudio_rest_unload_model(model)
 
             elif provider == "native":
                 available_native = _get_native_clip_models()
@@ -1961,7 +2340,7 @@ def register_routes(routes_instance):
             keep_alive = data.get("keep_alive", 0)
             options = data.get("options", {})
 
-            from ..utils import llm_wrapper as llm
+            from ..utils.llm import service as llm
 
             llm.ensure_llm_initialized()
 
@@ -1999,6 +2378,23 @@ def register_routes(routes_instance):
                 finally:
                     if keep_alive < 1:
                         llm.lmstudio_unload_model(lms_model)
+
+            elif provider == "lmstudio_rest":
+                if not llm.LMSTUDIO_REST_AVAILABLE:
+                    return _error_response_with_metadata(
+                        'LM Studio REST is not available',
+                        status=503,
+                        error_code='LLM_PROVIDER_UNAVAILABLE',
+                        provider='lmstudio_rest',
+                        operation='generate_only',
+                    )
+                response_text = llm.lmstudio_rest_generate(
+                    model=model,
+                    prompt=prompt,
+                    keep_alive=int(keep_alive),
+                    options=options,
+                    system_prompt=system_prompt,
+                )
 
             elif provider == "native":
                 available_native = _get_native_clip_models()

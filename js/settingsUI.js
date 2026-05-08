@@ -35,6 +35,12 @@ async function loadSageSettings() {
         return {
             enable_ollama: { current_value: true },
             enable_lmstudio: { current_value: true },
+            enable_lmstudio_rest: { current_value: false },
+            enable_ollama_rest: { current_value: false },
+            enable_openai: { current_value: false },
+            openai_api_key: { current_value: '' },
+            openai_use_custom_url: { current_value: false },
+            openai_base_url: { current_value: '' },
             default_llm_provider: { current_value: 'ollama' },
             ollama_use_custom_url: { current_value: false },
             ollama_custom_url: { current_value: "" },
@@ -91,6 +97,12 @@ app.registerExtension({
         const keyToIdMap = {
             'default_llm_provider': 'SageUtils.LLM Providers.default_llm_provider',
             'enable_lmstudio': 'SageUtils.LLM Providers.enable_lmstudio',
+            'enable_lmstudio_rest': 'SageUtils.LLM Providers.enable_lmstudio_rest',
+            'enable_ollama_rest': 'SageUtils.LLM Providers.enable_ollama_rest',
+            'enable_openai': 'SageUtils.LLM Providers.enable_openai',
+            'openai_api_key': 'SageUtils.OpenAI.openai_api_key',
+            'openai_use_custom_url': 'SageUtils.OpenAI.openai_use_custom_url',
+            'openai_base_url': 'SageUtils.OpenAI.openai_base_url',
             'enable_ollama': 'SageUtils.LLM Providers.enable_ollama',
             'ollama_custom_url': 'SageUtils.Local Custom Ollama URL.ollama_custom_url',
             'ollama_use_custom_url': 'SageUtils.Local Custom Ollama URL.ollama_use_custom_url',
@@ -119,11 +131,77 @@ app.registerExtension({
             name: "Default LLM Provider",
             type: "combo",
             defaultValue: "ollama",
-            options: ["ollama", "lmstudio", "native"],
+            options: ["ollama", "lmstudio", "lmstudio_rest", "ollama_rest", "openai", "native"],
             tooltip: "Default provider used by the LLM sidebar and provider-switching LLM v3 nodes",
             onChange: async (newVal, oldVal) => {
                 console.log(`Default LLM provider changed from ${oldVal} to ${newVal}`);
                 await saveSageSetting('default_llm_provider', newVal);
+            }
+        },
+        {
+            id: "SageUtils.LLM Providers.enable_lmstudio_rest",
+            name: "Enable LM Studio (REST) Integration",
+            type: "boolean",
+            defaultValue: false,
+            tooltip: "Enable LM Studio REST v1 integration",
+            onChange: async (newVal, oldVal) => {
+                console.log(`LM Studio REST integration changed from ${oldVal} to ${newVal}`);
+                await saveSageSetting('enable_lmstudio_rest', newVal);
+            }
+        },
+        {
+            id: "SageUtils.LLM Providers.enable_ollama_rest",
+            name: "Enable Ollama (REST) Integration",
+            type: "boolean",
+            defaultValue: false,
+            tooltip: "Enable Ollama native REST API integration (no SDK required)",
+            onChange: async (newVal, oldVal) => {
+                console.log(`Ollama REST integration changed from ${oldVal} to ${newVal}`);
+                await saveSageSetting('enable_ollama_rest', newVal);
+            }
+        },
+        {
+            id: "SageUtils.LLM Providers.enable_openai",
+            name: "Enable OpenAI Integration",
+            type: "boolean",
+            defaultValue: false,
+            tooltip: "Enable OpenAI (or OpenAI-compatible) REST API integration",
+            onChange: async (newVal, oldVal) => {
+                console.log(`OpenAI integration changed from ${oldVal} to ${newVal}`);
+                await saveSageSetting('enable_openai', newVal);
+            }
+        },
+        {
+            id: "SageUtils.OpenAI.openai_api_key",
+            name: "API Key",
+            type: "text",
+            defaultValue: "",
+            tooltip: "OpenAI API key (or leave blank to use OPENAI_API_KEY env var)",
+            onChange: async (newVal, oldVal) => {
+                console.log('OpenAI API key changed');
+                await saveSageSetting('openai_api_key', newVal);
+            }
+        },
+        {
+            id: "SageUtils.OpenAI.openai_use_custom_url",
+            name: "Enable Custom URL",
+            type: "boolean",
+            defaultValue: false,
+            tooltip: "Use a custom base URL instead of https://api.openai.com",
+            onChange: async (newVal, oldVal) => {
+                console.log(`OpenAI custom URL setting changed from ${oldVal} to ${newVal}`);
+                await saveSageSetting('openai_use_custom_url', newVal);
+            }
+        },
+        {
+            id: "SageUtils.OpenAI.openai_base_url",
+            name: "Base URL",
+            type: "text",
+            defaultValue: "",
+            tooltip: "Custom base URL for OpenAI-compatible endpoint (e.g., 'http://localhost:8080')",
+            onChange: async (newVal, oldVal) => {
+                console.log(`OpenAI base URL changed from '${oldVal}' to '${newVal}'`);
+                await saveSageSetting('openai_base_url', newVal);
             }
         },
         {

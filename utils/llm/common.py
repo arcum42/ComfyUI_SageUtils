@@ -1,4 +1,4 @@
-"""Shared LLM helper utilities extracted from llm_wrapper.py."""
+"""Shared LLM helper utilities extracted from llm/service.py."""
 
 from .tensor import tensor_to_base64_safe
 

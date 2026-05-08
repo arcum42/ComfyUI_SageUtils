@@ -27,6 +27,36 @@ SETTINGS_SCHEMA = {
         "type": bool,
         "description": "Enable LM Studio LLM integration"
     },
+    "enable_lmstudio_rest": {
+        "default": False,
+        "type": bool,
+        "description": "Enable LM Studio REST v1 LLM integration"
+    },
+    "enable_ollama_rest": {
+        "default": False,
+        "type": bool,
+        "description": "Enable Ollama REST LLM integration (HTTP API, no SDK required)"
+    },
+    "enable_openai": {
+        "default": False,
+        "type": bool,
+        "description": "Enable OpenAI (or compatible) LLM integration"
+    },
+    "openai_api_key": {
+        "default": "",
+        "type": str,
+        "description": "API key for OpenAI or compatible endpoint (can also be set via OPENAI_API_KEY env var)"
+    },
+    "openai_use_custom_url": {
+        "default": False,
+        "type": bool,
+        "description": "Use a custom base URL for the OpenAI-compatible endpoint"
+    },
+    "openai_base_url": {
+        "default": "",
+        "type": str,
+        "description": "Custom base URL for OpenAI-compatible endpoint (e.g., 'http://localhost:8080' for LocalAI)"
+    },
     "ollama_use_custom_url": {
         "default": False,
         "type": bool,
@@ -51,7 +81,7 @@ SETTINGS_SCHEMA = {
         "default": "ollama",
         "type": str,
         "description": "Default LLM provider to use for LLM sidebar and provider-switching LLM v3 nodes",
-        "valid_values": ["ollama", "lmstudio", "native"]
+        "valid_values": ["ollama", "lmstudio", "lmstudio_rest", "ollama_rest", "openai", "native"]
     },
     "llm_raise_node_exceptions": {
         "default": False,

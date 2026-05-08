@@ -709,10 +709,10 @@ function showProviderOptions(advancedOptions, provider) {
     const lmstudioSection = advancedOptions.querySelector('.llm-lmstudio-options');
     
     if (ollamaSection) {
-        ollamaSection.style.display = provider === 'ollama' ? 'block' : 'none';
+        ollamaSection.style.display = (provider === 'ollama' || provider === 'ollama_rest') ? 'block' : 'none';
     }
     if (lmstudioSection) {
-        lmstudioSection.style.display = provider === 'lmstudio' ? 'block' : 'none';
+        lmstudioSection.style.display = (provider === 'lmstudio' || provider === 'lmstudio_rest') ? 'block' : 'none';
     }
 }
 

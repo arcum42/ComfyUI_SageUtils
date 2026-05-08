@@ -84,10 +84,18 @@ def register_routes(routes_instance):
             if updated_settings:
                 if settings.save():
                     # Check if LLM-related settings were updated and trigger lazy initialization
-                    llm_settings = {'enable_ollama', 'enable_lmstudio', 'custom_ollama_url', 'custom_lmstudio_url'}
+                    llm_settings = {
+                        'enable_ollama',
+                        'enable_lmstudio',
+                        'enable_lmstudio_rest',
+                        'ollama_custom_url',
+                        'lmstudio_custom_url',
+                        'custom_ollama_url',
+                        'custom_lmstudio_url',
+                    }
                     if any(setting in llm_settings for setting in updated_settings):
                         try:
-                            from ..utils.llm_wrapper import ensure_llm_initialized
+                            from ..utils.llm.service import ensure_llm_initialized
                             ensure_llm_initialized()
                         except Exception as llm_e:
                             errors.append(f"Warning: Failed to initialize LLM services: {str(llm_e)}")

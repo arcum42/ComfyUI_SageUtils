@@ -372,11 +372,22 @@ function buildGenerationOptions(state) {
         options.repeat_penalty = state.settings.repeatPenalty;
         options.presence_penalty = state.settings.presencePenalty;
         options.frequency_penalty = state.settings.frequencyPenalty;
-    } else if (state.provider === 'lmstudio') {
+    } else if (state.provider === 'lmstudio' || state.provider === 'lmstudio_rest') {
         options.topKSampling = state.settings.lmsTopK;
         options.topPSampling = state.settings.lmsTopP;
         options.repeatPenalty = state.settings.lmsRepeatPenalty;
         options.minPSampling = state.settings.lmsMinP;
+    } else if (state.provider === 'ollama_rest') {
+        options.num_keep = state.settings.numKeep;
+        options.num_predict = state.settings.numPredict;
+        options.top_k = state.settings.topK;
+        options.top_p = state.settings.topP;
+        options.repeat_last_n = state.settings.repeatLastN;
+        options.repeat_penalty = state.settings.repeatPenalty;
+        options.presence_penalty = state.settings.presencePenalty;
+        options.frequency_penalty = state.settings.frequencyPenalty;
+    } else if (state.provider === 'openai') {
+        // OpenAI uses standard temperature/max_tokens; already set above
     } else if (state.provider === 'native') {
         options.do_sample = true;
         options.max_length = state.settings.maxTokens;

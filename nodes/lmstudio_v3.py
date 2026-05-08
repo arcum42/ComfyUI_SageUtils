@@ -5,7 +5,7 @@ from __future__ import annotations
 from comfy_api.latest import io
 from comfy.utils import ProgressBar
 
-from ..utils.llm_wrapper import (
+from ..utils.llm.service import (
     lmstudio_load_model,
     lmstudio_generate_with_model,
     lmstudio_generate_vision_with_model,

@@ -96,7 +96,7 @@ comfyui_sageutils/
 │   ├── base.py                 # Route helpers
 │   └── ...
 ├── utils/                       # Backend utilities
-│   ├── llm_wrapper.py          # LLM provider abstraction
+│   ├── llm/service.py          # LLM provider orchestration
 │   └── settings.py             # Configuration
 ├── nodes/                       # ComfyUI custom nodes
 ├── assets/                      # Static assets

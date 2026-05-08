@@ -28,11 +28,22 @@ export function buildProviderOptions(provider, settings) {
         options.repeat_penalty = settings.repeatPenalty;
         options.presence_penalty = settings.presencePenalty;
         options.frequency_penalty = settings.frequencyPenalty;
-    } else if (provider === 'lmstudio') {
+    } else if (provider === 'lmstudio' || provider === 'lmstudio_rest') {
         options.topKSampling = settings.lmsTopK;
         options.topPSampling = settings.lmsTopP;
         options.repeatPenalty = settings.lmsRepeatPenalty;
         options.minPSampling = settings.lmsMinP;
+    } else if (provider === 'ollama_rest') {
+        options.num_keep = settings.numKeep;
+        options.num_predict = settings.numPredict;
+        options.top_k = settings.topK;
+        options.top_p = settings.topP;
+        options.repeat_last_n = settings.repeatLastN;
+        options.repeat_penalty = settings.repeatPenalty;
+        options.presence_penalty = settings.presencePenalty;
+        options.frequency_penalty = settings.frequencyPenalty;
+    } else if (provider === 'openai') {
+        // OpenAI uses standard options; backend maps them
     } else if (provider === 'native') {
         options.do_sample = true;
         options.max_length = settings.maxTokens;
@@ -71,7 +82,7 @@ export function getProviderDefaults(provider) {
             presencePenalty: 0.0,
             frequencyPenalty: 0.0
         };
-    } else if (provider === 'lmstudio') {
+    } else if (provider === 'lmstudio' || provider === 'lmstudio_rest') {
         return {
             ...commonDefaults,
             lmsTopK: 40,
@@ -79,6 +90,20 @@ export function getProviderDefaults(provider) {
             lmsRepeatPenalty: 1.1,
             lmsMinP: 0.05
         };
+    } else if (provider === 'ollama_rest') {
+        return {
+            ...commonDefaults,
+            numKeep: 0,
+            numPredict: -1,
+            topK: 40,
+            topP: 0.9,
+            repeatLastN: 64,
+            repeatPenalty: 1.1,
+            presencePenalty: 0.0,
+            frequencyPenalty: 0.0
+        };
+    } else if (provider === 'openai') {
+        return { ...commonDefaults };
     } else if (provider === 'native') {
         return {
             ...commonDefaults,
@@ -118,7 +143,10 @@ export function getProviderDisplayName(provider) {
     const names = {
         'ollama': 'Ollama',
         'lmstudio': 'LM Studio',
-        'native': 'Native (CLIP)'
+        'lmstudio_rest': 'LM Studio (REST)',
+        'native': 'Native (CLIP)',
+        'ollama_rest': 'Ollama (REST)',
+        'openai': 'OpenAI'
     };
     return names[provider] || provider;
 }
@@ -181,7 +209,7 @@ export function validateProviderConfig(provider, model, models) {
         return { valid: false, error: 'No provider selected' };
     }
 
-    if (!['ollama', 'lmstudio', 'native'].includes(provider)) {
+    if (!['ollama', 'lmstudio', 'lmstudio_rest', 'ollama_rest', 'openai', 'native'].includes(provider)) {
         return { valid: false, error: `Invalid provider: ${provider}` };
     }
 
@@ -226,7 +254,7 @@ export function getProviderParameterDescriptions(provider) {
             presencePenalty: 'Penalty for tokens that have appeared.',
             frequencyPenalty: 'Penalty based on token frequency.'
         };
-    } else if (provider === 'lmstudio') {
+    } else if (provider === 'lmstudio' || provider === 'lmstudio_rest') {
         return {
             ...common,
             lmsTopK: 'Limits next token selection to top K tokens.',
@@ -234,6 +262,20 @@ export function getProviderParameterDescriptions(provider) {
             lmsRepeatPenalty: 'Penalty for repeating tokens.',
             lmsMinP: 'Minimum probability threshold for token selection.'
         };
+    } else if (provider === 'ollama_rest') {
+        return {
+            ...common,
+            numKeep: 'Number of tokens to keep from initial prompt.',
+            numPredict: 'Maximum tokens to predict. -1 for infinite.',
+            topK: 'Limits next token selection to top K tokens.',
+            topP: 'Nucleus sampling: cumulative probability threshold.',
+            repeatLastN: 'How far back to look for repetitions.',
+            repeatPenalty: 'Penalty for repeating tokens.',
+            presencePenalty: 'Penalty for tokens that have appeared.',
+            frequencyPenalty: 'Penalty based on token frequency.'
+        };
+    } else if (provider === 'openai') {
+        return { ...common };
     } else if (provider === 'native') {
         return {
             ...common,
@@ -258,8 +300,12 @@ export function getProviderSettingKeys(provider) {
 
     if (provider === 'ollama') {
         return [...common, 'numKeep', 'numPredict', 'topK', 'topP', 'repeatLastN', 'repeatPenalty', 'presencePenalty', 'frequencyPenalty'];
-    } else if (provider === 'lmstudio') {
+    } else if (provider === 'lmstudio' || provider === 'lmstudio_rest') {
         return [...common, 'lmsTopK', 'lmsTopP', 'lmsRepeatPenalty', 'lmsMinP'];
+    } else if (provider === 'ollama_rest') {
+        return [...common, 'numKeep', 'numPredict', 'topK', 'topP', 'repeatLastN', 'repeatPenalty', 'presencePenalty', 'frequencyPenalty'];
+    } else if (provider === 'openai') {
+        return [...common];
     } else if (provider === 'native') {
         return [...common, 'topK', 'topP', 'lmsMinP', 'repeatPenalty', 'presencePenalty'];
     }

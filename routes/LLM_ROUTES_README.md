@@ -78,7 +78,7 @@ Phase 1 provides core backend API endpoints for interacting with Ollama and LM S
 ```
 
 **Notes:**
-- Uses existing model cache from `llm_wrapper.py`
+- Uses existing model cache from `utils/llm/cache.py`
 - Filters out placeholder messages like "(Ollama not available)"
 - Returns empty arrays if service is disabled or unavailable
 
@@ -210,7 +210,7 @@ Phase 1 provides core backend API endpoints for interacting with Ollama and LM S
 - Non-streaming in Phase 1 (full response returned at once)
 - **Phase 2 adds SSE streaming** (see `/sage_llm/generate_stream`)
 - Validates required fields and provider type
-- Uses existing `llm_wrapper.py` functions
+- Uses existing `utils/llm/service.py` functions
 - System prompt optional (useful for context/persona)
 
 ---
@@ -657,8 +657,8 @@ python test_llm_routes.py
 
 ## Integration with Existing Code
 
-### LLM Wrapper Integration
-Routes use the existing `utils/llm_wrapper.py` module:
+### LLM Service Integration
+Routes use the existing `utils/llm/service.py` module:
 
 **Phase 1 Functions:**
 - `ensure_llm_initialized()` - Initialize services lazily
@@ -677,7 +677,7 @@ Routes use the existing `utils/llm_wrapper.py` module:
 
 ### Model Cache Integration
 Routes leverage the existing LLM model cache:
-- `utils/llm_cache.py` - Thread-safe caching (5-minute TTL)
+- `utils/llm/cache.py` - Thread-safe provider-aware caching (5-minute TTL)
 - Reduces API calls during node initialization
 - Shared between routes and Python nodes
 

@@ -24,7 +24,7 @@ log_init("IMPORTS_START")
 from .utils import cache, config_manager
 log_init("UTILS_IMPORTED")
 
-from .utils.llm_wrapper import init_llm
+from .utils.llm.service import init_llm
 log_init("LLM_WRAPPER_IMPORTED")
 
 ENABLE_TRAINING_NODES = True
@@ -54,7 +54,7 @@ init_llm()
 log_init("LLM_INITIALIZED")
 
 # Import LLM availability flags for conditional node registration
-from .utils import llm_wrapper as llm
+from .utils.llm import service as llm
 log_init("LLM_FLAGS_IMPORTED")
 
 # Import server routes to register custom HTTP endpoints

@@ -302,8 +302,8 @@ def validate_provider(provider: str) -> tuple[bool, Optional[str]]:
     Returns:
         Tuple of (is_valid, error_message)
     """
-    if provider not in ['ollama', 'lmstudio', 'native']:
-        return False, f"Invalid provider: {provider}. Must be 'ollama', 'lmstudio', or 'native'"
+    if provider not in ['ollama', 'lmstudio', 'lmstudio_rest', 'ollama_rest', 'openai', 'native']:
+        return False, f"Invalid provider: {provider}. Must be 'ollama', 'lmstudio', 'lmstudio_rest', 'ollama_rest', 'openai', or 'native'"
     return True, None
 
 

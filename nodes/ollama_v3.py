@@ -6,7 +6,7 @@ from importlib.util import find_spec
 from comfy_api.latest import io
 from comfy.utils import ProgressBar
 
-from ..utils.llm_wrapper import (
+from ..utils.llm.service import (
     ollama_generate_vision,
     ollama_generate_vision_refine,
     ollama_preload_model,

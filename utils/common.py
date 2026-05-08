@@ -135,8 +135,8 @@ from .sage_utils import (
     ensure_config_file
 )
 
-# LLM wrapper
-from . import llm_wrapper as llm
+# LLM service
+from .llm import service as llm
 
 __all__ = [
     # Helper functions
