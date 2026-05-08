@@ -13,9 +13,11 @@ from comfy_api.latest._io import NodeOutput, Schema
 
 from pathlib import Path
 import json
+import re
 from typing import Optional, Union
 
 import folder_paths
+import comfy.samplers
 
 from ..utils.lora_utils import lora_to_prompt
 from ..utils.helpers_civitai import civitai_sampler_name, get_model_dict
@@ -238,9 +240,404 @@ class Sage_ConstructMetadataFlexible(io.ComfyNode):
         
         return io.NodeOutput(formatted_metadata)
 
+
+# ============================================================================
+
+def _reverse_civitai_sampler_name(civitai_sampler_name_str):
+    """
+    Convert Civitai sampler name back to ComfyUI format.
+    Extracts scheduler info and reverses the sampler name mapping.
+    If not found in mapping, returns the name as-is (might already be ComfyUI format).
+    For duplicate Civitai names, returns the first ComfyUI equivalent.
+    Returns (sampler_name, scheduler_name).
+    """
+    # Mapping from ComfyUI to Civitai names
+    comfy_to_civitai = {
+        'ddim': 'DDIM',
+        'dpm_2': 'DPM2',
+        'dpm_2_ancestral': 'DPM2 a',
+        'dpmpp_2s_ancestral': 'DPM++ 2S a',
+        'dpmpp_2m': 'DPM++ 2M',
+        'dpmpp_sde': 'DPM++ SDE',
+        'dpmpp_2m_sde': 'DPM++ 2M SDE',
+        'dpmpp_2m_sde_gpu': 'DPM++ 2M SDE',
+        'dpmpp_3m_sde': 'DPM++ 3M SDE',
+        'dpmpp_3m_sde_gpu': 'DPM++ 3M SDE',
+        'dpm_fast': 'DPM fast',
+        'dpm_adaptive': 'DPM adaptive',
+        'euler_ancestral': 'Euler a',
+        'euler': 'Euler',
+        'heun': 'Heun',
+        'lcm': 'LCM',
+        'lms': 'LMS',
+        'plms': 'PLMS',
+        'uni_pc': 'UniPC',
+        'uni_pc_bh2': 'UniPC'
+    }
+    
+    # Build reverse mapping (first occurrence wins for duplicates)
+    civitai_to_comfy = {}
+    for comfy_name, civitai_name in comfy_to_civitai.items():
+        if civitai_name not in civitai_to_comfy:  # First occurrence wins
+            civitai_to_comfy[civitai_name] = comfy_name
+    
+    sampler_input = civitai_sampler_name_str.strip()
+    scheduler = None
+    
+    # Extract scheduler from the end
+    if sampler_input.endswith(" Karras"):
+        scheduler = "karras"
+        sampler_base = sampler_input[:-7].strip()  # Remove " Karras"
+    elif sampler_input.endswith(" Exponential"):
+        scheduler = "exponential"
+        sampler_base = sampler_input[:-12].strip()  # Remove " Exponential"
+    else:
+        sampler_base = sampler_input
+    
+    # Look up in reverse mapping
+    if sampler_base in civitai_to_comfy:
+        return civitai_to_comfy[sampler_base], scheduler
+    else:
+        # Return as-is if not found (might already be ComfyUI name)
+        return sampler_base, scheduler
+
+
+def _normalize_scheduler_name(scheduler_name_str):
+    """Normalize scheduler names from metadata to ComfyUI-style scheduler keys."""
+    if scheduler_name_str is None:
+        return "normal"
+
+    normalized = str(scheduler_name_str).strip().lower()
+    if normalized == "":
+        return "normal"
+    return normalized
+
+# ============================================================================
+
+class Sage_ParseMetadataFlexible(io.ComfyNode):
+    """Reverse parser for A1111 Full format metadata string."""
+    
+    @classmethod
+    def define_schema(cls):
+        schema = io.Schema(
+            node_id="Sage_ParseMetadataFlexible",
+            display_name="Parse Metadata Flexible",
+            description="Parses A1111 Full format metadata string and extracts individual components. Returns parsed values for positive prompt, negative prompt, sampler info (sampler, scheduler, cfg, steps, seed), dimensions (width, height), and attempts to find models and LoRAs by hash in the local cache.",
+            category=f"{SAGE_UTILS_CAT}/metadata",
+            inputs=[
+                io.String.Input("metadata_string", display_name="metadata_string", multiline=True),
+                io.Combo.Input("default_sampler", display_name="default_sampler",
+                               options=comfy.samplers.SAMPLER_NAMES,
+                               default="euler", optional=True),
+                io.Combo.Input("default_scheduler", display_name="default_scheduler",
+                               options=comfy.samplers.SCHEDULER_NAMES,
+                               default="normal", optional=True),
+                io.Int.Input("default_seed", display_name="default_seed", default=0, optional=True),
+                io.Int.Input("default_steps", display_name="default_steps", default=20, min=1, max=10000, optional=True),
+                io.Float.Input("default_cfg", display_name="default_cfg", default=7.0, min=0.0, max=100.0, step=0.1, optional=True),
+                io.Int.Input("default_width", display_name="default_width", default=1024, min=0, optional=True),
+                io.Int.Input("default_height", display_name="default_height", default=1024, min=0, optional=True),
+                ModelInfo.Input("default_model_info", display_name="default_model_info", optional=True),
+            ],
+            outputs=[
+                io.String.Output("positive_string", display_name="positive_string"),
+                io.String.Output("negative_string", display_name="negative_string"),
+                io.Combo.Output("sampler_name", display_name="sampler_name"),
+                io.Combo.Output("scheduler", display_name="scheduler"),
+                io.Int.Output("seed", display_name="seed"),
+                io.Int.Output("steps", display_name="steps"),
+                io.Float.Output("cfg", display_name="cfg"),
+                io.Int.Output("width", display_name="width"),
+                io.Int.Output("height", display_name="height"),
+                ModelInfo.Output("model_info", display_name="model_info"),
+                LoraStack.Output("lora_stack", display_name="lora_stack"),
+            ]
+        )
+        return schema
+    
+    @classmethod
+    def _parse_size_string(cls, size_str: str) -> tuple[int, int]:
+        """Parse size string like '1024x768' into (width, height) tuple."""
+        try:
+            parts = size_str.split('x')
+            if len(parts) == 2:
+                return int(parts[0]), int(parts[1])
+        except (ValueError, AttributeError):
+            pass
+        return 0, 0
+    
+    @classmethod
+    def _extract_sampler_info(cls, base_params: str) -> dict:
+        """Extract sampler information from base_params string."""
+        info = {
+            'steps': 20,
+            'sampler': 'euler',
+            'scheduler': 'normal',
+            'cfg': 7.0,
+            'seed': 0,
+        }
+        
+        # Parse Steps
+        steps_match = None
+        for part in base_params.split(','):
+            if 'Steps:' in part:
+                try:
+                    steps_match = part.split('Steps:')[1].strip().split()[0]
+                    info['steps'] = int(steps_match)
+                except (ValueError, IndexError):
+                    pass
+        
+        # Parse Sampler (can have multiple words, extract until next comma)
+        for part in base_params.split(','):
+            if 'Sampler:' in part:
+                try:
+                    sampler_match = part.split('Sampler:')[1].strip()
+                    # Reverse Civitai sampler name to ComfyUI format
+                    reversed_sampler, extracted_scheduler = _reverse_civitai_sampler_name(sampler_match)
+                    info['sampler'] = reversed_sampler
+                    # If scheduler was found in sampler name, use it as default (can be overridden below)
+                    if extracted_scheduler:
+                        info['scheduler'] = _normalize_scheduler_name(extracted_scheduler)
+                except (ValueError, IndexError):
+                    pass
+        
+        # Parse scheduler (handle both "Scheduler type" and "Schedule type" variants)
+        for part in base_params.split(','):
+            part_stripped = part.strip()
+            if part_stripped.startswith('Scheduler type:') or part_stripped.startswith('Schedule type:'):
+                try:
+                    scheduler_match = part_stripped.split(':', 1)[1].strip()
+                    info['scheduler'] = _normalize_scheduler_name(scheduler_match)
+                except (ValueError, IndexError):
+                    pass
+        
+        # Parse CFG
+        for part in base_params.split(','):
+            if 'CFG scale:' in part:
+                try:
+                    cfg_match = part.split('CFG scale:')[1].strip().split()[0]
+                    info['cfg'] = float(cfg_match)
+                except (ValueError, IndexError):
+                    pass
+        
+        # Parse Seed
+        for part in base_params.split(','):
+            if 'Seed:' in part:
+                try:
+                    seed_match = part.split('Seed:')[1].strip().split()[0]
+                    info['seed'] = int(seed_match)
+                except (ValueError, IndexError):
+                    pass
+        
+        return info
+    
+    @classmethod
+    def _extract_lora_tokens(cls, prompt: str) -> tuple[str, list[str]]:
+        """Extract <lora:...> tokens from prompt and return (cleaned_prompt, lora_tokens)."""
+        lora_pattern = r'<lora:([^>]+)>'
+        lora_matches = re.findall(lora_pattern, prompt)
+        cleaned_prompt = re.sub(lora_pattern, '', prompt).strip()
+        
+        return cleaned_prompt, lora_matches
+    
+    @classmethod
+    def _parse_lora_token(cls, lora_token: str) -> tuple[str, float, float]:
+        """Parse <lora:name:weight> format. Note: we extract model_weight as both weights."""
+        parts = lora_token.split(':')
+        if len(parts) >= 2:
+            name = parts[0].strip()
+            try:
+                weight = float(parts[1].strip())
+                # For simplicity, use same weight for both model and clip
+                return name, weight, weight
+            except (ValueError, IndexError):
+                return name, 1.0, 1.0
+        return lora_token, 1.0, 1.0
+
+    @classmethod
+    def _extract_model_hashes(cls, base_params: str) -> list:
+        """Extract model short-hashes from base params. Returns list of hash strings."""
+        model_hashes = []
+        for part in base_params.split(','):
+            if 'Model hash:' in part:
+                try:
+                    hash_val = part.split('Model hash:')[1].strip()
+                    if hash_val:
+                        model_hashes.append(hash_val)
+                except IndexError:
+                    pass
+        return model_hashes
+
+    @classmethod
+    def _extract_lora_hashes(cls, base_params: str) -> list:
+        """Extract lora (name, short_hash) pairs from base params Lora hashes field."""
+        lora_pairs = []
+        if 'Lora hashes:' not in base_params:
+            return lora_pairs
+        try:
+            lora_section = base_params.split('Lora hashes:')[1].strip()
+            # Each entry is "filename: hash", separated by ", "
+            for entry in lora_section.split(','):
+                entry = entry.strip()
+                if ':' in entry:
+                    parts = entry.split(':', 1)
+                    name = parts[0].strip()
+                    hash_val = parts[1].strip()
+                    if name and hash_val:
+                        lora_pairs.append((name, hash_val))
+        except IndexError:
+            pass
+        return lora_pairs
+
+    @classmethod
+    def _find_model_by_hash(cls, short_hash: str):
+        """Search cache for a model matching the given short hash prefix.
+        Returns (file_path, type, full_hash) or (None, None, None)."""
+        short_hash = short_hash.lower()
+        for file_path, full_hash in cache.hash.items():
+            if not full_hash.lower().startswith(short_hash):
+                continue
+            for ckpt_base in folder_paths.get_folder_paths("checkpoints"):
+                if file_path.startswith(str(ckpt_base)):
+                    return file_path, "CKPT", full_hash
+            for unet_base in folder_paths.get_folder_paths("diffusion_models"):
+                if file_path.startswith(str(unet_base)):
+                    return file_path, "UNET", full_hash
+        return None, None, None
+
+    @classmethod
+    def _find_lora_by_hash(cls, short_hash: str) -> Optional[str]:
+        """Search cache for a lora matching the given short hash prefix.
+        Returns a relative lora name suitable for folder_paths lookup, or None."""
+        short_hash = short_hash.lower()
+        for file_path, full_hash in cache.hash.items():
+            if not full_hash.lower().startswith(short_hash):
+                continue
+            for lora_base in folder_paths.get_folder_paths("loras"):
+                lora_base_str = str(lora_base)
+                if file_path.startswith(lora_base_str):
+                    try:
+                        return str(Path(file_path).relative_to(lora_base_str))
+                    except ValueError:
+                        pass
+        return None
+
+    @classmethod
+    def execute(cls, **kwargs):
+        metadata_string = kwargs.get("metadata_string", "")
+
+        default_sampler   = kwargs.get("default_sampler", "euler")
+        default_scheduler = kwargs.get("default_scheduler", "normal")
+        default_seed      = kwargs.get("default_seed", 0)
+        default_steps     = kwargs.get("default_steps", 20)
+        default_cfg       = float(kwargs.get("default_cfg", 7.0))
+        default_width     = kwargs.get("default_width", 0)
+        default_height    = kwargs.get("default_height", 0)
+        default_model_info = kwargs.get("default_model_info", None)
+
+        if not metadata_string or not isinstance(metadata_string, str):
+            return io.NodeOutput(
+                "",               # positive_string
+                "",               # negative_string
+                default_sampler,  # sampler_name
+                default_scheduler,# scheduler
+                default_seed,     # seed
+                default_steps,    # steps
+                default_cfg,      # cfg
+                default_width,    # width
+                default_height,   # height
+                default_model_info,  # model_info
+                None,             # lora_stack
+            )
+        
+        # Split by "Negative prompt:" to separate positive and the rest
+        if "Negative prompt:" in metadata_string:
+            parts = metadata_string.split("Negative prompt:", 1)
+            positive_with_lora = parts[0].strip()
+            rest = parts[1].strip()
+        else:
+            # No negative prompt found, treat whole string as positive
+            positive_with_lora = metadata_string
+            rest = ""
+        
+        # Extract LoRA tokens from positive prompt
+        positive_string, lora_tokens = cls._extract_lora_tokens(positive_with_lora)
+
+        # Parse lora token weights (stem -> weight) for use when building lora_stack
+        lora_token_weights = {}
+        for token in lora_tokens:
+            name, model_weight, _ = cls._parse_lora_token(token)
+            lora_token_weights[Path(name).stem.lower()] = model_weight
+
+        # Find where negative prompt ends (at first newline after negative)
+        negative_string = ""
+        base_params = ""
+        
+        if rest:
+            # The rest contains negative prompt, then parameters
+            lines = rest.split('\n')
+            if len(lines) > 0:
+                negative_string = lines[0].strip()
+            
+            # Combine remaining lines as base_params and model/version info
+            if len(lines) > 1:
+                base_params = '\n'.join(lines[1:]).strip()
+        
+        # Parse the base params and additional info
+        # Format: Steps: X, Sampler: Y, Scheduler type: Z, CFG scale: W, Seed: S, Size: WxH, Model: ..., Model hash: ..., Version: ..., ...
+        sampler_info_dict = cls._extract_sampler_info(base_params)
+        
+        # Extract dimensions
+        width, height = 0, 0
+        for part in base_params.split(','):
+            if 'Size:' in part:
+                try:
+                    size_str = part.split('Size:')[1].strip().split()[0]
+                    width, height = cls._parse_size_string(size_str)
+                except (ValueError, IndexError):
+                    pass
+
+        # Search cache for models by hash
+        model_info_result = None
+        model_infos = []
+        for short_hash in cls._extract_model_hashes(base_params):
+            file_path, model_type, full_hash = cls._find_model_by_hash(short_hash)
+            if file_path and model_type:
+                model_infos.append({"type": model_type, "path": file_path, "hash": full_hash})
+        if model_infos:
+            model_info_result = tuple(model_infos)
+
+        # Search cache for loras by hash and build lora_stack
+        lora_stack_result = None
+        lora_entries = []
+        for lora_name, short_hash in cls._extract_lora_hashes(base_params):
+            lora_rel = cls._find_lora_by_hash(short_hash)
+            if lora_rel:
+                stem = Path(lora_name).stem.lower()
+                weight = lora_token_weights.get(stem, 1.0)
+                lora_entries.append((lora_rel, weight, weight))
+        if lora_entries:
+            lora_stack_result = lora_entries
+
+        return io.NodeOutput(
+            positive_string,  # positive_string
+            negative_string,  # negative_string
+            sampler_info_dict.get('sampler', '') or default_sampler,    # sampler_name
+            sampler_info_dict.get('scheduler', '') or default_scheduler, # scheduler
+            sampler_info_dict.get('seed', 0) or default_seed,           # seed
+            sampler_info_dict.get('steps', 0) or default_steps,         # steps
+            float(sampler_info_dict.get('cfg', 0.0)) or default_cfg,    # cfg
+            width or default_width,   # width
+            height or default_height, # height
+            model_info_result if model_info_result is not None else default_model_info,  # model_info
+            lora_stack_result,  # lora_stack (None if not found in cache)
+        )
+
+
 # ============================================================================
 
 METADATA_NODES = [
     # metadata nodes
-    Sage_ConstructMetadataFlexible
+    Sage_ConstructMetadataFlexible,
+    Sage_ParseMetadataFlexible
 ]
