@@ -10,6 +10,7 @@ from ...logger import get_logger
 from ...helpers_image import tensor_to_temp_image
 from ..common import clean_response, build_lmstudio_config
 from ..errors import raise_llm_error, report_llm_error, stringify_llm_error
+from ..capabilities import ModelCapabilities, get_capability_cache
 
 logger = get_logger('llm.providers.lmstudio')
 
@@ -49,6 +50,70 @@ def _cleanup_temp_paths(paths: list[str]) -> None:
             os.unlink(path)
         except OSError:
             pass
+
+
+def _safe_get(mapping_or_obj: Any, key: str, default=None):
+    if isinstance(mapping_or_obj, dict):
+        return mapping_or_obj.get(key, default)
+    return getattr(mapping_or_obj, key, default)
+
+
+def _detect_capabilities_from_model_object(model_obj: Any, model_name: str) -> ModelCapabilities:
+    info = _safe_get(model_obj, 'info', None)
+    capabilities_obj = _safe_get(model_obj, 'capabilities', None)
+
+    vision = bool(_safe_get(info, 'vision', False))
+    tool_use = bool(_safe_get(info, 'trained_for_tool_use', False) or _safe_get(info, 'tool_use', False))
+
+    if isinstance(capabilities_obj, dict):
+        vision = vision or bool(capabilities_obj.get('vision'))
+        tool_use = tool_use or bool(capabilities_obj.get('trained_for_tool_use') or capabilities_obj.get('tool_use'))
+
+    lowered = model_name.lower()
+    reasoning = any(marker in lowered for marker in ('deepseek-r1', 'qwq', 'o1', 'o3', 'reasoning'))
+    thinking = reasoning
+
+    context_window = _safe_get(info, 'max_context_length', None)
+    if context_window is None:
+        context_window = _safe_get(model_obj, 'max_context_length', None)
+    if context_window is not None:
+        try:
+            context_window = int(context_window)
+        except (TypeError, ValueError):
+            context_window = None
+
+    confidence = 'api' if (info is not None or capabilities_obj is not None) else 'heuristic'
+
+    return ModelCapabilities(
+        name=model_name,
+        provider=_PROVIDER_NAME,
+        vision=vision,
+        tool_use=tool_use,
+        reasoning=reasoning,
+        thinking=thinking,
+        supported_modalities=['text'] + (['image'] if vision else []),
+        context_window=context_window,
+        metadata={
+            'info': info if isinstance(info, dict) else {},
+            'capabilities': capabilities_obj if isinstance(capabilities_obj, dict) else {},
+        },
+        confidence=confidence,
+    )
+
+
+def get_model_capabilities(lmstudio_available: bool, lms: Any, enabled: bool, model_obj: Any) -> ModelCapabilities:
+    model_name = str(_safe_get(model_obj, 'model_key', '') or _safe_get(model_obj, 'id', '') or 'unknown')
+    if not lmstudio_available or lms is None or not enabled:
+        return ModelCapabilities(name=model_name, provider=_PROVIDER_NAME, confidence='guess')
+
+    cap_cache = get_capability_cache()
+    cached = cap_cache.get(_PROVIDER_NAME, model_name)
+    if cached is not None:
+        return cached
+
+    capabilities = _detect_capabilities_from_model_object(model_obj, model_name)
+    cap_cache.set(capabilities)
+    return capabilities
 
 
 # ===========================================================================
@@ -256,15 +321,9 @@ def get_vision_models(lmstudio_available: bool, lms: Any, enabled: bool) -> list
                 if not (hasattr(model, 'model_key') and model.model_key is not None):
                     continue
 
-                cached_vision = cache_instance.get_model_capability(_PROVIDER_NAME, model.model_key)
-                if cached_vision is not None:
-                    if cached_vision:
-                        models.append(model.model_key)
-                    continue
-
-                is_vision = hasattr(model, 'info') and getattr(model.info, 'vision', False)
-                cache_instance.set_model_capability(_PROVIDER_NAME, model.model_key, is_vision)
-                if is_vision:
+                capabilities = get_model_capabilities(lmstudio_available, lms, enabled, model)
+                cache_instance.set_model_capability(_PROVIDER_NAME, str(model.model_key), capabilities.vision)
+                if capabilities.vision:
                     models.append(model.model_key)
 
             return models
@@ -280,6 +339,77 @@ def get_vision_models(lmstudio_available: bool, lms: Any, enabled: bool) -> list
         label='LM Studio vision models',
         pass_self=True,
     )
+
+
+def get_tool_models(lmstudio_available: bool, lms: Any, enabled: bool) -> list[str]:
+    if not lmstudio_available or lms is None or not enabled:
+        return ['(LM Studio not available)']
+
+    def _fetch_tool_models() -> list[str]:
+        if lms is None or not is_running(lmstudio_available, lms, enabled):
+            return ['(LM Studio not available)']
+
+        response = lms.list_downloaded_models('llm')
+        models: list[str] = []
+        for model in response:
+            model_name = str(_safe_get(model, 'model_key', '') or '')
+            if not model_name:
+                continue
+            if get_model_capabilities(lmstudio_available, lms, enabled, model).tool_use:
+                models.append(model_name)
+        return models
+
+    cache = get_llm_cache()
+    return cache.get_model_list(
+        _PROVIDER_NAME,
+        'tool_models',
+        _fetch_tool_models,
+        label='LM Studio tool-capable models',
+    )
+
+
+def get_reasoning_models(lmstudio_available: bool, lms: Any, enabled: bool) -> list[str]:
+    if not lmstudio_available or lms is None or not enabled:
+        return ['(LM Studio not available)']
+
+    def _fetch_reasoning_models() -> list[str]:
+        if lms is None or not is_running(lmstudio_available, lms, enabled):
+            return ['(LM Studio not available)']
+
+        response = lms.list_downloaded_models('llm')
+        models: list[str] = []
+        for model in response:
+            model_name = str(_safe_get(model, 'model_key', '') or '')
+            if not model_name:
+                continue
+            if get_model_capabilities(lmstudio_available, lms, enabled, model).reasoning:
+                models.append(model_name)
+        return models
+
+    cache = get_llm_cache()
+    return cache.get_model_list(
+        _PROVIDER_NAME,
+        'reasoning_models',
+        _fetch_reasoning_models,
+        label='LM Studio reasoning models',
+    )
+
+
+def get_model_capabilities_map(lmstudio_available: bool, lms: Any, enabled: bool) -> dict[str, ModelCapabilities]:
+    if not lmstudio_available or lms is None or not enabled:
+        return {}
+
+    if not is_running(lmstudio_available, lms, enabled):
+        return {}
+
+    response = lms.list_downloaded_models('llm')
+    capabilities_map: dict[str, ModelCapabilities] = {}
+    for model in response:
+        model_name = str(_safe_get(model, 'model_key', '') or '')
+        if not model_name:
+            continue
+        capabilities_map[model_name] = get_model_capabilities(lmstudio_available, lms, enabled, model)
+    return capabilities_map
 
 
 def generate_vision(

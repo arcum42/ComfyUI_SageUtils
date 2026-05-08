@@ -6,6 +6,7 @@ from ..cache import get_llm_cache
 from ...logger import get_logger
 from ..common import clean_response, build_response_parameters
 from ..errors import raise_llm_error, report_llm_error, stringify_llm_error
+from ..capabilities import ModelCapabilities, get_capability_cache
 
 logger = get_logger('llm.providers.ollama')
 
@@ -20,6 +21,93 @@ def _ollama_unavailable_models() -> list[str]:
 
 def _is_ollama_unavailable(ollama_available: bool, ollama_client: Any, enabled: bool) -> bool:
     return (not ollama_available) or ollama_client is None or (not enabled)
+
+
+def _safe_get(mapping_or_obj: Any, key: str, default=None):
+    if isinstance(mapping_or_obj, dict):
+        return mapping_or_obj.get(key, default)
+    return getattr(mapping_or_obj, key, default)
+
+
+def _detect_capabilities_from_metadata(model_name: str, model_obj: Any, show_response: Any) -> ModelCapabilities:
+    capabilities_obj = _safe_get(model_obj, 'capabilities', None)
+    capabilities_list: list[str] = []
+    if isinstance(capabilities_obj, list):
+        capabilities_list = [str(item).lower() for item in capabilities_obj]
+
+    show_capabilities = _safe_get(show_response, 'capabilities', None)
+    if isinstance(show_capabilities, list):
+        for item in show_capabilities:
+            lowered = str(item).lower()
+            if lowered not in capabilities_list:
+                capabilities_list.append(lowered)
+
+    details = _safe_get(show_response, 'details', None)
+    families: list[str] = []
+    if isinstance(details, dict):
+        families_obj = details.get('families')
+        if isinstance(families_obj, list):
+            families = [str(item).lower() for item in families_obj]
+
+    template = str(_safe_get(show_response, 'template', '')).lower()
+    lowered_name = model_name.lower()
+
+    vision = ('vision' in capabilities_list) or ('vision' in families) or ('clip' in families)
+    tool_use = any(token in capabilities_list for token in ('tools', 'tool_use', 'function_calling'))
+    thinking = ('thinking' in capabilities_list) or ('<think>' in template)
+    reasoning = thinking or any(marker in lowered_name for marker in ('deepseek-r1', 'qwq', 'o1', 'o3', 'reasoning'))
+
+    context_window = None
+    model_info = _safe_get(show_response, 'model_info', None)
+    if isinstance(model_info, dict):
+        for key, value in model_info.items():
+            if 'context_length' in str(key).lower():
+                try:
+                    context_window = int(value)
+                    break
+                except (TypeError, ValueError):
+                    continue
+
+    has_api_metadata = bool(capabilities_list or families or template or context_window)
+    confidence = 'api' if has_api_metadata else 'heuristic'
+
+    return ModelCapabilities(
+        name=model_name,
+        provider=_PROVIDER_NAME,
+        vision=vision,
+        tool_use=tool_use,
+        reasoning=reasoning,
+        thinking=thinking,
+        supported_modalities=['text'] + (['image'] if vision else []),
+        context_window=context_window,
+        metadata={
+            'capabilities': capabilities_list,
+            'details': details if isinstance(details, dict) else {},
+            'template': template,
+        },
+        confidence=confidence,
+    )
+
+
+def get_model_capabilities(ollama_available: bool, ollama_client: Any, enabled: bool, model_name: str, model_obj: Any = None) -> ModelCapabilities:
+    if _is_ollama_unavailable(ollama_available, ollama_client, enabled):
+        return ModelCapabilities(name=model_name, provider=_PROVIDER_NAME, confidence='guess')
+
+    cap_cache = get_capability_cache()
+    cached = cap_cache.get(_PROVIDER_NAME, model_name)
+    if cached is not None:
+        return cached
+
+    show_response = {}
+    if ollama_client is not None:
+        try:
+            show_response = ollama_client.show(model_name)
+        except Exception as e:
+            logger.debug(f'Failed to query Ollama show metadata for {model_name}: {e}')
+
+    capabilities = _detect_capabilities_from_metadata(model_name, model_obj or {}, show_response or {})
+    cap_cache.set(capabilities)
+    return capabilities
 
 
 def get_vision_models(ollama_available: bool, ollama_client: Any, enabled: bool) -> list[str]:
@@ -42,28 +130,10 @@ def get_vision_models(ollama_available: bool, ollama_client: Any, enabled: bool)
 
                 logger.debug(f'Checking model: {model.model}')
 
-                cached_vision = cache_instance.get_model_capability(_PROVIDER_NAME, model.model)
-                if cached_vision is not None:
-                    logger.debug(f'Model {model.model} cached as vision: {cached_vision}')
-                    if cached_vision:
-                        models.append(model.model)
-                    continue
-
-                is_vision = False
-                capabilities = getattr(model, 'capabilities', None)
-                if capabilities and 'vision' in capabilities:
-                    is_vision = True
-                elif not capabilities:
-                    try:
-                        show_response = ollama_client.show(str(model.model))
-                        if 'vision' in getattr(show_response, 'capabilities', []):
-                            is_vision = True
-                    except Exception as e:
-                        logger.debug(f'Failed to get capabilities for {model.model}: {e}')
-
-                logger.debug(f'Caching vision capability for {model.model}: {is_vision}')
-                cache_instance.set_model_capability(_PROVIDER_NAME, model.model, is_vision)
-                if is_vision:
+                capabilities = get_model_capabilities(ollama_available, ollama_client, enabled, str(model.model), model)
+                logger.debug(f'Caching vision capability for {model.model}: {capabilities.vision}')
+                cache_instance.set_model_capability(_PROVIDER_NAME, str(model.model), capabilities.vision)
+                if capabilities.vision:
                     models.append(model.model)
 
             logger.debug(f'Found {len(models)} vision models.')
@@ -80,6 +150,63 @@ def get_vision_models(ollama_available: bool, ollama_client: Any, enabled: bool)
         label='Ollama vision models',
         pass_self=True,
     )
+
+
+def get_tool_models(ollama_available: bool, ollama_client: Any, enabled: bool) -> list[str]:
+    if _is_ollama_unavailable(ollama_available, ollama_client, enabled):
+        return _ollama_unavailable_models()
+
+    def _fetch_tool_models() -> list[str]:
+        models = get_models(ollama_available, ollama_client, enabled)
+        return [
+            model_name
+            for model_name in models
+            if not model_name.startswith('(')
+            and get_model_capabilities(ollama_available, ollama_client, enabled, model_name).tool_use
+        ]
+
+    cache = get_llm_cache()
+    return cache.get_model_list(
+        _PROVIDER_NAME,
+        'tool_models',
+        _fetch_tool_models,
+        label='Ollama tool-capable models',
+    )
+
+
+def get_reasoning_models(ollama_available: bool, ollama_client: Any, enabled: bool) -> list[str]:
+    if _is_ollama_unavailable(ollama_available, ollama_client, enabled):
+        return _ollama_unavailable_models()
+
+    def _fetch_reasoning_models() -> list[str]:
+        models = get_models(ollama_available, ollama_client, enabled)
+        return [
+            model_name
+            for model_name in models
+            if not model_name.startswith('(')
+            and get_model_capabilities(ollama_available, ollama_client, enabled, model_name).reasoning
+        ]
+
+    cache = get_llm_cache()
+    return cache.get_model_list(
+        _PROVIDER_NAME,
+        'reasoning_models',
+        _fetch_reasoning_models,
+        label='Ollama reasoning models',
+    )
+
+
+def get_model_capabilities_map(ollama_available: bool, ollama_client: Any, enabled: bool) -> dict[str, ModelCapabilities]:
+    if _is_ollama_unavailable(ollama_available, ollama_client, enabled):
+        return {}
+
+    model_names = get_models(ollama_available, ollama_client, enabled)
+    capabilities_map: dict[str, ModelCapabilities] = {}
+    for model_name in model_names:
+        if model_name.startswith('('):
+            continue
+        capabilities_map[model_name] = get_model_capabilities(ollama_available, ollama_client, enabled, model_name)
+    return capabilities_map
 
 
 def get_models(ollama_available: bool, ollama_client: Any, enabled: bool) -> list[str]:

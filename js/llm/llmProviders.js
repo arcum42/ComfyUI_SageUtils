@@ -325,6 +325,63 @@ export function formatModelName(model, isVision) {
 }
 
 /**
+ * Resolve capability flags for a model from route-provided capability maps and fallbacks.
+ * @param {string} provider - Provider key
+ * @param {string} model - Model name
+ * @param {Object} capabilitiesByProvider - Capability map payload from routes
+ * @param {Object} visionModelsByProvider - Vision model lists by provider
+ * @param {Object} toolModelsByProvider - Tool-capable model lists by provider
+ * @param {Object} reasoningModelsByProvider - Reasoning model lists by provider
+ * @returns {{vision: boolean, toolUse: boolean, reasoning: boolean}}
+ */
+export function getModelCapabilityFlags(
+    provider,
+    model,
+    capabilitiesByProvider,
+    visionModelsByProvider,
+    toolModelsByProvider,
+    reasoningModelsByProvider
+) {
+    const providerCapabilities = capabilitiesByProvider?.[provider] || {};
+    const modelCapabilities = providerCapabilities?.[model] || null;
+
+    const visionList = visionModelsByProvider?.[provider] || [];
+    const toolList = toolModelsByProvider?.[provider] || [];
+    const reasoningList = reasoningModelsByProvider?.[provider] || [];
+
+    const vision = Boolean(modelCapabilities?.vision) || visionList.includes(model);
+    const toolUse = Boolean(modelCapabilities?.tool_use) || toolList.includes(model);
+    const reasoning = Boolean(modelCapabilities?.reasoning) || reasoningList.includes(model);
+
+    return { vision, toolUse, reasoning };
+}
+
+/**
+ * Format model label with capability icons.
+ * @param {string} model - Model name
+ * @param {{vision: boolean, toolUse: boolean, reasoning: boolean}} flags - Capability flags
+ * @returns {string} - Formatted display label
+ */
+export function formatModelNameWithCapabilities(model, flags) {
+    const icons = [];
+    if (flags?.vision) {
+        icons.push('👁️');
+    }
+    if (flags?.toolUse) {
+        icons.push('🛠️');
+    }
+    if (flags?.reasoning) {
+        icons.push('🧠');
+    }
+
+    if (icons.length === 0) {
+        return model;
+    }
+
+    return `${icons.join(' ')} ${model}`;
+}
+
+/**
  * Parse provider from endpoint URL (for debugging/logging)
  * @param {string} url - API endpoint URL
  * @returns {string|null} - Provider name or null

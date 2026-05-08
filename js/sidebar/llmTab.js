@@ -351,9 +351,11 @@ async function createLLMTabVanilla(container) {
     const state = {
         provider: initialProvider,
         model: null,
-        models: { ollama: [], lmstudio: [], lmstudio_rest: [], native: [] },
         models: { ollama: [], lmstudio: [], lmstudio_rest: [], ollama_rest: [], openai: [], native: [] },
         visionModels: { ollama: [], lmstudio: [], lmstudio_rest: [], ollama_rest: [], openai: [], native: [] },
+        toolModels: { ollama: [], lmstudio: [], lmstudio_rest: [], ollama_rest: [], openai: [], native: [] },
+        reasoningModels: { ollama: [], lmstudio: [], lmstudio_rest: [], ollama_rest: [], openai: [], native: [] },
+        capabilities: { ollama: {}, lmstudio: {}, lmstudio_rest: {}, ollama_rest: {}, openai: {}, native: {} },
         generating: false,
         streamController: null,
         // Vision support

@@ -343,6 +343,21 @@ def register_routes(routes_instance):
             lmstudio_models = []
             lmstudio_rest_models = []
             native_models = _get_native_clip_models()
+            ollama_tool_models = []
+            lmstudio_tool_models = []
+            lmstudio_rest_tool_models = []
+            ollama_rest_tool_models = []
+            openai_tool_models = []
+            ollama_reasoning_models = []
+            lmstudio_reasoning_models = []
+            lmstudio_rest_reasoning_models = []
+            ollama_rest_reasoning_models = []
+            openai_reasoning_models = []
+            ollama_capabilities = {}
+            lmstudio_capabilities = {}
+            lmstudio_rest_capabilities = {}
+            ollama_rest_capabilities = {}
+            openai_capabilities = {}
             
             ollama_enabled = get_setting("enable_ollama", True)
             lmstudio_enabled = get_setting("enable_lmstudio", True)
@@ -354,6 +369,9 @@ def register_routes(routes_instance):
                 try:
                     models = llm.get_ollama_models()
                     ollama_models = get_compatible_models('ollama', models)
+                    ollama_tool_models = get_compatible_models('ollama', llm.get_ollama_tool_models())
+                    ollama_reasoning_models = get_compatible_models('ollama', llm.get_ollama_reasoning_models())
+                    ollama_capabilities = llm.get_ollama_model_capabilities_map()
                 except Exception as e:
                     logger.warning(f"Failed to get Ollama models: {e}")
             
@@ -361,6 +379,9 @@ def register_routes(routes_instance):
                 try:
                     models = llm.get_lmstudio_models()
                     lmstudio_models = get_compatible_models('lmstudio', models)
+                    lmstudio_tool_models = get_compatible_models('lmstudio', llm.get_lmstudio_tool_models())
+                    lmstudio_reasoning_models = get_compatible_models('lmstudio', llm.get_lmstudio_reasoning_models())
+                    lmstudio_capabilities = llm.get_lmstudio_model_capabilities_map()
                 except Exception as e:
                     logger.warning(f"Failed to get LM Studio models: {e}")
 
@@ -368,6 +389,9 @@ def register_routes(routes_instance):
                 try:
                     models = llm.get_lmstudio_rest_models()
                     lmstudio_rest_models = get_compatible_models('lmstudio_rest', models)
+                    lmstudio_rest_tool_models = get_compatible_models('lmstudio_rest', llm.get_lmstudio_rest_tool_models())
+                    lmstudio_rest_reasoning_models = get_compatible_models('lmstudio_rest', llm.get_lmstudio_rest_reasoning_models())
+                    lmstudio_rest_capabilities = llm.get_lmstudio_rest_model_capabilities_map()
                 except Exception as e:
                     logger.warning(f"Failed to get LM Studio REST models: {e}")
 
@@ -378,6 +402,9 @@ def register_routes(routes_instance):
                 try:
                     models = llm.get_ollama_rest_models()
                     ollama_rest_models = get_compatible_models('ollama_rest', models)
+                    ollama_rest_tool_models = get_compatible_models('ollama_rest', llm.get_ollama_rest_tool_models())
+                    ollama_rest_reasoning_models = get_compatible_models('ollama_rest', llm.get_ollama_rest_reasoning_models())
+                    ollama_rest_capabilities = llm.get_ollama_rest_model_capabilities_map()
                 except Exception as e:
                     logger.warning(f"Failed to get Ollama REST models: {e}")
 
@@ -385,8 +412,25 @@ def register_routes(routes_instance):
                 try:
                     models = llm.get_openai_models()
                     openai_models = get_compatible_models('openai', models)
+                    openai_tool_models = get_compatible_models('openai', llm.get_openai_tool_models())
+                    openai_reasoning_models = get_compatible_models('openai', llm.get_openai_reasoning_models())
+                    openai_capabilities = llm.get_openai_model_capabilities_map()
                 except Exception as e:
                     logger.warning(f"Failed to get OpenAI models: {e}")
+
+            native_capabilities = {
+                model_name: {
+                    'name': model_name,
+                    'provider': 'native',
+                    'vision': False,
+                    'tool_use': False,
+                    'reasoning': False,
+                    'thinking': False,
+                    'supported_modalities': ['text'],
+                    'confidence': 'guess',
+                }
+                for model_name in native_models
+            }
             
             return success_response(data={
                 "models": {
@@ -396,6 +440,30 @@ def register_routes(routes_instance):
                     "ollama_rest": ollama_rest_models,
                     "openai": openai_models,
                     "native": native_models,
+                },
+                "capabilities": {
+                    "ollama": ollama_capabilities,
+                    "lmstudio": lmstudio_capabilities,
+                    "lmstudio_rest": lmstudio_rest_capabilities,
+                    "ollama_rest": ollama_rest_capabilities,
+                    "openai": openai_capabilities,
+                    "native": native_capabilities,
+                },
+                "tool_models": {
+                    "ollama": ollama_tool_models,
+                    "lmstudio": lmstudio_tool_models,
+                    "lmstudio_rest": lmstudio_rest_tool_models,
+                    "ollama_rest": ollama_rest_tool_models,
+                    "openai": openai_tool_models,
+                    "native": [],
+                },
+                "reasoning_models": {
+                    "ollama": ollama_reasoning_models,
+                    "lmstudio": lmstudio_reasoning_models,
+                    "lmstudio_rest": lmstudio_rest_reasoning_models,
+                    "ollama_rest": ollama_rest_reasoning_models,
+                    "openai": openai_reasoning_models,
+                    "native": [],
                 },
                 "status": {
                     "ollama_available": len(ollama_models) > 0,
@@ -461,6 +529,21 @@ def register_routes(routes_instance):
             lmstudio_models = []
             lmstudio_rest_models = []
             native_models = []
+            ollama_tool_models = []
+            lmstudio_tool_models = []
+            lmstudio_rest_tool_models = []
+            ollama_rest_tool_models = []
+            openai_tool_models = []
+            ollama_reasoning_models = []
+            lmstudio_reasoning_models = []
+            lmstudio_rest_reasoning_models = []
+            ollama_rest_reasoning_models = []
+            openai_reasoning_models = []
+            ollama_capabilities = {}
+            lmstudio_capabilities = {}
+            lmstudio_rest_capabilities = {}
+            ollama_rest_capabilities = {}
+            openai_capabilities = {}
             
             ollama_enabled = get_setting("enable_ollama", True)
             lmstudio_enabled = get_setting("enable_lmstudio", True)
@@ -472,6 +555,9 @@ def register_routes(routes_instance):
                 try:
                     models = llm.get_ollama_vision_models()
                     ollama_models = get_compatible_models('ollama', models)
+                    ollama_tool_models = get_compatible_models('ollama', llm.get_ollama_tool_models())
+                    ollama_reasoning_models = get_compatible_models('ollama', llm.get_ollama_reasoning_models())
+                    ollama_capabilities = llm.get_ollama_model_capabilities_map()
                 except Exception as e:
                     logger.warning(f"Failed to get Ollama vision models: {e}")
             
@@ -479,6 +565,9 @@ def register_routes(routes_instance):
                 try:
                     models = llm.get_lmstudio_vision_models()
                     lmstudio_models = get_compatible_models('lmstudio', models)
+                    lmstudio_tool_models = get_compatible_models('lmstudio', llm.get_lmstudio_tool_models())
+                    lmstudio_reasoning_models = get_compatible_models('lmstudio', llm.get_lmstudio_reasoning_models())
+                    lmstudio_capabilities = llm.get_lmstudio_model_capabilities_map()
                 except Exception as e:
                     logger.warning(f"Failed to get LM Studio vision models: {e}")
 
@@ -486,6 +575,9 @@ def register_routes(routes_instance):
                 try:
                     models = llm.get_lmstudio_rest_vision_models()
                     lmstudio_rest_models = get_compatible_models('lmstudio_rest', models)
+                    lmstudio_rest_tool_models = get_compatible_models('lmstudio_rest', llm.get_lmstudio_rest_tool_models())
+                    lmstudio_rest_reasoning_models = get_compatible_models('lmstudio_rest', llm.get_lmstudio_rest_reasoning_models())
+                    lmstudio_rest_capabilities = llm.get_lmstudio_rest_model_capabilities_map()
                 except Exception as e:
                     logger.warning(f"Failed to get LM Studio REST vision models: {e}")
 
@@ -496,6 +588,9 @@ def register_routes(routes_instance):
                 try:
                     models = llm.get_ollama_rest_vision_models()
                     ollama_rest_models = get_compatible_models('ollama_rest', models)
+                    ollama_rest_tool_models = get_compatible_models('ollama_rest', llm.get_ollama_rest_tool_models())
+                    ollama_rest_reasoning_models = get_compatible_models('ollama_rest', llm.get_ollama_rest_reasoning_models())
+                    ollama_rest_capabilities = llm.get_ollama_rest_model_capabilities_map()
                 except Exception as e:
                     logger.warning(f"Failed to get Ollama REST vision models: {e}")
 
@@ -503,8 +598,13 @@ def register_routes(routes_instance):
                 try:
                     models = llm.get_openai_vision_models()
                     openai_vision_models = get_compatible_models('openai', models)
+                    openai_tool_models = get_compatible_models('openai', llm.get_openai_tool_models())
+                    openai_reasoning_models = get_compatible_models('openai', llm.get_openai_reasoning_models())
+                    openai_capabilities = llm.get_openai_model_capabilities_map()
                 except Exception as e:
                     logger.warning(f"Failed to get OpenAI vision models: {e}")
+
+            native_capabilities = {}
             
             return success_response(data={
                 "models": {
@@ -514,6 +614,30 @@ def register_routes(routes_instance):
                     "ollama_rest": ollama_rest_models,
                     "openai": openai_vision_models,
                     "native": native_models,
+                },
+                "capabilities": {
+                    "ollama": ollama_capabilities,
+                    "lmstudio": lmstudio_capabilities,
+                    "lmstudio_rest": lmstudio_rest_capabilities,
+                    "ollama_rest": ollama_rest_capabilities,
+                    "openai": openai_capabilities,
+                    "native": native_capabilities,
+                },
+                "tool_models": {
+                    "ollama": ollama_tool_models,
+                    "lmstudio": lmstudio_tool_models,
+                    "lmstudio_rest": lmstudio_rest_tool_models,
+                    "ollama_rest": ollama_rest_tool_models,
+                    "openai": openai_tool_models,
+                    "native": [],
+                },
+                "reasoning_models": {
+                    "ollama": ollama_reasoning_models,
+                    "lmstudio": lmstudio_reasoning_models,
+                    "lmstudio_rest": lmstudio_rest_reasoning_models,
+                    "ollama_rest": ollama_rest_reasoning_models,
+                    "openai": openai_reasoning_models,
+                    "native": [],
                 },
                 "status": {
                     "ollama_available": len(ollama_models) > 0,

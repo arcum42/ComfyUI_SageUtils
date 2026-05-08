@@ -12,6 +12,7 @@ from ...logger import get_logger
 from ..common import clean_response
 from ..errors import raise_llm_error, report_llm_error, stringify_llm_error
 from ..rest import iter_sse_events, normalize_base_url, normalize_image_data_url, request_json, request_stream, with_bearer_auth
+from ..capabilities import ModelCapabilities, get_capability_cache
 
 logger = get_logger('llm.providers.openai')
 
@@ -37,6 +38,19 @@ _KNOWN_VISION_MODEL_PREFIXES = (
     'qwen2-vl',
     'qwen2.5-vl',
 )
+
+_OPENAI_MODEL_CAPABILITIES: dict[str, dict[str, bool]] = {
+    'gpt-4o': {'vision': True, 'tool_use': True, 'reasoning': False, 'thinking': False},
+    'gpt-4o-mini': {'vision': True, 'tool_use': True, 'reasoning': False, 'thinking': False},
+    'gpt-4-turbo': {'vision': True, 'tool_use': True, 'reasoning': False, 'thinking': False},
+    'gpt-4-vision-preview': {'vision': True, 'tool_use': False, 'reasoning': False, 'thinking': False},
+    'gpt-4': {'vision': False, 'tool_use': True, 'reasoning': False, 'thinking': False},
+    'gpt-3.5-turbo': {'vision': False, 'tool_use': True, 'reasoning': False, 'thinking': False},
+    'o1': {'vision': False, 'tool_use': False, 'reasoning': True, 'thinking': True},
+    'o1-mini': {'vision': False, 'tool_use': False, 'reasoning': True, 'thinking': True},
+    'o3': {'vision': False, 'tool_use': False, 'reasoning': True, 'thinking': True},
+    'o3-mini': {'vision': False, 'tool_use': False, 'reasoning': True, 'thinking': True},
+}
 
 
 def _unavailable_models() -> list[str]:
@@ -203,6 +217,99 @@ def _extract_stream_delta(payload: Any) -> str:
     return ''
 
 
+def _match_openai_capability_profile(model_name: str) -> Optional[dict[str, bool]]:
+    lowered = model_name.lower()
+    for known_name, profile in _OPENAI_MODEL_CAPABILITIES.items():
+        known_lower = known_name.lower()
+        if lowered == known_lower or lowered.startswith(f'{known_lower}-'):
+            return profile
+    return None
+
+
+def _detect_capabilities_from_metadata(model_obj: dict[str, Any], model_name: str) -> ModelCapabilities:
+    capabilities_obj = model_obj.get('capabilities') or model_obj.get('features') or {}
+    if isinstance(capabilities_obj, dict):
+        vision = bool(capabilities_obj.get('vision') or capabilities_obj.get('image_input'))
+        tool_use = bool(capabilities_obj.get('tool_use') or capabilities_obj.get('function_calling'))
+        reasoning = bool(capabilities_obj.get('reasoning'))
+        thinking = bool(capabilities_obj.get('thinking'))
+        if any((vision, tool_use, reasoning, thinking)):
+            return ModelCapabilities(
+                name=model_name,
+                provider=_PROVIDER_NAME,
+                vision=vision,
+                tool_use=tool_use,
+                reasoning=reasoning,
+                thinking=thinking,
+                supported_modalities=['text'] + (['image'] if vision else []),
+                metadata=model_obj,
+                confidence='api',
+            )
+
+    profile = _match_openai_capability_profile(model_name)
+    if profile is not None:
+        vision = bool(profile.get('vision'))
+        return ModelCapabilities(
+            name=model_name,
+            provider=_PROVIDER_NAME,
+            vision=vision,
+            tool_use=bool(profile.get('tool_use')),
+            reasoning=bool(profile.get('reasoning')),
+            thinking=bool(profile.get('thinking')),
+            supported_modalities=['text'] + (['image'] if vision else []),
+            metadata=model_obj,
+            confidence='api',
+        )
+
+    vision = _is_vision_model(model_obj, model_name)
+    lowered = model_name.lower()
+    reasoning = any(marker in lowered for marker in ('o1', 'o3', 'o4', 'reasoning', 'deepseek-r1', 'qwq'))
+    return ModelCapabilities(
+        name=model_name,
+        provider=_PROVIDER_NAME,
+        vision=vision,
+        tool_use=not reasoning,
+        reasoning=reasoning,
+        thinking=reasoning,
+        supported_modalities=['text'] + (['image'] if vision else []),
+        metadata=model_obj,
+        confidence='heuristic',
+    )
+
+
+def get_model_capabilities(enabled: bool, model_obj: dict[str, Any], model_name: str) -> ModelCapabilities:
+    if _is_unavailable(enabled):
+        return ModelCapabilities(name=model_name, provider=_PROVIDER_NAME, confidence='guess')
+
+    cap_cache = get_capability_cache()
+    cached = cap_cache.get(_PROVIDER_NAME, model_name)
+    if cached is not None:
+        return cached
+
+    capabilities = _detect_capabilities_from_metadata(model_obj, model_name)
+    cap_cache.set(capabilities)
+    return capabilities
+
+
+def get_model_capabilities_map(enabled: bool) -> dict[str, ModelCapabilities]:
+    if _is_unavailable(enabled):
+        return {}
+
+    try:
+        response = request_json('GET', _get_base_url(), '/v1/models', headers=_get_headers())
+        models_payload = _extract_models_payload(response)
+        capabilities_map: dict[str, ModelCapabilities] = {}
+        for model_obj in models_payload:
+            model_id = _extract_model_id(model_obj)
+            if not model_id:
+                continue
+            capabilities_map[model_id] = get_model_capabilities(enabled, model_obj, model_id)
+        return capabilities_map
+    except Exception as e:
+        report_llm_error('Error retrieving model capabilities from OpenAI', provider=_PROVIDER_NAME, operation='get_model_capabilities_map', cause=e)
+        return {}
+
+
 def _stream_chat_response(payload: dict[str, Any], operation: str):
     full_response = ''
     stream_payload = payload.copy()
@@ -298,15 +405,9 @@ def get_vision_models(enabled: bool) -> list[str]:
                 if not model_id:
                     continue
 
-                cached_vision = cache_instance.get_model_capability(_PROVIDER_NAME, model_id)
-                if cached_vision is not None:
-                    if cached_vision:
-                        vision_models.append(model_id)
-                    continue
-
-                is_vision = _is_vision_model(model_obj, model_id)
-                cache_instance.set_model_capability(_PROVIDER_NAME, model_id, is_vision)
-                if is_vision:
+                capabilities = get_model_capabilities(enabled, model_obj, model_id)
+                cache_instance.set_model_capability(_PROVIDER_NAME, model_id, capabilities.vision)
+                if capabilities.vision:
                     vision_models.append(model_id)
 
             return sorted(vision_models)
@@ -322,6 +423,22 @@ def get_vision_models(enabled: bool) -> list[str]:
         label='OpenAI vision models',
         pass_self=True,
     )
+
+
+def get_tool_models(enabled: bool) -> list[str]:
+    if _is_unavailable(enabled):
+        return _unavailable_models()
+
+    capabilities_map = get_model_capabilities_map(enabled)
+    return sorted([name for name, capabilities in capabilities_map.items() if capabilities.tool_use])
+
+
+def get_reasoning_models(enabled: bool) -> list[str]:
+    if _is_unavailable(enabled):
+        return _unavailable_models()
+
+    capabilities_map = get_model_capabilities_map(enabled)
+    return sorted([name for name, capabilities in capabilities_map.items() if capabilities.reasoning])
 
 
 def generate(enabled: bool, model: str, prompt: str, options=None, system_prompt: str = '') -> str:

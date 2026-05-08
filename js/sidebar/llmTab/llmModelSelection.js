@@ -6,7 +6,13 @@
 import { createSelect } from '../../components/formElements.js';
 import { alertDialog } from '../../components/dialogManager.js';
 import * as llmApi from '../../llm/llmApi.js';
-import { getProviderDisplayName, getProviderStatusClass, getProviderStatusText, formatModelName } from '../../llm/llmProviders.js';
+import {
+    getProviderDisplayName,
+    getProviderStatusClass,
+    getProviderStatusText,
+    formatModelNameWithCapabilities,
+    getModelCapabilityFlags
+} from '../../llm/llmProviders.js';
 
 const LLM_LAST_MODELS_KEY = 'llm_last_models_by_provider';
 
@@ -208,8 +214,11 @@ export async function loadModels(state, modelSelection, visionSection, force = f
         ]);
         
         // Store models in state
-        state.models = modelsData.models;
-        state.visionModels = visionModelsData.models;
+        state.models = modelsData.models || {};
+        state.visionModels = visionModelsData.models || {};
+        state.capabilities = modelsData.capabilities || visionModelsData.capabilities || {};
+        state.toolModels = modelsData.tool_models || visionModelsData.tool_models || {};
+        state.reasoningModels = modelsData.reasoning_models || visionModelsData.reasoning_models || {};
         
         // Update status indicator
         const currentProvider = providerSelect.value;
@@ -258,7 +267,6 @@ export async function loadModels(state, modelSelection, visionSection, force = f
  */
 export function updateModelDropdown(state, modelSelect, provider, preferredModel = null) {
     const models = state.models[provider] || [];
-    const visionModels = state.visionModels[provider] || [];
     
     if (models.length === 0) {
         const emptyText = provider === 'native' ? 'No CLIP models available' : 'No models available';
@@ -266,13 +274,17 @@ export function updateModelDropdown(state, modelSelect, provider, preferredModel
         state.model = null;
         return;
     }
-    
-    // Create Set for faster lookup
-    const visionModelSet = new Set(visionModels);
-    
+
     modelSelect.innerHTML = models.map(model => {
-        const isVision = visionModelSet.has(model);
-        const displayName = formatModelName(model, isVision);
+        const flags = getModelCapabilityFlags(
+            provider,
+            model,
+            state.capabilities,
+            state.visionModels,
+            state.toolModels,
+            state.reasoningModels
+        );
+        const displayName = formatModelNameWithCapabilities(model, flags);
         return `<option value="${model}">${displayName}</option>`;
     }).join('');
     

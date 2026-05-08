@@ -8,6 +8,7 @@ from ...logger import get_logger
 from ..common import clean_response
 from ..errors import raise_llm_error, report_llm_error, stringify_llm_error
 from ..rest import iter_sse_events, normalize_base_url, normalize_image_data_url, request_json, request_stream, with_bearer_auth
+from ..capabilities import ModelCapabilities, get_capability_cache
 
 logger = get_logger('llm.providers.lmstudio_rest')
 
@@ -149,6 +150,74 @@ def _extract_chat_end_text(payload: Any) -> str:
     return _extract_response_text(payload.get('result'))
 
 
+def _detect_capabilities_from_model_object(model_obj: dict[str, Any]) -> ModelCapabilities:
+    model_name = _extract_model_name(model_obj) or model_obj.get('display_name') or 'unknown'
+    capabilities_obj = model_obj.get('capabilities')
+    vision = False
+    tool_use = False
+    if isinstance(capabilities_obj, dict):
+        vision = bool(capabilities_obj.get('vision'))
+        tool_use = bool(capabilities_obj.get('trained_for_tool_use') or capabilities_obj.get('tool_use'))
+
+    lowered = str(model_name).lower()
+    reasoning = any(marker in lowered for marker in ('o1', 'o3', 'o4', 'deepseek-r1', 'qwq', 'reasoning'))
+    thinking = reasoning
+
+    context_window = model_obj.get('max_context_length')
+    if context_window is not None:
+        try:
+            context_window = int(context_window)
+        except (TypeError, ValueError):
+            context_window = None
+
+    return ModelCapabilities(
+        name=str(model_name),
+        provider=_PROVIDER_NAME,
+        vision=vision,
+        tool_use=tool_use,
+        reasoning=reasoning,
+        thinking=thinking,
+        supported_modalities=['text'] + (['image'] if vision else []),
+        context_window=context_window,
+        metadata=model_obj,
+        confidence='api',
+    )
+
+
+def get_model_capabilities(enabled: bool, model_obj: dict[str, Any]) -> ModelCapabilities:
+    model_name = _extract_model_name(model_obj) or model_obj.get('display_name') or 'unknown'
+    if _is_unavailable(enabled):
+        return ModelCapabilities(name=str(model_name), provider=_PROVIDER_NAME, confidence='guess')
+
+    cap_cache = get_capability_cache()
+    cached = cap_cache.get(_PROVIDER_NAME, str(model_name))
+    if cached is not None:
+        return cached
+
+    capabilities = _detect_capabilities_from_model_object(model_obj)
+    cap_cache.set(capabilities)
+    return capabilities
+
+
+def get_model_capabilities_map(enabled: bool) -> dict[str, ModelCapabilities]:
+    if _is_unavailable(enabled):
+        return {}
+
+    try:
+        response = request_json('GET', _get_base_url(), '/api/v1/models', headers=_get_headers())
+        models_payload = _extract_models_payload(response)
+        capabilities_map: dict[str, ModelCapabilities] = {}
+        for model_obj in models_payload:
+            model_name = _extract_model_name(model_obj)
+            if not model_name:
+                continue
+            capabilities_map[model_name] = get_model_capabilities(enabled, model_obj)
+        return capabilities_map
+    except Exception as e:
+        report_llm_error('Error retrieving model capabilities from LM Studio REST', provider='lmstudio_rest', operation='get_model_capabilities_map', cause=e)
+        return {}
+
+
 def _stream_chat_response(payload: dict[str, Any], operation: str):
     full_response = ''
     stream_payload = payload.copy()
@@ -244,15 +313,9 @@ def get_vision_models(enabled: bool) -> list[str]:
                 if not model_name:
                     continue
 
-                cached_vision = cache_instance.get_model_capability(_PROVIDER_NAME, model_name)
-                if cached_vision is not None:
-                    if cached_vision:
-                        vision_models.append(model_name)
-                    continue
-
-                is_vision = _is_vision_model(model_obj, model_name)
-                cache_instance.set_model_capability(_PROVIDER_NAME, model_name, is_vision)
-                if is_vision:
+                capabilities = get_model_capabilities(enabled, model_obj)
+                cache_instance.set_model_capability(_PROVIDER_NAME, model_name, capabilities.vision)
+                if capabilities.vision:
                     vision_models.append(model_name)
 
             return vision_models
@@ -268,6 +331,22 @@ def get_vision_models(enabled: bool) -> list[str]:
         label='LM Studio REST vision models',
         pass_self=True,
     )
+
+
+def get_tool_models(enabled: bool) -> list[str]:
+    if _is_unavailable(enabled):
+        return _unavailable_models()
+
+    capabilities_map = get_model_capabilities_map(enabled)
+    return sorted([name for name, capabilities in capabilities_map.items() if capabilities.tool_use])
+
+
+def get_reasoning_models(enabled: bool) -> list[str]:
+    if _is_unavailable(enabled):
+        return _unavailable_models()
+
+    capabilities_map = get_model_capabilities_map(enabled)
+    return sorted([name for name, capabilities in capabilities_map.items() if capabilities.reasoning])
 
 
 def load_model(enabled: bool, model: str, keep_alive: int = 0) -> bool:

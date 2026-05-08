@@ -164,6 +164,86 @@ def get_openai_vision_models() -> list[str]:
     return openai_provider.get_vision_models(is_openai_enabled())
 
 
+def get_ollama_tool_models() -> list[str]:
+    """Retrieve tool-capable models from Ollama SDK provider."""
+    return ollama_provider.get_tool_models(OLLAMA_AVAILABLE, ollama_client, is_ollama_enabled())
+
+
+def get_ollama_reasoning_models() -> list[str]:
+    """Retrieve reasoning-capable models from Ollama SDK provider."""
+    return ollama_provider.get_reasoning_models(OLLAMA_AVAILABLE, ollama_client, is_ollama_enabled())
+
+
+def get_lmstudio_tool_models() -> list[str]:
+    """Retrieve tool-capable models from LM Studio SDK provider."""
+    return lmstudio_provider.get_tool_models(LMSTUDIO_AVAILABLE, lms, is_lmstudio_enabled())
+
+
+def get_lmstudio_reasoning_models() -> list[str]:
+    """Retrieve reasoning-capable models from LM Studio SDK provider."""
+    return lmstudio_provider.get_reasoning_models(LMSTUDIO_AVAILABLE, lms, is_lmstudio_enabled())
+
+
+def get_lmstudio_rest_tool_models() -> list[str]:
+    """Retrieve tool-capable models from LM Studio REST provider."""
+    return lmstudio_rest_provider.get_tool_models(is_lmstudio_rest_enabled())
+
+
+def get_lmstudio_rest_reasoning_models() -> list[str]:
+    """Retrieve reasoning-capable models from LM Studio REST provider."""
+    return lmstudio_rest_provider.get_reasoning_models(is_lmstudio_rest_enabled())
+
+
+def get_ollama_rest_tool_models() -> list[str]:
+    """Retrieve tool-capable models from Ollama REST provider."""
+    return ollama_rest_provider.get_tool_models(is_ollama_rest_enabled())
+
+
+def get_ollama_rest_reasoning_models() -> list[str]:
+    """Retrieve reasoning-capable models from Ollama REST provider."""
+    return ollama_rest_provider.get_reasoning_models(is_ollama_rest_enabled())
+
+
+def get_openai_tool_models() -> list[str]:
+    """Retrieve tool-capable models from OpenAI-compatible provider."""
+    return openai_provider.get_tool_models(is_openai_enabled())
+
+
+def get_openai_reasoning_models() -> list[str]:
+    """Retrieve reasoning-capable models from OpenAI-compatible provider."""
+    return openai_provider.get_reasoning_models(is_openai_enabled())
+
+
+def get_ollama_model_capabilities_map() -> dict[str, dict[str, object]]:
+    """Retrieve capabilities map for Ollama SDK models."""
+    capability_map = ollama_provider.get_model_capabilities_map(OLLAMA_AVAILABLE, ollama_client, is_ollama_enabled())
+    return {model_name: capabilities.to_dict() for model_name, capabilities in capability_map.items()}
+
+
+def get_lmstudio_model_capabilities_map() -> dict[str, dict[str, object]]:
+    """Retrieve capabilities map for LM Studio SDK models."""
+    capability_map = lmstudio_provider.get_model_capabilities_map(LMSTUDIO_AVAILABLE, lms, is_lmstudio_enabled())
+    return {model_name: capabilities.to_dict() for model_name, capabilities in capability_map.items()}
+
+
+def get_lmstudio_rest_model_capabilities_map() -> dict[str, dict[str, object]]:
+    """Retrieve capabilities map for LM Studio REST models."""
+    capability_map = lmstudio_rest_provider.get_model_capabilities_map(is_lmstudio_rest_enabled())
+    return {model_name: capabilities.to_dict() for model_name, capabilities in capability_map.items()}
+
+
+def get_ollama_rest_model_capabilities_map() -> dict[str, dict[str, object]]:
+    """Retrieve capabilities map for Ollama REST models."""
+    capability_map = ollama_rest_provider.get_model_capabilities_map(is_ollama_rest_enabled())
+    return {model_name: capabilities.to_dict() for model_name, capabilities in capability_map.items()}
+
+
+def get_openai_model_capabilities_map() -> dict[str, dict[str, object]]:
+    """Retrieve capabilities map for OpenAI-compatible models."""
+    capability_map = openai_provider.get_model_capabilities_map(is_openai_enabled())
+    return {model_name: capabilities.to_dict() for model_name, capabilities in capability_map.items()}
+
+
 def lmstudio_generate_vision(model: str, prompt: str, keep_alive: int = 0, images=None, options=None) -> str:
     """Generate a response from an LM Studio vision model."""
     ensure_lmstudio_initialized()

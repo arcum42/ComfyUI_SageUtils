@@ -8,6 +8,7 @@ from ...logger import get_logger
 from ..common import clean_response
 from ..errors import raise_llm_error, report_llm_error, stringify_llm_error
 from ..rest import iter_json_lines, normalize_base_url, normalize_image_data_url, request_json, request_stream, with_bearer_auth
+from ..capabilities import ModelCapabilities, get_capability_cache
 
 logger = get_logger('llm.providers.ollama_rest')
 
@@ -165,6 +166,105 @@ def _normalize_raw_images(images=None) -> list[str]:
     return raw_images
 
 
+def _query_model_metadata(model_name: str) -> dict[str, Any]:
+    """Query Ollama /api/show to get model metadata and template details."""
+    try:
+        response = request_json(
+            'POST',
+            _get_base_url(),
+            '/api/show',
+            payload={'name': model_name},
+            headers=_get_headers(),
+            timeout=_get_request_timeout(),
+        )
+        return response if isinstance(response, dict) else {}
+    except Exception as e:
+        logger.debug(f"Failed to query /api/show for '{model_name}': {e}")
+        return {}
+
+
+def _detect_capabilities_from_metadata(model_name: str, show_response: dict[str, Any]) -> ModelCapabilities:
+    details = show_response.get('details')
+    families_lower: list[str] = []
+    if isinstance(details, dict):
+        families = details.get('families')
+        if isinstance(families, list):
+            families_lower = [str(f).lower() for f in families]
+
+    template = str(show_response.get('template', '')).lower()
+    model_lower = model_name.lower()
+
+    vision = ('vision' in families_lower) or ('clip' in families_lower) or _is_vision_model({'details': details or {}}, model_name)
+    thinking = '<think>' in template
+    reasoning = thinking or any(marker in model_lower for marker in ('deepseek-r1', 'qwq', 'reasoning'))
+
+    context_window: Optional[int] = None
+    model_info = show_response.get('model_info')
+    if isinstance(model_info, dict):
+        for key, value in model_info.items():
+            if 'context_length' in str(key).lower():
+                try:
+                    context_window = int(value)
+                    break
+                except (TypeError, ValueError):
+                    continue
+
+    return ModelCapabilities(
+        name=model_name,
+        provider=_PROVIDER_NAME,
+        vision=vision,
+        tool_use=False,
+        reasoning=reasoning,
+        thinking=thinking,
+        supported_modalities=['text'] + (['image'] if vision else []),
+        context_window=context_window,
+        metadata=show_response,
+        confidence='api',
+    )
+
+
+def get_model_capabilities(enabled: bool, model_name: str) -> ModelCapabilities:
+    if _is_unavailable(enabled):
+        return ModelCapabilities(name=model_name, provider=_PROVIDER_NAME, confidence='guess')
+
+    cap_cache = get_capability_cache()
+    cached = cap_cache.get(_PROVIDER_NAME, model_name)
+    if cached is not None:
+        return cached
+
+    metadata = _query_model_metadata(model_name)
+    if metadata:
+        capabilities = _detect_capabilities_from_metadata(model_name, metadata)
+    else:
+        is_vision = _is_vision_model({}, model_name)
+        capabilities = ModelCapabilities(
+            name=model_name,
+            provider=_PROVIDER_NAME,
+            vision=is_vision,
+            tool_use=False,
+            reasoning=False,
+            thinking=False,
+            supported_modalities=['text'] + (['image'] if is_vision else []),
+            confidence='heuristic',
+        )
+
+    cap_cache.set(capabilities)
+    return capabilities
+
+
+def get_model_capabilities_map(enabled: bool) -> dict[str, ModelCapabilities]:
+    if _is_unavailable(enabled):
+        return {}
+
+    model_names = get_models(enabled)
+    capabilities_map: dict[str, ModelCapabilities] = {}
+    for model_name in model_names:
+        if model_name.startswith('('):
+            continue
+        capabilities_map[model_name] = get_model_capabilities(enabled, model_name)
+    return capabilities_map
+
+
 def _stream_chat_response(payload: dict[str, Any], operation: str):
     full_response = ''
     stream_payload = payload.copy()
@@ -259,15 +359,9 @@ def get_vision_models(enabled: bool) -> list[str]:
                 if not model_name:
                     continue
 
-                cached_vision = cache_instance.get_model_capability(_PROVIDER_NAME, model_name)
-                if cached_vision is not None:
-                    if cached_vision:
-                        vision_models.append(model_name)
-                    continue
-
-                is_vision = _is_vision_model(model_obj, model_name)
-                cache_instance.set_model_capability(_PROVIDER_NAME, model_name, is_vision)
-                if is_vision:
+                capabilities = get_model_capabilities(enabled, model_name)
+                cache_instance.set_model_capability(_PROVIDER_NAME, model_name, capabilities.vision)
+                if capabilities.vision:
                     vision_models.append(model_name)
 
             return vision_models
@@ -283,6 +377,22 @@ def get_vision_models(enabled: bool) -> list[str]:
         label='Ollama REST vision models',
         pass_self=True,
     )
+
+
+def get_tool_models(enabled: bool) -> list[str]:
+    if _is_unavailable(enabled):
+        return _unavailable_models()
+
+    capabilities_map = get_model_capabilities_map(enabled)
+    return sorted([name for name, capabilities in capabilities_map.items() if capabilities.tool_use])
+
+
+def get_reasoning_models(enabled: bool) -> list[str]:
+    if _is_unavailable(enabled):
+        return _unavailable_models()
+
+    capabilities_map = get_model_capabilities_map(enabled)
+    return sorted([name for name, capabilities in capabilities_map.items() if capabilities.reasoning])
 
 
 def generate(enabled: bool, model: str, prompt: str, options=None, system_prompt: str = '', keep_alive: str = '5m') -> str:

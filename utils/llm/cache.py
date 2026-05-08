@@ -9,6 +9,7 @@ from threading import RLock
 from typing import Any, Callable, Dict, List, Optional
 
 from ..logger import get_logger
+from .capabilities import reset_capability_cache
 
 logger = get_logger('llm.cache')
 
@@ -144,4 +145,5 @@ def invalidate_llm_cache() -> None:
     """Invalidate all LLM cache data."""
     cache = get_llm_cache()
     cache.invalidate_all()
+    reset_capability_cache()
     logger.info('LLM model cache invalidated')
