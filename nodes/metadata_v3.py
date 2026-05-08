@@ -326,15 +326,15 @@ class Sage_ParseMetadataFlexible(io.ComfyNode):
             category=f"{SAGE_UTILS_CAT}/metadata",
             inputs=[
                 io.String.Input("metadata_string", display_name="metadata_string", multiline=True),
+                io.Int.Input("default_seed", display_name="default_seed", default=0, optional=True),
+                io.Int.Input("default_steps", display_name="default_steps", default=20, min=1, max=10000, optional=True),
+                io.Float.Input("default_cfg", display_name="default_cfg", default=7.0, min=0.0, max=100.0, step=0.1, optional=True),
                 io.Combo.Input("default_sampler", display_name="default_sampler",
                                options=comfy.samplers.SAMPLER_NAMES,
                                default="euler", optional=True),
                 io.Combo.Input("default_scheduler", display_name="default_scheduler",
                                options=comfy.samplers.SCHEDULER_NAMES,
                                default="normal", optional=True),
-                io.Int.Input("default_seed", display_name="default_seed", default=0, optional=True),
-                io.Int.Input("default_steps", display_name="default_steps", default=20, min=1, max=10000, optional=True),
-                io.Float.Input("default_cfg", display_name="default_cfg", default=7.0, min=0.0, max=100.0, step=0.1, optional=True),
                 io.Int.Input("default_width", display_name="default_width", default=1024, min=0, optional=True),
                 io.Int.Input("default_height", display_name="default_height", default=1024, min=0, optional=True),
                 ModelInfo.Input("default_model_info", display_name="default_model_info", optional=True),
@@ -342,11 +342,11 @@ class Sage_ParseMetadataFlexible(io.ComfyNode):
             outputs=[
                 io.String.Output("positive_string", display_name="positive_string"),
                 io.String.Output("negative_string", display_name="negative_string"),
-                io.Combo.Output("sampler_name", display_name="sampler_name"),
-                io.Combo.Output("scheduler", display_name="scheduler"),
                 io.Int.Output("seed", display_name="seed"),
                 io.Int.Output("steps", display_name="steps"),
                 io.Float.Output("cfg", display_name="cfg"),
+                io.Combo.Output("sampler_name", display_name="sampler_name"),
+                io.Combo.Output("scheduler", display_name="scheduler"),
                 io.Int.Output("width", display_name="width"),
                 io.Int.Output("height", display_name="height"),
                 ModelInfo.Output("model_info", display_name="model_info"),
@@ -622,11 +622,11 @@ class Sage_ParseMetadataFlexible(io.ComfyNode):
         return io.NodeOutput(
             positive_string,  # positive_string
             negative_string,  # negative_string
-            sampler_info_dict.get('sampler', '') or default_sampler,    # sampler_name
-            sampler_info_dict.get('scheduler', '') or default_scheduler, # scheduler
             sampler_info_dict.get('seed', 0) or default_seed,           # seed
             sampler_info_dict.get('steps', 0) or default_steps,         # steps
             float(sampler_info_dict.get('cfg', 0.0)) or default_cfg,    # cfg
+            sampler_info_dict.get('sampler', '') or default_sampler,    # sampler_name
+            sampler_info_dict.get('scheduler', '') or default_scheduler, # scheduler
             width or default_width,   # width
             height or default_height, # height
             model_info_result if model_info_result is not None else default_model_info,  # model_info
