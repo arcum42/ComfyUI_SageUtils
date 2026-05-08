@@ -1311,49 +1311,20 @@ def register_routes(routes_instance):
                         await response.write(error_chunk.encode('utf-8'))
                         await response.write_eof()
                         return response
-                    
-                    # LM Studio vision streaming (requires temp files)
-                    temp_files = []
-                    try:
-                        temp_files = routes_helpers.decode_base64_images_to_temp(images_data)
-                        
-                        # Use streaming function
-                        import lmstudio as lms
-                        keep_alive = options.get('keep_alive', 0)
-                        
-                        lms_model = lms.llm(model, ttl=keep_alive) if keep_alive >= 1 else lms.llm(model)
-                        
-                        # Create chat with system prompt (if provided)
-                        chat = lms.Chat(system_prompt) if system_prompt else lms.Chat()
-                        
-                        # Prepare image handles
-                        image_handles = [lms.prepare_image(img_path) for img_path in temp_files]
-                        chat.add_user_message(prompt, images=image_handles)
-                        
-                        # Get response and simulate streaming
-                        lms_response = lms_model.respond(chat)
-                        
-                        if keep_alive < 1:
-                            lms_model.unload()
-                        
-                        if lms_response:
-                            response_text = clean_response(lms_response.content)
-                            
-                            # Simulate streaming by chunking
-                            chunk_size = 5
-                            for i in range(0, len(response_text), chunk_size):
-                                chunk = response_text[i:i + chunk_size]
-                                chunk_data = {"chunk": chunk, "done": False}
-                                sse_data = routes_helpers.format_sse_chunk(chunk_data)
-                                await response.write(sse_data.encode('utf-8'))
-                            
-                            # Final message
-                            final_data = {"chunk": "", "done": True, "full_response": response_text}
-                            sse_data = routes_helpers.format_sse_chunk(final_data)
-                            await response.write(sse_data.encode('utf-8'))
-                    
-                    finally:
-                        routes_helpers.cleanup_temp_files(temp_files)
+
+                    keep_alive = options.get('keep_alive', 0)
+                    for chunk_data in llm.lmstudio_generate_vision_stream(
+                        model=model,
+                        prompt=prompt,
+                        keep_alive=keep_alive,
+                        images=images_data,
+                        options=options,
+                    ):
+                        sse_data = routes_helpers.format_sse_chunk(chunk_data)
+                        await response.write(sse_data.encode('utf-8'))
+
+                        if chunk_data.get('done', False):
+                            break
 
                 elif provider == "lmstudio_rest":
                     if not llm.LMSTUDIO_REST_AVAILABLE:
@@ -2173,7 +2144,7 @@ def register_routes(routes_instance):
 
         Request body:
             {
-                "provider": "ollama" | "lmstudio" | "native",
+                "provider": "ollama" | "lmstudio" | "lmstudio_rest" | "ollama_rest" | "openai" | "native",
                 "model": str,
                 "keep_alive": float | int  (optional, seconds; default 60)
             }
@@ -2194,9 +2165,9 @@ def register_routes(routes_instance):
             model = str(data.get("model", ""))
             keep_alive = data.get("keep_alive", 60)
 
-            if not provider or provider not in ("ollama", "lmstudio", "lmstudio_rest", "native"):
+            if not provider or provider not in ("ollama", "lmstudio", "lmstudio_rest", "ollama_rest", "openai", "native"):
                 return _error_response_with_metadata(
-                    f"Invalid or missing provider: {provider!r}. Must be 'ollama', 'lmstudio', 'lmstudio_rest', or 'native'",
+                    f"Invalid or missing provider: {provider!r}. Must be 'ollama', 'lmstudio', 'lmstudio_rest', 'ollama_rest', 'openai', or 'native'",
                     status=400,
                     error_code='LLM_VALIDATION_ERROR',
                 )
@@ -2252,17 +2223,42 @@ def register_routes(routes_instance):
                         provider='lmstudio_rest',
                         operation='load_model',
                     )
-                loaded = llm.lmstudio_rest_load_model(model=model, keep_alive=int(keep_alive))
-                if not loaded:
+                # LM Studio REST can return load failures even when the model is already
+                # resident/usable. Treat preload as a readiness check here and let
+                # generation endpoints perform the real request path.
+                available_models = llm.get_lmstudio_rest_models()
+                if model not in available_models:
                     return _error_response_with_metadata(
-                        f"Failed to load model '{model}' in LM Studio REST",
-                        status=500,
-                        error_code='LLM_LOAD_ERROR',
+                        f"Model '{model}' is not available in LM Studio REST",
+                        status=404,
+                        error_code='LLM_MODEL_NOT_FOUND',
                         provider='lmstudio_rest',
                         operation='load_model',
                     )
-                if keep_alive < 1:
-                    llm.lmstudio_rest_unload_model(model)
+
+            elif provider == "ollama_rest":
+                if not llm.OLLAMA_REST_AVAILABLE:
+                    return _error_response_with_metadata(
+                        'Ollama REST is not available',
+                        status=503,
+                        error_code='LLM_PROVIDER_UNAVAILABLE',
+                        provider='ollama_rest',
+                        operation='load_model',
+                    )
+                # No dedicated preload endpoint in Ollama REST mode here.
+                # Keep behavior consistent with native/openai by validating selection.
+
+            elif provider == "openai":
+                if not llm.OPENAI_AVAILABLE:
+                    return _error_response_with_metadata(
+                        'OpenAI provider is not available',
+                        status=503,
+                        error_code='LLM_PROVIDER_UNAVAILABLE',
+                        provider='openai',
+                        operation='load_model',
+                    )
+                # OpenAI-compatible providers do not expose a standard load API.
+                # Treat this as a successful readiness check.
 
             elif provider == "native":
                 available_native = _get_native_clip_models()

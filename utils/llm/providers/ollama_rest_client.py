@@ -7,7 +7,7 @@ from ..cache import get_llm_cache
 from ...logger import get_logger
 from ..common import clean_response
 from ..errors import raise_llm_error, report_llm_error, stringify_llm_error
-from ..rest import iter_text_chunks, normalize_base_url, normalize_image_data_url, request_json, with_bearer_auth
+from ..rest import iter_json_lines, normalize_base_url, normalize_image_data_url, request_json, request_stream, with_bearer_auth
 
 logger = get_logger('llm.providers.ollama_rest')
 
@@ -37,6 +37,22 @@ def _get_base_url() -> str:
 def _get_headers() -> Dict[str, str]:
     token = os.environ.get('OLLAMA_API_TOKEN', '')
     return with_bearer_auth({}, token)
+
+
+def _get_request_timeout() -> float:
+    """Return request timeout seconds for generation calls.
+
+    Uses settings key ollama_rest_timeout_seconds when available.
+    Falls back to 180s to accommodate slower first-token/model-load paths.
+    """
+    from ...settings import get_setting
+
+    raw = get_setting('ollama_rest_timeout_seconds', 180)
+    try:
+        timeout = float(raw)
+    except (TypeError, ValueError):
+        return 180.0
+    return timeout if timeout > 0 else 180.0
 
 
 def _extract_model_name(model_obj: Any) -> Optional[str]:
@@ -121,6 +137,70 @@ def _extract_response_text(response: Any) -> str:
                 return content
 
     return ''
+
+
+def _build_messages(prompt: str, system_prompt: str = '', raw_images=None) -> list[dict[str, Any]]:
+    messages = []
+    if system_prompt:
+        messages.append({'role': 'system', 'content': system_prompt})
+
+    user_message: dict[str, Any] = {'role': 'user', 'content': prompt}
+    if raw_images:
+        user_message['images'] = raw_images
+    messages.append(user_message)
+    return messages
+
+
+def _normalize_raw_images(images=None) -> list[str]:
+    if images is None:
+        return []
+
+    image_entries = images if isinstance(images, list) else [images]
+    raw_images: list[str] = []
+    for img in image_entries:
+        img_str = str(img)
+        if img_str.startswith('data:') and ',' in img_str:
+            img_str = img_str.split(',', 1)[1]
+        raw_images.append(img_str)
+    return raw_images
+
+
+def _stream_chat_response(payload: dict[str, Any], operation: str):
+    full_response = ''
+    stream_payload = payload.copy()
+    stream_payload['stream'] = True
+
+    with request_stream(
+        'POST',
+        _get_base_url(),
+        '/api/chat',
+        payload=stream_payload,
+        headers=_get_headers(),
+        timeout=_get_request_timeout(),
+    ) as response:
+        for item in iter_json_lines(response):
+            if not isinstance(item, dict):
+                continue
+
+            message = item.get('message')
+            chunk = ''
+            if isinstance(message, dict):
+                content = message.get('content')
+                if isinstance(content, str):
+                    chunk = content
+
+            if chunk:
+                full_response += chunk
+                yield {'chunk': chunk, 'done': False}
+
+            if item.get('error'):
+                raise_llm_error(RuntimeError, str(item.get('error')), provider=_PROVIDER_NAME, operation=operation)
+
+            if item.get('done'):
+                yield {'chunk': '', 'done': True, 'full_response': clean_response(full_response)}
+                return
+
+    yield {'chunk': '', 'done': True, 'full_response': clean_response(full_response)}
 
 
 def is_running(enabled: bool) -> bool:
@@ -210,14 +290,9 @@ def generate(enabled: bool, model: str, prompt: str, options=None, system_prompt
     if _is_unavailable(enabled):
         raise_llm_error(ImportError, 'Ollama REST is not enabled.', provider=_PROVIDER_NAME, operation='generate')
 
-    messages = []
-    if system_prompt:
-        messages.append({'role': 'system', 'content': system_prompt})
-    messages.append({'role': 'user', 'content': prompt})
-
     payload: dict[str, Any] = {
         'model': model,
-        'messages': messages,
+        'messages': _build_messages(prompt, system_prompt),
         'stream': False,
     }
     if keep_alive:
@@ -228,7 +303,14 @@ def generate(enabled: bool, model: str, prompt: str, options=None, system_prompt
         payload['options'] = built_options
 
     try:
-        response = request_json('POST', _get_base_url(), '/api/chat', payload=payload, headers=_get_headers())
+        response = request_json(
+            'POST',
+            _get_base_url(),
+            '/api/chat',
+            payload=payload,
+            headers=_get_headers(),
+            timeout=_get_request_timeout(),
+        )
         response_text = _extract_response_text(response)
         if not response_text:
             raise_llm_error(ValueError, 'No valid response received from Ollama REST.', provider=_PROVIDER_NAME, operation='generate')
@@ -246,26 +328,11 @@ def generate_vision(enabled: bool, model: str, prompt: str, images=None, options
     if images is None:
         raise_llm_error(ValueError, 'No images provided for vision model.', provider=_PROVIDER_NAME, operation='generate_vision')
 
-    image_entries = images if isinstance(images, list) else [images]
-
-    # Ollama expects base64-encoded strings (no data URL prefix)
-    raw_images = []
-    for img in image_entries:
-        img_str = str(img)
-        if img_str.startswith('data:'):
-            # Strip the data URL prefix: "data:image/png;base64,<data>"
-            if ',' in img_str:
-                img_str = img_str.split(',', 1)[1]
-        raw_images.append(img_str)
-
-    messages = []
-    if system_prompt:
-        messages.append({'role': 'system', 'content': system_prompt})
-    messages.append({'role': 'user', 'content': prompt, 'images': raw_images})
+    raw_images = _normalize_raw_images(images)
 
     payload: dict[str, Any] = {
         'model': model,
-        'messages': messages,
+        'messages': _build_messages(prompt, system_prompt, raw_images=raw_images),
         'stream': False,
     }
     if keep_alive:
@@ -276,7 +343,14 @@ def generate_vision(enabled: bool, model: str, prompt: str, images=None, options
         payload['options'] = built_options
 
     try:
-        response = request_json('POST', _get_base_url(), '/api/chat', payload=payload, headers=_get_headers())
+        response = request_json(
+            'POST',
+            _get_base_url(),
+            '/api/chat',
+            payload=payload,
+            headers=_get_headers(),
+            timeout=_get_request_timeout(),
+        )
         response_text = _extract_response_text(response)
         if not response_text:
             raise_llm_error(ValueError, 'No valid response received from Ollama REST.', provider=_PROVIDER_NAME, operation='generate_vision')
@@ -287,24 +361,59 @@ def generate_vision(enabled: bool, model: str, prompt: str, images=None, options
 
 
 def generate_stream(enabled: bool, model: str, prompt: str, options=None, system_prompt: str = '', keep_alive: str = '5m'):
-    """Generate a simulated streaming response from Ollama REST."""
+    """Generate a real streaming response from Ollama REST."""
     try:
-        response_text = generate(enabled, model, prompt, options=options, system_prompt=system_prompt, keep_alive=keep_alive)
-        for chunk in iter_text_chunks(response_text, chunk_size=5):
-            yield {'chunk': chunk, 'done': False}
-        yield {'chunk': '', 'done': True, 'full_response': response_text}
+        if _is_unavailable(enabled):
+            raise_llm_error(ImportError, 'Ollama REST is not enabled.', provider=_PROVIDER_NAME, operation='generate_stream')
+
+        model_list = get_models(enabled)
+        if model not in model_list:
+            raise_llm_error(ValueError, f"Model '{model}' is not available. Available models: {model_list}", provider=_PROVIDER_NAME, operation='generate_stream')
+
+        payload: dict[str, Any] = {
+            'model': model,
+            'messages': _build_messages(prompt, system_prompt),
+        }
+        if keep_alive:
+            payload['keep_alive'] = keep_alive
+
+        built_options = _build_options(options)
+        if built_options:
+            payload['options'] = built_options
+
+        for chunk_data in _stream_chat_response(payload, 'generate_stream'):
+            yield chunk_data
     except Exception as e:
         report_llm_error('Error in Ollama REST streaming', provider=_PROVIDER_NAME, operation='generate_stream', cause=e)
         yield {'chunk': '', 'done': True, 'full_response': '', 'error': stringify_llm_error(e)}
 
 
 def generate_vision_stream(enabled: bool, model: str, prompt: str, images=None, options=None, system_prompt: str = '', keep_alive: str = '5m'):
-    """Generate a simulated streaming vision response from Ollama REST."""
+    """Generate a real streaming vision response from Ollama REST."""
     try:
-        response_text = generate_vision(enabled, model, prompt, images=images, options=options, system_prompt=system_prompt, keep_alive=keep_alive)
-        for chunk in iter_text_chunks(response_text, chunk_size=5):
-            yield {'chunk': chunk, 'done': False}
-        yield {'chunk': '', 'done': True, 'full_response': response_text}
+        if _is_unavailable(enabled):
+            raise_llm_error(ImportError, 'Ollama REST is not enabled.', provider=_PROVIDER_NAME, operation='generate_vision_stream')
+
+        if images is None:
+            raise_llm_error(ValueError, 'No images provided for vision model.', provider=_PROVIDER_NAME, operation='generate_vision_stream')
+
+        model_list = get_vision_models(enabled)
+        if model not in model_list:
+            raise_llm_error(ValueError, f"Model '{model}' is not available. Available models: {model_list}", provider=_PROVIDER_NAME, operation='generate_vision_stream')
+
+        payload: dict[str, Any] = {
+            'model': model,
+            'messages': _build_messages(prompt, system_prompt, raw_images=_normalize_raw_images(images)),
+        }
+        if keep_alive:
+            payload['keep_alive'] = keep_alive
+
+        built_options = _build_options(options)
+        if built_options:
+            payload['options'] = built_options
+
+        for chunk_data in _stream_chat_response(payload, 'generate_vision_stream'):
+            yield chunk_data
     except Exception as e:
         report_llm_error('Error in Ollama REST vision streaming', provider=_PROVIDER_NAME, operation='generate_vision_stream', cause=e)
         yield {'chunk': '', 'done': True, 'full_response': '', 'error': stringify_llm_error(e)}

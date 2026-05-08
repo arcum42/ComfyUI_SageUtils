@@ -1,7 +1,8 @@
 """Shared REST helpers for LLM providers."""
 
 import json
-from typing import Any, Dict, Generator, Optional
+from contextlib import contextmanager
+from typing import Any, Dict, Generator, Iterator, Optional
 from urllib import error as urllib_error
 from urllib import request as urllib_request
 
@@ -61,6 +62,119 @@ def request_json(
         raise RuntimeError(message) from e
     except urllib_error.URLError as e:
         raise RuntimeError(f'Failed to reach {url}: {e.reason}') from e
+
+
+@contextmanager
+def request_stream(
+    method: str,
+    base_url: str,
+    path: str,
+    payload: Optional[dict[str, Any]] = None,
+    headers: Optional[dict[str, str]] = None,
+    timeout: float = 30.0,
+) -> Iterator[Any]:
+    """Perform an HTTP request and yield an open response handle for streaming."""
+    url = f"{base_url.rstrip('/')}/{path.lstrip('/')}"
+    body = None
+    if payload is not None:
+        body = json.dumps(payload).encode('utf-8')
+
+    request_headers = {'Content-Type': 'application/json'}
+    if headers:
+        request_headers.update(headers)
+
+    req = urllib_request.Request(url=url, data=body, method=method.upper(), headers=request_headers)
+
+    try:
+        with urllib_request.urlopen(req, timeout=timeout) as response:
+            yield response
+    except urllib_error.HTTPError as e:
+        detail = ''
+        try:
+            detail_bytes = e.read()
+            detail = detail_bytes.decode('utf-8', errors='replace') if detail_bytes else ''
+        except Exception:
+            detail = ''
+
+        message = f'HTTP {e.code} while calling {url}'
+        if detail:
+            message = f'{message}: {detail}'
+        raise RuntimeError(message) from e
+    except urllib_error.URLError as e:
+        raise RuntimeError(f'Failed to reach {url}: {e.reason}') from e
+
+
+def iter_sse_events(response: Any) -> Generator[dict[str, Any], None, None]:
+    """Parse a server-sent event response into ordered event dictionaries."""
+    data_lines: list[str] = []
+    event_name = 'message'
+
+    for raw_line in response:
+        line = raw_line.decode('utf-8', errors='replace').rstrip('\r\n')
+        if not line:
+            if not data_lines:
+                event_name = 'message'
+                continue
+
+            data_text = '\n'.join(data_lines)
+            try:
+                payload = json.loads(data_text) if data_text else {}
+            except json.JSONDecodeError:
+                payload = {'raw': data_text}
+
+            yield {
+                'event': event_name,
+                'data': payload,
+            }
+            data_lines = []
+            event_name = 'message'
+            continue
+
+        if line.startswith(':'):
+            continue
+
+        field, _, value = line.partition(':')
+        if value.startswith(' '):
+            value = value[1:]
+
+        if field == 'event':
+            event_name = value or 'message'
+        elif field == 'data':
+            data_lines.append(value)
+
+    if data_lines:
+        data_text = '\n'.join(data_lines)
+        try:
+            payload = json.loads(data_text) if data_text else {}
+        except json.JSONDecodeError:
+            payload = {'raw': data_text}
+
+        yield {
+            'event': event_name,
+            'data': payload,
+        }
+
+
+def iter_json_lines(response: Any) -> Generator[dict[str, Any], None, None]:
+    """Parse newline-delimited JSON objects from a streaming response."""
+    buffer = ''
+
+    for raw_line in response:
+        chunk = raw_line.decode('utf-8', errors='replace')
+        if not chunk:
+            continue
+        buffer += chunk
+
+        while '\n' in buffer:
+            line, buffer = buffer.split('\n', 1)
+            line = line.strip()
+            if not line:
+                continue
+            yield json.loads(line)
+
+    tail = buffer.strip()
+    if tail:
+        yield json.loads(tail)
 
 
 def normalize_image_data_url(image_data: str, default_mime: str = 'image/png') -> str:

@@ -11,7 +11,7 @@ from ..cache import get_llm_cache
 from ...logger import get_logger
 from ..common import clean_response
 from ..errors import raise_llm_error, report_llm_error, stringify_llm_error
-from ..rest import iter_text_chunks, normalize_base_url, normalize_image_data_url, request_json, with_bearer_auth
+from ..rest import iter_sse_events, normalize_base_url, normalize_image_data_url, request_json, request_stream, with_bearer_auth
 
 logger = get_logger('llm.providers.openai')
 
@@ -176,6 +176,72 @@ def _extract_response_text(response: Any) -> str:
     return ''
 
 
+def _extract_stream_delta(payload: Any) -> str:
+    if not isinstance(payload, dict):
+        return ''
+
+    choices = payload.get('choices')
+    if not isinstance(choices, list) or not choices:
+        return ''
+
+    first = choices[0]
+    if not isinstance(first, dict):
+        return ''
+
+    delta = first.get('delta')
+    if isinstance(delta, dict):
+        content = delta.get('content')
+        if isinstance(content, str):
+            return content
+        if isinstance(content, list):
+            parts: list[str] = []
+            for item in content:
+                if isinstance(item, dict) and item.get('type') == 'text' and isinstance(item.get('text'), str):
+                    parts.append(item['text'])
+            return ''.join(parts)
+
+    return ''
+
+
+def _stream_chat_response(payload: dict[str, Any], operation: str):
+    full_response = ''
+    stream_payload = payload.copy()
+    stream_payload['stream'] = True
+
+    with request_stream(
+        'POST',
+        _get_base_url(),
+        '/v1/chat/completions',
+        payload=stream_payload,
+        headers=_get_headers(),
+    ) as response:
+        for event in iter_sse_events(response):
+            event_data = event.get('data') or {}
+
+            if event_data == {'raw': '[DONE]'}:
+                yield {'chunk': '', 'done': True, 'full_response': clean_response(full_response)}
+                return
+
+            if isinstance(event_data, dict):
+                if event_data.get('error'):
+                    raise_llm_error(RuntimeError, str(event_data.get('error')), provider=_PROVIDER_NAME, operation=operation)
+
+                chunk = _extract_stream_delta(event_data)
+                if chunk:
+                    full_response += chunk
+                    yield {'chunk': chunk, 'done': False}
+
+                choices = event_data.get('choices')
+                if isinstance(choices, list) and choices:
+                    first = choices[0]
+                    if isinstance(first, dict) and first.get('finish_reason'):
+                        yield {'chunk': '', 'done': True, 'full_response': clean_response(full_response)}
+                        return
+                continue
+
+    yield {'chunk': '', 'done': True, 'full_response': clean_response(full_response)}
+
+
 def is_running(enabled: bool) -> bool:
     """Check if the OpenAI-compatible server is reachable."""
     if _is_unavailable(enabled):
@@ -308,24 +374,41 @@ def generate_vision(enabled: bool, model: str, prompt: str, images=None, options
 
 
 def generate_stream(enabled: bool, model: str, prompt: str, options=None, system_prompt: str = ''):
-    """Generate a simulated streaming response from an OpenAI-compatible model."""
+    """Generate a real streaming response from an OpenAI-compatible model."""
     try:
-        response_text = generate(enabled, model, prompt, options=options, system_prompt=system_prompt)
-        for chunk in iter_text_chunks(response_text, chunk_size=5):
-            yield {'chunk': chunk, 'done': False}
-        yield {'chunk': '', 'done': True, 'full_response': response_text}
+        if _is_unavailable(enabled):
+            raise_llm_error(ImportError, 'OpenAI provider is not enabled.', provider=_PROVIDER_NAME, operation='generate_stream')
+
+        payload: dict[str, Any] = {
+            'model': model,
+            'messages': _build_messages(prompt, system_prompt),
+        }
+        payload.update(_build_options(options))
+
+        for chunk_data in _stream_chat_response(payload, 'generate_stream'):
+            yield chunk_data
     except Exception as e:
         report_llm_error('Error in OpenAI streaming', provider=_PROVIDER_NAME, operation='generate_stream', cause=e)
         yield {'chunk': '', 'done': True, 'full_response': '', 'error': stringify_llm_error(e)}
 
 
 def generate_vision_stream(enabled: bool, model: str, prompt: str, images=None, options=None, system_prompt: str = ''):
-    """Generate a simulated streaming vision response from an OpenAI-compatible model."""
+    """Generate a real streaming vision response from an OpenAI-compatible model."""
     try:
-        response_text = generate_vision(enabled, model, prompt, images=images, options=options, system_prompt=system_prompt)
-        for chunk in iter_text_chunks(response_text, chunk_size=5):
-            yield {'chunk': chunk, 'done': False}
-        yield {'chunk': '', 'done': True, 'full_response': response_text}
+        if _is_unavailable(enabled):
+            raise_llm_error(ImportError, 'OpenAI provider is not enabled.', provider=_PROVIDER_NAME, operation='generate_vision_stream')
+
+        if images is None:
+            raise_llm_error(ValueError, 'No images provided for vision model.', provider=_PROVIDER_NAME, operation='generate_vision_stream')
+
+        payload: dict[str, Any] = {
+            'model': model,
+            'messages': _build_vision_messages(prompt, images, system_prompt),
+        }
+        payload.update(_build_options(options))
+
+        for chunk_data in _stream_chat_response(payload, 'generate_vision_stream'):
+            yield chunk_data
     except Exception as e:
         report_llm_error('Error in OpenAI vision streaming', provider=_PROVIDER_NAME, operation='generate_vision_stream', cause=e)
         yield {'chunk': '', 'done': True, 'full_response': '', 'error': stringify_llm_error(e)}

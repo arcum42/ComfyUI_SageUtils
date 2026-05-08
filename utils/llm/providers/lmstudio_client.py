@@ -1,5 +1,8 @@
 """LM Studio provider operations extracted from llm/service.py."""
 
+import base64
+import os
+import tempfile
 from typing import Any, cast
 
 from ..cache import get_llm_cache
@@ -11,6 +14,41 @@ from ..errors import raise_llm_error, report_llm_error, stringify_llm_error
 logger = get_logger('llm.providers.lmstudio')
 
 _PROVIDER_NAME = 'lmstudio'
+
+
+def _prepare_image_paths(images) -> tuple[list[str], bool]:
+    """Normalize tensor or base64 image inputs into temporary file paths."""
+    input_images = tensor_to_temp_image(images) if images is not None else []
+    if input_images:
+        return input_images, False
+
+    image_entries = images if isinstance(images, list) else [images] if images is not None else []
+    temp_paths: list[str] = []
+
+    for image in image_entries:
+        if not isinstance(image, str) or not image.strip():
+            continue
+
+        image_data = image.strip()
+        if image_data.startswith('data:') and ',' in image_data:
+            image_data = image_data.split(',', 1)[1]
+
+        image_bytes = base64.b64decode(image_data)
+        temp_fd, temp_path = tempfile.mkstemp(suffix='.png')
+        os.close(temp_fd)
+        with open(temp_path, 'wb') as file_handle:
+            file_handle.write(image_bytes)
+        temp_paths.append(temp_path)
+
+    return temp_paths, True
+
+
+def _cleanup_temp_paths(paths: list[str]) -> None:
+    for path in paths:
+        try:
+            os.unlink(path)
+        except OSError:
+            pass
 
 
 # ===========================================================================
@@ -62,26 +100,89 @@ def generate_with_model(lms_model: Any, lms: Any, prompt: str, options) -> str:
     return result
 
 
+def generate_stream_with_model(lms_model: Any, lms: Any, prompt: str, options):
+    """Run streaming text inference on an already-loaded lms_model."""
+    chat = lms.Chat()
+    chat.add_user_message(prompt)
+    config = cast(Any, build_lmstudio_config(options or {}))
+    stream = lms_model.respond_stream(chat, config=config) if config else lms_model.respond_stream(chat)
+
+    full_response = ''
+    for fragment in stream:
+        chunk = getattr(fragment, 'content', '')
+        if not isinstance(chunk, str) or not chunk:
+            continue
+        full_response += chunk
+        yield {
+            'chunk': chunk,
+            'done': False,
+        }
+
+    yield {
+        'chunk': '',
+        'done': True,
+        'full_response': clean_response(full_response),
+    }
+
+
 def generate_vision_with_model(lms_model: Any, lms: Any, prompt: str, images, options) -> str:
     """Run vision inference on an already-loaded lms_model."""
     logger.debug(f'Generating vision with prompt: {prompt[:200]!r}')
-    input_images = tensor_to_temp_image(images) if images is not None else []
-    chat = lms.Chat()
-    if not input_images:
-        chat.add_user_message(prompt)
-    else:
+    input_images, should_cleanup = _prepare_image_paths(images)
+    try:
+        chat = lms.Chat()
+        if not input_images:
+            chat.add_user_message(prompt)
+        else:
+            image_handles = [lms.prepare_image(image) for image in input_images]
+            chat.add_user_message(prompt, images=image_handles)
+        config = cast(Any, build_lmstudio_config(options or {}))
+        if config:
+            response = lms_model.respond(chat, config=config)
+        else:
+            response = lms_model.respond(chat)
+        if not response:
+            raise_llm_error(ValueError, 'No valid response received from the model.', provider='lmstudio', operation='generate_vision_with_model')
+        result = clean_response(response.content)
+        logger.debug(f'Generation complete. Response length: {len(result)} characters.')
+        return result
+    finally:
+        if should_cleanup:
+            _cleanup_temp_paths(input_images)
+
+
+def generate_vision_stream_with_model(lms_model: Any, lms: Any, prompt: str, images, options):
+    """Run streaming vision inference on an already-loaded lms_model."""
+    input_images, should_cleanup = _prepare_image_paths(images)
+    try:
+        chat = lms.Chat()
+        if not input_images:
+            raise_llm_error(ValueError, 'No images provided for vision model.', provider='lmstudio', operation='generate_vision_stream_with_model')
+
         image_handles = [lms.prepare_image(image) for image in input_images]
         chat.add_user_message(prompt, images=image_handles)
-    config = cast(Any, build_lmstudio_config(options or {}))
-    if config:
-        response = lms_model.respond(chat, config=config)
-    else:
-        response = lms_model.respond(chat)
-    if not response:
-        raise_llm_error(ValueError, 'No valid response received from the model.', provider='lmstudio', operation='generate_vision_with_model')
-    result = clean_response(response.content)
-    logger.debug(f'Generation complete. Response length: {len(result)} characters.')
-    return result
+        config = cast(Any, build_lmstudio_config(options or {}))
+        stream = lms_model.respond_stream(chat, config=config) if config else lms_model.respond_stream(chat)
+
+        full_response = ''
+        for fragment in stream:
+            chunk = getattr(fragment, 'content', '')
+            if not isinstance(chunk, str) or not chunk:
+                continue
+            full_response += chunk
+            yield {
+                'chunk': chunk,
+                'done': False,
+            }
+
+        yield {
+            'chunk': '',
+            'done': True,
+            'full_response': clean_response(full_response),
+        }
+    finally:
+        if should_cleanup:
+            _cleanup_temp_paths(input_images)
 
 
 def unload_model(lms_model: Any) -> None:
@@ -303,7 +404,7 @@ def generate_stream(
     keep_alive: int,
     options,
 ):
-    """Generate a simulated streaming response from an LM Studio model."""
+    """Generate a real streaming response from an LM Studio model."""
     if not lmstudio_available or lms is None:
         raise_llm_error(ImportError, 'LM Studio is not available. Please install it to use this function.', provider='lmstudio', operation='generate_stream')
 
@@ -314,23 +415,10 @@ def generate_stream(
     lms_model = None
     try:
         lms_model = load_model(lmstudio_available, lms, enabled, model, keep_alive)
-        response_text = generate_with_model(lms_model, lms, prompt, options)
+        for chunk_data in generate_stream_with_model(lms_model, lms, prompt, options):
+            yield chunk_data
         if keep_alive < 1:
             unload_model(lms_model)
-
-        chunk_size = 5
-        for i in range(0, len(response_text), chunk_size):
-            chunk = response_text[i:i + chunk_size]
-            yield {
-                'chunk': chunk,
-                'done': False,
-            }
-
-        yield {
-            'chunk': '',
-            'done': True,
-            'full_response': response_text,
-        }
     except Exception as e:
         report_llm_error('Error streaming response from LM Studio', provider='lmstudio', operation='generate_stream', cause=e)
         if lms_model is not None and keep_alive < 1:
@@ -352,7 +440,7 @@ def generate_vision_stream(
     images,
     options,
 ):
-    """Generate a simulated streaming response from an LM Studio vision model."""
+    """Generate a real streaming response from an LM Studio vision model."""
     if not lmstudio_available or lms is None:
         raise_llm_error(ImportError, 'LM Studio is not available. Please install it to use this function.', provider='lmstudio', operation='generate_vision_stream')
 
@@ -360,30 +448,16 @@ def generate_vision_stream(
     if model not in model_list:
         raise_llm_error(ValueError, f"Model '{model}' is not available. Available models: {model_list}", provider='lmstudio', operation='generate_vision_stream')
 
-    input_images = tensor_to_temp_image(images) if images is not None else []
     lms_model = None
     try:
         lms_model = load_model(lmstudio_available, lms, enabled, model, keep_alive)
-        if not input_images:
+        if images is None:
             raise_llm_error(ValueError, 'No images provided for vision model.', provider='lmstudio', operation='generate_vision_stream')
 
-        response_text = generate_vision_with_model(lms_model, lms, prompt, images, options)
+        for chunk_data in generate_vision_stream_with_model(lms_model, lms, prompt, images, options):
+            yield chunk_data
         if keep_alive < 1:
             unload_model(lms_model)
-
-        chunk_size = 5
-        for i in range(0, len(response_text), chunk_size):
-            chunk = response_text[i:i + chunk_size]
-            yield {
-                'chunk': chunk,
-                'done': False,
-            }
-
-        yield {
-            'chunk': '',
-            'done': True,
-            'full_response': response_text,
-        }
     except Exception as e:
         report_llm_error('Error streaming response from LM Studio vision model', provider='lmstudio', operation='generate_vision_stream', cause=e)
         if lms_model is not None and keep_alive < 1:

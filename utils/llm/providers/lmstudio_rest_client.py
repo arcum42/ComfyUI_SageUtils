@@ -7,7 +7,7 @@ from ..cache import get_llm_cache
 from ...logger import get_logger
 from ..common import clean_response
 from ..errors import raise_llm_error, report_llm_error, stringify_llm_error
-from ..rest import iter_text_chunks, normalize_base_url, normalize_image_data_url, request_json, with_bearer_auth
+from ..rest import iter_sse_events, normalize_base_url, normalize_image_data_url, request_json, request_stream, with_bearer_auth
 
 logger = get_logger('llm.providers.lmstudio_rest')
 
@@ -116,9 +116,6 @@ def _build_chat_options(options: Optional[dict[str, Any]]) -> dict[str, Any]:
         if key in input_options and input_options[key] is not None:
             payload_options[mapped_key] = input_options[key]
 
-    if 'seed' in input_options and input_options['seed'] is not None:
-        payload_options['seed'] = input_options['seed']
-
     return payload_options
 
 
@@ -144,6 +141,51 @@ def _extract_response_text(response: Any) -> str:
                 return message['content']
 
     return ''
+
+
+def _extract_chat_end_text(payload: Any) -> str:
+    if not isinstance(payload, dict):
+        return ''
+    return _extract_response_text(payload.get('result'))
+
+
+def _stream_chat_response(payload: dict[str, Any], operation: str):
+    full_response = ''
+    stream_payload = payload.copy()
+    stream_payload['stream'] = True
+
+    with request_stream(
+        'POST',
+        _get_base_url(),
+        '/api/v1/chat',
+        payload=stream_payload,
+        headers=_get_headers(),
+    ) as response:
+        for event in iter_sse_events(response):
+            event_name = event.get('event') or 'message'
+            event_data = event.get('data') or {}
+
+            if event_name == 'message.delta':
+                chunk = event_data.get('content')
+                if isinstance(chunk, str) and chunk:
+                    full_response += chunk
+                    yield {'chunk': chunk, 'done': False}
+                continue
+
+            if event_name == 'error':
+                error_payload = event_data.get('error') if isinstance(event_data, dict) else None
+                if isinstance(error_payload, dict):
+                    message = error_payload.get('message') or 'Upstream LM Studio REST streaming error.'
+                else:
+                    message = 'Upstream LM Studio REST streaming error.'
+                raise_llm_error(RuntimeError, message, provider='lmstudio_rest', operation=operation)
+
+            if event_name == 'chat.end':
+                final_text = clean_response(_extract_chat_end_text(event_data) or full_response)
+                yield {'chunk': '', 'done': True, 'full_response': final_text}
+                return
+
+    yield {'chunk': '', 'done': True, 'full_response': clean_response(full_response)}
 
 
 def is_running(enabled: bool) -> bool:
@@ -233,9 +275,9 @@ def load_model(enabled: bool, model: str, keep_alive: int = 0) -> bool:
     if _is_unavailable(enabled):
         raise_llm_error(RuntimeError, 'LM Studio REST is not enabled.', provider='lmstudio_rest', operation='load_model')
 
+    # LM Studio REST /api/v1/models/load currently accepts only "model".
+    # keep_alive is intentionally ignored for compatibility.
     payload: dict[str, Any] = {'model': model}
-    if keep_alive > 0:
-        payload['ttl'] = keep_alive
 
     try:
         request_json('POST', _get_base_url(), '/api/v1/models/load', payload=payload, headers=_get_headers())
@@ -300,7 +342,7 @@ def generate_vision(enabled: bool, model: str, prompt: str, images, options=None
         raise_llm_error(ValueError, f"Model '{model}' is not available. Available models: {model_list}", provider='lmstudio_rest', operation='generate_vision')
 
     image_entries = images if isinstance(images, list) else [images]
-    input_items = [{'type': 'message', 'content': prompt}]
+    input_items = [{'type': 'text', 'content': prompt}]
     for image_data in image_entries:
         input_items.append(
             {
@@ -330,26 +372,63 @@ def generate_vision(enabled: bool, model: str, prompt: str, images, options=None
 
 
 def generate_stream(enabled: bool, model: str, prompt: str, options=None, system_prompt: str = ''):
-    """Generate a simulated streaming response from LM Studio REST."""
+    """Generate a real streaming response from LM Studio REST."""
     try:
-        response_text = generate(enabled, model, prompt, options=options, system_prompt=system_prompt)
-        for chunk in iter_text_chunks(response_text, chunk_size=5):
-            yield {'chunk': chunk, 'done': False}
+        if _is_unavailable(enabled):
+            raise_llm_error(ImportError, 'LM Studio REST is not enabled.', provider='lmstudio_rest', operation='generate_stream')
 
-        yield {'chunk': '', 'done': True, 'full_response': response_text}
+        model_list = get_models(enabled)
+        if model not in model_list:
+            raise_llm_error(ValueError, f"Model '{model}' is not available. Available models: {model_list}", provider='lmstudio_rest', operation='generate_stream')
+
+        payload = {
+            'model': model,
+            'input': prompt,
+        }
+        if system_prompt:
+            payload['system_prompt'] = system_prompt
+        payload.update(_build_chat_options(options))
+
+        for chunk_data in _stream_chat_response(payload, 'generate_stream'):
+            yield chunk_data
     except Exception as e:
         report_llm_error('Error streaming response from LM Studio REST', provider='lmstudio_rest', operation='generate_stream', cause=e)
         yield {'chunk': '', 'done': True, 'error': stringify_llm_error(e)}
 
 
 def generate_vision_stream(enabled: bool, model: str, prompt: str, images, options=None, system_prompt: str = ''):
-    """Generate a simulated streaming vision response from LM Studio REST."""
+    """Generate a real streaming vision response from LM Studio REST."""
     try:
-        response_text = generate_vision(enabled, model, prompt, images, options=options, system_prompt=system_prompt)
-        for chunk in iter_text_chunks(response_text, chunk_size=5):
-            yield {'chunk': chunk, 'done': False}
+        if _is_unavailable(enabled):
+            raise_llm_error(ImportError, 'LM Studio REST is not enabled.', provider='lmstudio_rest', operation='generate_vision_stream')
 
-        yield {'chunk': '', 'done': True, 'full_response': response_text}
+        if images is None:
+            raise_llm_error(ValueError, 'No images provided for vision model.', provider='lmstudio_rest', operation='generate_vision_stream')
+
+        model_list = get_vision_models(enabled)
+        if model not in model_list:
+            raise_llm_error(ValueError, f"Model '{model}' is not available. Available models: {model_list}", provider='lmstudio_rest', operation='generate_vision_stream')
+
+        image_entries = images if isinstance(images, list) else [images]
+        input_items = [{'type': 'text', 'content': prompt}]
+        for image_data in image_entries:
+            input_items.append(
+                {
+                    'type': 'image',
+                    'data_url': normalize_image_data_url(str(image_data)),
+                }
+            )
+
+        payload = {
+            'model': model,
+            'input': input_items,
+        }
+        if system_prompt:
+            payload['system_prompt'] = system_prompt
+        payload.update(_build_chat_options(options))
+
+        for chunk_data in _stream_chat_response(payload, 'generate_vision_stream'):
+            yield chunk_data
     except Exception as e:
         report_llm_error('Error streaming vision response from LM Studio REST', provider='lmstudio_rest', operation='generate_vision_stream', cause=e)
         yield {'chunk': '', 'done': True, 'error': stringify_llm_error(e)}
