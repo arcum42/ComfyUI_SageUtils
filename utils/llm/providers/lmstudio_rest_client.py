@@ -66,31 +66,6 @@ def _extract_models_payload(response: Any) -> list[dict[str, Any]]:
     return []
 
 
-def _is_vision_model(model_obj: dict[str, Any], model_name: str) -> bool:
-    direct_flags = [
-        model_obj.get('vision'),
-        (model_obj.get('info') or {}).get('vision') if isinstance(model_obj.get('info'), dict) else None,
-    ]
-    if any(flag is True for flag in direct_flags):
-        return True
-
-    capabilities = model_obj.get('capabilities')
-    if isinstance(capabilities, dict) and capabilities.get('vision') is True:
-        return True
-    if isinstance(capabilities, list) and any(str(cap).lower() == 'vision' for cap in capabilities):
-        return True
-
-    modalities = model_obj.get('modalities')
-    if isinstance(modalities, list):
-        normalized = [str(mod).lower() for mod in modalities]
-        if 'vision' in normalized or 'image' in normalized:
-            return True
-
-    lowered = model_name.lower()
-    vision_markers = ('llava', 'vision', 'vl', 'qwen2-vl', 'bakllava', 'minicpm-v')
-    return any(marker in lowered for marker in vision_markers)
-
-
 def _build_chat_options(options: Optional[dict[str, Any]]) -> dict[str, Any]:
     input_options = options or {}
     payload_options: dict[str, Any] = {}
@@ -151,17 +126,22 @@ def _extract_chat_end_text(payload: Any) -> str:
 
 
 def _detect_capabilities_from_model_object(model_obj: dict[str, Any]) -> ModelCapabilities:
+    #print('Detecting capabilities from model object:', model_obj)
     model_name = _extract_model_name(model_obj) or model_obj.get('display_name') or 'unknown'
     capabilities_obj = model_obj.get('capabilities')
     vision = False
     tool_use = False
+    reasoning = False
+    thinking = False
     if isinstance(capabilities_obj, dict):
         vision = bool(capabilities_obj.get('vision'))
         tool_use = bool(capabilities_obj.get('trained_for_tool_use') or capabilities_obj.get('tool_use'))
-
-    lowered = str(model_name).lower()
-    reasoning = any(marker in lowered for marker in ('o1', 'o3', 'o4', 'deepseek-r1', 'qwq', 'reasoning'))
-    thinking = reasoning
+        # Check for reasoning in API metadata
+        reasoning_obj = capabilities_obj.get('reasoning')
+        if isinstance(reasoning_obj, dict):
+            reasoning = True
+            # reasoning implies thinking capability
+            thinking = True
 
     context_window = model_obj.get('max_context_length')
     if context_window is not None:

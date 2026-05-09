@@ -11,7 +11,7 @@ import { showNotification } from '../shared/crossTabMessaging.js';
 // Core utilities
 import { LLMConversation } from '../llm/llmConversation.js';
 import { getDefaultSettings, loadSettings, updateUIFromSettings, saveSettings } from '../llm/llmSettings.js';
-import { isVisionModel } from '../llm/llmProviders.js';
+import { getModelCapabilityFlags } from '../llm/llmProviders.js';
 
 // UI Components
 import { createHeader } from './llmTab/llmHeader.js';
@@ -399,8 +399,15 @@ async function createLLMTabVanilla(container) {
         providerSelect.dispatchEvent(new Event('change'));
     } else {
         // If no provider change event, manually update vision section
-        const { isVisionModel } = await import('../llm/llmProviders.js');
-        const hasVisionModel = state.model && isVisionModel(state.model, state.provider, state.visionModels);
+        const flags = state.model ? getModelCapabilityFlags(
+            state.provider,
+            state.model,
+            state.capabilities,
+            state.visionModels,
+            state.toolModels,
+            state.reasoningModels
+        ) : null;
+        const hasVisionModel = Boolean(flags?.vision);
         visionSection.style.display = hasVisionModel ? 'block' : 'none';
         logLlmDebug('[LLM Tab] Initial vision section state:', {
             model: state.model,

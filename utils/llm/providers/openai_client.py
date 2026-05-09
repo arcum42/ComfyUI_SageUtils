@@ -110,7 +110,7 @@ def _extract_models_payload(response: Any) -> list[dict[str, Any]]:
 
 
 def _is_vision_model(model_obj: dict[str, Any], model_name: str) -> bool:
-    """Detect vision capability from OpenAI model metadata."""
+    """Fallback heuristic for vision capability when provider metadata is incomplete."""
     # Some compatible endpoints expose a capabilities field
     capabilities = model_obj.get('capabilities') or model_obj.get('features') or []
     if isinstance(capabilities, list):
@@ -245,6 +245,24 @@ def _detect_capabilities_from_metadata(model_obj: dict[str, Any], model_name: st
                 metadata=model_obj,
                 confidence='api',
             )
+    if isinstance(capabilities_obj, list):
+        normalized = {str(item).lower() for item in capabilities_obj}
+        vision = any(flag in normalized for flag in ('vision', 'image_input', 'images'))
+        tool_use = any(flag in normalized for flag in ('tool_use', 'function_calling', 'tools'))
+        reasoning = 'reasoning' in normalized
+        thinking = 'thinking' in normalized
+        if any((vision, tool_use, reasoning, thinking)):
+            return ModelCapabilities(
+                name=model_name,
+                provider=_PROVIDER_NAME,
+                vision=vision,
+                tool_use=tool_use,
+                reasoning=reasoning,
+                thinking=thinking,
+                supported_modalities=['text'] + (['image'] if vision else []),
+                metadata=model_obj,
+                confidence='api',
+            )
 
     profile = _match_openai_capability_profile(model_name)
     if profile is not None:
@@ -258,7 +276,7 @@ def _detect_capabilities_from_metadata(model_obj: dict[str, Any], model_name: st
             thinking=bool(profile.get('thinking')),
             supported_modalities=['text'] + (['image'] if vision else []),
             metadata=model_obj,
-            confidence='api',
+            confidence='heuristic',
         )
 
     vision = _is_vision_model(model_obj, model_name)

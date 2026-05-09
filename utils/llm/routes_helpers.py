@@ -363,3 +363,63 @@ def validate_generation_data(
         return False, error_msg
 
     return True, None
+
+
+def check_model_vision_capability(provider: str, model: str) -> tuple[bool, Optional[str]]:
+    """
+    Check if a model supports vision capability before attempting vision operations.
+    
+    Args:
+        provider: Provider name (e.g., 'ollama', 'lmstudio', 'openai')
+        model: Model name
+        
+    Returns:
+        Tuple of (supports_vision, error_message)
+        - If supports_vision is True, error_message is None
+        - If supports_vision is False, error_message describes why
+    """
+    provider = provider.lower()
+    
+    try:
+        from . import service as llm
+        from .providers.settings import (
+            is_ollama_enabled, is_lmstudio_enabled, 
+            is_lmstudio_rest_enabled, is_ollama_rest_enabled, 
+            is_openai_enabled
+        )
+        
+        # Ensure LLM services are initialized
+        llm.ensure_llm_initialized()
+        
+        # Get capability map for the provider
+        if provider == 'ollama':
+            cap_map = llm.get_ollama_model_capabilities_map()
+        elif provider == 'lmstudio':
+            cap_map = llm.get_lmstudio_model_capabilities_map()
+        elif provider == 'lmstudio_rest':
+            cap_map = llm.get_lmstudio_rest_model_capabilities_map()
+        elif provider == 'ollama_rest':
+            cap_map = llm.get_ollama_rest_model_capabilities_map()
+        elif provider == 'openai':
+            cap_map = llm.get_openai_model_capabilities_map()
+        else:
+            return False, f"Unknown provider: {provider}"
+        
+        # Check if model exists and supports vision
+        if not cap_map:
+            return False, f"No capability data available for {provider}"
+        
+        if model not in cap_map:
+            available = ', '.join(sorted(cap_map.keys())[:5])
+            return False, f"Model '{model}' not found in {provider}. Available: {available}..."
+        
+        capabilities = cap_map[model]
+        if not capabilities.vision:
+            return False, f"Model '{model}' does not support vision capability on provider {provider}"
+        
+        return True, None
+        
+    except Exception as e:
+        logger.warning(f'Error checking vision capability for {provider}:{model}: {e}')
+        # Degrade gracefully — if we can't check, allow the attempt
+        return True, None

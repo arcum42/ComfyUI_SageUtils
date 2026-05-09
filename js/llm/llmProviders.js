@@ -119,22 +119,6 @@ export function getProviderDefaults(provider) {
 }
 
 /**
- * Check if a model supports vision
- * @param {string} model - Model name
- * @param {string} provider - Provider name
- * @param {Object} visionModels - Vision models data { ollama: [...], lmstudio: [...] }
- * @returns {boolean} - True if model supports vision
- */
-export function isVisionModel(model, provider, visionModels) {
-    if (!model || !provider || !visionModels) {
-        return false;
-    }
-
-    const providerVisionModels = visionModels[provider] || [];
-    return providerVisionModels.includes(model);
-}
-
-/**
  * Get provider display name
  * @param {string} provider - Provider identifier
  * @returns {string} - Human-readable provider name

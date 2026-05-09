@@ -244,7 +244,6 @@ function createDefaultProviderSelector(settings) {
     { value: 'ollama', label: 'Ollama' },
     { value: 'lmstudio', label: 'LM Studio' },
     { value: 'lmstudio_rest', label: 'LM Studio (REST)' },
-    { value: 'lmstudio_rest', label: 'LM Studio (REST)' },
     { value: 'ollama_rest', label: 'Ollama (REST)' },
     { value: 'openai', label: 'OpenAI' },
     { value: 'native', label: 'Native (CLIP)' }

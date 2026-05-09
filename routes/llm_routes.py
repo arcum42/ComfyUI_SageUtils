@@ -1154,6 +1154,17 @@ def register_routes(routes_instance):
             
             provider = data["provider"].lower()
             model = data["model"]
+            
+            # Check vision capability before attempting dispatch
+            can_do_vision, capability_error = routes_helpers.check_model_vision_capability(provider, model)
+            if not can_do_vision:
+                return _error_response_with_metadata(
+                    capability_error,
+                    status=400,
+                    error_code='LLM_MODEL_CAPABILITY_ERROR',
+                    provider=provider,
+                )
+            
             prompt = data["prompt"]
             images_data = data["images"]
             system_prompt = data.get("system_prompt", "")
@@ -1354,6 +1365,17 @@ def register_routes(routes_instance):
             
             provider = data["provider"].lower()
             model = data["model"]
+            
+            # Check vision capability before attempting dispatch
+            can_do_vision, capability_error = routes_helpers.check_model_vision_capability(provider, model)
+            if not can_do_vision:
+                return _error_response_with_metadata(
+                    capability_error,
+                    status=400,
+                    error_code='LLM_MODEL_CAPABILITY_ERROR',
+                    provider=provider,
+                )
+            
             prompt = data["prompt"]
             images_data = data["images"]
             system_prompt = data.get("system_prompt", "")

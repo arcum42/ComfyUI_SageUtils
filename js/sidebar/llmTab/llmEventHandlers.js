@@ -8,7 +8,7 @@ import { loadModels, updateModelDropdown, loadPresets, rememberProviderModel } f
 import { showSavePresetDialog, showManagePresetsDialog } from './llmPresetDialogs.js';
 import { clearAllImages, handleFileUpload } from './llmVisionSection.js';
 import { saveSettings } from '../../llm/llmSettings.js';
-import { isVisionModel } from '../../llm/llmProviders.js';
+import { getModelCapabilityFlags } from '../../llm/llmProviders.js';
 
 const LLM_LAST_PROVIDER_KEY = 'llm_last_selected_provider';
 
@@ -723,8 +723,16 @@ function showProviderOptions(advancedOptions, provider) {
  */
 function updateVisionSectionVisibility(state, visionSection) {
     if (!visionSection) return;
-    
-    const hasVisionModel = state.model && isVisionModel(state.model, state.provider, state.visionModels);
+
+    const flags = state.model ? getModelCapabilityFlags(
+        state.provider,
+        state.model,
+        state.capabilities,
+        state.visionModels,
+        state.toolModels,
+        state.reasoningModels
+    ) : null;
+    const hasVisionModel = Boolean(flags?.vision);
     visionSection.style.display = hasVisionModel ? 'block' : 'none';
     
     console.log('[LLM] Vision section visibility:', {

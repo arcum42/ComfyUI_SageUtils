@@ -43,6 +43,7 @@ from ..utils.llm.service import (
     openai_generate,
     openai_generate_vision,
 )
+from ..utils.llm.tensor import tensor_to_base64_safe
 from ..utils.constants import SAGE_UTILS_CAT
 
 from .custom_io_v3 import *
@@ -551,12 +552,14 @@ class Sage_LLMPromptVision(io.ComfyNode):
                 if not model or model.startswith("("):
                     return io.NodeOutput("")
                 options = {"seed": seed}
+                # Convert image tensor to base64 for REST API
+                image_base64 = tensor_to_base64_safe(image) if image is not None else None
                 return io.NodeOutput(
                     lmstudio_rest_generate_vision(
                         model=model,
                         prompt=prompt,
                         keep_alive=provider_data.get("lmstudio_rest_load_for_seconds", 0),
-                        images=image,
+                        images=image_base64,
                         options=options,
                         system_prompt=provider_data.get("lmstudio_rest_system_prompt", ""),
                     )
@@ -568,11 +571,13 @@ class Sage_LLMPromptVision(io.ComfyNode):
                     return io.NodeOutput("")
                 options = provider_data.get("ollama_rest_options") or {}
                 options["seed"] = seed
+                # Convert image tensor to base64 for REST API
+                image_base64 = tensor_to_base64_safe(image) if image is not None else None
                 return io.NodeOutput(
                     ollama_rest_generate_vision(
                         model=model,
                         prompt=prompt,
-                        images=image,
+                        images=image_base64,
                         options=options,
                         system_prompt=provider_data.get("ollama_rest_system_prompt", ""),
                         keep_alive=provider_data.get("ollama_rest_keep_alive", "5m"),
@@ -789,10 +794,12 @@ class Sage_LLMPromptVisionRefine(io.ComfyNode):
                     return io.NodeOutput("", "")
                 pbar = ProgressBar(2)
                 options = {"seed": seed}
+                # Convert image tensor to base64 for REST API
+                image_base64 = tensor_to_base64_safe(image) if image is not None else None
                 initial = lmstudio_rest_generate_vision(
                     model=model,
                     prompt=prompt,
-                    images=image,
+                    images=image_base64,
                     options=options,
                     system_prompt=provider_data.get("lmstudio_rest_system_prompt", ""),
                 )
@@ -817,10 +824,12 @@ class Sage_LLMPromptVisionRefine(io.ComfyNode):
                 pbar = ProgressBar(2)
                 options = provider_data.get("ollama_rest_options") or {}
                 options["seed"] = seed
+                # Convert image tensor to base64 for REST API
+                image_base64 = tensor_to_base64_safe(image) if image is not None else None
                 initial = ollama_rest_generate_vision(
                     model=model,
                     prompt=prompt,
-                    images=image,
+                    images=image_base64,
                     options=options,
                     system_prompt=provider_data.get("ollama_rest_system_prompt", ""),
                     keep_alive=provider_data.get("ollama_rest_keep_alive", "5m"),

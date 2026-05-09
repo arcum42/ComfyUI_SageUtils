@@ -55,7 +55,9 @@ def _detect_capabilities_from_metadata(model_name: str, model_obj: Any, show_res
     vision = ('vision' in capabilities_list) or ('vision' in families) or ('clip' in families)
     tool_use = any(token in capabilities_list for token in ('tools', 'tool_use', 'function_calling'))
     thinking = ('thinking' in capabilities_list) or ('<think>' in template)
-    reasoning = thinking or any(marker in lowered_name for marker in ('deepseek-r1', 'qwq', 'o1', 'o3', 'reasoning'))
+    
+    # Check for reasoning in API metadata (from /api/show response)
+    reasoning = 'thinking' in capabilities_list or thinking
 
     context_window = None
     model_info = _safe_get(show_response, 'model_info', None)

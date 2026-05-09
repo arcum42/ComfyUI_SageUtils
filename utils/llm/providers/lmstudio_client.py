@@ -59,19 +59,27 @@ def _safe_get(mapping_or_obj: Any, key: str, default=None):
 
 
 def _detect_capabilities_from_model_object(model_obj: Any, model_name: str) -> ModelCapabilities:
+    print(f"Detecting capabilities for model '{model_name}' from model object.")
     info = _safe_get(model_obj, 'info', None)
     capabilities_obj = _safe_get(model_obj, 'capabilities', None)
 
     vision = bool(_safe_get(info, 'vision', False))
     tool_use = bool(_safe_get(info, 'trained_for_tool_use', False) or _safe_get(info, 'tool_use', False))
+    reasoning = False
+    thinking = False
+    print(f"Model info for '{model_name}': {info}")
+    print(f"Model capabilities object for '{model_name}': {capabilities_obj}")
 
     if isinstance(capabilities_obj, dict):
+        print(f"Capabilities object for model '{model_name}': {capabilities_obj}")
         vision = vision or bool(capabilities_obj.get('vision'))
         tool_use = tool_use or bool(capabilities_obj.get('trained_for_tool_use') or capabilities_obj.get('tool_use'))
-
-    lowered = model_name.lower()
-    reasoning = any(marker in lowered for marker in ('deepseek-r1', 'qwq', 'o1', 'o3', 'reasoning'))
-    thinking = reasoning
+        # Check for reasoning in API metadata
+        reasoning_obj = capabilities_obj.get('reasoning')
+        if isinstance(reasoning_obj, dict):
+            reasoning = True
+            # reasoning implies thinking capability
+            thinking = True
 
     context_window = _safe_get(info, 'max_context_length', None)
     if context_window is None:
@@ -102,17 +110,22 @@ def _detect_capabilities_from_model_object(model_obj: Any, model_name: str) -> M
 
 
 def get_model_capabilities(lmstudio_available: bool, lms: Any, enabled: bool, model_obj: Any) -> ModelCapabilities:
+    print('Getting model capabilities for model object:', model_obj)
+    print("Info:", model_obj.get_info() if hasattr(model_obj, 'get_info') else 'N/A')
     model_name = str(_safe_get(model_obj, 'model_key', '') or _safe_get(model_obj, 'id', '') or 'unknown')
     if not lmstudio_available or lms is None or not enabled:
+        print('LM Studio not available or not enabled, returning default capabilities with low confidence.')
         return ModelCapabilities(name=model_name, provider=_PROVIDER_NAME, confidence='guess')
 
     cap_cache = get_capability_cache()
     cached = cap_cache.get(_PROVIDER_NAME, model_name)
     if cached is not None:
+        print(f'Capabilities for model "{model_name}" found in cache: {cached}')
         return cached
 
     capabilities = _detect_capabilities_from_model_object(model_obj, model_name)
     cap_cache.set(capabilities)
+    print(f'Capabilities for model "{model_name}" detected and cached: {capabilities}')
     return capabilities
 
 
@@ -321,6 +334,7 @@ def get_vision_models(lmstudio_available: bool, lms: Any, enabled: bool) -> list
                 if not (hasattr(model, 'model_key') and model.model_key is not None):
                     continue
 
+                print(model.__dict__)
                 capabilities = get_model_capabilities(lmstudio_available, lms, enabled, model)
                 cache_instance.set_model_capability(_PROVIDER_NAME, str(model.model_key), capabilities.vision)
                 if capabilities.vision:

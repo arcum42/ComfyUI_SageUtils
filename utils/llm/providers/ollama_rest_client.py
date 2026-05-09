@@ -48,12 +48,12 @@ def _get_request_timeout() -> float:
     """
     from ...settings import get_setting
 
-    raw = get_setting('ollama_rest_timeout_seconds', 180)
+    raw = get_setting('ollama_rest_timeout_seconds', 240)
     try:
         timeout = float(raw)
     except (TypeError, ValueError):
-        return 180.0
-    return timeout if timeout > 0 else 180.0
+        return 240.0
+    return timeout if timeout > 0 else 240.0
 
 
 def _extract_model_name(model_obj: Any) -> Optional[str]:
@@ -79,6 +79,12 @@ def _extract_models_payload(response: Any) -> list[dict[str, Any]]:
         return [item for item in response if isinstance(item, dict)]
 
     return []
+
+
+def _safe_get(mapping_or_obj: Any, key: str, default=None):
+    if isinstance(mapping_or_obj, dict):
+        return mapping_or_obj.get(key, default)
+    return getattr(mapping_or_obj, key, default)
 
 
 def _is_vision_model(model_obj: dict[str, Any], model_name: str) -> bool:
@@ -183,8 +189,20 @@ def _query_model_metadata(model_name: str) -> dict[str, Any]:
         return {}
 
 
-def _detect_capabilities_from_metadata(model_name: str, show_response: dict[str, Any]) -> ModelCapabilities:
-    details = show_response.get('details')
+def _detect_capabilities_from_metadata(model_name: str, model_obj: Any, show_response: dict[str, Any]) -> ModelCapabilities:
+    capabilities_obj = _safe_get(model_obj, 'capabilities', None)
+    capabilities_list: list[str] = []
+    if isinstance(capabilities_obj, list):
+        capabilities_list = [str(item).lower() for item in capabilities_obj]
+
+    show_capabilities = _safe_get(show_response, 'capabilities', None)
+    if isinstance(show_capabilities, list):
+        for item in show_capabilities:
+            lowered = str(item).lower()
+            if lowered not in capabilities_list:
+                capabilities_list.append(lowered)
+
+    details = _safe_get(show_response, 'details', None)
     families_lower: list[str] = []
     if isinstance(details, dict):
         families = details.get('families')
@@ -194,9 +212,17 @@ def _detect_capabilities_from_metadata(model_name: str, show_response: dict[str,
     template = str(show_response.get('template', '')).lower()
     model_lower = model_name.lower()
 
-    vision = ('vision' in families_lower) or ('clip' in families_lower) or _is_vision_model({'details': details or {}}, model_name)
+    vision = ('vision' in capabilities_list) or ('vision' in families_lower) or ('clip' in families_lower)
+    tool_use = any(token in capabilities_list for token in ('tools', 'tool_use', 'function_calling'))
     thinking = '<think>' in template
-    reasoning = thinking or any(marker in model_lower for marker in ('deepseek-r1', 'qwq', 'reasoning'))
+    if 'thinking' in capabilities_list:
+        thinking = True
+    
+    # Check for reasoning in API metadata (from /api/show response)
+    reasoning = 'thinking' in capabilities_list or thinking
+    # Fall back to model name heuristics only if no API metadata
+    if not reasoning:
+        reasoning = any(marker in model_lower for marker in ('deepseek-r1', 'qwq', 'o1', 'o3', 'reasoning'))
 
     context_window: Optional[int] = None
     model_info = show_response.get('model_info')
@@ -209,21 +235,28 @@ def _detect_capabilities_from_metadata(model_name: str, show_response: dict[str,
                 except (TypeError, ValueError):
                     continue
 
+    has_api_metadata = bool(capabilities_list or families_lower or template or context_window)
+    confidence = 'api' if has_api_metadata else 'heuristic'
+
     return ModelCapabilities(
         name=model_name,
         provider=_PROVIDER_NAME,
         vision=vision,
-        tool_use=False,
+        tool_use=tool_use,
         reasoning=reasoning,
         thinking=thinking,
         supported_modalities=['text'] + (['image'] if vision else []),
         context_window=context_window,
-        metadata=show_response,
-        confidence='api',
+        metadata={
+            'capabilities': capabilities_list,
+            'details': details if isinstance(details, dict) else {},
+            'template': template,
+        },
+        confidence=confidence,
     )
 
 
-def get_model_capabilities(enabled: bool, model_name: str) -> ModelCapabilities:
+def get_model_capabilities(enabled: bool, model_name: str, model_obj: Any = None) -> ModelCapabilities:
     if _is_unavailable(enabled):
         return ModelCapabilities(name=model_name, provider=_PROVIDER_NAME, confidence='guess')
 
@@ -234,9 +267,9 @@ def get_model_capabilities(enabled: bool, model_name: str) -> ModelCapabilities:
 
     metadata = _query_model_metadata(model_name)
     if metadata:
-        capabilities = _detect_capabilities_from_metadata(model_name, metadata)
+        capabilities = _detect_capabilities_from_metadata(model_name, model_obj or {}, metadata)
     else:
-        is_vision = _is_vision_model({}, model_name)
+        is_vision = False
         capabilities = ModelCapabilities(
             name=model_name,
             provider=_PROVIDER_NAME,
@@ -359,7 +392,7 @@ def get_vision_models(enabled: bool) -> list[str]:
                 if not model_name:
                     continue
 
-                capabilities = get_model_capabilities(enabled, model_name)
+                capabilities = get_model_capabilities(enabled, model_name, model_obj)
                 cache_instance.set_model_capability(_PROVIDER_NAME, model_name, capabilities.vision)
                 if capabilities.vision:
                     vision_models.append(model_name)

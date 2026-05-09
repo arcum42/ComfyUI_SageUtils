@@ -234,8 +234,15 @@ export async function loadModels(state, modelSelection, visionSection, force = f
         
         // Update vision section visibility based on selected model
         if (visionSection) {
-            const { isVisionModel } = await import('../../llm/llmProviders.js');
-            const hasVisionModel = state.model && isVisionModel(state.model, state.provider, state.visionModels);
+            const flags = state.model ? getModelCapabilityFlags(
+                state.provider,
+                state.model,
+                state.capabilities,
+                state.visionModels,
+                state.toolModels,
+                state.reasoningModels
+            ) : null;
+            const hasVisionModel = Boolean(flags?.vision);
             visionSection.style.display = hasVisionModel ? 'block' : 'none';
             
             console.log('[LLM] Initial vision section setup:', {
