@@ -48,6 +48,12 @@ export async function handleSend(state, textarea, responseSection, sendBtn, stop
             prompt = prompt + '\n\n' + extrasText.trim();
         }
     }
+
+    // Compose mode is one-shot by design: each send starts a fresh thread.
+    if (state.activeSubtab === 'compose') {
+        startNewConversation(state);
+        showStatus(responseSection, 'Compose mode: started a new thread', 'info');
+    }
     
     // Include conversation history if enabled
     if (state.settings.includeHistory && state.currentConversationMessages.length > 0) {
@@ -72,11 +78,6 @@ export async function handleSend(state, textarea, responseSection, sendBtn, stop
     
     if (state.generating) {
         return; // Already generating
-    }
-    
-    // Start new conversation if none exists
-    if (!state.currentConversationId) {
-        startNewConversation(state);
     }
     
     // Check if we should skip saving to history
@@ -499,40 +500,82 @@ function showLoadingOverlay(responseDisplay, modelName) {
  * @returns {Object} - Generation options
  */
 function buildGenerationOptions(state) {
-    const options = {
-        temperature: state.settings.temperature,
-        seed: state.settings.seed,
-        max_tokens: state.settings.maxTokens,
-        keep_alive: state.settings.keepAlive
+    const options = {};
+    const settings = state.settings || {};
+
+    const getSetting = (...keys) => {
+        for (const key of keys) {
+            if (settings[key] !== undefined && settings[key] !== null) {
+                return settings[key];
+            }
+        }
+        return undefined;
     };
-    
+
+    const addIfDefined = (key, value) => {
+        if (value !== undefined && value !== null && value !== '') {
+            options[key] = value;
+        }
+    };
+
+    const providerToggleKey = state.provider === 'ollama_rest'
+        ? 'ollama'
+        : state.provider === 'lmstudio_rest'
+            ? 'lmstudio'
+            : null;
+
+    const providerOptionsState = providerToggleKey
+        ? settings.providerOptions?.[providerToggleKey]
+        : null;
+    const isProviderSectionEnabled = providerOptionsState?.enabled !== false;
+    const isOptionEnabled = (optionKey) => {
+        if (!providerToggleKey) {
+            return true;
+        }
+        if (!isProviderSectionEnabled) {
+            return false;
+        }
+        const value = providerOptionsState?.options?.[optionKey];
+        return value !== false;
+    };
+
     // Add provider-specific options
     if (state.provider === 'lmstudio_rest') {
-        options.topKSampling = state.settings.lmsTopK;
-        options.topPSampling = state.settings.lmsTopP;
-        options.repeatPenalty = state.settings.lmsRepeatPenalty;
-        options.minPSampling = state.settings.lmsMinP;
+        if (isOptionEnabled('temperature')) addIfDefined('temperature', getSetting('temperature'));
+        if (isOptionEnabled('seed')) addIfDefined('seed', getSetting('seed'));
+        if (isOptionEnabled('max_tokens')) addIfDefined('max_tokens', getSetting('maxTokens', 'max_tokens'));
+        if (isOptionEnabled('top_k')) addIfDefined('topKSampling', getSetting('lmsTopK', 'top_k'));
+        if (isOptionEnabled('top_p')) addIfDefined('topPSampling', getSetting('lmsTopP', 'top_p'));
+        if (isOptionEnabled('repeat_penalty')) addIfDefined('repeatPenalty', getSetting('lmsRepeatPenalty', 'repeat_penalty'));
+        if (isOptionEnabled('presence_penalty')) addIfDefined('presence_penalty', getSetting('presencePenalty', 'presence_penalty'));
+        if (isOptionEnabled('frequency_penalty')) addIfDefined('frequency_penalty', getSetting('frequencyPenalty', 'frequency_penalty'));
     } else if (state.provider === 'ollama_rest') {
-        options.num_keep = state.settings.numKeep;
-        options.num_predict = state.settings.numPredict;
-        options.top_k = state.settings.topK;
-        options.top_p = state.settings.topP;
-        options.repeat_last_n = state.settings.repeatLastN;
-        options.repeat_penalty = state.settings.repeatPenalty;
-        options.presence_penalty = state.settings.presencePenalty;
-        options.frequency_penalty = state.settings.frequencyPenalty;
+        if (isOptionEnabled('temperature')) addIfDefined('temperature', getSetting('temperature'));
+        if (isOptionEnabled('seed')) addIfDefined('seed', getSetting('seed'));
+        if (isOptionEnabled('max_tokens')) addIfDefined('max_tokens', getSetting('maxTokens', 'max_tokens'));
+        if (isOptionEnabled('top_k')) addIfDefined('top_k', getSetting('topK', 'top_k'));
+        if (isOptionEnabled('top_p')) addIfDefined('top_p', getSetting('topP', 'top_p'));
+        if (isOptionEnabled('repeat_penalty')) addIfDefined('repeat_penalty', getSetting('repeatPenalty', 'repeat_penalty'));
+        if (isOptionEnabled('presence_penalty')) addIfDefined('presence_penalty', getSetting('presencePenalty', 'presence_penalty'));
+        if (isOptionEnabled('frequency_penalty')) addIfDefined('frequency_penalty', getSetting('frequencyPenalty', 'frequency_penalty'));
+        if (isOptionEnabled('num_ctx')) addIfDefined('num_ctx', getSetting('numCtx', 'num_ctx'));
+        if (isOptionEnabled('keep_alive')) addIfDefined('keep_alive', getSetting('keepAlive', 'keep_alive'));
     } else if (state.provider === 'openai') {
-        // OpenAI uses standard temperature/max_tokens; already set above
+        addIfDefined('temperature', getSetting('temperature'));
+        addIfDefined('seed', getSetting('seed'));
+        addIfDefined('max_tokens', getSetting('maxTokens', 'max_tokens'));
     } else if (state.provider === 'native') {
+        addIfDefined('temperature', getSetting('temperature'));
+        addIfDefined('seed', getSetting('seed'));
         options.do_sample = true;
-        options.max_length = state.settings.maxTokens;
-        options.top_k = state.settings.topK;
-        options.top_p = state.settings.topP;
-        options.min_p = state.settings.lmsMinP;
-        options.repetition_penalty = state.settings.repeatPenalty;
-        options.presence_penalty = state.settings.presencePenalty;
+        addIfDefined('max_length', getSetting('maxTokens', 'max_tokens'));
+        addIfDefined('top_k', getSetting('topK', 'top_k'));
+        addIfDefined('top_p', getSetting('topP', 'top_p'));
+        addIfDefined('min_p', getSetting('lmsMinP', 'min_p'));
+        addIfDefined('repetition_penalty', getSetting('repeatPenalty', 'repeat_penalty'));
+        addIfDefined('presence_penalty', getSetting('presencePenalty', 'presence_penalty'));
     }
-    
+
     return options;
 }
 

@@ -63,6 +63,77 @@ export function addLLMStyles() {
             background: var(--bg-color-tertiary, #1e1e1e);
         }
 
+        .llm-subtab-nav {
+            display: flex;
+            gap: 8px;
+            padding: 10px 12px;
+            border-bottom: 1px solid var(--border-color, #444);
+            background: var(--bg-color-secondary, #242424);
+            overflow-x: auto;
+        }
+
+        .llm-subtab-btn {
+            flex: 1;
+            min-width: 0;
+            padding: 8px 12px;
+            border: 1px solid var(--border-color, #444);
+            border-radius: 999px;
+            background: var(--bg-color, #1a1a1a);
+            color: var(--text-secondary, #cccccc);
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: border-color 0.2s, background-color 0.2s, color 0.2s, box-shadow 0.2s;
+            white-space: nowrap;
+        }
+
+        .llm-subtab-btn:hover {
+            border-color: var(--primary-color, #4a9eff);
+            color: var(--fg-color, #ffffff);
+        }
+
+        .llm-subtab-btn.active {
+            background: rgba(74, 158, 255, 0.14);
+            border-color: rgba(74, 158, 255, 0.45);
+            color: #7db9ff;
+            box-shadow: inset 0 0 0 1px rgba(74, 158, 255, 0.18);
+        }
+
+        .llm-subtab-content-host {
+            flex: 1;
+            min-height: 0;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .llm-subtab-panel {
+            flex: 1;
+            min-height: 0;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+            background: var(--bg-color, #1a1a1a);
+        }
+
+        .llm-subtab-intro {
+            padding: 12px 12px 0 12px;
+        }
+
+        .llm-subtab-title {
+            margin: 0 0 4px 0;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--fg-color, #ffffff);
+        }
+
+        .llm-subtab-description {
+            margin: 0;
+            font-size: 11px;
+            line-height: 1.5;
+            color: var(--text-secondary, #aaaaaa);
+        }
+
         .llm-selection-row {
             display: flex;
             gap: 8px;
@@ -330,6 +401,22 @@ export function addLLMStyles() {
             margin: 12px 0;
         }
 
+        /* Compose template section */
+        .llm-compose-template-section {
+            margin: 12px 0;
+            border-top: 1px solid var(--border-color, #444);
+        }
+
+        .llm-compose-template-content {
+            padding: 12px 0;
+        }
+
+        .llm-category-select:disabled,
+        .llm-template-select:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
         /* Advanced options section */
         .llm-advanced-section {
             border-bottom: 1px solid var(--border-color, #444);
@@ -379,6 +466,363 @@ export function addLLMStyles() {
         .llm-advanced-content {
             padding: 16px;
         }
+
+        .llm-settings-overview {
+            margin: 12px;
+            padding: 12px;
+            border: 1px solid var(--border-color, #444);
+            border-radius: 8px;
+            background: var(--bg-color-secondary, #232323);
+        }
+
+        .llm-settings-overview-title {
+            margin: 0 0 4px 0;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--fg-color, #ffffff);
+        }
+
+        .llm-settings-overview-description {
+            margin: 0;
+            font-size: 11px;
+            line-height: 1.5;
+            color: var(--text-secondary, #aaaaaa);
+        }
+
+        .llm-settings-group {
+            margin: 12px;
+            border: 1px solid var(--border-color, #444);
+            border-radius: 8px;
+            background: var(--bg-color-secondary, #202020);
+            overflow: hidden;
+        }
+
+        .llm-settings-group-header {
+            padding: 12px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .llm-settings-group-title {
+            margin: 0 0 4px 0;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--primary-color, #4a9eff);
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+
+        .llm-settings-group-description {
+            margin: 0;
+            font-size: 11px;
+            line-height: 1.5;
+            color: var(--text-secondary, #999999);
+        }
+
+        .llm-settings-group-content {
+            padding: 8px 12px 12px 12px;
+        }
+
+        .llm-no-provider-options {
+            margin: 4px 0 0 0;
+            font-size: 12px;
+            font-style: italic;
+            color: var(--text-secondary, #999999);
+        }
+
+        .llm-provider-section-toggle-row {
+            margin: 0 0 10px 0;
+            padding: 8px;
+            border: 1px solid var(--border-color, #444);
+            border-radius: 6px;
+            background: var(--bg-color, #1a1a1a);
+        }
+
+        .llm-provider-section-toggle-label,
+        .llm-provider-option-toggle-label {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 11px;
+            color: var(--text-secondary, #cccccc);
+        }
+
+        .llm-provider-option-control {
+            margin-bottom: 10px;
+            padding: 8px;
+            border: 1px solid var(--border-color, #3f3f3f);
+            border-radius: 6px;
+            background: var(--bg-color, #202020);
+        }
+
+        .llm-provider-option-control.disabled {
+            opacity: 0.55;
+        }
+
+        .llm-provider-option-control .llm-provider-option-toggle-label {
+            margin-bottom: 6px;
+        }
+
+        .llm-settings-group-placeholder .llm-settings-group-content {
+            min-height: 12px;
+        }
+
+        /* ── Chat view (transcript-first layout) ────────────────── */
+
+        .llm-chat-view {
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+            min-height: 0;
+            overflow: hidden;
+        }
+
+        .llm-chat-toolbar {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            padding: 6px 10px;
+            border-bottom: 1px solid var(--border-color, #444);
+            background: var(--bg-color-secondary, #2a2a2a);
+            flex-shrink: 0;
+        }
+
+        .llm-chat-thread-title {
+            flex: 1;
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--fg-color, #ffffff);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            margin: 0 4px;
+        }
+
+        .llm-thread-list-toggle {
+            margin: 0 8px;
+            font-size: 11px;
+            flex-shrink: 0;
+            border-radius: 4px !important;
+        }
+
+        /* Thread list (toggleable) */
+        .llm-conversation-list {
+            flex-shrink: 0;
+            max-height: 180px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            padding: 6px 10px;
+            border-bottom: 1px solid var(--border-color, #444);
+            background: var(--bg-color-tertiary, #1e1e1e);
+        }
+
+        /* Transcript (grows to fill space) */
+        .llm-history-list {
+            flex: 1;
+            min-height: 80px;
+            overflow-y: auto;
+            padding: 8px 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .llm-history-empty {
+            color: var(--text-secondary, #666);
+            font-style: italic;
+            text-align: center;
+            font-size: 12px;
+            padding: 24px 8px;
+            margin: 0;
+        }
+
+        /* Chat bubble items */
+        .llm-history-item {
+            display: flex;
+        }
+
+        .llm-history-user {
+            justify-content: flex-end;
+        }
+
+        .llm-history-assistant {
+            justify-content: flex-start;
+        }
+
+        .llm-chat-bubble {
+            max-width: 88%;
+            padding: 8px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            line-height: 1.5;
+        }
+
+        .llm-history-user .llm-chat-bubble {
+            background: rgba(74, 158, 255, 0.18);
+            border: 1px solid rgba(74, 158, 255, 0.3);
+            border-bottom-right-radius: 4px;
+        }
+
+        .llm-history-assistant .llm-chat-bubble {
+            background: var(--bg-color-secondary, #2a2a2a);
+            border: 1px solid var(--border-color, #444);
+            border-bottom-left-radius: 4px;
+        }
+
+        .llm-history-content {
+            color: var(--fg-color, #ffffff);
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        .llm-chat-bubble-meta {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 6px;
+            margin-top: 4px;
+        }
+
+        .llm-history-timestamp {
+            font-size: 10px;
+            color: var(--text-secondary, #777);
+        }
+
+        .llm-history-images {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-bottom: 6px;
+        }
+
+        .llm-history-image {
+            max-width: 140px;
+            max-height: 140px;
+            border-radius: 6px;
+            border: 1px solid var(--border-color, #444);
+        }
+
+        .llm-history-delete {
+            background: transparent;
+            border: none;
+            color: #f44336;
+            cursor: pointer;
+            font-size: 14px;
+            padding: 0 2px;
+            opacity: 0;
+            transition: opacity 0.2s, color 0.2s;
+            line-height: 1;
+        }
+
+        .llm-chat-bubble:hover .llm-history-delete {
+            opacity: 1;
+        }
+
+        .llm-history-delete:hover {
+            color: #ff5252;
+        }
+
+        /* Thread list items */
+        .llm-conversation-item {
+            padding: 8px 10px;
+            background: var(--bg-color, #1a1a1a);
+            border: 1px solid var(--border-color, #444);
+            border-radius: 4px;
+            cursor: pointer;
+            transition: border-color 0.2s, background-color 0.2s;
+            flex-shrink: 0;
+        }
+
+        .llm-conversation-item:hover {
+            border-color: var(--primary-color, #4a9eff);
+        }
+
+        .llm-conversation-item.active {
+            border-color: var(--primary-color, #4a9eff);
+            background: rgba(74, 158, 255, 0.1);
+        }
+
+        .llm-conversation-item-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .llm-conversation-item-title {
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--fg-color, #ffffff);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            flex: 1;
+        }
+
+        .llm-conversation-item-actions {
+            display: flex;
+            gap: 2px;
+            opacity: 0;
+            transition: opacity 0.2s;
+            flex-shrink: 0;
+        }
+
+        .llm-conversation-item:hover .llm-conversation-item-actions {
+            opacity: 1;
+        }
+
+        .llm-conversation-item-meta {
+            font-size: 10px;
+            color: var(--text-secondary, #999);
+            margin-top: 3px;
+        }
+
+        /* ── Expansion scaffolds (feature-flagged placeholders) ─── */
+
+        .llm-expansion-scaffold {
+            margin: 8px 10px;
+            padding: 10px 14px;
+            border: 1px dashed rgba(74, 158, 255, 0.35);
+            border-radius: 6px;
+            background: rgba(74, 158, 255, 0.04);
+            flex-shrink: 0;
+        }
+
+        .llm-expansion-scaffold-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 4px;
+        }
+
+        .llm-expansion-scaffold-title {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--fg-color, #ffffff);
+        }
+
+        .llm-expansion-scaffold-badge {
+            font-size: 9px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            padding: 2px 6px;
+            border-radius: 999px;
+            background: rgba(74, 158, 255, 0.18);
+            color: #7db9ff;
+            border: 1px solid rgba(74, 158, 255, 0.3);
+        }
+
+        .llm-expansion-scaffold-body {
+            margin: 0;
+            font-size: 11px;
+            color: var(--text-secondary, #999);
+            line-height: 1.4;
+        }
+
+        /* ── End chat view ───────────────────────────────────────── */
 
         .llm-settings-row {
             display: flex;
@@ -430,6 +874,7 @@ export function addLLMStyles() {
         /* Apply to Advanced Options collapsible sections */
         .llm-advanced-options .llm-system-prompt-section > div:first-child,
         .llm-advanced-options .llm-template-section > div:first-child,
+        .llm-advanced-options .llm-history-context-section > div:first-child,
         .llm-advanced-options .llm-ollama-options > div:first-child,
         .llm-advanced-options .llm-lmstudio-options > div:first-child {
             font-size: 12px !important;
@@ -439,6 +884,7 @@ export function addLLMStyles() {
         
         .llm-advanced-options .llm-system-prompt-section > div:first-child > span:first-child,
         .llm-advanced-options .llm-template-section > div:first-child > span:first-child,
+        .llm-advanced-options .llm-history-context-section > div:first-child > span:first-child,
         .llm-advanced-options .llm-ollama-options > div:first-child > span:first-child,
         .llm-advanced-options .llm-lmstudio-options > div:first-child > span:first-child {
             font-size: 10px !important;
@@ -447,6 +893,7 @@ export function addLLMStyles() {
         
         .llm-advanced-options .llm-system-prompt-section > div:last-child,
         .llm-advanced-options .llm-template-section > div:last-child,
+        .llm-advanced-options .llm-history-context-section > div:last-child,
         .llm-advanced-options .llm-ollama-options > div:last-child,
         .llm-advanced-options .llm-lmstudio-options > div:last-child {
             padding: 8px !important;
@@ -943,260 +1390,6 @@ export function addLLMStyles() {
             background: linear-gradient(90deg, #4a9eff 0%, #6db1ff 100%);
             transition: width 0.3s ease;
             box-shadow: 0 0 8px rgba(74, 158, 255, 0.5);
-        }
-
-        /* History section */
-        .llm-history-section {
-            padding: 12px;
-            border-top: 1px solid var(--border-color, #444);
-            background: var(--bg-color-secondary, #2a2a2a);
-        }
-        
-        /* Subsection headers */
-        .llm-subsection-header {
-            font-size: 11px;
-            font-weight: 600;
-            color: var(--text-secondary, #999);
-            text-transform: uppercase;
-            margin: 0 0 8px 0;
-            padding: 0;
-        }
-        
-        /* Apply compact styling to history section header */
-        .llm-history-section > div:first-child {
-            font-size: 12px !important;
-            padding-bottom: 6px !important;
-            margin-bottom: 8px !important;
-        }
-        
-        /* Make history section arrow smaller */
-        .llm-history-section > div:first-child > span:first-child {
-            font-size: 10px !important;
-            margin-right: 4px;
-        }
-        
-        /* Reduce content padding in history section */
-        .llm-history-section > div:last-child {
-            padding: 8px !important;
-        }
-
-        .llm-history-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            cursor: pointer;
-            user-select: none;
-        }
-
-        .llm-header-actions {
-            display: flex;
-            gap: 8px;
-            align-items: center;
-        }
-
-        .llm-history-content {
-            max-height: 500px;
-            overflow-y: auto;
-        }
-
-        .llm-conversation-list {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-        }
-
-        .llm-conversation-item {
-            padding: 12px;
-            background: var(--bg-color-tertiary, #1e1e1e);
-            border: 1px solid var(--border-color, #444);
-            border-radius: 4px;
-            cursor: pointer;
-            transition: border-color 0.2s, background-color 0.2s;
-        }
-
-        .llm-conversation-item:hover {
-            border-color: var(--primary-color, #4a9eff);
-            background: var(--bg-color, #1a1a1a);
-        }
-
-        .llm-conversation-item.active {
-            border-color: var(--primary-color, #4a9eff);
-            background: rgba(74, 158, 255, 0.1);
-        }
-
-        .llm-conversation-item-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 6px;
-        }
-
-        .llm-conversation-item-title {
-            font-size: 12px;
-            font-weight: 500;
-            color: var(--fg-color, #ffffff);
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-            flex: 1;
-            margin-right: 8px;
-        }
-
-        .llm-conversation-item-actions {
-            display: flex;
-            gap: 4px;
-            opacity: 0;
-            transition: opacity 0.2s;
-        }
-
-        .llm-conversation-item:hover .llm-conversation-item-actions {
-            opacity: 1;
-        }
-
-        .llm-conversation-item-meta {
-            font-size: 11px;
-            color: var(--text-secondary, #999);
-        }
-
-        /* History list (message display) */
-        .llm-history-list {
-            max-height: 400px;
-            overflow-y: auto;
-            margin-bottom: 8px;
-        }
-
-        .llm-history-empty {
-            color: var(--text-secondary, #666);
-            font-style: italic;
-            text-align: center;
-            font-size: 11px;
-            padding: 8px;
-            margin: 0;
-        }
-
-        .llm-history-item {
-            margin-bottom: 8px;
-            background: var(--bg-color-tertiary, #1e1e1e);
-            border: 1px solid var(--border-color, #444);
-            border-radius: 4px;
-        }
-
-        .llm-history-item.collapsed {
-            background: var(--bg-color-secondary, #2a2a2a);
-        }
-
-        .llm-history-user {
-            border-left: 3px solid var(--primary-color, #4a9eff);
-        }
-
-        .llm-history-assistant {
-            border-left: 3px solid #4caf50;
-        }
-
-        .llm-history-header {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            padding: 8px;
-            font-size: 11px;
-            color: var(--text-secondary, #999);
-            cursor: pointer;
-            user-select: none;
-            transition: background-color 0.2s;
-        }
-
-        .llm-history-header:hover {
-            background: rgba(255, 255, 255, 0.03);
-        }
-
-        .llm-history-toggle {
-            font-size: 8px;
-            color: var(--text-secondary, #999);
-            transition: transform 0.2s;
-            flex-shrink: 0;
-        }
-
-        .llm-history-role {
-            font-weight: 600;
-            color: var(--fg-color, #ffffff);
-            flex-shrink: 0;
-        }
-
-        .llm-history-timestamp {
-            font-size: 10px;
-            flex: 1;
-        }
-
-        .llm-history-delete {
-            background: transparent;
-            border: none;
-            color: #f44336;
-            cursor: pointer;
-            font-size: 16px;
-            padding: 0 4px;
-            transition: color 0.2s;
-            flex-shrink: 0;
-        }
-
-        .llm-history-delete:hover {
-            color: #ff5252;
-        }
-
-        .llm-history-content-container {
-            padding: 0 8px 8px 8px;
-        }
-
-        .llm-history-content {
-            color: var(--fg-color, #ffffff);
-            font-size: 12px;
-            font-family: var(--font-family-mono, 'Consolas', monospace);
-            line-height: 1.5;
-            white-space: pre-wrap;
-            word-wrap: break-word;
-        }
-
-        .llm-history-images {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-            margin-bottom: 8px;
-        }
-
-        .llm-history-image {
-            max-width: 150px;
-            max-height: 150px;
-            border-radius: 4px;
-            border: 1px solid var(--border-color, #444);
-        }
-
-        .llm-history-actions {
-            display: flex;
-            gap: 6px;
-            align-items: center;
-            margin-top: 8px;
-        }
-
-        .llm-btn-icon {
-            background: transparent;
-            border: none;
-            color: var(--fg-color, #ffffff);
-            cursor: pointer;
-            padding: 4px 6px;
-            font-size: 12px;
-            border-radius: 4px;
-            transition: background-color 0.2s;
-        }
-
-        .llm-btn-icon:hover {
-            background: var(--bg-color, #1a1a1a);
-        }
-
-        .llm-btn-danger-icon {
-            color: #f44336;
-        }
-
-        .llm-btn-danger-icon:hover {
-            background: rgba(244, 67, 54, 0.2);
         }
 
         .llm-export-menu {

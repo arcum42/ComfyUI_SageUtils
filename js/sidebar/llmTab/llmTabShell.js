@@ -10,7 +10,7 @@ import { showNotification } from '../../shared/crossTabMessaging.js';
 
 // Core utilities
 import { LLMConversation } from '../../llm/llmConversation.js';
-import { getDefaultSettings, loadSettings, updateUIFromSettings, saveSettings } from '../../llm/llmSettings.js';
+import { getDefaultSettings, loadSettings, updateUIFromSettings, saveSettings, applyModelSettingsForActiveSelection, setModelContext } from '../../llm/llmSettings.js';
 import { getModelCapabilityFlags } from '../../llm/llmProviders.js';
 
 // UI Components
@@ -25,10 +25,68 @@ import { createAdvancedOptions } from './settings/llmAdvancedOptions.js';
 
 // Generation and event handling
 import { applyPresetToUI } from './shared/llmPresetDialogs.js';
-import { setupEventHandlers, cleanupEventHandlers } from './shared/llmEventHandlers.js';
+import { setupEventHandlers, cleanupEventHandlers, showProviderOptions } from './shared/llmEventHandlers.js';
 
 const LLM_TAB_PROMPT_KEY = 'llm_tab_prompt_text';
 const LLM_LAST_PROVIDER_KEY = 'llm_last_selected_provider';
+const LLM_ACTIVE_SUBTAB_KEY = 'llm_last_active_subtab';
+
+// Expansion feature flags — enable via localStorage in browser console:
+//   localStorage.setItem('sageutils_llm_context_sources', 'true')
+//   localStorage.setItem('sageutils_llm_tool_calls', 'true')
+function isExpansionEnabled(flag) {
+    try {
+        return window.localStorage?.getItem(`sageutils_llm_${flag}`) === 'true';
+    } catch {
+        return false;
+    }
+}
+
+function createExpansionScaffold(label, description) {
+    const el = document.createElement('div');
+    el.className = 'llm-expansion-scaffold';
+    el.setAttribute('aria-label', label);
+
+    const header = document.createElement('div');
+    header.className = 'llm-expansion-scaffold-header';
+
+    const title = document.createElement('span');
+    title.className = 'llm-expansion-scaffold-title';
+    title.textContent = label;
+
+    const badge = document.createElement('span');
+    badge.className = 'llm-expansion-scaffold-badge';
+    badge.textContent = 'Coming Soon';
+
+    header.appendChild(title);
+    header.appendChild(badge);
+
+    const body = document.createElement('p');
+    body.className = 'llm-expansion-scaffold-body';
+    body.textContent = description;
+
+    el.appendChild(header);
+    el.appendChild(body);
+    return el;
+}
+
+const LLM_SUBTABS = [
+    {
+        id: 'compose',
+        label: 'Compose',
+        description: 'Quick one-shot prompts, image descriptions, and generation tasks.'
+    },
+    {
+        id: 'chat',
+        label: 'Chat',
+        description: 'Stay in one conversation with history and follow-up turns.'
+    },
+    {
+        id: 'settings',
+        label: 'Settings',
+        description: 'Advanced generation, provider, and context controls.'
+    }
+];
 
 function loadSavedPromptText() {
     try {
@@ -43,6 +101,26 @@ function savePromptText(value) {
         localStorage.setItem(LLM_TAB_PROMPT_KEY, value || '');
     } catch (error) {
         console.warn('[LLM Tab] Failed to persist prompt text:', error);
+    }
+}
+
+function loadActiveSubtab() {
+    try {
+        const saved = localStorage.getItem(LLM_ACTIVE_SUBTAB_KEY);
+        if (LLM_SUBTABS.some((subtab) => subtab.id === saved)) {
+            return saved;
+        }
+    } catch {
+        // Ignore storage access errors and fall back to default.
+    }
+    return 'compose';
+}
+
+function saveActiveSubtab(value) {
+    try {
+        localStorage.setItem(LLM_ACTIVE_SUBTAB_KEY, value);
+    } catch (error) {
+        console.warn('[LLM Tab] Failed to persist active subtab:', error);
     }
 }
 
@@ -77,6 +155,138 @@ function logLlmDebug(...args) {
     if (isLlmDebugEnabled()) {
         console.debug(...args);
     }
+}
+
+function createSubtabNavigation(activeSubtab, onSelect) {
+    const nav = document.createElement('div');
+    nav.className = 'llm-subtab-nav';
+    nav.setAttribute('role', 'tablist');
+    nav.setAttribute('aria-label', 'LLM workspace modes');
+
+    const buttons = new Map();
+
+    LLM_SUBTABS.forEach((subtab) => {
+        const button = document.createElement('button');
+        button.className = 'llm-subtab-btn';
+        button.type = 'button';
+        button.textContent = subtab.label;
+        button.dataset.subtab = subtab.id;
+        button.setAttribute('role', 'tab');
+        button.setAttribute('aria-selected', subtab.id === activeSubtab ? 'true' : 'false');
+        button.title = subtab.description;
+
+        if (subtab.id === activeSubtab) {
+            button.classList.add('active');
+        }
+
+        button.addEventListener('click', () => onSelect(subtab.id));
+        nav.appendChild(button);
+        buttons.set(subtab.id, button);
+    });
+
+    return { nav, buttons };
+}
+
+function createSubtabPanel(subtabId) {
+    const panel = document.createElement('section');
+    panel.className = `llm-subtab-panel llm-subtab-panel-${subtabId}`;
+    panel.dataset.subtab = subtabId;
+    panel.setAttribute('role', 'tabpanel');
+    panel.setAttribute('aria-label', `${subtabId} view`);
+    return panel;
+}
+
+function createSubtabIntro(subtabId) {
+    const metadata = LLM_SUBTABS.find((subtab) => subtab.id === subtabId);
+    if (!metadata) {
+        return null;
+    }
+
+    const intro = document.createElement('div');
+    intro.className = 'llm-subtab-intro';
+
+    const title = document.createElement('h3');
+    title.className = 'llm-subtab-title';
+    title.textContent = metadata.label;
+
+    const description = document.createElement('p');
+    description.className = 'llm-subtab-description';
+    description.textContent = metadata.description;
+
+    intro.appendChild(title);
+    intro.appendChild(description);
+    return intro;
+}
+
+function renderActiveSubtab(state, contentHost, sections) {
+    const activeSubtab = state.activeSubtab || 'compose';
+    const panel = createSubtabPanel(activeSubtab);
+    const intro = createSubtabIntro(activeSubtab);
+    const flags = state.model ? getModelCapabilityFlags(
+        state.provider,
+        state.model,
+        state.capabilities,
+        state.visionModels,
+        state.toolModels,
+        state.reasoningModels
+    ) : null;
+    const canShowVision = (activeSubtab === 'compose' || activeSubtab === 'chat') && Boolean(flags?.vision);
+
+    sections.visionSection.style.display = canShowVision ? 'block' : 'none';
+    sections.historySection.style.display = activeSubtab === 'chat' ? '' : 'none';
+    sections.advancedOptions.style.display = activeSubtab === 'settings' ? '' : 'none';
+
+    if (intro) {
+        panel.appendChild(intro);
+    }
+
+    if (activeSubtab === 'compose') {
+        panel.appendChild(sections.visionSection);
+        panel.appendChild(sections.inputSection);
+        panel.appendChild(sections.sendBtn);
+        panel.appendChild(sections.responseSection);
+    } else if (activeSubtab === 'chat') {
+        panel.appendChild(sections.historySection);
+        if (isExpansionEnabled('context_sources')) {
+            panel.appendChild(createExpansionScaffold(
+                '📁 Context Sources',
+                'Attach files, workflow node snippets, and RAG index references to your conversation.'
+            ));
+        }
+        panel.appendChild(sections.visionSection);
+        panel.appendChild(sections.inputSection);
+        panel.appendChild(sections.sendBtn);
+        panel.appendChild(sections.responseSection);
+        if (isExpansionEnabled('tool_calls')) {
+            panel.appendChild(createExpansionScaffold(
+                '🔧 Tool Calls',
+                'Tool execution timeline will appear here when the active model supports function calling.'
+            ));
+        }
+    } else {
+        panel.appendChild(sections.advancedOptions);
+        // Restore provider-specific section visibility (sections are remounted on each subtab switch)
+        showProviderOptions(sections.advancedOptions, state.provider);
+    }
+
+    contentHost.replaceChildren(panel);
+}
+
+function setActiveSubtab(state, subtabId, buttons, contentHost, sections) {
+    if (!LLM_SUBTABS.some((subtab) => subtab.id === subtabId)) {
+        return;
+    }
+
+    state.activeSubtab = subtabId;
+    saveActiveSubtab(subtabId);
+
+    buttons.forEach((button, id) => {
+        const active = id === subtabId;
+        button.classList.toggle('active', active);
+        button.setAttribute('aria-selected', active ? 'true' : 'false');
+    });
+
+    renderActiveSubtab(state, contentHost, sections);
 }
 
 /**
@@ -122,7 +332,7 @@ async function loadDefaultProvider() {
 /**
  * Initialize tab with prompts, presets, models, and event handlers
  */
-async function initializeTab(state, wrapper, modelSelection, visionSection, inputSection, advancedOptions, responseSection, historySection) {
+async function initializeTab(state, wrapper, modelSelection, visionSection, inputSection, sendBtn, advancedOptions, responseSection, historySection) {
     try {
         // Load prompts and presets in parallel
         const [promptsData, presetsLoaded] = await Promise.all([
@@ -132,11 +342,14 @@ async function initializeTab(state, wrapper, modelSelection, visionSection, inpu
         
         // Populate template categories if prompts loaded
         if (promptsData && state.prompts?.base) {
-            populateTemplateCategories(state, advancedOptions);
+            populateTemplateCategories(state, advancedOptions, inputSection);
         }
         
         // Load models
         await loadModels(state, modelSelection, visionSection);
+
+        // Resolve the active model's settings snapshot now that a model is selected
+        applyModelSettingsForActiveSelection(state, advancedOptions);
         
         // Load and display conversation history
         await loadAndInitializeHistory(state, historySection, responseSection);
@@ -148,6 +361,7 @@ async function initializeTab(state, wrapper, modelSelection, visionSection, inpu
             modelSelection,
             visionSection,
             inputSection,
+            sendBtn,
             advancedOptions,
             responseSection,
             historySection,
@@ -228,25 +442,75 @@ async function loadAndInitializeHistory(state, historySection, responseSection) 
 /**
  * Populate template category dropdown
  */
-function populateTemplateCategories(state, advancedOptions) {
+function populateTemplateCategories(state, advancedOptions, inputSection) {
     const categorySelect = advancedOptions.querySelector('.llm-category-select');
-    if (!categorySelect || !state.prompts?.base) return;
+    if (!state.prompts?.base) {
+        logLlmDebug('[populateTemplateCategories] No prompts available', state.prompts);
+        return;
+    }
     
     // Get unique categories
     const categories = new Set();
-    Object.values(state.prompts.base).forEach(template => {
-        if (template.category) {
-            categories.add(template.category);
+    Object.entries(state.prompts.base).forEach(([key, template]) => {
+        if (template && template.category && template.category.trim()) {
+            categories.add(template.category.trim());
         }
     });
     
+    logLlmDebug('[populateTemplateCategories] Found categories:', Array.from(categories));
+    
     // Populate dropdown
     const options = ['<option value="">Select category...</option>'];
-    Array.from(categories).sort().forEach(category => {
-        options.push(`<option value="${category}">${category}</option>`);
-    });
+    if (categories.size > 0) {
+        Array.from(categories)
+            .sort()
+            .forEach(category => {
+                options.push(`<option value="${category}">${category}</option>`);
+            });
+    }
     
-    categorySelect.innerHTML = options.join('');
+    logLlmDebug('[populateTemplateCategories] Options HTML:', options.join(''));
+    
+    // Update Settings tab category select
+    if (categorySelect) {
+        categorySelect.innerHTML = options.join('');
+        logLlmDebug('[populateTemplateCategories] Updated Settings category select');
+    }
+    
+    // Also populate Compose template section if it exists
+    if (inputSection) {
+        logLlmDebug('[populateTemplateCategories] inputSection children:', inputSection.children.length);
+        logLlmDebug('[populateTemplateCategories] inputSection classes:', inputSection.className);
+        logLlmDebug('[populateTemplateCategories] inputSection innerHTML length:', inputSection.innerHTML.length);
+        logLlmDebug('[populateTemplateCategories] Looking for template section with className "llm-compose-template-section"');
+        
+        // Try querySelector
+        const templateSection = inputSection.querySelector('.llm-compose-template-section');
+        logLlmDebug('[populateTemplateCategories] querySelector result:', !!templateSection);
+        
+        // Also try finding by checking children
+        let foundByIteration = null;
+        for (let child of inputSection.children) {
+            if (child.classList && child.classList.contains('llm-compose-template-section')) {
+                foundByIteration = child;
+                break;
+            }
+        }
+        logLlmDebug('[populateTemplateCategories] Found by iteration:', !!foundByIteration);
+        
+        const section = templateSection || foundByIteration;
+        if (section) {
+            logLlmDebug('[populateTemplateCategories] Section _categorySelect:', !!section._categorySelect);
+            if (section._categorySelect) {
+                section._categorySelect.innerHTML = options.join('');
+                logLlmDebug('[populateTemplateCategories] Updated Compose category select');
+            } else {
+                logLlmDebug('[populateTemplateCategories] WARNING: _categorySelect not found on section');
+            }
+        } else {
+            logLlmDebug('[populateTemplateCategories] WARNING: Template section not found in inputSection');
+        }
+    }
     
     // Also populate extras grid
     populatePromptExtras(state, advancedOptions);
@@ -294,7 +558,15 @@ async function populatePromptExtras(state, advancedOptions) {
  * Reset settings to defaults
  */
 function resetSettingsToDefaults(state, advancedOptions) {
-    state.settings = getDefaultSettings();
+    const previousSettings = state.settings || {};
+    const defaults = getDefaultSettings();
+    state.settings = {
+        ...defaults,
+        includeHistory: previousSettings.includeHistory ?? defaults.includeHistory,
+        maxHistoryMessages: previousSettings.maxHistoryMessages ?? defaults.maxHistoryMessages,
+        modelSettings: previousSettings.modelSettings || {},
+    };
+    setModelContext(state.settings, state.provider, state.model);
     saveSettings(state.settings);
     updateUIFromSettings(state.settings, advancedOptions);
     logLlmDebug('[LLM Tab] Settings reset to defaults');
@@ -316,6 +588,12 @@ async function createLLMTabVanilla(container) {
     // Create all UI sections
     const header = createHeader();
     const modelSelection = createModelSelection();
+    const activeSubtab = loadActiveSubtab();
+    const { nav: subtabNav, buttons: subtabButtons } = createSubtabNavigation(activeSubtab, (nextSubtab) => {
+        setActiveSubtab(state, nextSubtab, subtabButtons, subtabContentHost, sections);
+    });
+    const subtabContentHost = document.createElement('div');
+    subtabContentHost.className = 'llm-subtab-content-host';
     const visionSection = createVisionSection();
     const inputSection = createInputSection();
     const advancedOptions = createAdvancedOptions();
@@ -329,15 +607,20 @@ async function createLLMTabVanilla(container) {
     sendBtn.title = 'Generate response (Ctrl+Enter)';
     sendBtn.setAttribute('aria-label', 'Send message to LLM');
     
-    // Append all sections to wrapper
+    const sections = {
+        visionSection,
+        inputSection,
+        advancedOptions,
+        responseSection,
+        historySection,
+        sendBtn
+    };
+
+    // Append shared shell sections to wrapper
     wrapper.appendChild(header);
     wrapper.appendChild(modelSelection);
-    wrapper.appendChild(visionSection);
-    wrapper.appendChild(inputSection);
-    wrapper.appendChild(advancedOptions);
-    wrapper.appendChild(sendBtn);
-    wrapper.appendChild(responseSection);
-    wrapper.appendChild(historySection);
+    wrapper.appendChild(subtabNav);
+    wrapper.appendChild(subtabContentHost);
     
     container.appendChild(wrapper);
     
@@ -370,8 +653,11 @@ async function createLLMTabVanilla(container) {
         currentConversationMessages: [],
         conversationHistory: [],
         // Generation settings (will be loaded from localStorage if available)
-        settings: getDefaultSettings()
+        settings: getDefaultSettings(),
+        activeSubtab
     };
+
+    renderActiveSubtab(state, subtabContentHost, sections);
     
     // Load saved settings from localStorage
     const savedSettings = loadSettings();
@@ -390,7 +676,7 @@ async function createLLMTabVanilla(container) {
     }
     
     // Initialize tab
-    await initializeTab(state, wrapper, modelSelection, visionSection, inputSection, advancedOptions, responseSection, historySection);
+    await initializeTab(state, wrapper, modelSelection, visionSection, inputSection, sendBtn, advancedOptions, responseSection, historySection);
     
     // Set the provider dropdown to match the loaded default
     const providerSelect = modelSelection.querySelector('.llm-provider-select');
@@ -438,6 +724,8 @@ async function createLLMTabVanilla(container) {
     
     // Update UI from loaded settings
     updateUIFromSettings(state.settings, advancedOptions);
+
+    setActiveSubtab(state, activeSubtab, subtabButtons, subtabContentHost, sections);
     
     // Initialize history panel
     updateConversationList(state, historySection, responseSection);

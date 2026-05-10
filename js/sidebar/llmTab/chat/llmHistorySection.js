@@ -3,89 +3,97 @@
  * Manages conversation history display, export, import, and clearing
  */
 
-import { createSection } from '../../../components/layout.js';
-
 /**
- * Creates the conversation history section
- * @returns {HTMLElement} - History section element
+ * Creates the chat transcript view (non-collapsible, transcript-first)
+ * @returns {HTMLElement} - Chat view root element
  */
 export function createHistorySection() {
-    // Create content first (since createSection needs it)
-    const content = document.createElement('div');
-    content.className = 'llm-history-section-content';
-    
-    const section = createSection('📜 Conversation History', content, {
-        collapsible: true,
-        collapsed: true,
-        className: 'llm-history-section'
+    const view = document.createElement('div');
+    view.className = 'llm-chat-view';
+
+    // ── Thread toolbar ────────────────────────────────────────────
+    const toolbar = document.createElement('div');
+    toolbar.className = 'llm-chat-toolbar';
+
+    const newConversationBtn = document.createElement('button');
+    newConversationBtn.className = 'llm-btn llm-btn-primary llm-btn-small llm-new-conversation-btn';
+    newConversationBtn.innerHTML = '➕ New';
+    newConversationBtn.title = 'Start a new conversation';
+
+    const threadTitle = document.createElement('span');
+    threadTitle.className = 'llm-chat-thread-title';
+    threadTitle.textContent = 'New conversation';
+
+    const renameBtn = document.createElement('button');
+    renameBtn.className = 'llm-btn-icon llm-rename-conversation-btn';
+    renameBtn.innerHTML = '✏️';
+    renameBtn.title = 'Rename this conversation';
+    renameBtn.addEventListener('click', () => {
+        const currentTitle = threadTitle.textContent;
+        const newTitle = prompt('Rename conversation:', currentTitle);
+        if (newTitle && newTitle.trim() && newTitle.trim() !== currentTitle) {
+            threadTitle.textContent = newTitle.trim();
+            view.dispatchEvent(new CustomEvent('llm-rename-thread', { detail: { title: newTitle.trim() }, bubbles: true }));
+        }
     });
-    
-    // Conversation list (saved conversations)
-    const conversationListHeader = document.createElement('h4');
-    conversationListHeader.className = 'llm-subsection-header';
-    conversationListHeader.textContent = 'Saved Conversations';
-    
+
+    const exportBtn = document.createElement('button');
+    exportBtn.className = 'llm-btn-icon llm-export-history-btn';
+    exportBtn.innerHTML = '💾';
+    exportBtn.title = 'Export conversation';
+
+    const importBtn = document.createElement('button');
+    importBtn.className = 'llm-btn-icon llm-import-history-btn';
+    importBtn.innerHTML = '📂';
+    importBtn.title = 'Import conversation';
+
+    const clearBtn = document.createElement('button');
+    clearBtn.className = 'llm-btn-icon llm-btn-danger-icon llm-clear-history-btn';
+    clearBtn.innerHTML = '🗑️';
+    clearBtn.title = 'Clear conversation history';
+
+    toolbar.appendChild(newConversationBtn);
+    toolbar.appendChild(threadTitle);
+    toolbar.appendChild(renameBtn);
+    toolbar.appendChild(exportBtn);
+    toolbar.appendChild(importBtn);
+    toolbar.appendChild(clearBtn);
+
+    // ── Thread list (toggle) ──────────────────────────────────────
+    const threadListToggle = document.createElement('button');
+    threadListToggle.className = 'llm-btn llm-btn-secondary llm-btn-small llm-thread-list-toggle';
+    threadListToggle.textContent = '📋 Threads';
+    threadListToggle.title = 'Show/hide saved conversations';
+
     const conversationList = document.createElement('div');
     conversationList.className = 'llm-conversation-list';
-    
-    // Empty state for conversation list
+    conversationList.hidden = true;
+
     const conversationEmptyMessage = document.createElement('p');
     conversationEmptyMessage.className = 'llm-placeholder';
     conversationEmptyMessage.textContent = 'No conversations yet...';
     conversationList.appendChild(conversationEmptyMessage);
-    
-    // New conversation button
-    const newConversationBtn = document.createElement('button');
-    newConversationBtn.className = 'llm-btn llm-btn-primary llm-btn-small llm-new-conversation-btn';
-    newConversationBtn.innerHTML = '➕ New Conversation';
-    newConversationBtn.title = 'Start a new conversation';
-    
-    // Message history (current conversation messages)
-    const historyHeader = document.createElement('h4');
-    historyHeader.className = 'llm-subsection-header';
-    historyHeader.textContent = 'Current Messages';
-    historyHeader.style.marginTop = '16px';
-    
+
+    threadListToggle.addEventListener('click', () => {
+        conversationList.hidden = !conversationList.hidden;
+        threadListToggle.textContent = conversationList.hidden ? '📋 Threads' : '📋 Threads ▲';
+    });
+
+    // ── Transcript area ───────────────────────────────────────────
     const historyList = document.createElement('div');
     historyList.className = 'llm-history-list';
-    
-    // Empty state message
+
     const emptyMessage = document.createElement('div');
     emptyMessage.className = 'llm-history-empty';
-    emptyMessage.textContent = 'No conversation history yet';
+    emptyMessage.textContent = 'Start a conversation...';
     historyList.appendChild(emptyMessage);
-    
-    // Action buttons
-    const actions = document.createElement('div');
-    actions.className = 'llm-history-actions';
-    
-    const exportBtn = document.createElement('button');
-    exportBtn.className = 'llm-btn llm-btn-secondary llm-btn-small llm-export-history-btn';
-    exportBtn.innerHTML = '📥 Export';
-    exportBtn.title = 'Export conversation history';
-    
-    const importBtn = document.createElement('button');
-    importBtn.className = 'llm-btn llm-btn-secondary llm-btn-small llm-import-history-btn';
-    importBtn.innerHTML = '📤 Import';
-    importBtn.title = 'Import conversation history from JSON';
-    
-    const clearBtn = document.createElement('button');
-    clearBtn.className = 'llm-btn llm-btn-danger llm-btn-small llm-clear-history-btn';
-    clearBtn.innerHTML = '🗑️ Clear';
-    clearBtn.title = 'Clear conversation history';
-    
-    actions.appendChild(exportBtn);
-    actions.appendChild(importBtn);
-    actions.appendChild(clearBtn);
-    
-    content.appendChild(conversationListHeader);
-    content.appendChild(conversationList);
-    content.appendChild(newConversationBtn);
-    content.appendChild(historyHeader);
-    content.appendChild(historyList);
-    content.appendChild(actions);
-    
-    return section;
+
+    view.appendChild(toolbar);
+    view.appendChild(threadListToggle);
+    view.appendChild(conversationList);
+    view.appendChild(historyList);
+
+    return view;
 }
 
 /**
@@ -118,94 +126,66 @@ export function renderHistory(historySection, history, onDelete = null) {
 }
 
 /**
- * Create a single history item element
- * @param {Object} message - Message object with role, content, images
+ * Create a single chat bubble element for a message
+ * @param {Object} message - Message object with role, content, images, timestamp
  * @param {number} index - Message index
  * @param {Function} onDelete - Optional callback when message is deleted
- * @returns {HTMLElement} - History item element
+ * @returns {HTMLElement} - Chat bubble item element
  */
 function createHistoryItem(message, index, onDelete = null) {
     const item = document.createElement('div');
     item.className = `llm-history-item llm-history-${message.role}`;
     item.dataset.index = index;
-    
-    // Header (collapsible)
-    const header = document.createElement('div');
-    header.className = 'llm-history-header';
-    
-    const roleIcon = message.role === 'user' ? '👤' : '🤖';
-    const roleLabel = message.role === 'user' ? 'User' : 'Assistant';
-    
-    const toggleIcon = document.createElement('span');
-    toggleIcon.className = 'llm-history-toggle';
-    toggleIcon.textContent = '▼';
-    
-    const roleSpan = document.createElement('span');
-    roleSpan.className = 'llm-history-role';
-    roleSpan.textContent = `${roleIcon} ${roleLabel}`;
-    
-    const timestamp = document.createElement('span');
-    timestamp.className = 'llm-history-timestamp';
-    timestamp.textContent = formatTimestamp(message.timestamp);
-    
-    // Delete button
-    const deleteBtn = document.createElement('button');
-    deleteBtn.className = 'llm-history-delete';
-    deleteBtn.innerHTML = '×';
-    deleteBtn.title = 'Remove this message';
-    deleteBtn.dataset.index = index;
-    deleteBtn.onclick = (e) => {
-        e.stopPropagation(); // Prevent header click
-        if (onDelete && confirm('Remove this message from history?')) {
-            onDelete(index);
-        }
-    };
-    
-    header.appendChild(toggleIcon);
-    header.appendChild(roleSpan);
-    header.appendChild(timestamp);
-    header.appendChild(deleteBtn);
-    
-    item.appendChild(header);
-    
-    // Content container (collapsible)
-    const contentContainer = document.createElement('div');
-    contentContainer.className = 'llm-history-content-container';
-    
+
+    const bubble = document.createElement('div');
+    bubble.className = 'llm-chat-bubble';
+
     // Images (if present)
     if (message.images && message.images.length > 0) {
         const imagesContainer = document.createElement('div');
         imagesContainer.className = 'llm-history-images';
-        
         message.images.forEach((imageData, imgIndex) => {
             const img = document.createElement('img');
             img.src = imageData;
             img.className = 'llm-history-image';
-            img.alt = `Uploaded image ${imgIndex + 1}`;
+            img.alt = `Image ${imgIndex + 1}`;
             img.loading = 'lazy';
             imagesContainer.appendChild(img);
         });
-        
-        contentContainer.appendChild(imagesContainer);
+        bubble.appendChild(imagesContainer);
     }
-    
-    // Content (always show full content, preserving line breaks)
+
     const content = document.createElement('div');
     content.className = 'llm-history-content';
     content.textContent = message.content;
-    
-    contentContainer.appendChild(content);
-    item.appendChild(contentContainer);
-    
-    // Make header clickable to toggle collapse
-    header.style.cursor = 'pointer';
-    header.onclick = () => {
-        const isCollapsed = contentContainer.style.display === 'none';
-        contentContainer.style.display = isCollapsed ? 'block' : 'none';
-        toggleIcon.textContent = isCollapsed ? '▼' : '▶';
-        item.classList.toggle('collapsed', !isCollapsed);
-    };
-    
+    bubble.appendChild(content);
+
+    const meta = document.createElement('div');
+    meta.className = 'llm-chat-bubble-meta';
+
+    const timestamp = document.createElement('span');
+    timestamp.className = 'llm-history-timestamp';
+    timestamp.textContent = formatTimestamp(message.timestamp);
+    meta.appendChild(timestamp);
+
+    if (onDelete) {
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'llm-history-delete';
+        deleteBtn.innerHTML = '×';
+        deleteBtn.title = 'Remove this message';
+        deleteBtn.dataset.index = index;
+        deleteBtn.onclick = (e) => {
+            e.stopPropagation();
+            if (confirm('Remove this message from history?')) {
+                onDelete(index);
+            }
+        };
+        meta.appendChild(deleteBtn);
+    }
+
+    bubble.appendChild(meta);
+    item.appendChild(bubble);
+
     return item;
 }
 
@@ -377,6 +357,13 @@ function downloadFile(content, filename, mimeType) {
 export function updateConversationList(state, historySection, responseSection) {
     const conversationList = historySection.querySelector('.llm-conversation-list');
     if (!conversationList) return;
+
+    // Update thread title in toolbar
+    const threadTitle = historySection.querySelector('.llm-chat-thread-title');
+    if (threadTitle && state.currentConversationId && state.conversationHistory) {
+        const active = state.conversationHistory.find(c => c.id === state.currentConversationId);
+        if (active) threadTitle.textContent = active.title;
+    }
     
     if (!state.conversationHistory || state.conversationHistory.length === 0) {
         conversationList.innerHTML = '<p class="llm-placeholder">No conversations yet...</p>';

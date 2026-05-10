@@ -4,6 +4,7 @@
  */
 
 import { createTextarea } from '../../../components/formElements.js';
+import { createComposeTemplateSection } from './llmComposeTemplateSection.js';
 
 /**
  * Creates the input section
@@ -104,8 +105,12 @@ export function createInputSection() {
     actionButtons.appendChild(toPromptsBtn);
     actionButtons.appendChild(fromNodeBtn);
     
+    // Template section for Compose
+    const templateSection = createComposeTemplateSection(textarea);
+    
     section.appendChild(inputHeader);
     section.appendChild(textarea);
+    section.appendChild(templateSection);
     section.appendChild(actionButtons);
     
     return section;

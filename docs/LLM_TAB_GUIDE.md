@@ -6,14 +6,15 @@ The LLM Chat Tab brings AI language model capabilities directly into ComfyUI, en
 
 1. [Overview](#overview)
 2. [Getting Started](#getting-started)
-3. [Supported Providers](#supported-providers)
-4. [Text Generation](#text-generation)
-5. [Vision Features](#vision-features)
-6. [Advanced Options](#advanced-options)
-7. [Conversation History](#conversation-history)
-8. [Keyboard Shortcuts](#keyboard-shortcuts)
-9. [Tips & Best Practices](#tips--best-practices)
-10. [Troubleshooting](#troubleshooting)
+3. [Workspace Layout](#workspace-layout)
+4. [Supported Providers](#supported-providers)
+5. [Text Generation](#text-generation)
+6. [Vision Features](#vision-features)
+7. [Advanced Options](#advanced-options)
+8. [Conversation History](#conversation-history)
+9. [Keyboard Shortcuts](#keyboard-shortcuts)
+10. [Tips & Best Practices](#tips--best-practices)
+11. [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -60,6 +61,47 @@ The LLM Chat Tab brings AI language model capabilities directly into ComfyUI, en
 4. **Enter Your Prompt**: Type your request in the text area
 5. **Send**: Click "Send" or press **Ctrl+Enter**
 6. **Review Response**: Watch the AI response stream in real-time
+
+---
+
+## Workspace Layout
+
+The LLM tab is divided into three subtabs accessible from the pill navigation bar beneath the model selector. The active subtab is remembered across refreshes.
+
+### Compose
+
+The default mode, tuned for fast one-shot generation.
+
+| Area | Purpose |
+|---|---|
+| Model selector (top) | Provider and model, always visible |
+| Image upload | Drag/drop or click to attach images (vision models only) |
+| Prompt textarea | Your request |
+| Send button | Start or stop generation |
+| Response area | Streaming output with copy, send-to-node, and send-to-prompt-builder actions |
+
+### Chat
+
+A transcript-first multi-turn conversation view.
+
+| Area | Purpose |
+|---|---|
+| Thread toolbar | Active thread title, New / Rename / Export / Import / Clear buttons |
+| Threads button | Toggle the saved-conversation list |
+| Transcript | Scrollable chat bubble view — user messages right, assistant left |
+| Image upload | Attach images before sending (vision models only) |
+| Prompt textarea | Composer for the next message |
+| Response area | Streaming output appears inline when the response completes |
+
+### Settings
+
+All low-frequency controls live here so Compose and Chat stay uncluttered.
+
+| Group | Controls |
+|---|---|
+| Context | System prompt, prompt templates, include-history toggle, max history messages |
+| Generation and Provider | Ollama and LM Studio parameter sliders (temperature, top-p, top-k, penalties, max tokens, context window, seed, keep-alive) |
+| Diagnostics | Reset settings to defaults |
 
 ---
 

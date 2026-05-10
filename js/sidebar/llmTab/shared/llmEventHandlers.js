@@ -7,7 +7,7 @@ import { handleSend, handleStop, handleCopy, handleCopyToNode, handleCopyFromNod
 import { loadModels, updateModelDropdown, loadPresets, rememberProviderModel } from './llmModelSelection.js';
 import { showSavePresetDialog, showManagePresetsDialog } from './llmPresetDialogs.js';
 import { clearAllImages, handleFileUpload } from '../compose/llmVisionSection.js';
-import { saveSettings } from '../../../llm/llmSettings.js';
+import { saveSettings, applyModelSettingsForActiveSelection, setModelContext } from '../../../llm/llmSettings.js';
 import { getModelCapabilityFlags } from '../../../llm/llmProviders.js';
 
 const LLM_LAST_PROVIDER_KEY = 'llm_last_selected_provider';
@@ -35,6 +35,7 @@ export function setupEventHandlers(
     modelSelection,
     visionSection,
     inputSection,
+    sendBtn,
     advancedOptions,
     responseSection,
     historySection,
@@ -49,7 +50,6 @@ export function setupEventHandlers(
     const providerSelect = modelSelection.querySelector('.llm-provider-select');
     const modelSelect = modelSelection.querySelector('.llm-model-select');
     const refreshBtn = modelSelection.querySelector('.llm-refresh-btn');
-    const sendBtn = wrapper.querySelector('.llm-send-btn');
     const textarea = inputSection.querySelector('.llm-textarea');
     const copyBtn = responseSection.querySelector('.llm-copy-btn');
     const copyToNodeBtn = responseSection.querySelector('.llm-copy-to-node-btn');
@@ -80,6 +80,11 @@ export function setupEventHandlers(
     
     // Provider change
     providerSelect.addEventListener('change', async () => {
+        const previousProvider = state.provider;
+        const previousModel = state.model;
+        setModelContext(state.settings, previousProvider, previousModel);
+        saveSettings(state.settings);
+
         state.provider = providerSelect.value;
         try {
             localStorage.setItem(LLM_LAST_PROVIDER_KEY, state.provider);
@@ -89,6 +94,9 @@ export function setupEventHandlers(
         const preferredModel = state.lastModelsByProvider?.[state.provider] || null;
         updateModelDropdown(state, modelSelect, state.provider, preferredModel);
         await loadModels(state, modelSelection, visionSection); // Reload to update status
+
+        // Resolve settings for the newly selected model
+        applyModelSettingsForActiveSelection(state, advancedOptions);
         
         // Show/hide provider-specific settings
         showProviderOptions(advancedOptions, state.provider);
@@ -99,16 +107,24 @@ export function setupEventHandlers(
     
     // Model change
     modelSelect.addEventListener('change', () => {
+        const previousProvider = state.provider;
+        const previousModel = state.model;
+        setModelContext(state.settings, previousProvider, previousModel);
+        saveSettings(state.settings);
+
         state.model = modelSelect.value;
         rememberProviderModel(state, state.provider, state.model);
+
+        applyModelSettingsForActiveSelection(state, advancedOptions);
         
         // Update vision section visibility
         updateVisionSectionVisibility(state, visionSection);
     });
     
     // Refresh button
-    refreshBtn.addEventListener('click', () => {
-        loadModels(state, modelSelection, visionSection, true); // Force re-initialization
+    refreshBtn.addEventListener('click', async () => {
+        await loadModels(state, modelSelection, visionSection, true); // Force re-initialization
+        applyModelSettingsForActiveSelection(state, advancedOptions);
     });
     
     // ========== Preset Events ==========
@@ -207,6 +223,10 @@ export function setupEventHandlers(
             saveSettings(state.settings);
         });
     }
+    
+    // ========== Compose Template Section Events ==========
+    
+    setupComposeTemplateHandlers(state, inputSection, textarea);
     
     // ========== Settings Events ==========
     
@@ -502,33 +522,223 @@ export function setupEventHandlers(
  * @param {Object} state - Tab state object
  * @param {HTMLElement} advancedOptions - Advanced options section
  */
+function setupComposeTemplateHandlers(state, inputSection, textarea) {
+    const templateSection = inputSection.querySelector('.llm-compose-template-section');
+    if (!templateSection) return;
+
+    const categorySelect = templateSection._categorySelect;
+    const templateSelect = templateSection._templateSelect;
+    const templateState = templateSection._templateState;
+
+    if (!categorySelect || !templateSelect) return;
+
+    // Category change handler
+    categorySelect.addEventListener('change', () => {
+        const category = categorySelect.value;
+        templateState.selectedCategory = category;
+
+        if (!category || !state.prompts?.base) {
+            templateSelect.innerHTML = '<option value="">Select template...</option>';
+            templateSelect.disabled = true;
+            return;
+        }
+
+        // Filter templates by category
+        const options = ['<option value="">Select template...</option>'];
+        Object.entries(state.prompts.base).forEach(([key, template]) => {
+            if (template.category === category) {
+                options.push(`<option value="${key}">${template.name}</option>`);
+            }
+        });
+
+        templateSelect.innerHTML = options.join('');
+        templateSelect.disabled = false;
+    });
+
+    // Template change handler with confirmation
+    templateSelect.addEventListener('change', () => {
+        const templateKey = templateSelect.value;
+        if (!templateKey || !state.prompts?.base?.[templateKey]) return;
+
+        const template = state.prompts.base[templateKey];
+        const templateContent = template.prompt || '';
+
+        // Check if we should confirm before replacing
+        const shouldConfirm = templateState.promptModified && textarea.value.trim();
+
+        if (shouldConfirm) {
+            // Show custom dialog with three options
+            showTemplateActionDialog(templateKey, templateContent, textarea, templateState, state, templateSelect);
+            return;
+        }
+
+        // No existing content, just replace
+        updatePromptWithTemplate(templateContent, textarea, templateState, state, 'replace');
+        state.settings.promptTemplate = templateKey;
+        saveSettings(state.settings);
+    });
+}
+
+/**
+ * Show dialog with three options for applying template to prompt
+ */
+function showTemplateActionDialog(templateKey, templateContent, textarea, templateState, state, templateSelect) {
+    const dialog = document.createElement('div');
+    dialog.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.7);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 10000;
+    `;
+
+    const content = document.createElement('div');
+    content.style.cssText = `
+        background: #2a2a2a;
+        border: 1px solid #4a9eff;
+        border-radius: 8px;
+        padding: 24px;
+        max-width: 500px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+        color: #ffffff;
+        font-family: 'Segoe UI', sans-serif;
+    `;
+
+    const title = document.createElement('h3');
+    title.textContent = 'Apply Template';
+    title.style.cssText = `
+        margin: 0 0 12px 0;
+        font-size: 18px;
+        color: #4a9eff;
+    `;
+    content.appendChild(title);
+
+    const message = document.createElement('p');
+    message.textContent = 'Your current prompt has been modified. How would you like to apply this template?';
+    message.style.cssText = `
+        margin: 0 0 20px 0;
+        font-size: 14px;
+        line-height: 1.5;
+        color: #cccccc;
+    `;
+    content.appendChild(message);
+
+    const buttonContainer = document.createElement('div');
+    buttonContainer.style.cssText = `
+        display: flex;
+        gap: 12px;
+        justify-content: flex-end;
+        flex-wrap: wrap;
+    `;
+
+    const createButton = (label, action, isPrimary) => {
+        const btn = document.createElement('button');
+        btn.textContent = label;
+        btn.style.cssText = `
+            padding: 10px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: background-color 0.2s;
+            ${isPrimary
+                ? 'background: #4a9eff; color: #000;'
+                : 'background: #444; color: #fff;'
+            }
+        `;
+        btn.addEventListener('mouseover', () => {
+            btn.style.opacity = '0.9';
+        });
+        btn.addEventListener('mouseout', () => {
+            btn.style.opacity = '1';
+        });
+        btn.addEventListener('click', () => {
+            dialog.remove();
+            if (action === 'replace') {
+                updatePromptWithTemplate(templateContent, textarea, templateState, state, 'replace');
+                state.settings.promptTemplate = templateKey;
+                saveSettings(state.settings);
+            } else if (action === 'insert') {
+                updatePromptWithTemplate(templateContent, textarea, templateState, state, 'insert');
+                state.settings.promptTemplate = templateKey;
+                saveSettings(state.settings);
+            } else {
+                templateSelect.value = '';
+            }
+        });
+        buttonContainer.appendChild(btn);
+    };
+
+    createButton('Cancel', 'cancel', false);
+    createButton('Insert at Beginning', 'insert', false);
+    createButton('Replace', 'replace', true);
+
+    content.appendChild(buttonContainer);
+    dialog.appendChild(content);
+    document.body.appendChild(dialog);
+}
+
+/**
+ * Update prompt textarea with template content
+ */
+function updatePromptWithTemplate(templateContent, textarea, templateState, state, action) {
+    if (action === 'replace') {
+        textarea.value = templateContent;
+    } else if (action === 'insert') {
+        // Insert at beginning with a separator
+        const currentValue = textarea.value.trim();
+        textarea.value = templateContent + (currentValue ? '\n\n' + currentValue : '');
+    }
+
+    textarea.dispatchEvent(new Event('input'));
+
+    // Import update function with correct path
+    import('../compose/llmComposeTemplateSection.js').then(({ updateTemplateState }) => {
+        updateTemplateState(templateState, templateContent, textarea);
+    }).catch(err => {
+        console.error('[LLM] Failed to import llmComposeTemplateSection:', err);
+    });
+}
+
+/**
+ * Setup all settings slider and input event handlers
+ * @param {Object} state - Tab state object
+ * @param {HTMLElement} advancedOptions - Advanced options section
+ */
 function setupSettingsEventHandlers(state, advancedOptions) {
-    // Common settings
-    const temperatureSlider = advancedOptions.querySelector('.llm-temperature-slider');
-    const seedInput = advancedOptions.querySelector('.llm-seed-input');
-    const maxTokensSlider = advancedOptions.querySelector('.llm-max-tokens-slider');
-    
-    if (temperatureSlider) {
-        temperatureSlider.addEventListener('input', () => {
-            state.settings.temperature = parseFloat(temperatureSlider.value);
+    // Common settings — both Ollama and LM Studio sections have their own
+    // temperature/seed/maxTokens controls with the same class names, so we
+    // must attach a listener to every matching element, not just the first.
+    advancedOptions.querySelectorAll('.llm-temperature-slider').forEach((slider) => {
+        slider.addEventListener('input', () => {
+            state.settings.temperature = parseFloat(slider.value);
+            console.debug('[LLM Settings] temperature changed ->', state.settings.temperature, '| context:', state.settings.__llmModelContext);
             saveSettings(state.settings);
         });
-    }
-    
-    if (seedInput) {
-        seedInput.addEventListener('input', () => {
-            const value = seedInput.value.trim();
+    });
+
+    advancedOptions.querySelectorAll('.llm-seed-input').forEach((input) => {
+        input.addEventListener('input', () => {
+            const value = input.value.trim();
             state.settings.seed = value === '' ? undefined : parseInt(value);
+            console.debug('[LLM Settings] seed changed ->', state.settings.seed, '| context:', state.settings.__llmModelContext);
             saveSettings(state.settings);
         });
-    }
-    
-    if (maxTokensSlider) {
-        maxTokensSlider.addEventListener('input', () => {
-            state.settings.maxTokens = parseInt(maxTokensSlider.value);
+    });
+
+    advancedOptions.querySelectorAll('.llm-max-tokens-slider').forEach((slider) => {
+        slider.addEventListener('input', () => {
+            state.settings.maxTokens = parseInt(slider.value);
+            console.debug('[LLM Settings] maxTokens changed ->', state.settings.maxTokens, '| context:', state.settings.__llmModelContext);
             saveSettings(state.settings);
         });
-    }
+    });
     
     // Ollama-specific settings
     setupOllamaSettingsHandlers(state, advancedOptions);
@@ -553,6 +763,98 @@ function setupSettingsEventHandlers(state, advancedOptions) {
             saveSettings(state.settings);
         });
     }
+
+    setupProviderOptionToggleHandlers(state, advancedOptions);
+}
+
+const PROVIDER_OPTION_TOGGLE_DEFAULTS = {
+    ollama: {
+        enabled: false,
+        options: {
+            temperature: true,
+            top_p: true,
+            top_k: true,
+            repeat_penalty: true,
+            presence_penalty: true,
+            frequency_penalty: true,
+            max_tokens: true,
+            num_ctx: true,
+            keep_alive: true,
+            seed: true,
+        },
+    },
+    lmstudio: {
+        enabled: false,
+        options: {
+            temperature: true,
+            top_p: true,
+            max_tokens: true,
+            presence_penalty: true,
+            frequency_penalty: true,
+            repeat_penalty: true,
+            top_k: true,
+            seed: true,
+        },
+    },
+};
+
+function getProviderOptionDefaults(provider) {
+    return PROVIDER_OPTION_TOGGLE_DEFAULTS[provider] || { enabled: true, options: {} };
+}
+
+function ensureProviderOptionToggleSettings(settings) {
+    settings.providerOptions = settings.providerOptions || {};
+
+    Object.entries(PROVIDER_OPTION_TOGGLE_DEFAULTS).forEach(([provider, defaults]) => {
+        const existing = settings.providerOptions[provider] || {};
+        settings.providerOptions[provider] = {
+            enabled: existing.enabled !== undefined ? existing.enabled : defaults.enabled,
+            options: {
+                ...defaults.options,
+                ...(existing.options || {}),
+            },
+        };
+    });
+}
+
+function setupProviderOptionToggleHandlers(state, advancedOptions) {
+    ensureProviderOptionToggleSettings(state.settings);
+
+    const sectionToggles = advancedOptions.querySelectorAll('.llm-provider-section-toggle');
+    sectionToggles.forEach((toggle) => {
+        const provider = toggle.dataset.provider;
+        if (!provider) return;
+
+        const defaults = getProviderOptionDefaults(provider);
+        const savedEnabled = state.settings.providerOptions?.[provider]?.enabled;
+        toggle.checked = savedEnabled !== undefined ? savedEnabled : defaults.enabled;
+        toggle.dispatchEvent(new Event('change'));
+
+        toggle.addEventListener('change', () => {
+            ensureProviderOptionToggleSettings(state.settings);
+            state.settings.providerOptions[provider].enabled = toggle.checked;
+            saveSettings(state.settings);
+        });
+    });
+
+    const optionToggles = advancedOptions.querySelectorAll('.llm-provider-option-toggle');
+    optionToggles.forEach((toggle) => {
+        const provider = toggle.dataset.provider;
+        const optionKey = toggle.dataset.optionKey;
+        if (!provider || !optionKey) return;
+
+        const defaults = getProviderOptionDefaults(provider);
+        const savedValue = state.settings.providerOptions?.[provider]?.options?.[optionKey];
+        const defaultValue = defaults.options[optionKey] !== undefined ? defaults.options[optionKey] : true;
+        toggle.checked = savedValue !== undefined ? savedValue : defaultValue;
+        toggle.dispatchEvent(new Event('change'));
+
+        toggle.addEventListener('change', () => {
+            ensureProviderOptionToggleSettings(state.settings);
+            state.settings.providerOptions[provider].options[optionKey] = toggle.checked;
+            saveSettings(state.settings);
+        });
+    });
 }
 
 /**
@@ -572,49 +874,56 @@ function setupOllamaSettingsHandlers(state, advancedOptions) {
     
     if (topKSlider) {
         topKSlider.addEventListener('input', () => {
-            state.settings.top_k = parseInt(topKSlider.value);
+            state.settings.topK = parseInt(topKSlider.value);
+            console.debug('[LLM Settings] [Ollama] topK changed ->', state.settings.topK);
             saveSettings(state.settings);
         });
     }
     
     if (topPSlider) {
         topPSlider.addEventListener('input', () => {
-            state.settings.top_p = parseFloat(topPSlider.value);
+            state.settings.topP = parseFloat(topPSlider.value);
+            console.debug('[LLM Settings] [Ollama] topP changed ->', state.settings.topP);
             saveSettings(state.settings);
         });
     }
     
     if (repeatPenaltySlider) {
         repeatPenaltySlider.addEventListener('input', () => {
-            state.settings.repeat_penalty = parseFloat(repeatPenaltySlider.value);
+            state.settings.repeatPenalty = parseFloat(repeatPenaltySlider.value);
+            console.debug('[LLM Settings] [Ollama] repeatPenalty changed ->', state.settings.repeatPenalty);
             saveSettings(state.settings);
         });
     }
     
     if (presencePenaltySlider) {
         presencePenaltySlider.addEventListener('input', () => {
-            state.settings.presence_penalty = parseFloat(presencePenaltySlider.value);
+            state.settings.presencePenalty = parseFloat(presencePenaltySlider.value);
+            console.debug('[LLM Settings] [Ollama] presencePenalty changed ->', state.settings.presencePenalty);
             saveSettings(state.settings);
         });
     }
     
     if (frequencyPenaltySlider) {
         frequencyPenaltySlider.addEventListener('input', () => {
-            state.settings.frequency_penalty = parseFloat(frequencyPenaltySlider.value);
+            state.settings.frequencyPenalty = parseFloat(frequencyPenaltySlider.value);
+            console.debug('[LLM Settings] [Ollama] frequencyPenalty changed ->', state.settings.frequencyPenalty);
             saveSettings(state.settings);
         });
     }
     
     if (contextWindowSlider) {
         contextWindowSlider.addEventListener('input', () => {
-            state.settings.num_ctx = parseInt(contextWindowSlider.value);
+            state.settings.numCtx = parseInt(contextWindowSlider.value);
+            console.debug('[LLM Settings] [Ollama] numCtx changed ->', state.settings.numCtx);
             saveSettings(state.settings);
         });
     }
     
     if (keepAliveInput) {
         keepAliveInput.addEventListener('input', () => {
-            state.settings.keep_alive = keepAliveInput.value;
+            state.settings.keepAlive = keepAliveInput.value;
+            console.debug('[LLM Settings] [Ollama] keepAlive changed ->', state.settings.keepAlive);
             saveSettings(state.settings);
         });
     }
@@ -638,35 +947,40 @@ function setupLMStudioSettingsHandlers(state, advancedOptions) {
     
     if (topKSlider) {
         topKSlider.addEventListener('input', () => {
-            state.settings.top_k = parseInt(topKSlider.value);
+            state.settings.topK = parseInt(topKSlider.value);
+            console.debug('[LLM Settings] [LMStudio] topK changed ->', state.settings.topK);
             saveSettings(state.settings);
         });
     }
     
     if (topPSlider) {
         topPSlider.addEventListener('input', () => {
-            state.settings.top_p = parseFloat(topPSlider.value);
+            state.settings.topP = parseFloat(topPSlider.value);
+            console.debug('[LLM Settings] [LMStudio] topP changed ->', state.settings.topP);
             saveSettings(state.settings);
         });
     }
     
     if (repeatPenaltySlider) {
         repeatPenaltySlider.addEventListener('input', () => {
-            state.settings.repeat_penalty = parseFloat(repeatPenaltySlider.value);
+            state.settings.repeatPenalty = parseFloat(repeatPenaltySlider.value);
+            console.debug('[LLM Settings] [LMStudio] repeatPenalty changed ->', state.settings.repeatPenalty);
             saveSettings(state.settings);
         });
     }
     
     if (presencePenaltySlider) {
         presencePenaltySlider.addEventListener('input', () => {
-            state.settings.presence_penalty = parseFloat(presencePenaltySlider.value);
+            state.settings.presencePenalty = parseFloat(presencePenaltySlider.value);
+            console.debug('[LLM Settings] [LMStudio] presencePenalty changed ->', state.settings.presencePenalty);
             saveSettings(state.settings);
         });
     }
     
     if (frequencyPenaltySlider) {
         frequencyPenaltySlider.addEventListener('input', () => {
-            state.settings.frequency_penalty = parseFloat(frequencyPenaltySlider.value);
+            state.settings.frequencyPenalty = parseFloat(frequencyPenaltySlider.value);
+            console.debug('[LLM Settings] [LMStudio] frequencyPenalty changed ->', state.settings.frequencyPenalty);
             saveSettings(state.settings);
         });
     }
@@ -704,15 +1018,20 @@ function setupLMStudioSettingsHandlers(state, advancedOptions) {
  * @param {HTMLElement} advancedOptions - Advanced options section
  * @param {string} provider - Selected provider
  */
-function showProviderOptions(advancedOptions, provider) {
+export function showProviderOptions(advancedOptions, provider) {
     const ollamaSection = advancedOptions.querySelector('.llm-ollama-options');
     const lmstudioSection = advancedOptions.querySelector('.llm-lmstudio-options');
-    
+    const noOptionsMsg = advancedOptions.querySelector('.llm-no-provider-options');
+    const hasProviderSection = provider === 'ollama_rest' || provider === 'lmstudio_rest';
+
     if (ollamaSection) {
         ollamaSection.style.display = provider === 'ollama_rest' ? 'block' : 'none';
     }
     if (lmstudioSection) {
         lmstudioSection.style.display = provider === 'lmstudio_rest' ? 'block' : 'none';
+    }
+    if (noOptionsMsg) {
+        noOptionsMsg.style.display = hasProviderSection ? 'none' : 'block';
     }
 }
 
