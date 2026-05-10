@@ -14,6 +14,16 @@ from . import raise_llm_error
 logger = get_logger('llm.routes_helpers')
 
 
+def normalize_provider(provider: str) -> str:
+    """Normalize provider aliases to canonical backend keys."""
+    normalized = (provider or '').strip().lower()
+    alias_map = {
+        'lmstudio': 'lmstudio_rest',
+        'ollama': 'ollama_rest',
+    }
+    return alias_map.get(normalized, normalized)
+
+
 def get_compatible_models(provider: str, model_list: list[str]) -> list[str]:
     """Filter out placeholder unavailable-provider messages from model lists."""
     if not model_list:
@@ -77,7 +87,7 @@ def load_preset(preset_id: str) -> dict[str, Any]:
     # Built-in presets
     builtin_presets = {
         'descriptive_prompt': {
-            'provider': 'ollama',
+            'provider': 'lmstudio_rest',
             'model': 'gemma3:12b',
             'promptTemplate': 'description/Descriptive Prompt',
             'systemPrompt': 'e621_prompt_generator',
@@ -89,7 +99,7 @@ def load_preset(preset_id: str) -> dict[str, Any]:
             },
         },
         'e621_description': {
-            'provider': 'ollama',
+            'provider': 'lmstudio_rest',
             'model': 'gemma3:12b',
             'promptTemplate': 'description/Descriptive Prompt',
             'systemPrompt': 'e621_prompt_generator',
@@ -101,7 +111,7 @@ def load_preset(preset_id: str) -> dict[str, Any]:
             },
         },
         'casual_chat': {
-            'provider': 'ollama',
+            'provider': 'lmstudio_rest',
             'model': None,
             'promptTemplate': '',
             'systemPrompt': 'default',
@@ -141,13 +151,14 @@ def load_preset(preset_id: str) -> dict[str, Any]:
 
 def build_llm_options(provider: str, settings: dict[str, Any]) -> dict[str, Any]:
     """Build provider-specific options from settings."""
+    provider = normalize_provider(provider)
     options = {
         'temperature': settings.get('temperature', 0.7),
         'seed': settings.get('seed', -1),
     }
 
     # Add provider-specific options
-    if provider == 'ollama':
+    if provider == 'ollama_rest':
         if 'top_k' in settings:
             options['top_k'] = settings['top_k']
         if 'top_p' in settings:
@@ -205,7 +216,7 @@ def get_available_presets_full(
         'descriptive_prompt': {
             'name': 'Descriptive Prompt',
             'description': 'Generate detailed image descriptions',
-            'provider': 'ollama',
+            'provider': 'lmstudio_rest',
             'model': 'gemma3:12b',
             'promptTemplate': 'description/Descriptive Prompt',
             'systemPrompt': 'e621_prompt_generator',
@@ -222,7 +233,7 @@ def get_available_presets_full(
         'e621_description': {
             'name': 'E621 Image Description',
             'description': 'Generate E621-style detailed image descriptions',
-            'provider': 'ollama',
+            'provider': 'lmstudio_rest',
             'model': 'gemma3:12b',
             'promptTemplate': 'description/Descriptive Prompt',
             'systemPrompt': 'e621_prompt_generator',
@@ -239,7 +250,7 @@ def get_available_presets_full(
         'casual_chat': {
             'name': 'Casual Chat',
             'description': 'Friendly conversational assistant',
-            'provider': 'ollama',
+            'provider': 'lmstudio_rest',
             'model': None,
             'promptTemplate': '',
             'systemPrompt': 'default',
@@ -302,8 +313,9 @@ def validate_provider(provider: str) -> tuple[bool, Optional[str]]:
     Returns:
         Tuple of (is_valid, error_message)
     """
-    if provider not in ['ollama', 'lmstudio', 'lmstudio_rest', 'ollama_rest', 'openai', 'native']:
-        return False, f"Invalid provider: {provider}. Must be 'ollama', 'lmstudio', 'lmstudio_rest', 'ollama_rest', 'openai', or 'native'"
+    provider = normalize_provider(provider)
+    if provider not in ['lmstudio_rest', 'ollama_rest', 'openai', 'native']:
+        return False, f"Invalid provider: {provider}. Must be 'lmstudio', 'ollama', 'openai', or 'native'"
     return True, None
 
 
@@ -329,7 +341,7 @@ def validate_vision_data(
         return False, error_msg
 
     # Validate provider
-    is_valid, error_msg = validate_provider(data['provider'].lower())
+    is_valid, error_msg = validate_provider(normalize_provider(data['provider']))
     if not is_valid:
         return False, error_msg
 
@@ -358,7 +370,7 @@ def validate_generation_data(
         return False, error_msg
 
     # Validate provider
-    is_valid, error_msg = validate_provider(data['provider'].lower())
+    is_valid, error_msg = validate_provider(normalize_provider(data['provider']))
     if not is_valid:
         return False, error_msg
 
@@ -378,25 +390,15 @@ def check_model_vision_capability(provider: str, model: str) -> tuple[bool, Opti
         - If supports_vision is True, error_message is None
         - If supports_vision is False, error_message describes why
     """
-    provider = provider.lower()
+    provider = normalize_provider(provider)
     
     try:
         from . import service as llm
-        from .providers.settings import (
-            is_ollama_enabled, is_lmstudio_enabled, 
-            is_lmstudio_rest_enabled, is_ollama_rest_enabled, 
-            is_openai_enabled
-        )
-        
         # Ensure LLM services are initialized
         llm.ensure_llm_initialized()
         
         # Get capability map for the provider
-        if provider == 'ollama':
-            cap_map = llm.get_ollama_model_capabilities_map()
-        elif provider == 'lmstudio':
-            cap_map = llm.get_lmstudio_model_capabilities_map()
-        elif provider == 'lmstudio_rest':
+        if provider == 'lmstudio_rest':
             cap_map = llm.get_lmstudio_rest_model_capabilities_map()
         elif provider == 'ollama_rest':
             cap_map = llm.get_ollama_rest_model_capabilities_map()

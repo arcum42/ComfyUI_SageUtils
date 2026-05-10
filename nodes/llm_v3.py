@@ -22,12 +22,6 @@ from ..utils.settings import get_setting
 import logging
 
 from ..utils.performance_fix import (
-    get_cached_ollama_models_for_input_types,
-    get_cached_ollama_vision_models_for_input_types,
-)
-from ..utils.performance_fix import (
-    get_cached_lmstudio_models_for_input_types,
-    get_cached_lmstudio_vision_models_for_input_types,
     get_cached_lmstudio_rest_models_for_input_types,
     get_cached_lmstudio_rest_vision_models_for_input_types,
     get_cached_ollama_rest_models_for_input_types,
@@ -47,27 +41,12 @@ from ..utils.llm.tensor import tensor_to_base64_safe
 from ..utils.constants import SAGE_UTILS_CAT
 
 from .custom_io_v3 import *
-from .ollama_v3 import (
-    Sage_OllamaAdvancedOptions,
-    Sage_OllamaLLMPromptText,
-    Sage_OllamaLLMPromptVision,
-    Sage_OllamaLLMPromptVisionRefine,
-    OLLAMA_NODES,
-)
-from .lmstudio_v3 import (
-    Sage_LMStudioLLMPromptText,
-    Sage_LMStudioLLMPromptVision,
-    Sage_LMStudioLLMPromptVisionRefine,
-    LMSTUDIO_NODES,
-)
 
 logger = logging.getLogger('sageutils.nodes.llm_v3')
 
 _PROVIDER_LABEL_BY_KEY = {
-    "ollama": "Ollama",
-    "lmstudio": "LM Studio",
-    "lmstudio_rest": "LM Studio (REST)",
-    "ollama_rest": "Ollama (REST)",
+    "lmstudio_rest": "LM Studio",
+    "ollama_rest": "Ollama",
     "openai": "OpenAI",
     "native": "Native",
 }
@@ -215,14 +194,6 @@ class Sage_LLMPromptText(io.ComfyNode):
     """Unified text generation node that switches between Ollama, LM Studio, and Native providers."""
     @classmethod
     def define_schema(cls):
-        ollama_models = get_cached_ollama_models_for_input_types()
-        if not ollama_models:
-            ollama_models = ["(Ollama not available)"]
-
-        lm_models = get_cached_lmstudio_models_for_input_types()
-        if not lm_models:
-            lm_models = ["(LM Studio not available)"]
-
         lmstudio_rest_models = get_cached_lmstudio_rest_models_for_input_types()
         if not lmstudio_rest_models:
             lmstudio_rest_models = ["(LM Studio REST not available)"]
@@ -255,23 +226,7 @@ class Sage_LLMPromptText(io.ComfyNode):
 
         provider_options = _ordered_provider_options([
             io.DynamicCombo.Option(
-                "Ollama",
-                [
-                    io.Combo.Input("ollama_model", display_name="model", options=sorted(ollama_models)),
-                    io.Float.Input("ollama_keep_alive", display_name="keep_alive", default=0.0, min=-1.0, max=60.0 * 60.0, step=1, advanced=True, tooltip="How long to keep the model loaded after generation (-1 keeps it resident)."),
-                    OllamaOptions.Input("ollama_options", display_name="options", optional=True, advanced=True, tooltip="Optional low-level Ollama generation parameters."),
-                    io.String.Input("ollama_system_prompt", display_name="system_prompt", default="", multiline=True, optional=True, advanced=True, tooltip="Optional system instruction prepended as model context."),
-                ],
-            ),
-            io.DynamicCombo.Option(
                 "LM Studio",
-                [
-                    io.Combo.Input("lm_model", display_name="model", options=sorted(lm_models)),
-                    io.Int.Input("lm_load_for_seconds", display_name="load_for_seconds", default=0, min=-1, max=60 * 60, step=1, advanced=True, tooltip="How long to keep model loaded in LM Studio (seconds)."),
-                ],
-            ),
-            io.DynamicCombo.Option(
-                "LM Studio (REST)",
                 [
                     io.Combo.Input("lmstudio_rest_model", display_name="model", options=sorted(lmstudio_rest_models)),
                     io.Int.Input("lmstudio_rest_load_for_seconds", display_name="load_for_seconds", default=0, min=-1, max=60 * 60, step=1, advanced=True, tooltip="Compatibility field for LM Studio REST model load duration."),
@@ -279,7 +234,7 @@ class Sage_LLMPromptText(io.ComfyNode):
                 ],
             ),
             io.DynamicCombo.Option(
-                "Ollama (REST)",
+                "Ollama",
                 [
                     io.Combo.Input("ollama_rest_model", display_name="model", options=sorted(ollama_rest_models)),
                     io.String.Input("ollama_rest_keep_alive", display_name="keep_alive", default="5m", advanced=True, tooltip="How long to keep the model loaded after generation (Ollama duration string)."),
@@ -293,7 +248,7 @@ class Sage_LLMPromptText(io.ComfyNode):
                     io.Combo.Input("openai_model", display_name="model", options=sorted(openai_models)),
                     io.String.Input("openai_system_prompt", display_name="system_prompt", default="", multiline=True, optional=True, advanced=True, tooltip="Optional system instruction prepended as model context."),
                     io.Float.Input("openai_temperature", display_name="temperature", default=0.7, min=0.0, max=2.0, step=0.01, advanced=True),
-                    io.Int.Input("openai_max_tokens", display_name="max_tokens", default=1024, min=1, max=16384, step=1, advanced=True),
+                    io.Int.Input("openai_max_tokens", display_name="max_tokens", default=4096, min=1, max=16384, step=1, advanced=True),
                 ],
             ),
             io.DynamicCombo.Option("Native", native_inputs),
@@ -302,7 +257,7 @@ class Sage_LLMPromptText(io.ComfyNode):
         return io.Schema(
             node_id="Sage_LLMPromptText",
             display_name="LLM Prompt (Text)",
-            description="Unified provider-switching text generation node for Ollama, LM Studio, and Native CLIP.",
+            description="Unified provider-switching text generation node for REST/OpenAI and Native CLIP.",
             category=f"{SAGE_UTILS_CAT}/LLM",
             inputs=[
                 io.String.Input("prompt", display_name="prompt", default=DEFAULT_TEXT_PROMPT, multiline=True),
@@ -324,25 +279,7 @@ class Sage_LLMPromptText(io.ComfyNode):
         native_sampling = _get_native_sampling_config(provider_data)
 
         try:
-            if provider == "Ollama":
-                return Sage_OllamaLLMPromptText.execute(
-                    prompt=prompt,
-                    model=provider_data.get("ollama_model"),
-                    seed=seed,
-                    keep_alive=provider_data.get("ollama_keep_alive", 0.0),
-                    options=provider_data.get("ollama_options") or {},
-                    system_prompt=provider_data.get("ollama_system_prompt", ""),
-                )
-
             if provider == "LM Studio":
-                return Sage_LMStudioLLMPromptText.execute(
-                    prompt=prompt,
-                    model=provider_data.get("lm_model"),
-                    seed=seed,
-                    load_for_seconds=provider_data.get("lm_load_for_seconds", 0),
-                )
-
-            if provider == "LM Studio (REST)":
                 model = str(provider_data.get("lmstudio_rest_model") or "").strip()
                 if not model or model.startswith("("):
                     return io.NodeOutput("")
@@ -357,7 +294,7 @@ class Sage_LLMPromptText(io.ComfyNode):
                     )
                 )
 
-            if provider == "Ollama (REST)":
+            if provider == "Ollama":
                 model = str(provider_data.get("ollama_rest_model") or "").strip()
                 if not model or model.startswith("("):
                     return io.NodeOutput("")
@@ -380,7 +317,7 @@ class Sage_LLMPromptText(io.ComfyNode):
                 options = {
                     "seed": seed,
                     "temperature": provider_data.get("openai_temperature", 0.7),
-                    "max_tokens": provider_data.get("openai_max_tokens", 1024),
+                    "max_tokens": provider_data.get("openai_max_tokens", 4096),
                 }
                 return io.NodeOutput(
                     openai_generate(
@@ -414,17 +351,9 @@ class Sage_LLMPromptText(io.ComfyNode):
             return io.NodeOutput("")
 
 class Sage_LLMPromptVision(io.ComfyNode):
-    """Unified vision generation node that switches between Ollama, LM Studio, and Native providers."""
+    """Unified vision generation node that switches between REST/OpenAI and Native providers."""
     @classmethod
     def define_schema(cls):
-        ollama_models = get_cached_ollama_vision_models_for_input_types()
-        if not ollama_models:
-            ollama_models = ["(No Ollama vision models available)"]
-
-        lm_models = get_cached_lmstudio_vision_models_for_input_types()
-        if not lm_models:
-            lm_models = ["(No LM Studio vision models available)"]
-
         lmstudio_rest_models = get_cached_lmstudio_rest_vision_models_for_input_types()
         if not lmstudio_rest_models:
             lmstudio_rest_models = ["(No LM Studio REST vision models available)"]
@@ -457,23 +386,7 @@ class Sage_LLMPromptVision(io.ComfyNode):
 
         provider_options = _ordered_provider_options([
             io.DynamicCombo.Option(
-                "Ollama",
-                [
-                    io.Combo.Input("ollama_model", display_name="model", options=sorted(ollama_models)),
-                    io.Float.Input("ollama_keep_alive", display_name="keep_alive", default=0.0, min=-1.0, max=60.0 * 60.0, step=0.1, advanced=True, tooltip="How long to keep the model loaded after generation (-1 keeps it resident)."),
-                    OllamaOptions.Input("ollama_options", display_name="options", optional=True, advanced=True, tooltip="Optional low-level Ollama generation parameters."),
-                    io.String.Input("ollama_system_prompt", display_name="system_prompt", default="", multiline=True, optional=True, advanced=True, tooltip="Optional system instruction prepended as model context."),
-                ],
-            ),
-            io.DynamicCombo.Option(
                 "LM Studio",
-                [
-                    io.Combo.Input("lm_model", display_name="model", options=sorted(lm_models)),
-                    io.Int.Input("lm_load_for_seconds", display_name="load_for_seconds", default=0, min=-1, max=60 * 60, step=1, advanced=True, tooltip="How long to keep model loaded in LM Studio (seconds)."),
-                ],
-            ),
-            io.DynamicCombo.Option(
-                "LM Studio (REST)",
                 [
                     io.Combo.Input("lmstudio_rest_model", display_name="model", options=sorted(lmstudio_rest_models)),
                     io.Int.Input("lmstudio_rest_load_for_seconds", display_name="load_for_seconds", default=0, min=-1, max=60 * 60, step=1, advanced=True, tooltip="Compatibility field for LM Studio REST model load duration."),
@@ -481,7 +394,7 @@ class Sage_LLMPromptVision(io.ComfyNode):
                 ],
             ),
             io.DynamicCombo.Option(
-                "Ollama (REST)",
+                "Ollama",
                 [
                     io.Combo.Input("ollama_rest_model", display_name="model", options=sorted(ollama_rest_models)),
                     io.String.Input("ollama_rest_keep_alive", display_name="keep_alive", default="5m", advanced=True, tooltip="How long to keep the model loaded after generation (Ollama duration string)."),
@@ -504,7 +417,7 @@ class Sage_LLMPromptVision(io.ComfyNode):
         return io.Schema(
             node_id="Sage_LLMPromptVision",
             display_name="LLM Prompt (Vision)",
-            description="Unified provider-switching vision generation node for Ollama, LM Studio, and Native CLIP.",
+            description="Unified provider-switching vision generation node for REST/OpenAI and Native CLIP.",
             category=f"{SAGE_UTILS_CAT}/LLM",
             inputs=[
                 io.String.Input("prompt", display_name="prompt", default=DEFAULT_VISION_PROMPT, multiline=True),
@@ -527,27 +440,7 @@ class Sage_LLMPromptVision(io.ComfyNode):
         native_sampling = _get_native_sampling_config(provider_data)
 
         try:
-            if provider == "Ollama":
-                return Sage_OllamaLLMPromptVision.execute(
-                    prompt=prompt,
-                    model=provider_data.get("ollama_model"),
-                    image=image,
-                    seed=seed,
-                    keep_alive=provider_data.get("ollama_keep_alive", 0.0),
-                    options=provider_data.get("ollama_options") or {},
-                    system_prompt=provider_data.get("ollama_system_prompt", ""),
-                )
-
             if provider == "LM Studio":
-                return Sage_LMStudioLLMPromptVision.execute(
-                    prompt=prompt,
-                    model=provider_data.get("lm_model"),
-                    image=image,
-                    seed=seed,
-                    load_for_seconds=provider_data.get("lm_load_for_seconds", 0),
-                )
-
-            if provider == "LM Studio (REST)":
                 model = str(provider_data.get("lmstudio_rest_model") or "").strip()
                 if not model or model.startswith("("):
                     return io.NodeOutput("")
@@ -565,7 +458,7 @@ class Sage_LLMPromptVision(io.ComfyNode):
                     )
                 )
 
-            if provider == "Ollama (REST)":
+            if provider == "Ollama":
                 model = str(provider_data.get("ollama_rest_model") or "").strip()
                 if not model or model.startswith("("):
                     return io.NodeOutput("")
@@ -591,13 +484,15 @@ class Sage_LLMPromptVision(io.ComfyNode):
                 options = {
                     "seed": seed,
                     "temperature": provider_data.get("openai_temperature", 0.7),
-                    "max_tokens": provider_data.get("openai_max_tokens", 1024),
+                    "max_tokens": provider_data.get("openai_max_tokens", 4096),
                 }
+                # Convert image tensor to base64 for OpenAI-compatible vision payloads.
+                image_base64 = tensor_to_base64_safe(image) if image is not None else None
                 return io.NodeOutput(
                     openai_generate_vision(
                         model=model,
                         prompt=prompt,
-                        images=image,
+                        images=image_base64,
                         options=options,
                         system_prompt=provider_data.get("openai_system_prompt", ""),
                     )
@@ -630,22 +525,6 @@ class Sage_LLMPromptVisionRefine(io.ComfyNode):
     """Unified vision-refine node that performs initial generation plus a refinement pass per selected provider."""
     @classmethod
     def define_schema(cls):
-        ollama_models = get_cached_ollama_vision_models_for_input_types()
-        if not ollama_models:
-            ollama_models = ["(No Ollama vision models available)"]
-
-        ollama_refine_models = get_cached_ollama_models_for_input_types()
-        if not ollama_refine_models:
-            ollama_refine_models = ["(Ollama not available)"]
-
-        lm_models = get_cached_lmstudio_vision_models_for_input_types()
-        if not lm_models:
-            lm_models = ["(No LM Studio vision models available)"]
-
-        lm_refine_models = get_cached_lmstudio_models_for_input_types()
-        if not lm_refine_models:
-            lm_refine_models = ["(LM Studio not available)"]
-
         lmstudio_rest_models = get_cached_lmstudio_rest_vision_models_for_input_types()
         if not lmstudio_rest_models:
             lmstudio_rest_models = ["(No LM Studio REST vision models available)"]
@@ -691,21 +570,7 @@ class Sage_LLMPromptVisionRefine(io.ComfyNode):
 
         provider_options = _ordered_provider_options([
             io.DynamicCombo.Option(
-                "Ollama",
-                [
-                    io.Combo.Input("ollama_model", display_name="model", options=sorted(ollama_models)),
-                    io.Combo.Input("ollama_refine_model", display_name="refine_model", options=sorted(ollama_refine_models)),
-                ],
-            ),
-            io.DynamicCombo.Option(
                 "LM Studio",
-                [
-                    io.Combo.Input("lm_model", display_name="model", options=sorted(lm_models)),
-                    io.Combo.Input("lm_refine_model", display_name="refine_model", options=sorted(lm_refine_models)),
-                ],
-            ),
-            io.DynamicCombo.Option(
-                "LM Studio (REST)",
                 [
                     io.Combo.Input("lmstudio_rest_model", display_name="model", options=sorted(lmstudio_rest_models)),
                     io.Combo.Input("lmstudio_rest_refine_model", display_name="refine_model", options=sorted(lmstudio_rest_refine_models)),
@@ -713,7 +578,7 @@ class Sage_LLMPromptVisionRefine(io.ComfyNode):
                 ],
             ),
             io.DynamicCombo.Option(
-                "Ollama (REST)",
+                "Ollama",
                 [
                     io.Combo.Input("ollama_rest_model", display_name="model", options=sorted(ollama_rest_models)),
                     io.Combo.Input("ollama_rest_refine_model", display_name="refine_model", options=sorted(ollama_rest_refine_models)),
@@ -729,7 +594,7 @@ class Sage_LLMPromptVisionRefine(io.ComfyNode):
                     io.Combo.Input("openai_refine_model", display_name="refine_model", options=sorted(openai_refine_models)),
                     io.String.Input("openai_system_prompt", display_name="system_prompt", default="", multiline=True, optional=True, advanced=True),
                     io.Float.Input("openai_temperature", display_name="temperature", default=0.7, min=0.0, max=2.0, step=0.01, advanced=True),
-                    io.Int.Input("openai_max_tokens", display_name="max_tokens", default=1024, min=1, max=16384, step=1, advanced=True),
+                    io.Int.Input("openai_max_tokens", display_name="max_tokens", default=4096, min=1, max=16384, step=1, advanced=True),
                 ],
             ),
             io.DynamicCombo.Option("Native", native_inputs),
@@ -766,29 +631,7 @@ class Sage_LLMPromptVisionRefine(io.ComfyNode):
         native_sampling = _get_native_sampling_config(provider_data)
 
         try:
-            if provider == "Ollama":
-                return Sage_OllamaLLMPromptVisionRefine.execute(
-                    prompt=prompt,
-                    model=provider_data.get("ollama_model"),
-                    image=image,
-                    seed=seed,
-                    refine_prompt=refine_prompt,
-                    refine_model=provider_data.get("ollama_refine_model"),
-                    refine_seed=refine_seed,
-                )
-
             if provider == "LM Studio":
-                return Sage_LMStudioLLMPromptVisionRefine.execute(
-                    prompt=prompt,
-                    model=provider_data.get("lm_model"),
-                    image=image,
-                    seed=seed,
-                    refine_prompt=refine_prompt,
-                    refine_model=provider_data.get("lm_refine_model"),
-                    refine_seed=refine_seed,
-                )
-
-            if provider == "LM Studio (REST)":
                 model = str(provider_data.get("lmstudio_rest_model") or "").strip()
                 if not model or model.startswith("("):
                     return io.NodeOutput("", "")
@@ -817,7 +660,7 @@ class Sage_LLMPromptVisionRefine(io.ComfyNode):
                 pbar.update(1)
                 return io.NodeOutput(initial, refined)
 
-            if provider == "Ollama (REST)":
+            if provider == "Ollama":
                 model = str(provider_data.get("ollama_rest_model") or "").strip()
                 if not model or model.startswith("("):
                     return io.NodeOutput("", "")
@@ -857,12 +700,14 @@ class Sage_LLMPromptVisionRefine(io.ComfyNode):
                 options = {
                     "seed": seed,
                     "temperature": provider_data.get("openai_temperature", 0.7),
-                    "max_tokens": provider_data.get("openai_max_tokens", 1024),
+                    "max_tokens": provider_data.get("openai_max_tokens", 4096),
                 }
+                # Convert image tensor to base64 for OpenAI-compatible vision payloads.
+                image_base64 = tensor_to_base64_safe(image) if image is not None else None
                 initial = openai_generate_vision(
                     model=model,
                     prompt=prompt,
-                    images=image,
+                    images=image_base64,
                     options=options,
                     system_prompt=provider_data.get("openai_system_prompt", ""),
                 )
@@ -877,7 +722,7 @@ class Sage_LLMPromptVisionRefine(io.ComfyNode):
                     options={
                         "seed": refine_seed,
                         "temperature": provider_data.get("openai_temperature", 0.7),
-                        "max_tokens": provider_data.get("openai_max_tokens", 1024),
+                        "max_tokens": provider_data.get("openai_max_tokens", 4096),
                     },
                     system_prompt=provider_data.get("openai_system_prompt", ""),
                 )
@@ -934,9 +779,13 @@ def _should_reraise_llm_node_errors() -> bool:
 
 def _get_default_provider_key() -> str:
     """Return the configured default provider key for both nodes and sidebar interoperability."""
-    value = str(get_setting('default_llm_provider', 'ollama') or 'ollama').strip().lower()
+    value = str(get_setting('default_llm_provider', 'lmstudio_rest') or 'lmstudio_rest').strip().lower()
+    if value == 'lmstudio':
+        value = 'lmstudio_rest'
+    elif value == 'ollama':
+        value = 'ollama_rest'
     if value not in _PROVIDER_LABEL_BY_KEY:
-        return 'ollama'
+        return 'lmstudio_rest'
     return value
 
 
@@ -962,21 +811,19 @@ def _ordered_provider_options(options: list[io.DynamicCombo.Option]) -> list[io.
         return options
 
     key_by_label = {
-        "ollama": "Ollama",
-        "lmstudio": "LM Studio",
-        "lmstudio_rest": "LM Studio (REST)",
-        "ollama_rest": "Ollama (REST)",
+        "lmstudio_rest": "LM Studio",
+        "ollama_rest": "Ollama",
         "openai": "OpenAI",
         "native": "Native",
     }
-    default_label = key_by_label.get(_get_default_provider_key(), "Ollama")
+    default_label = key_by_label.get(_get_default_provider_key(), "LM Studio")
 
     options_by_label = {opt.key: opt for opt in options}
     ordered = []
     if default_label in options_by_label:
         ordered.append(options_by_label[default_label])
 
-    for label in ("Ollama", "LM Studio", "LM Studio (REST)", "Ollama (REST)", "OpenAI", "Native"):
+    for label in ("LM Studio", "Ollama", "OpenAI", "Native"):
         option = options_by_label.get(label)
         if option and option not in ordered:
             ordered.append(option)
@@ -1054,4 +901,4 @@ LLM_NODES = [
     Sage_LLMPromptText,
     Sage_LLMPromptVision,
     Sage_LLMPromptVisionRefine,
-] + OLLAMA_NODES + LMSTUDIO_NODES
+]

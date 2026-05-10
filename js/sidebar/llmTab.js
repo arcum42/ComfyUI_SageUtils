@@ -49,7 +49,7 @@ function savePromptText(value) {
 function loadLastSelectedProvider() {
     try {
         const provider = localStorage.getItem(LLM_LAST_PROVIDER_KEY);
-        if (provider === 'ollama' || provider === 'lmstudio' || provider === 'lmstudio_rest' ||
+        if (provider === 'lmstudio_rest' ||
             provider === 'ollama_rest' || provider === 'openai' || provider === 'native') {
             return provider;
         }
@@ -81,7 +81,7 @@ function logLlmDebug(...args) {
 
 /**
  * Load default LLM provider from settings
- * @returns {Promise<string>} Default provider ('ollama', 'lmstudio', 'lmstudio_rest', or 'native')
+ * @returns {Promise<string>} Default provider ('lmstudio_rest', 'ollama_rest', 'openai', or 'native')
  */
 async function loadDefaultProvider() {
     try {
@@ -95,15 +95,17 @@ async function loadDefaultProvider() {
                 logLlmDebug('[LLM Tab] default_llm_provider setting:', setting);
                 
                 // Try current_value first, then fall back to default
-                const provider = setting.current_value || setting.default;
+                let provider = setting.current_value || setting.default;
+                if (provider === 'lmstudio') provider = 'lmstudio_rest';
+                if (provider === 'ollama') provider = 'ollama_rest';
                 logLlmDebug('[LLM Tab] Resolved provider value:', provider);
                 
-                if (provider === 'ollama' || provider === 'lmstudio' || provider === 'lmstudio_rest' ||
+                if (provider === 'lmstudio_rest' ||
                     provider === 'ollama_rest' || provider === 'openai' || provider === 'native') {
                     logLlmDebug(`[LLM Tab] Loading default LLM provider: ${provider}`);
                     return provider;
                 } else {
-                    console.warn(`[LLM Tab] Invalid provider value: ${provider}, using ollama`);
+                    console.warn(`[LLM Tab] Invalid provider value: ${provider}, using lmstudio_rest`);
                 }
             } else {
                 console.warn('[LLM Tab] default_llm_provider setting not found in response');
@@ -112,9 +114,9 @@ async function loadDefaultProvider() {
             console.warn('[LLM Tab] Settings API request failed:', response.status);
         }
     } catch (error) {
-        console.warn('[LLM Tab] Failed to load default LLM provider setting, using ollama:', error);
+        console.warn('[LLM Tab] Failed to load default LLM provider setting, using lmstudio_rest:', error);
     }
-    return 'ollama'; // Default fallback
+    return 'lmstudio_rest'; // Default fallback
 }
 
 /**
@@ -351,11 +353,11 @@ async function createLLMTabVanilla(container) {
     const state = {
         provider: initialProvider,
         model: null,
-        models: { ollama: [], lmstudio: [], lmstudio_rest: [], ollama_rest: [], openai: [], native: [] },
-        visionModels: { ollama: [], lmstudio: [], lmstudio_rest: [], ollama_rest: [], openai: [], native: [] },
-        toolModels: { ollama: [], lmstudio: [], lmstudio_rest: [], ollama_rest: [], openai: [], native: [] },
-        reasoningModels: { ollama: [], lmstudio: [], lmstudio_rest: [], ollama_rest: [], openai: [], native: [] },
-        capabilities: { ollama: {}, lmstudio: {}, lmstudio_rest: {}, ollama_rest: {}, openai: {}, native: {} },
+        models: { lmstudio_rest: [], ollama_rest: [], openai: [], native: [] },
+        visionModels: { lmstudio_rest: [], ollama_rest: [], openai: [], native: [] },
+        toolModels: { lmstudio_rest: [], ollama_rest: [], openai: [], native: [] },
+        reasoningModels: { lmstudio_rest: [], ollama_rest: [], openai: [], native: [] },
+        capabilities: { lmstudio_rest: {}, ollama_rest: {}, openai: {}, native: {} },
         generating: false,
         streamController: null,
         // Vision support

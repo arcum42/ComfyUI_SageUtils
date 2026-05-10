@@ -1,15 +1,22 @@
 /**
  * LLM Provider-Specific Logic
- * Handles differences between Ollama, LM Studio, and Native providers
+ * Handles differences between REST providers, OpenAI, and Native providers
  */
+
+function normalizeProviderKey(provider) {
+    if (provider === 'lmstudio') return 'lmstudio_rest';
+    if (provider === 'ollama') return 'ollama_rest';
+    return provider;
+}
 
 /**
  * Build generation options for a specific provider
- * @param {string} provider - 'ollama', 'lmstudio', or 'native'
+ * @param {string} provider - 'lmstudio_rest', 'ollama_rest', 'openai', or 'native'
  * @param {Object} settings - Settings object
  * @returns {Object} - Provider-specific options object
  */
 export function buildProviderOptions(provider, settings) {
+    provider = normalizeProviderKey(provider);
     // Common options for both providers
     const options = {
         temperature: settings.temperature,
@@ -19,16 +26,7 @@ export function buildProviderOptions(provider, settings) {
     };
 
     // Add provider-specific options
-    if (provider === 'ollama') {
-        options.num_keep = settings.numKeep;
-        options.num_predict = settings.numPredict;
-        options.top_k = settings.topK;
-        options.top_p = settings.topP;
-        options.repeat_last_n = settings.repeatLastN;
-        options.repeat_penalty = settings.repeatPenalty;
-        options.presence_penalty = settings.presencePenalty;
-        options.frequency_penalty = settings.frequencyPenalty;
-    } else if (provider === 'lmstudio' || provider === 'lmstudio_rest') {
+    if (provider === 'lmstudio_rest') {
         options.topKSampling = settings.lmsTopK;
         options.topPSampling = settings.lmsTopP;
         options.repeatPenalty = settings.lmsRepeatPenalty;
@@ -59,10 +57,11 @@ export function buildProviderOptions(provider, settings) {
 
 /**
  * Get provider-specific default settings
- * @param {string} provider - 'ollama', 'lmstudio', or 'native'
+ * @param {string} provider - 'lmstudio_rest', 'ollama_rest', 'openai', or 'native'
  * @returns {Object} - Provider-specific defaults
  */
 export function getProviderDefaults(provider) {
+    provider = normalizeProviderKey(provider);
     const commonDefaults = {
         temperature: 0.7,
         seed: 42,
@@ -70,19 +69,7 @@ export function getProviderDefaults(provider) {
         keepAlive: 300
     };
 
-    if (provider === 'ollama') {
-        return {
-            ...commonDefaults,
-            numKeep: 0,
-            numPredict: -1,
-            topK: 40,
-            topP: 0.9,
-            repeatLastN: 64,
-            repeatPenalty: 1.1,
-            presencePenalty: 0.0,
-            frequencyPenalty: 0.0
-        };
-    } else if (provider === 'lmstudio' || provider === 'lmstudio_rest') {
+    if (provider === 'lmstudio_rest') {
         return {
             ...commonDefaults,
             lmsTopK: 40,
@@ -124,12 +111,11 @@ export function getProviderDefaults(provider) {
  * @returns {string} - Human-readable provider name
  */
 export function getProviderDisplayName(provider) {
+    provider = normalizeProviderKey(provider);
     const names = {
-        'ollama': 'Ollama',
-        'lmstudio': 'LM Studio',
-        'lmstudio_rest': 'LM Studio (REST)',
+        'lmstudio_rest': 'LM Studio',
         'native': 'Native (CLIP)',
-        'ollama_rest': 'Ollama (REST)',
+        'ollama_rest': 'Ollama',
         'openai': 'OpenAI'
     };
     return names[provider] || provider;
@@ -142,6 +128,7 @@ export function getProviderDisplayName(provider) {
  * @returns {string} - Status class name
  */
 export function getProviderStatusClass(status, provider) {
+    provider = normalizeProviderKey(provider);
     if (!status || !status[provider]) {
         return 'status-offline';
     }
@@ -164,6 +151,7 @@ export function getProviderStatusClass(status, provider) {
  * @returns {string} - Status text
  */
 export function getProviderStatusText(status, provider) {
+    provider = normalizeProviderKey(provider);
     const displayName = getProviderDisplayName(provider);
 
     if (!status || !status[provider]) {
@@ -189,11 +177,12 @@ export function getProviderStatusText(status, provider) {
  * @returns {Object} - Validation result { valid: boolean, error: string }
  */
 export function validateProviderConfig(provider, model, models) {
+    provider = normalizeProviderKey(provider);
     if (!provider) {
         return { valid: false, error: 'No provider selected' };
     }
 
-    if (!['ollama', 'lmstudio', 'lmstudio_rest', 'ollama_rest', 'openai', 'native'].includes(provider)) {
+    if (!['lmstudio_rest', 'ollama_rest', 'openai', 'native'].includes(provider)) {
         return { valid: false, error: `Invalid provider: ${provider}` };
     }
 
@@ -219,6 +208,7 @@ export function validateProviderConfig(provider, model, models) {
  * @returns {Object} - Parameter descriptions keyed by parameter name
  */
 export function getProviderParameterDescriptions(provider) {
+    provider = normalizeProviderKey(provider);
     const common = {
         temperature: 'Controls randomness in output. Lower = more focused, higher = more creative.',
         seed: 'Random seed for reproducible outputs. Use -1 for random.',
@@ -226,19 +216,7 @@ export function getProviderParameterDescriptions(provider) {
         keepAlive: 'How long to keep model loaded in memory (seconds).'
     };
 
-    if (provider === 'ollama') {
-        return {
-            ...common,
-            numKeep: 'Number of tokens to keep from initial prompt.',
-            numPredict: 'Maximum tokens to predict. -1 for infinite.',
-            topK: 'Limits next token selection to top K tokens.',
-            topP: 'Nucleus sampling: cumulative probability threshold.',
-            repeatLastN: 'How far back to look for repetitions.',
-            repeatPenalty: 'Penalty for repeating tokens.',
-            presencePenalty: 'Penalty for tokens that have appeared.',
-            frequencyPenalty: 'Penalty based on token frequency.'
-        };
-    } else if (provider === 'lmstudio' || provider === 'lmstudio_rest') {
+    if (provider === 'lmstudio_rest') {
         return {
             ...common,
             lmsTopK: 'Limits next token selection to top K tokens.',
@@ -280,11 +258,10 @@ export function getProviderParameterDescriptions(provider) {
  * @returns {string[]} - Array of setting keys specific to this provider
  */
 export function getProviderSettingKeys(provider) {
+    provider = normalizeProviderKey(provider);
     const common = ['temperature', 'seed', 'maxTokens', 'keepAlive', 'systemPrompt', 'promptTemplate', 'includeHistory', 'maxHistoryMessages'];
 
-    if (provider === 'ollama') {
-        return [...common, 'numKeep', 'numPredict', 'topK', 'topP', 'repeatLastN', 'repeatPenalty', 'presencePenalty', 'frequencyPenalty'];
-    } else if (provider === 'lmstudio' || provider === 'lmstudio_rest') {
+    if (provider === 'lmstudio_rest') {
         return [...common, 'lmsTopK', 'lmsTopP', 'lmsRepeatPenalty', 'lmsMinP'];
     } else if (provider === 'ollama_rest') {
         return [...common, 'numKeep', 'numPredict', 'topK', 'topP', 'repeatLastN', 'repeatPenalty', 'presencePenalty', 'frequencyPenalty'];
@@ -326,6 +303,7 @@ export function getModelCapabilityFlags(
     toolModelsByProvider,
     reasoningModelsByProvider
 ) {
+    provider = normalizeProviderKey(provider);
     const providerCapabilities = capabilitiesByProvider?.[provider] || {};
     const modelCapabilities = providerCapabilities?.[model] || null;
 

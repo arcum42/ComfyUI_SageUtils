@@ -81,10 +81,8 @@ export function createModelSelection() {
     
     const providerSelect = createSelect({
         items: [
-            { value: 'ollama', text: 'Ollama' },
-            { value: 'lmstudio', text: 'LM Studio' },
-            { value: 'lmstudio_rest', text: 'LM Studio (REST)' },
-            { value: 'ollama_rest', text: 'Ollama (REST)' },
+            { value: 'lmstudio_rest', text: 'LM Studio' },
+            { value: 'ollama_rest', text: 'Ollama' },
             { value: 'openai', text: 'OpenAI' },
             { value: 'native', text: 'Native (CLIP)' }
         ],

@@ -18,13 +18,13 @@ def _is_provider_enabled(feature_key: str) -> bool:
 
 
 def is_ollama_enabled() -> bool:
-    """Check if Ollama is enabled in settings."""
-    return _is_provider_enabled('enable_ollama')
+    """Compatibility helper for removed Ollama SDK provider."""
+    return False
 
 
 def is_lmstudio_enabled() -> bool:
-    """Check if LM Studio is enabled in settings."""
-    return _is_provider_enabled('enable_lmstudio')
+    """Compatibility helper for removed LM Studio SDK provider."""
+    return False
 
 
 def is_lmstudio_rest_enabled() -> bool:

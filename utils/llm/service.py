@@ -1,206 +1,143 @@
-from ..logger import get_logger, get_sageutils_logger
-from .init import init_ollama_client, init_lmstudio_client
-from .providers.settings import is_ollama_enabled, is_lmstudio_enabled, is_lmstudio_rest_enabled, is_ollama_rest_enabled, is_openai_enabled
-from .providers import ollama_client as ollama_provider
-from .providers import lmstudio_client as lmstudio_provider
+from ..logger import get_logger
+from .providers.settings import (
+    is_lmstudio_enabled,
+    is_lmstudio_rest_enabled,
+    is_ollama_enabled,
+    is_ollama_rest_enabled,
+    is_openai_enabled,
+)
+from .init import (
+    init_lmstudio_rest as _init_lmstudio_rest,
+    init_ollama_rest as _init_ollama_rest,
+    init_openai_provider as _init_openai_provider,
+)
 from .providers import lmstudio_rest_client as lmstudio_rest_provider
 from .providers import ollama_rest_client as ollama_rest_provider
 from .providers import openai_client as openai_provider
 
 logger = get_logger('llm')
-root_logger = get_sageutils_logger()
 
 # Initialization flags to track if services have been initialized
-_ollama_initialized = False
-_lmstudio_initialized = False
 _lmstudio_rest_initialized = False
 _ollama_rest_initialized = False
 _openai_initialized = False
 
-# Attempt to import ollama, if available. Set a flag if it is not available.
-try:
-    import ollama
-    OLLAMA_AVAILABLE = True
-    ollama_client = None  # Will be initialized in init_ollama
-except ImportError:
-    ollama = None
-    OLLAMA_AVAILABLE = False
-    ollama_client = None
-    root_logger.warning('Ollama library not found.')
-
-try:
-    import lmstudio as lms
-    LMSTUDIO_AVAILABLE = True
-except ImportError:
-    lms = None
-    LMSTUDIO_AVAILABLE = False
-    root_logger.warning('LM Studio library not found.')
-
-# LM Studio REST provider uses HTTP API and does not require lmstudio package.
+# REST providers use HTTP APIs and do not require local SDK packages.
 LMSTUDIO_REST_AVAILABLE = True
-
-# Ollama REST provider uses HTTP API and does not require ollama package.
 OLLAMA_REST_AVAILABLE = True
-
-# OpenAI provider uses HTTP API and does not require openai package.
 OPENAI_AVAILABLE = True
 
 
-def get_ollama_vision_models() -> list[str]:
-    """Retrieve a list of available vision models from Ollama."""
-    return ollama_provider.get_vision_models(OLLAMA_AVAILABLE, ollama_client, is_ollama_enabled())
+def _is_lmstudio_service_enabled() -> bool:
+    """Treat legacy LM Studio SDK toggle as an alias for REST service usage."""
+    return is_lmstudio_rest_enabled() or is_lmstudio_enabled()
 
 
-def get_ollama_models() -> list[str]:
-    """Retrieve a list of available models from Ollama."""
-    return ollama_provider.get_models(OLLAMA_AVAILABLE, ollama_client, is_ollama_enabled())
+def _is_ollama_service_enabled() -> bool:
+    """Treat legacy Ollama SDK toggle as an alias for REST service usage."""
+    return is_ollama_rest_enabled() or is_ollama_enabled()
 
 
-def ollama_generate_vision(model: str, prompt: str, keep_alive: float = 0.0, images=None, options=None, system_prompt: str = '') -> str:
-    """Generate a response from an Ollama vision model."""
-    ensure_ollama_initialized()
-    return ollama_provider.generate_vision(
-        OLLAMA_AVAILABLE,
-        ollama_client,
-        is_ollama_enabled(),
-        model,
-        prompt,
-        keep_alive,
-        images,
-        options,
-        system_prompt,
-    )
+def _normalize_ollama_keep_alive(value, default: str = '5m') -> str:
+    """Normalize keep_alive values for Ollama REST calls."""
+    if isinstance(value, str) and value.strip():
+        return value.strip()
+    if isinstance(value, (int, float)) and value > 0:
+        return f'{int(value)}s'
+    return default
 
 
-def ollama_generate(model: str, prompt: str, keep_alive: float = 0.0, options=None, system_prompt: str = '') -> str:
-    """Generate a response from an Ollama model."""
-    ensure_ollama_initialized()
-    return ollama_provider.generate(
-        OLLAMA_AVAILABLE,
-        ollama_client,
-        is_ollama_enabled(),
-        model,
-        prompt,
-        keep_alive,
-        options,
-        system_prompt,
-    )
-
-
-def ollama_generate_vision_refine(model: str, prompt: str, images=None, options=None, refine_model: str = '', refine_prompt: str = '', refine_options=None) -> tuple[str, str]:
-    """Generate a response from an Ollama vision model and refine it with another model."""
-    ensure_ollama_initialized()
-    return ollama_provider.generate_vision_refine(
-        OLLAMA_AVAILABLE,
-        ollama_client,
-        is_ollama_enabled(),
-        model,
-        prompt,
-        images,
-        options,
-        refine_model,
-        refine_prompt,
-        refine_options,
-    )
-
-
-def is_lmstudio_running() -> bool:
-    """Check if LM Studio server is running by attempting a lightweight API call."""
-    return lmstudio_provider.is_running(LMSTUDIO_AVAILABLE, lms, is_lmstudio_enabled())
-
+# ============================================================================
+# MODEL DISCOVERY
+# ============================================================================
 
 def get_lmstudio_models() -> list[str]:
-    """Retrieve a list of available models from LM Studio."""
-    return lmstudio_provider.get_models(LMSTUDIO_AVAILABLE, lms, is_lmstudio_enabled())
+    """Legacy alias: retrieve text models from LM Studio REST."""
+    return lmstudio_rest_provider.get_models(_is_lmstudio_service_enabled())
 
 
 def get_lmstudio_vision_models() -> list[str]:
-    """Retrieve a list of available vision models from LM Studio."""
-    return lmstudio_provider.get_vision_models(LMSTUDIO_AVAILABLE, lms, is_lmstudio_enabled())
+    """Legacy alias: retrieve vision models from LM Studio REST."""
+    return lmstudio_rest_provider.get_vision_models(_is_lmstudio_service_enabled())
 
 
-def is_lmstudio_rest_running() -> bool:
-    """Check if LM Studio REST server is running."""
-    return lmstudio_rest_provider.is_running(is_lmstudio_rest_enabled())
+def get_ollama_models() -> list[str]:
+    """Legacy alias: retrieve text models from Ollama REST."""
+    return ollama_rest_provider.get_models(_is_ollama_service_enabled())
 
 
-def is_ollama_rest_running() -> bool:
-    """Check if the Ollama REST server is running."""
-    return ollama_rest_provider.is_running(is_ollama_rest_enabled())
-
-
-def is_openai_running() -> bool:
-    """Check if the OpenAI-compatible endpoint is reachable."""
-    return openai_provider.is_running(is_openai_enabled())
+def get_ollama_vision_models() -> list[str]:
+    """Legacy alias: retrieve vision models from Ollama REST."""
+    return ollama_rest_provider.get_vision_models(_is_ollama_service_enabled())
 
 
 def get_lmstudio_rest_models() -> list[str]:
-    """Retrieve a list of available models from LM Studio REST."""
+    """Retrieve text models from LM Studio REST."""
     return lmstudio_rest_provider.get_models(is_lmstudio_rest_enabled())
 
 
 def get_lmstudio_rest_vision_models() -> list[str]:
-    """Retrieve a list of available vision models from LM Studio REST."""
+    """Retrieve vision models from LM Studio REST."""
     return lmstudio_rest_provider.get_vision_models(is_lmstudio_rest_enabled())
 
 
 def get_ollama_rest_models() -> list[str]:
-    """Retrieve a list of available models from Ollama REST."""
+    """Retrieve text models from Ollama REST."""
     return ollama_rest_provider.get_models(is_ollama_rest_enabled())
 
 
 def get_ollama_rest_vision_models() -> list[str]:
-    """Retrieve a list of available vision models from Ollama REST."""
+    """Retrieve vision models from Ollama REST."""
     return ollama_rest_provider.get_vision_models(is_ollama_rest_enabled())
 
 
 def get_openai_models() -> list[str]:
-    """Retrieve a list of available models from the OpenAI-compatible endpoint."""
+    """Retrieve text models from OpenAI-compatible provider."""
     return openai_provider.get_models(is_openai_enabled())
 
 
 def get_openai_vision_models() -> list[str]:
-    """Retrieve a list of available vision models from the OpenAI-compatible endpoint."""
+    """Retrieve vision models from OpenAI-compatible provider."""
     return openai_provider.get_vision_models(is_openai_enabled())
 
 
-def get_ollama_tool_models() -> list[str]:
-    """Retrieve tool-capable models from Ollama SDK provider."""
-    return ollama_provider.get_tool_models(OLLAMA_AVAILABLE, ollama_client, is_ollama_enabled())
-
-
-def get_ollama_reasoning_models() -> list[str]:
-    """Retrieve reasoning-capable models from Ollama SDK provider."""
-    return ollama_provider.get_reasoning_models(OLLAMA_AVAILABLE, ollama_client, is_ollama_enabled())
-
-
 def get_lmstudio_tool_models() -> list[str]:
-    """Retrieve tool-capable models from LM Studio SDK provider."""
-    return lmstudio_provider.get_tool_models(LMSTUDIO_AVAILABLE, lms, is_lmstudio_enabled())
+    """Legacy alias: retrieve tool-capable models from LM Studio REST."""
+    return lmstudio_rest_provider.get_tool_models(_is_lmstudio_service_enabled())
 
 
 def get_lmstudio_reasoning_models() -> list[str]:
-    """Retrieve reasoning-capable models from LM Studio SDK provider."""
-    return lmstudio_provider.get_reasoning_models(LMSTUDIO_AVAILABLE, lms, is_lmstudio_enabled())
+    """Legacy alias: retrieve reasoning-capable models from LM Studio REST."""
+    return lmstudio_rest_provider.get_reasoning_models(_is_lmstudio_service_enabled())
+
+
+def get_ollama_tool_models() -> list[str]:
+    """Legacy alias: retrieve tool-capable models from Ollama REST."""
+    return ollama_rest_provider.get_tool_models(_is_ollama_service_enabled())
+
+
+def get_ollama_reasoning_models() -> list[str]:
+    """Legacy alias: retrieve reasoning-capable models from Ollama REST."""
+    return ollama_rest_provider.get_reasoning_models(_is_ollama_service_enabled())
 
 
 def get_lmstudio_rest_tool_models() -> list[str]:
-    """Retrieve tool-capable models from LM Studio REST provider."""
+    """Retrieve tool-capable models from LM Studio REST."""
     return lmstudio_rest_provider.get_tool_models(is_lmstudio_rest_enabled())
 
 
 def get_lmstudio_rest_reasoning_models() -> list[str]:
-    """Retrieve reasoning-capable models from LM Studio REST provider."""
+    """Retrieve reasoning-capable models from LM Studio REST."""
     return lmstudio_rest_provider.get_reasoning_models(is_lmstudio_rest_enabled())
 
 
 def get_ollama_rest_tool_models() -> list[str]:
-    """Retrieve tool-capable models from Ollama REST provider."""
+    """Retrieve tool-capable models from Ollama REST."""
     return ollama_rest_provider.get_tool_models(is_ollama_rest_enabled())
 
 
 def get_ollama_rest_reasoning_models() -> list[str]:
-    """Retrieve reasoning-capable models from Ollama REST provider."""
+    """Retrieve reasoning-capable models from Ollama REST."""
     return ollama_rest_provider.get_reasoning_models(is_ollama_rest_enabled())
 
 
@@ -214,67 +151,98 @@ def get_openai_reasoning_models() -> list[str]:
     return openai_provider.get_reasoning_models(is_openai_enabled())
 
 
-def get_ollama_model_capabilities_map() -> dict[str, dict[str, object]]:
-    """Retrieve capabilities map for Ollama SDK models."""
-    capability_map = ollama_provider.get_model_capabilities_map(OLLAMA_AVAILABLE, ollama_client, is_ollama_enabled())
+def get_lmstudio_model_capabilities_map() -> dict[str, dict[str, object]]:
+    """Legacy alias: retrieve model capabilities map from LM Studio REST."""
+    capability_map = lmstudio_rest_provider.get_model_capabilities_map(_is_lmstudio_service_enabled())
     return {model_name: capabilities.to_dict() for model_name, capabilities in capability_map.items()}
 
 
-def get_lmstudio_model_capabilities_map() -> dict[str, dict[str, object]]:
-    """Retrieve capabilities map for LM Studio SDK models."""
-    capability_map = lmstudio_provider.get_model_capabilities_map(LMSTUDIO_AVAILABLE, lms, is_lmstudio_enabled())
+def get_ollama_model_capabilities_map() -> dict[str, dict[str, object]]:
+    """Legacy alias: retrieve model capabilities map from Ollama REST."""
+    capability_map = ollama_rest_provider.get_model_capabilities_map(_is_ollama_service_enabled())
     return {model_name: capabilities.to_dict() for model_name, capabilities in capability_map.items()}
 
 
 def get_lmstudio_rest_model_capabilities_map() -> dict[str, dict[str, object]]:
-    """Retrieve capabilities map for LM Studio REST models."""
+    """Retrieve model capabilities map from LM Studio REST."""
     capability_map = lmstudio_rest_provider.get_model_capabilities_map(is_lmstudio_rest_enabled())
     return {model_name: capabilities.to_dict() for model_name, capabilities in capability_map.items()}
 
 
 def get_ollama_rest_model_capabilities_map() -> dict[str, dict[str, object]]:
-    """Retrieve capabilities map for Ollama REST models."""
+    """Retrieve model capabilities map from Ollama REST."""
     capability_map = ollama_rest_provider.get_model_capabilities_map(is_ollama_rest_enabled())
     return {model_name: capabilities.to_dict() for model_name, capabilities in capability_map.items()}
 
 
 def get_openai_model_capabilities_map() -> dict[str, dict[str, object]]:
-    """Retrieve capabilities map for OpenAI-compatible models."""
+    """Retrieve model capabilities map from OpenAI-compatible provider."""
     capability_map = openai_provider.get_model_capabilities_map(is_openai_enabled())
     return {model_name: capabilities.to_dict() for model_name, capabilities in capability_map.items()}
 
 
-def lmstudio_generate_vision(model: str, prompt: str, keep_alive: int = 0, images=None, options=None) -> str:
-    """Generate a response from an LM Studio vision model."""
-    ensure_lmstudio_initialized()
-    return lmstudio_provider.generate_vision(
-        LMSTUDIO_AVAILABLE,
-        lms,
-        is_lmstudio_enabled(),
-        model,
-        prompt,
-        keep_alive,
-        images,
-        options,
-    )
+# ============================================================================
+# HEALTH
+# ============================================================================
+
+def is_lmstudio_running() -> bool:
+    """Legacy alias: check LM Studio REST availability."""
+    return lmstudio_rest_provider.is_running(_is_lmstudio_service_enabled())
 
 
-def lmstudio_generate(model: str, prompt: str, keep_alive: int = 0, options=None) -> str:
-    """Generate a response from an LM Studio model."""
-    ensure_lmstudio_initialized()
-    return lmstudio_provider.generate(
-        LMSTUDIO_AVAILABLE,
-        lms,
-        is_lmstudio_enabled(),
-        model,
-        prompt,
-        keep_alive,
-        options,
-    )
+def is_ollama_running() -> bool:
+    """Legacy alias: check Ollama REST availability."""
+    return ollama_rest_provider.is_running(_is_ollama_service_enabled())
+
+
+def is_lmstudio_rest_running() -> bool:
+    """Check LM Studio REST availability."""
+    return lmstudio_rest_provider.is_running(is_lmstudio_rest_enabled())
+
+
+def is_ollama_rest_running() -> bool:
+    """Check Ollama REST availability."""
+    return ollama_rest_provider.is_running(is_ollama_rest_enabled())
+
+
+def is_openai_running() -> bool:
+    """Check OpenAI-compatible provider availability."""
+    return openai_provider.is_running(is_openai_enabled())
+
+
+# ============================================================================
+# GENERATION (NON-STREAMING)
+# ============================================================================
+
+def lmstudio_generate(model: str, prompt: str, keep_alive: int = 0, options=None, system_prompt: str = '') -> str:
+    """Legacy alias: generate text via LM Studio REST."""
+    return lmstudio_rest_generate(model, prompt, keep_alive, options, system_prompt)
+
+
+def lmstudio_generate_vision(model: str, prompt: str, keep_alive: int = 0, images=None, options=None, system_prompt: str = '') -> str:
+    """Legacy alias: generate vision output via LM Studio REST."""
+    return lmstudio_rest_generate_vision(model, prompt, keep_alive, images, options, system_prompt)
+
+
+def lmstudio_generate_vision_refine(
+    model: str,
+    prompt: str,
+    images=None,
+    options=None,
+    refine_model: str = '',
+    refine_prompt: str = '',
+    refine_options=None,
+) -> tuple[str, str]:
+    """Legacy alias: REST-only path does not expose refine helper."""
+    first_pass = lmstudio_rest_generate_vision(model, prompt, images=images, options=options)
+    if not refine_model or not refine_prompt:
+        return first_pass, ''
+    refined = lmstudio_rest_generate(refine_model, refine_prompt, options=refine_options)
+    return first_pass, refined
 
 
 def lmstudio_rest_generate(model: str, prompt: str, keep_alive: int = 0, options=None, system_prompt: str = '') -> str:
-    """Generate a response from an LM Studio REST model."""
+    """Generate text via LM Studio REST."""
     ensure_lmstudio_rest_initialized()
     return lmstudio_rest_provider.generate(
         is_lmstudio_rest_enabled(),
@@ -285,25 +253,8 @@ def lmstudio_rest_generate(model: str, prompt: str, keep_alive: int = 0, options
     )
 
 
-def lmstudio_generate_vision_refine(model: str, prompt: str, images=None, options=None, refine_model: str = '', refine_prompt: str = '', refine_options=None) -> tuple[str, str]:
-    """Generate a response from an LM Studio vision model and refine it with another model."""
-    ensure_lmstudio_initialized()
-    return lmstudio_provider.generate_vision_refine(
-        LMSTUDIO_AVAILABLE,
-        lms,
-        is_lmstudio_enabled(),
-        model,
-        prompt,
-        images,
-        options,
-        refine_model,
-        refine_prompt,
-        refine_options,
-    )
-
-
 def lmstudio_rest_generate_vision(model: str, prompt: str, keep_alive: int = 0, images=None, options=None, system_prompt: str = '') -> str:
-    """Generate a vision response from an LM Studio REST model."""
+    """Generate vision output via LM Studio REST."""
     ensure_lmstudio_rest_initialized()
     return lmstudio_rest_provider.generate_vision(
         is_lmstudio_rest_enabled(),
@@ -315,8 +266,48 @@ def lmstudio_rest_generate_vision(model: str, prompt: str, keep_alive: int = 0, 
     )
 
 
+def ollama_generate(model: str, prompt: str, keep_alive: float = 0.0, options=None, system_prompt: str = '') -> str:
+    """Legacy alias: generate text via Ollama REST."""
+    return ollama_rest_generate(
+        model,
+        prompt,
+        options=options,
+        system_prompt=system_prompt,
+        keep_alive=_normalize_ollama_keep_alive(keep_alive),
+    )
+
+
+def ollama_generate_vision(model: str, prompt: str, keep_alive: float = 0.0, images=None, options=None, system_prompt: str = '') -> str:
+    """Legacy alias: generate vision output via Ollama REST."""
+    return ollama_rest_generate_vision(
+        model,
+        prompt,
+        images=images,
+        options=options,
+        system_prompt=system_prompt,
+        keep_alive=_normalize_ollama_keep_alive(keep_alive),
+    )
+
+
+def ollama_generate_vision_refine(
+    model: str,
+    prompt: str,
+    images=None,
+    options=None,
+    refine_model: str = '',
+    refine_prompt: str = '',
+    refine_options=None,
+) -> tuple[str, str]:
+    """Legacy alias: REST-only path does not expose refine helper."""
+    first_pass = ollama_rest_generate_vision(model, prompt, images=images, options=options)
+    if not refine_model or not refine_prompt:
+        return first_pass, ''
+    refined = ollama_rest_generate(refine_model, refine_prompt, options=refine_options)
+    return first_pass, refined
+
+
 def ollama_rest_generate(model: str, prompt: str, options=None, system_prompt: str = '', keep_alive: str = '5m') -> str:
-    """Generate a response from an Ollama REST model."""
+    """Generate text via Ollama REST."""
     ensure_ollama_rest_initialized()
     return ollama_rest_provider.generate(
         is_ollama_rest_enabled(),
@@ -329,7 +320,7 @@ def ollama_rest_generate(model: str, prompt: str, options=None, system_prompt: s
 
 
 def ollama_rest_generate_vision(model: str, prompt: str, images=None, options=None, system_prompt: str = '', keep_alive: str = '5m') -> str:
-    """Generate a vision response from an Ollama REST model."""
+    """Generate vision output via Ollama REST."""
     ensure_ollama_rest_initialized()
     return ollama_rest_provider.generate_vision(
         is_ollama_rest_enabled(),
@@ -343,7 +334,7 @@ def ollama_rest_generate_vision(model: str, prompt: str, images=None, options=No
 
 
 def openai_generate(model: str, prompt: str, options=None, system_prompt: str = '') -> str:
-    """Generate a response from an OpenAI-compatible model."""
+    """Generate text via OpenAI-compatible provider."""
     ensure_openai_initialized()
     return openai_provider.generate(
         is_openai_enabled(),
@@ -355,7 +346,7 @@ def openai_generate(model: str, prompt: str, options=None, system_prompt: str = 
 
 
 def openai_generate_vision(model: str, prompt: str, images=None, options=None, system_prompt: str = '') -> str:
-    """Generate a vision response from an OpenAI-compatible model."""
+    """Generate vision output via OpenAI-compatible provider."""
     ensure_openai_initialized()
     return openai_provider.generate_vision(
         is_openai_enabled(),
@@ -368,71 +359,21 @@ def openai_generate_vision(model: str, prompt: str, images=None, options=None, s
 
 
 # ============================================================================
-# STREAMING FUNCTIONS
+# GENERATION (STREAMING)
 # ============================================================================
 
-def ollama_generate_stream(model: str, prompt: str, keep_alive: float = 0.0, options=None, system_prompt: str = ''):
-    """Generate a streaming response from an Ollama model."""
-    ensure_ollama_initialized()
-    return ollama_provider.generate_stream(
-        OLLAMA_AVAILABLE,
-        ollama_client,
-        is_ollama_enabled(),
-        model,
-        prompt,
-        keep_alive,
-        options,
-        system_prompt,
-    )
+def lmstudio_generate_stream(model: str, prompt: str, keep_alive: int = 0, options=None, system_prompt: str = ''):
+    """Legacy alias: stream text via LM Studio REST."""
+    return lmstudio_rest_generate_stream(model, prompt, keep_alive, options, system_prompt)
 
 
-def ollama_generate_vision_stream(model: str, prompt: str, keep_alive: float = 0.0, images=None, options=None, system_prompt: str = ''):
-    """Generate a streaming response from an Ollama vision model."""
-    ensure_ollama_initialized()
-    return ollama_provider.generate_vision_stream(
-        OLLAMA_AVAILABLE,
-        ollama_client,
-        is_ollama_enabled(),
-        model,
-        prompt,
-        keep_alive,
-        images,
-        options,
-        system_prompt,
-    )
-
-
-def lmstudio_generate_stream(model: str, prompt: str, keep_alive: int = 0, options=None):
-    """Generate a streaming response from an LM Studio model."""
-    ensure_lmstudio_initialized()
-    return lmstudio_provider.generate_stream(
-        LMSTUDIO_AVAILABLE,
-        lms,
-        is_lmstudio_enabled(),
-        model,
-        prompt,
-        keep_alive,
-        options,
-    )
-
-
-def lmstudio_generate_vision_stream(model: str, prompt: str, keep_alive: int = 0, images=None, options=None):
-    """Generate a streaming response from an LM Studio vision model."""
-    ensure_lmstudio_initialized()
-    return lmstudio_provider.generate_vision_stream(
-        LMSTUDIO_AVAILABLE,
-        lms,
-        is_lmstudio_enabled(),
-        model,
-        prompt,
-        keep_alive,
-        images,
-        options,
-    )
+def lmstudio_generate_vision_stream(model: str, prompt: str, keep_alive: int = 0, images=None, options=None, system_prompt: str = ''):
+    """Legacy alias: stream vision output via LM Studio REST."""
+    return lmstudio_rest_generate_vision_stream(model, prompt, keep_alive, images, options, system_prompt)
 
 
 def lmstudio_rest_generate_stream(model: str, prompt: str, keep_alive: int = 0, options=None, system_prompt: str = ''):
-    """Generate a streaming response from an LM Studio REST model."""
+    """Stream text via LM Studio REST."""
     ensure_lmstudio_rest_initialized()
     return lmstudio_rest_provider.generate_stream(
         is_lmstudio_rest_enabled(),
@@ -444,7 +385,7 @@ def lmstudio_rest_generate_stream(model: str, prompt: str, keep_alive: int = 0, 
 
 
 def lmstudio_rest_generate_vision_stream(model: str, prompt: str, keep_alive: int = 0, images=None, options=None, system_prompt: str = ''):
-    """Generate a streaming vision response from an LM Studio REST model."""
+    """Stream vision output via LM Studio REST."""
     ensure_lmstudio_rest_initialized()
     return lmstudio_rest_provider.generate_vision_stream(
         is_lmstudio_rest_enabled(),
@@ -456,8 +397,31 @@ def lmstudio_rest_generate_vision_stream(model: str, prompt: str, keep_alive: in
     )
 
 
+def ollama_generate_stream(model: str, prompt: str, keep_alive: float = 0.0, options=None, system_prompt: str = ''):
+    """Legacy alias: stream text via Ollama REST."""
+    return ollama_rest_generate_stream(
+        model,
+        prompt,
+        options=options,
+        system_prompt=system_prompt,
+        keep_alive=_normalize_ollama_keep_alive(keep_alive),
+    )
+
+
+def ollama_generate_vision_stream(model: str, prompt: str, keep_alive: float = 0.0, images=None, options=None, system_prompt: str = ''):
+    """Legacy alias: stream vision output via Ollama REST."""
+    return ollama_rest_generate_vision_stream(
+        model,
+        prompt,
+        images=images,
+        options=options,
+        system_prompt=system_prompt,
+        keep_alive=_normalize_ollama_keep_alive(keep_alive),
+    )
+
+
 def ollama_rest_generate_stream(model: str, prompt: str, options=None, system_prompt: str = '', keep_alive: str = '5m'):
-    """Generate a streaming response from an Ollama REST model."""
+    """Stream text via Ollama REST."""
     ensure_ollama_rest_initialized()
     return ollama_rest_provider.generate_stream(
         is_ollama_rest_enabled(),
@@ -470,7 +434,7 @@ def ollama_rest_generate_stream(model: str, prompt: str, options=None, system_pr
 
 
 def ollama_rest_generate_vision_stream(model: str, prompt: str, images=None, options=None, system_prompt: str = '', keep_alive: str = '5m'):
-    """Generate a streaming vision response from an Ollama REST model."""
+    """Stream vision output via Ollama REST."""
     ensure_ollama_rest_initialized()
     return ollama_rest_provider.generate_vision_stream(
         is_ollama_rest_enabled(),
@@ -484,7 +448,7 @@ def ollama_rest_generate_vision_stream(model: str, prompt: str, images=None, opt
 
 
 def openai_generate_stream(model: str, prompt: str, options=None, system_prompt: str = ''):
-    """Generate a streaming response from an OpenAI-compatible model."""
+    """Stream text via OpenAI-compatible provider."""
     ensure_openai_initialized()
     return openai_provider.generate_stream(
         is_openai_enabled(),
@@ -496,7 +460,7 @@ def openai_generate_stream(model: str, prompt: str, options=None, system_prompt:
 
 
 def openai_generate_vision_stream(model: str, prompt: str, images=None, options=None, system_prompt: str = ''):
-    """Generate a streaming vision response from an OpenAI-compatible model."""
+    """Stream vision output via OpenAI-compatible provider."""
     ensure_openai_initialized()
     return openai_provider.generate_vision_stream(
         is_openai_enabled(),
@@ -508,184 +472,124 @@ def openai_generate_vision_stream(model: str, prompt: str, images=None, options=
     )
 
 
+# ============================================================================
+# MODEL LOAD / UNLOAD HELPERS
+# ============================================================================
+
 def ollama_preload_model(model: str, keep_alive: float = 60.0) -> bool:
-    """Pre-warm an Ollama model so subsequent generate calls incur no load delay."""
-    ensure_ollama_initialized()
-    return ollama_provider.preload_model(OLLAMA_AVAILABLE, ollama_client, is_ollama_enabled(), model, keep_alive)
-
-
-def ollama_generate_preloaded(model: str, prompt: str, keep_alive: float = 0.0, options=None, system_prompt: str = '') -> str:
-    """Generate from an Ollama model assumed to already be loaded."""
-    ensure_ollama_initialized()
-    return ollama_provider.generate_preloaded(
-        OLLAMA_AVAILABLE,
-        ollama_client,
-        is_ollama_enabled(),
+    """Legacy alias: preloading is implicit in Ollama REST generate calls."""
+    ensure_ollama_rest_initialized()
+    return ollama_rest_provider.load_model(
+        _is_ollama_service_enabled(),
         model,
-        prompt,
-        keep_alive,
-        options,
-        system_prompt,
+        int(keep_alive),
     )
 
 
+def ollama_generate_preloaded(model: str, prompt: str, keep_alive: float = 0.0, options=None, system_prompt: str = '') -> str:
+    """Legacy alias: generate using Ollama REST with keep_alive hint."""
+    return ollama_generate(model, prompt, keep_alive=keep_alive, options=options, system_prompt=system_prompt)
+
+
 def lmstudio_load_model(model: str, keep_alive: int = 0):
-    """Load an LM Studio model and return the model handle."""
-    ensure_lmstudio_initialized()
-    return lmstudio_provider.load_model(LMSTUDIO_AVAILABLE, lms, is_lmstudio_enabled(), model, keep_alive)
+    """Legacy alias: load model in LM Studio REST by name."""
+    ensure_lmstudio_rest_initialized()
+    return lmstudio_rest_provider.load_model(is_lmstudio_rest_enabled(), model, keep_alive)
 
 
 def lmstudio_generate_with_model(lms_model, prompt: str, options=None) -> str:
-    """Run text inference on an already-loaded LM Studio model handle."""
-    return lmstudio_provider.generate_with_model(lms_model, lms, prompt, options)
+    """Legacy alias: model-handle path not available in REST; use direct generate."""
+    return lmstudio_rest_generate(str(lms_model), prompt, options=options)
 
 
 def lmstudio_generate_vision_with_model(lms_model, prompt: str, images=None, options=None) -> str:
-    """Run vision inference on an already-loaded LM Studio model handle."""
-    return lmstudio_provider.generate_vision_with_model(lms_model, lms, prompt, images, options)
+    """Legacy alias: model-handle path not available in REST; use direct vision generate."""
+    return lmstudio_rest_generate_vision(str(lms_model), prompt, images=images, options=options)
 
 
 def lmstudio_unload_model(lms_model) -> None:
-    """Unload a previously loaded LM Studio model handle."""
-    lmstudio_provider.unload_model(lms_model)
+    """Legacy alias: unload LM Studio REST model by name."""
+    lmstudio_rest_provider.unload_model(_is_lmstudio_service_enabled(), str(lms_model))
 
 
 def lmstudio_rest_load_model(model: str, keep_alive: int = 0) -> bool:
-    """Ask LM Studio REST to load a model by name."""
+    """Load LM Studio REST model by name."""
     ensure_lmstudio_rest_initialized()
     return lmstudio_rest_provider.load_model(is_lmstudio_rest_enabled(), model, keep_alive)
 
 
 def lmstudio_rest_unload_model(model: str) -> bool:
-    """Ask LM Studio REST to unload a model by name."""
+    """Unload LM Studio REST model by name."""
     return lmstudio_rest_provider.unload_model(is_lmstudio_rest_enabled(), model)
 
 
 # ============================================================================
-# INITIALIZATION FUNCTIONS
+# INITIALIZATION
 # ============================================================================
 
-def init_ollama():
-    """Initialize Ollama client."""
-    global ollama_client, _ollama_initialized
-    from ..settings import get_setting
-
-    ollama_custom_url = str(
-        get_setting('ollama_custom_url', get_setting('custom_ollama_url', 'http://localhost:11434'))
-    )
-
-    ollama_client, _ollama_initialized = init_ollama_client(
-        OLLAMA_AVAILABLE,
-        ollama,
-        bool(get_setting('enable_ollama', False)),
-        ollama_custom_url,
-    )
-    return _ollama_initialized
+def init_ollama() -> bool:
+    """Legacy alias: initialize Ollama REST state."""
+    return init_ollama_rest()
 
 
-def init_lmstudio():
-    """Initialize LM Studio if available."""
-    global _lmstudio_initialized
-    from ..settings import get_setting
-
-    lmstudio_custom_url = str(
-        get_setting('lmstudio_custom_url', get_setting('custom_lmstudio_url', ''))
-    )
-
-    _lmstudio_initialized = init_lmstudio_client(
-        LMSTUDIO_AVAILABLE,
-        lms,
-        bool(get_setting('enable_lmstudio', False)),
-        lmstudio_custom_url,
-    )
-    return _lmstudio_initialized
+def init_lmstudio() -> bool:
+    """Legacy alias: initialize LM Studio REST state."""
+    return init_lmstudio_rest()
 
 
-def init_lmstudio_rest():
+def init_lmstudio_rest() -> bool:
     """Initialize LM Studio REST provider state."""
     global _lmstudio_rest_initialized
     from ..settings import get_setting
 
-    if not bool(get_setting('enable_lmstudio_rest', False)):
-        _lmstudio_rest_initialized = False
-        return False
-
-    _lmstudio_rest_initialized = lmstudio_rest_provider.is_running(True)
-    if _lmstudio_rest_initialized:
-        logger.info('LM Studio REST provider initialized.')
-    else:
-        logger.info('LM Studio REST provider is enabled but server is not reachable yet.')
+    _lmstudio_rest_initialized = _init_lmstudio_rest(
+        bool(get_setting('enable_lmstudio_rest', False))
+    )
     return _lmstudio_rest_initialized
 
 
-def init_ollama_rest():
+def init_ollama_rest() -> bool:
     """Initialize Ollama REST provider state."""
     global _ollama_rest_initialized
     from ..settings import get_setting
 
-    if not bool(get_setting('enable_ollama_rest', False)):
-        _ollama_rest_initialized = False
-        return False
-
-    _ollama_rest_initialized = ollama_rest_provider.is_running(True)
-    if _ollama_rest_initialized:
-        logger.info('Ollama REST provider initialized.')
-    else:
-        logger.info('Ollama REST provider is enabled but server is not reachable yet.')
+    _ollama_rest_initialized = _init_ollama_rest(
+        bool(get_setting('enable_ollama_rest', False))
+    )
     return _ollama_rest_initialized
 
 
-def init_openai():
+def init_openai() -> bool:
     """Initialize OpenAI provider state."""
     global _openai_initialized
     from ..settings import get_setting
 
-    if not bool(get_setting('enable_openai', False)):
-        _openai_initialized = False
-        return False
-
-    _openai_initialized = openai_provider.is_running(True)
-    if _openai_initialized:
-        logger.info('OpenAI provider initialized.')
-    else:
-        logger.info('OpenAI provider is enabled but endpoint is not reachable yet.')
+    _openai_initialized = _init_openai_provider(
+        bool(get_setting('enable_openai', False))
+    )
     return _openai_initialized
 
 
-def init_llm():
-    """Initialize LLM clients."""
-    init_ollama()
-    init_lmstudio()
+def init_llm() -> None:
+    """Initialize all configured REST/OpenAI providers."""
     init_lmstudio_rest()
     init_ollama_rest()
     init_openai()
-    logger.info('LLM clients initialized.')
+    logger.info('LLM providers initialized.')
 
 
-def ensure_ollama_initialized():
-    """Ensure Ollama is initialized if enabled in settings and not already initialized."""
-    global _ollama_initialized
-    from ..settings import get_setting
-
-    if get_setting('enable_ollama', False) and not _ollama_initialized:
-        logger.info('Ollama is enabled but not initialized, initializing now...')
-        return init_ollama()
-    return _ollama_initialized
+def ensure_ollama_initialized() -> bool:
+    """Legacy alias: ensure Ollama REST initialization."""
+    return ensure_ollama_rest_initialized()
 
 
-def ensure_lmstudio_initialized():
-    """Ensure LM Studio is initialized if enabled in settings and not already initialized."""
-    global _lmstudio_initialized
-    from ..settings import get_setting
-
-    if get_setting('enable_lmstudio', False) and not _lmstudio_initialized:
-        logger.info('LM Studio is enabled but not initialized, initializing now...')
-        return init_lmstudio()
-    return _lmstudio_initialized
+def ensure_lmstudio_initialized() -> bool:
+    """Legacy alias: ensure LM Studio REST initialization."""
+    return ensure_lmstudio_rest_initialized()
 
 
-def ensure_lmstudio_rest_initialized():
-    """Ensure LM Studio REST is initialized if enabled in settings and not already initialized."""
+def ensure_lmstudio_rest_initialized() -> bool:
+    """Ensure LM Studio REST is initialized if enabled."""
     global _lmstudio_rest_initialized
     from ..settings import get_setting
 
@@ -695,8 +599,8 @@ def ensure_lmstudio_rest_initialized():
     return _lmstudio_rest_initialized
 
 
-def ensure_ollama_rest_initialized():
-    """Ensure Ollama REST is initialized if enabled in settings and not already initialized."""
+def ensure_ollama_rest_initialized() -> bool:
+    """Ensure Ollama REST is initialized if enabled."""
     global _ollama_rest_initialized
     from ..settings import get_setting
 
@@ -706,8 +610,8 @@ def ensure_ollama_rest_initialized():
     return _ollama_rest_initialized
 
 
-def ensure_openai_initialized():
-    """Ensure OpenAI provider is initialized if enabled in settings and not already initialized."""
+def ensure_openai_initialized() -> bool:
+    """Ensure OpenAI provider is initialized if enabled."""
     global _openai_initialized
     from ..settings import get_setting
 
@@ -717,22 +621,17 @@ def ensure_openai_initialized():
     return _openai_initialized
 
 
-def ensure_llm_initialized():
+def ensure_llm_initialized() -> bool:
     """Ensure all enabled LLM services are initialized."""
-    ollama_ok = ensure_ollama_initialized()
-    lmstudio_ok = ensure_lmstudio_initialized()
     lmstudio_rest_ok = ensure_lmstudio_rest_initialized()
     ollama_rest_ok = ensure_ollama_rest_initialized()
     openai_ok = ensure_openai_initialized()
-    return ollama_ok or lmstudio_ok or lmstudio_rest_ok or ollama_rest_ok or openai_ok
+    return lmstudio_rest_ok or ollama_rest_ok or openai_ok
 
 
 def reset_llm_initialization_state() -> None:
-    """Reset initialization flags and local client references."""
-    global _ollama_initialized, _lmstudio_initialized, _lmstudio_rest_initialized, _ollama_rest_initialized, _openai_initialized, ollama_client
-    _ollama_initialized = False
-    _lmstudio_initialized = False
+    """Reset initialization flags."""
+    global _lmstudio_rest_initialized, _ollama_rest_initialized, _openai_initialized
     _lmstudio_rest_initialized = False
     _ollama_rest_initialized = False
     _openai_initialized = False
-    ollama_client = None

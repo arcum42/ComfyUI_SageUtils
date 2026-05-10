@@ -10,6 +10,12 @@ This module provides a centralized way to manage settings with:
 
 from typing import Any, Dict, Optional
 from .config_manager import ConfigManager
+from .settings_crypto import (
+    decrypt_sensitive_value,
+    encrypt_sensitive_value,
+    is_encrypted_value,
+    is_sensitive_setting_key,
+)
 
 from .logger import get_logger
 logger = get_logger('settings')
@@ -17,16 +23,6 @@ logger = get_logger('settings')
 # Define the schema for all SageUtils settings
 SETTINGS_SCHEMA = {
     # LLM Integration Settings
-    "enable_ollama": {
-        "default": True,
-        "type": bool,
-        "description": "Enable Ollama LLM integration"
-    },
-    "enable_lmstudio": {
-        "default": True, 
-        "type": bool,
-        "description": "Enable LM Studio LLM integration"
-    },
     "enable_lmstudio_rest": {
         "default": False,
         "type": bool,
@@ -67,6 +63,11 @@ SETTINGS_SCHEMA = {
         "type": str,
         "description": "Custom URL for Ollama service (e.g., 'http://localhost:11434')"
     },
+    "ollama_api_key": {
+        "default": "",
+        "type": str,
+        "description": "API key for Ollama endpoint authentication (can also be set via OLLAMA_API_KEY env var)"
+    },
     "lmstudio_use_custom_url": {
         "default": False,
         "type": bool,
@@ -77,11 +78,16 @@ SETTINGS_SCHEMA = {
         "type": str,
         "description": "Custom URL for LM Studio service (e.g., 'http://localhost:1234')"
     },
-    "default_llm_provider": {
-        "default": "ollama",
+    "lmstudio_api_token": {
+        "default": "",
         "type": str,
-        "description": "Default LLM provider to use for LLM sidebar and provider-switching LLM v3 nodes",
-        "valid_values": ["ollama", "lmstudio", "lmstudio_rest", "ollama_rest", "openai", "native"]
+        "description": "API token for LM Studio REST endpoint (can also be set via LMSTUDIO_API_TOKEN env var)"
+    },
+    "default_llm_provider": {
+        "default": "lmstudio_rest",
+        "type": str,
+        "description": "Default LLM provider for the LLM sidebar and provider-switching LLM v3 nodes",
+        "valid_values": ["lmstudio", "ollama", "lmstudio_rest", "ollama_rest", "openai", "native"]
     },
     "llm_raise_node_exceptions": {
         "default": False,
@@ -195,11 +201,25 @@ class SageSettings:
     def load_and_validate(self) -> None:
         """Load settings from config manager and validate against schema."""
         # Load current settings
-        current_settings = self._config_manager.load() or {}
+        raw_settings = self._config_manager.load() or {}
+
+        # Decrypt sensitive values for in-memory use.
+        current_settings: Dict[str, Any] = {}
+        settings_updated = False
+        for key, raw_value in raw_settings.items():
+            current_settings[key] = decrypt_sensitive_value(key, raw_value)
+            # Migrate existing plaintext secrets to encrypted-at-rest values on next save.
+            if (
+                is_sensitive_setting_key(key)
+                and isinstance(raw_value, str)
+                and raw_value.strip()
+                and not is_encrypted_value(raw_value)
+            ):
+                settings_updated = True
+                logger.info(f"Setting '{key}' will be migrated to encrypted storage.")
         
         # Start with defaults and update with current values
         self._settings = {}
-        settings_updated = False
         
         for key, schema_entry in SETTINGS_SCHEMA.items():
             default_value = schema_entry["default"]
@@ -221,7 +241,7 @@ class SageSettings:
                 logger.info(f"Setting '{key}' added with default value: {default_value}")
         
         # Remove any settings not in schema (cleanup old/deprecated settings)
-        for key in current_settings:
+        for key in raw_settings:
             if key not in SETTINGS_SCHEMA:
                 logger.warning(f"Removing deprecated setting: '{key}'")
                 settings_updated = True
@@ -257,7 +277,10 @@ class SageSettings:
     def save(self) -> bool:
         """Save current settings to file."""
         try:
-            self._config_manager.data = self._settings.copy()
+            persisted_settings: Dict[str, Any] = {}
+            for key, value in self._settings.items():
+                persisted_settings[key] = encrypt_sensitive_value(key, value)
+            self._config_manager.data = persisted_settings
             return self._config_manager.save()
         except Exception as e:
             logger.error(f"Failed to save settings: {e}")

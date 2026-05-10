@@ -7,7 +7,7 @@ from ..cache import get_llm_cache
 from ...logger import get_logger
 from ..common import clean_response
 from ..errors import raise_llm_error, report_llm_error, stringify_llm_error
-from ..rest import iter_json_lines, normalize_base_url, normalize_image_data_url, request_json, request_stream, with_bearer_auth
+from ..rest import iter_json_lines, normalize_base_url, normalize_raw_image_base64, request_json, request_stream, with_bearer_auth
 from ..capabilities import ModelCapabilities, get_capability_cache
 
 logger = get_logger('llm.providers.ollama_rest')
@@ -36,7 +36,14 @@ def _get_base_url() -> str:
 
 
 def _get_headers() -> Dict[str, str]:
-    token = os.environ.get('OLLAMA_API_TOKEN', '')
+    from ...settings import get_setting
+
+    # Prefer explicit setting, then environment variable(s).
+    token = str(get_setting('ollama_api_key', '')).strip()
+    if not token:
+        token = os.environ.get('OLLAMA_API_KEY', '').strip()
+    if not token:
+        token = os.environ.get('OLLAMA_API_TOKEN', '').strip()
     return with_bearer_auth({}, token)
 
 
@@ -165,10 +172,7 @@ def _normalize_raw_images(images=None) -> list[str]:
     image_entries = images if isinstance(images, list) else [images]
     raw_images: list[str] = []
     for img in image_entries:
-        img_str = str(img)
-        if img_str.startswith('data:') and ',' in img_str:
-            img_str = img_str.split(',', 1)[1]
-        raw_images.append(img_str)
+        raw_images.append(normalize_raw_image_base64(str(img)))
     return raw_images
 
 

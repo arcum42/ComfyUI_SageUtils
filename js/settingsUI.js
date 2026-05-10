@@ -33,19 +33,19 @@ async function loadSageSettings() {
         console.error('Error loading SageUtils settings:', error);
         // Return fallback settings structure
         return {
-            enable_ollama: { current_value: true },
-            enable_lmstudio: { current_value: true },
             enable_lmstudio_rest: { current_value: false },
             enable_ollama_rest: { current_value: false },
             enable_openai: { current_value: false },
             openai_api_key: { current_value: '' },
             openai_use_custom_url: { current_value: false },
             openai_base_url: { current_value: '' },
-            default_llm_provider: { current_value: 'ollama' },
+            default_llm_provider: { current_value: 'lmstudio_rest' },
             ollama_use_custom_url: { current_value: false },
             ollama_custom_url: { current_value: "" },
+            ollama_api_key: { current_value: '' },
             lmstudio_use_custom_url: { current_value: false },
-            lmstudio_custom_url: { current_value: "" }
+            lmstudio_custom_url: { current_value: "" },
+            lmstudio_api_token: { current_value: '' }
         };
     }
 }
@@ -96,18 +96,18 @@ app.registerExtension({
         // Map backend keys to the new frontend setting IDs
         const keyToIdMap = {
             'default_llm_provider': 'SageUtils.LLM Providers.default_llm_provider',
-            'enable_lmstudio': 'SageUtils.LLM Providers.enable_lmstudio',
             'enable_lmstudio_rest': 'SageUtils.LLM Providers.enable_lmstudio_rest',
             'enable_ollama_rest': 'SageUtils.LLM Providers.enable_ollama_rest',
             'enable_openai': 'SageUtils.LLM Providers.enable_openai',
             'openai_api_key': 'SageUtils.OpenAI.openai_api_key',
             'openai_use_custom_url': 'SageUtils.OpenAI.openai_use_custom_url',
             'openai_base_url': 'SageUtils.OpenAI.openai_base_url',
-            'enable_ollama': 'SageUtils.LLM Providers.enable_ollama',
             'ollama_custom_url': 'SageUtils.Local Custom Ollama URL.ollama_custom_url',
             'ollama_use_custom_url': 'SageUtils.Local Custom Ollama URL.ollama_use_custom_url',
+            'ollama_api_key': 'SageUtils.Ollama.ollama_api_key',
             'lmstudio_custom_url': 'SageUtils.Local Custom LM Studio URL.lmstudio_custom_url',
-            'lmstudio_use_custom_url': 'SageUtils.Local Custom LM Studio URL.lmstudio_use_custom_url'
+            'lmstudio_use_custom_url': 'SageUtils.Local Custom LM Studio URL.lmstudio_use_custom_url',
+            'lmstudio_api_token': 'SageUtils.LM Studio.lmstudio_api_token'
         };
 
         for (const [key, settingInfo] of Object.entries(serverSettings)) {
@@ -130,8 +130,8 @@ app.registerExtension({
             id: "SageUtils.LLM Providers.default_llm_provider",
             name: "Default LLM Provider",
             type: "combo",
-            defaultValue: "ollama",
-            options: ["ollama", "lmstudio", "lmstudio_rest", "ollama_rest", "openai", "native"],
+            defaultValue: "lmstudio_rest",
+            options: ["lmstudio_rest", "ollama_rest", "openai", "native"],
             tooltip: "Default provider used by the LLM sidebar and provider-switching LLM v3 nodes",
             onChange: async (newVal, oldVal) => {
                 console.log(`Default LLM provider changed from ${oldVal} to ${newVal}`);
@@ -140,7 +140,7 @@ app.registerExtension({
         },
         {
             id: "SageUtils.LLM Providers.enable_lmstudio_rest",
-            name: "Enable LM Studio (REST) Integration",
+            name: "Enable LM Studio Integration",
             type: "boolean",
             defaultValue: false,
             tooltip: "Enable LM Studio REST v1 integration",
@@ -151,7 +151,7 @@ app.registerExtension({
         },
         {
             id: "SageUtils.LLM Providers.enable_ollama_rest",
-            name: "Enable Ollama (REST) Integration",
+            name: "Enable Ollama Integration",
             type: "boolean",
             defaultValue: false,
             tooltip: "Enable Ollama native REST API integration (no SDK required)",
@@ -205,28 +205,6 @@ app.registerExtension({
             }
         },
         {
-            id: "SageUtils.LLM Providers.enable_lmstudio",
-            name: "Enable LM Studio Integration",
-            type: "boolean", 
-            defaultValue: true,
-            tooltip: "Enable LM Studio LLM integration",
-            onChange: async (newVal, oldVal) => {
-                console.log(`LM Studio integration changed from ${oldVal} to ${newVal}`);
-                await saveSageSetting('enable_lmstudio', newVal);
-            }
-        },
-        {
-            id: "SageUtils.LLM Providers.enable_ollama",
-            name: "Enable Ollama Integration",
-            type: "boolean",
-            defaultValue: true,
-            tooltip: "Enable Ollama LLM integration",
-            onChange: async (newVal, oldVal) => {
-                console.log(`Ollama integration changed from ${oldVal} to ${newVal}`);
-                await saveSageSetting('enable_ollama', newVal);
-            }
-        },
-        {
             id: "SageUtils.Local Custom Ollama URL.ollama_custom_url",
             name: "Address",
             type: "text",
@@ -249,6 +227,21 @@ app.registerExtension({
             }
         },
         {
+            id: "SageUtils.Ollama.ollama_api_key",
+            name: "API Key",
+            type: "text",
+            defaultValue: "",
+            attrs: {
+                type: 'password',
+                autocomplete: 'off'
+            },
+            tooltip: "Ollama API key (or leave blank to use OLLAMA_API_KEY env var)",
+            onChange: async (newVal) => {
+                console.log('Ollama API key changed');
+                await saveSageSetting('ollama_api_key', newVal);
+            }
+        },
+        {
             id: "SageUtils.Local Custom LM Studio URL.lmstudio_custom_url",
             name: "Address",
             type: "text",
@@ -268,6 +261,21 @@ app.registerExtension({
             onChange: async (newVal, oldVal) => {
                 console.log(`LM Studio custom URL setting changed from ${oldVal} to ${newVal}`);
                 await saveSageSetting('lmstudio_use_custom_url', newVal);
+            }
+        },
+        {
+            id: "SageUtils.LM Studio.lmstudio_api_token",
+            name: "API Token",
+            type: "text",
+            defaultValue: "",
+            attrs: {
+                type: 'password',
+                autocomplete: 'off'
+            },
+            tooltip: "LM Studio API token (or leave blank to use LMSTUDIO_API_TOKEN env var)",
+            onChange: async (newVal) => {
+                console.log('LM Studio API token changed');
+                await saveSageSetting('lmstudio_api_token', newVal);
             }
         }
     ]

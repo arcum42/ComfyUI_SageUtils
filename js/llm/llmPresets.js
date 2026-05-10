@@ -33,7 +33,7 @@ const BUILTIN_PRESETS = {
     'descriptive_prompt': {
         name: 'Descriptive Prompt',
         description: 'Generate detailed image descriptions',
-        provider: 'ollama',
+        provider: 'lmstudio_rest',
         model: 'gemma3:12b', // Default vision model for image description
         promptTemplate: 'description/Descriptive Prompt',
         systemPrompt: 'e621_prompt_generator',
@@ -50,7 +50,7 @@ const BUILTIN_PRESETS = {
     'e621_description': {
         name: 'E621 Image Description',
         description: 'Generate E621-style detailed image descriptions',
-        provider: 'ollama',
+        provider: 'lmstudio_rest',
         model: 'gemma3:12b', // Default vision model for image description
         promptTemplate: 'description/Descriptive Prompt',
         systemPrompt: 'e621_prompt_generator',
@@ -67,7 +67,7 @@ const BUILTIN_PRESETS = {
     'casual_chat': {
         name: 'Casual Chat',
         description: 'Friendly conversational assistant',
-        provider: 'ollama',
+        provider: 'lmstudio_rest',
         model: null,
         promptTemplate: '',
         systemPrompt: 'default',

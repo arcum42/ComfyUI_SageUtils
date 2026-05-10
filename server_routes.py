@@ -103,13 +103,12 @@ try:
                     if settings.save():
                         # Check if LLM-related settings were updated and trigger lazy initialization
                         llm_settings = {
-                            'enable_ollama',
-                            'enable_lmstudio',
                             'enable_lmstudio_rest',
+                            'enable_ollama_rest',
+                            'enable_openai',
                             'ollama_custom_url',
                             'lmstudio_custom_url',
-                            'custom_ollama_url',
-                            'custom_lmstudio_url',
+                            'openai_base_url',
                         }
                         if any(setting in llm_settings for setting in updated_settings):
                             try:

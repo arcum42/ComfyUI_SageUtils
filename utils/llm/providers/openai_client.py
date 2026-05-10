@@ -26,6 +26,7 @@ _KNOWN_VISION_MODEL_PREFIXES = (
     'gpt-4o',
     'gpt-4-turbo',
     'gpt-4-vision',
+    'glm-4.6v',
     'o1',
     'o3',
     'o4',
@@ -37,6 +38,12 @@ _KNOWN_VISION_MODEL_PREFIXES = (
     'qwen-vl',
     'qwen2-vl',
     'qwen2.5-vl',
+    'qwen3-vl',
+    'qwen3.5-vl',
+    'qwen3.6',
+    'gemma-3',
+    'gemma-4',
+    'llama-joycaption'
 )
 
 _OPENAI_MODEL_CAPABILITIES: dict[str, dict[str, bool]] = {

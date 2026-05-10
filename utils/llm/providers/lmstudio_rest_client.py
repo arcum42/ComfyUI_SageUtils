@@ -36,8 +36,12 @@ def _get_base_url() -> str:
 
 
 def _get_headers() -> Dict[str, str]:
-    # Optional token support. LM Studio defaults to no auth.
-    token = os.environ.get('LMSTUDIO_API_TOKEN', '')
+    from ...settings import get_setting
+
+    # Prefer explicit setting, then environment variable.
+    token = str(get_setting('lmstudio_api_token', '')).strip()
+    if not token:
+        token = os.environ.get('LMSTUDIO_API_TOKEN', '').strip()
     return with_bearer_auth({}, token)
 
 

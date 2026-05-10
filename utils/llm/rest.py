@@ -1,8 +1,11 @@
 """Shared REST helpers for LLM providers."""
 
+import base64
+import binascii
 import json
 from contextlib import contextmanager
 from typing import Any, Dict, Generator, Iterator, Optional
+from urllib.parse import urlparse
 from urllib import error as urllib_error
 from urllib import request as urllib_request
 
@@ -178,11 +181,83 @@ def iter_json_lines(response: Any) -> Generator[dict[str, Any], None, None]:
 
 
 def normalize_image_data_url(image_data: str, default_mime: str = 'image/png') -> str:
-    """Normalize an image payload to a data URL string."""
-    image_value = (image_data or '').strip()
-    if image_value.startswith('data:'):
+    """Normalize an image payload to a data URL string.
+
+    Accepts:
+    - data URLs containing base64 image content
+    - raw base64 image content
+    - remote http/https image URLs
+    """
+    image_value = _coerce_image_value(image_data)
+    if _is_http_url(image_value):
         return image_value
-    return f'data:{default_mime};base64,{image_value}'
+
+    if image_value.startswith('data:'):
+        header, payload = _split_data_url(image_value)
+        if ';base64' not in header.lower():
+            raise ValueError('Image data URL must include ;base64 payload.')
+        normalized_payload = _validate_base64_payload(payload)
+        return f'{header},{normalized_payload}'
+
+    normalized_payload = _validate_base64_payload(image_value)
+    return f'data:{default_mime};base64,{normalized_payload}'
+
+
+def normalize_raw_image_base64(image_data: str) -> str:
+    """Normalize an image payload to raw base64 bytes for providers like Ollama."""
+    image_value = _coerce_image_value(image_data)
+    if _is_http_url(image_value):
+        raise ValueError('Remote image URLs are not supported for this provider; provide base64 image data instead.')
+
+    if image_value.startswith('data:'):
+        header, payload = _split_data_url(image_value)
+        if ';base64' not in header.lower():
+            raise ValueError('Image data URL must include ;base64 payload.')
+        return _validate_base64_payload(payload)
+
+    return _validate_base64_payload(image_value)
+
+
+def _coerce_image_value(image_data: str) -> str:
+    image_value = str(image_data or '').strip()
+    if not image_value:
+        raise ValueError('Image payload is empty.')
+
+    lowered = image_value.lower()
+    if lowered.startswith('tensor(') or lowered.startswith('torch.tensor('):
+        raise ValueError('Image payload appears to be a tensor object; expected base64 image bytes or a data URL.')
+
+    return image_value
+
+
+def _split_data_url(image_value: str) -> tuple[str, str]:
+    if ',' not in image_value:
+        raise ValueError('Invalid image data URL: missing comma separator.')
+
+    header, payload = image_value.split(',', 1)
+    if not header.lower().startswith('data:image/'):
+        raise ValueError('Invalid image data URL: expected data:image/* MIME type.')
+    if not payload.strip():
+        raise ValueError('Invalid image data URL: missing base64 payload.')
+    return header, payload.strip()
+
+
+def _validate_base64_payload(payload: str) -> str:
+    compact = ''.join(payload.split())
+    if not compact:
+        raise ValueError('Image payload is empty after whitespace normalization.')
+    try:
+        base64.b64decode(compact, validate=True)
+    except (binascii.Error, ValueError) as e:
+        raise ValueError('Image payload is not valid base64 data.') from e
+    return compact
+
+
+def _is_http_url(value: str) -> bool:
+    parsed = urlparse(value)
+    if parsed.scheme not in ('http', 'https'):
+        return False
+    return bool(parsed.netloc)
 
 
 def iter_text_chunks(text: str, chunk_size: int = 5) -> Generator[str, None, None]:

@@ -1,7 +1,7 @@
 /**
  * Settings Dialog
  * Provides a UI for configuring SageUtils settings
- * Currently focuses on LLM provider configuration (Ollama, LM Studio, and Native)
+ * Currently focuses on LLM provider configuration (REST providers, OpenAI, and Native)
  */
 
 import { api } from '../../../../scripts/api.js';
@@ -21,18 +21,18 @@ import {
  * Mapping between backend setting keys and ComfyUI setting IDs
  */
 const SETTING_KEY_TO_ID_MAP = {
-  'enable_lmstudio': 'SageUtils.LLM Providers.enable_lmstudio',
   'enable_lmstudio_rest': 'SageUtils.LLM Providers.enable_lmstudio_rest',
   'enable_ollama_rest': 'SageUtils.LLM Providers.enable_ollama_rest',
   'enable_openai': 'SageUtils.LLM Providers.enable_openai',
   'openai_api_key': 'SageUtils.OpenAI.openai_api_key',
   'openai_use_custom_url': 'SageUtils.OpenAI.openai_use_custom_url',
   'openai_base_url': 'SageUtils.OpenAI.openai_base_url',
-  'enable_ollama': 'SageUtils.LLM Providers.enable_ollama',
   'ollama_custom_url': 'SageUtils.Local Custom Ollama URL.ollama_custom_url',
   'ollama_use_custom_url': 'SageUtils.Local Custom Ollama URL.ollama_use_custom_url',
+  'ollama_api_key': 'SageUtils.Ollama.ollama_api_key',
   'lmstudio_custom_url': 'SageUtils.Local Custom LM Studio URL.lmstudio_custom_url',
-  'lmstudio_use_custom_url': 'SageUtils.Local Custom LM Studio URL.lmstudio_use_custom_url'
+  'lmstudio_use_custom_url': 'SageUtils.Local Custom LM Studio URL.lmstudio_use_custom_url',
+  'lmstudio_api_token': 'SageUtils.LM Studio.lmstudio_api_token'
 };
 
 /**
@@ -186,7 +186,7 @@ function createLLMSection(settings) {
   section.appendChild(topSeparator);
 
   // Ollama settings
-  const ollamaGroup = createProviderGroup('Ollama', settings, 'ollama');
+  const ollamaGroup = createProviderGroup('Ollama', settings, 'ollama_rest', 'ollama');
   section.appendChild(ollamaGroup);
 
   // Separator
@@ -198,8 +198,21 @@ function createLLMSection(settings) {
   `;
   section.appendChild(separator);
 
+  // OpenAI settings
+  const openaiGroup = createOpenAIProviderGroup(settings);
+  section.appendChild(openaiGroup);
+
+  // Separator
+  const openaiSeparator = document.createElement('div');
+  openaiSeparator.style.cssText = `
+    height: 1px;
+    background: #444;
+    margin: 15px 0;
+  `;
+  section.appendChild(openaiSeparator);
+
   // LM Studio settings
-  const lmstudioGroup = createProviderGroup('LM Studio', settings, 'lmstudio');
+  const lmstudioGroup = createProviderGroup('LM Studio', settings, 'lmstudio_rest', 'lmstudio');
   section.appendChild(lmstudioGroup);
 
   return section;
@@ -237,14 +250,12 @@ function createDefaultProviderSelector(settings) {
 
   // Get current setting
   const defaultProviderSetting = settings['default_llm_provider'];
-  const currentValue = defaultProviderSetting ? defaultProviderSetting.current_value : 'ollama';
+  const currentValue = defaultProviderSetting ? defaultProviderSetting.current_value : 'lmstudio_rest';
 
   // Create radio button group
   const radioItems = [
-    { value: 'ollama', label: 'Ollama' },
-    { value: 'lmstudio', label: 'LM Studio' },
-    { value: 'lmstudio_rest', label: 'LM Studio (REST)' },
-    { value: 'ollama_rest', label: 'Ollama (REST)' },
+    { value: 'lmstudio_rest', label: 'LM Studio' },
+    { value: 'ollama_rest', label: 'Ollama' },
     { value: 'openai', label: 'OpenAI' },
     { value: 'native', label: 'Native (CLIP)' }
   ];
@@ -334,13 +345,14 @@ function createTabVisibilitySection(settings) {
 }
 
 /**
- * Create settings group for a provider (Ollama or LM Studio)
+ * Create settings group for a provider
  * @param {string} providerName - Display name of the provider
  * @param {Object} settings - Current settings
- * @param {string} providerKey - Key prefix (ollama or lmstudio)
+ * @param {string} providerKey - Enable flag key suffix (e.g., ollama_rest)
+ * @param {string} urlKeyPrefix - URL key prefix (ollama or lmstudio)
  * @returns {HTMLElement} Provider group element
  */
-function createProviderGroup(providerName, settings, providerKey) {
+function createProviderGroup(providerName, settings, providerKey, urlKeyPrefix) {
   const group = document.createElement('div');
   group.style.cssText = 'margin-bottom: 15px;';
 
@@ -358,7 +370,7 @@ function createProviderGroup(providerName, settings, providerKey) {
   group.appendChild(enableContainer);
 
   // Custom URL checkbox
-  const useCustomUrlKey = `${providerKey}_use_custom_url`;
+  const useCustomUrlKey = `${urlKeyPrefix}_use_custom_url`;
   const useCustomUrlSetting = settings[useCustomUrlKey];
   const { container: customUrlCheckboxContainer, checkbox: customUrlCheckbox } = createCheckbox(
     `Use custom URL for ${providerName}`,
@@ -372,13 +384,13 @@ function createProviderGroup(providerName, settings, providerKey) {
   group.appendChild(customUrlCheckboxContainer);
 
   // Custom URL input
-  const customUrlKey = `${providerKey}_custom_url`;
+  const customUrlKey = `${urlKeyPrefix}_custom_url`;
   const customUrlSetting = settings[customUrlKey];
   const { container: customUrlInputContainer, input: customUrlInput } = createTextInput(
     `${providerName} URL`,
     customUrlSetting ? customUrlSetting.current_value : '',
     customUrlKey,
-    `e.g., http://localhost:${providerKey === 'ollama' ? '11434' : '1234'}`
+    `e.g., http://localhost:${urlKeyPrefix === 'ollama' ? '11434' : '1234'}`
   );
   customUrlInputContainer.style.marginLeft = '40px';
   customUrlInputContainer.style.marginTop = '10px';
@@ -392,6 +404,95 @@ function createProviderGroup(providerName, settings, providerKey) {
   customUrlCheckbox.addEventListener('change', updateUrlInputVisibility);
 
   group.appendChild(customUrlInputContainer);
+
+  if (urlKeyPrefix === 'lmstudio' || urlKeyPrefix === 'ollama') {
+    const tokenKey = urlKeyPrefix === 'ollama' ? 'ollama_api_key' : 'lmstudio_api_token';
+    const tokenLabel = urlKeyPrefix === 'ollama' ? 'Ollama API Key' : 'LM Studio API Token';
+    const tokenPlaceholder = urlKeyPrefix === 'ollama' ? 'Optional bearer key' : 'Optional bearer token';
+    const tokenSetting = settings[tokenKey];
+    const { container: tokenInputContainer, input: tokenInput } = createTextInput(
+      tokenLabel,
+      tokenSetting ? tokenSetting.current_value : '',
+      tokenKey,
+      tokenPlaceholder
+    );
+    tokenInput.type = 'password';
+    tokenInput.autocomplete = 'off';
+    tokenInputContainer.style.marginLeft = '20px';
+    tokenInputContainer.style.marginTop = '10px';
+    group.appendChild(tokenInputContainer);
+  }
+
+  return group;
+}
+
+/**
+ * Create OpenAI settings group with API key and custom URL fields
+ * @param {Object} settings - Current settings
+ * @returns {HTMLElement} OpenAI group element
+ */
+function createOpenAIProviderGroup(settings) {
+  const group = document.createElement('div');
+  group.style.cssText = 'margin-bottom: 15px;';
+
+  const enableKey = 'enable_openai';
+  const enableSetting = settings[enableKey];
+  const { container: enableContainer, checkbox: enableCheckbox } = createCheckbox(
+    'Enable OpenAI',
+    {
+      checked: enableSetting ? enableSetting.current_value : false,
+      id: `setting-${enableKey}`
+    }
+  );
+  enableCheckbox.dataset.settingKey = enableKey;
+  group.appendChild(enableContainer);
+
+  const useCustomUrlKey = 'openai_use_custom_url';
+  const useCustomUrlSetting = settings[useCustomUrlKey];
+  const { container: customUrlCheckboxContainer, checkbox: customUrlCheckbox } = createCheckbox(
+    'Use custom URL for OpenAI',
+    {
+      checked: useCustomUrlSetting ? useCustomUrlSetting.current_value : false,
+      id: `setting-${useCustomUrlKey}`
+    }
+  );
+  customUrlCheckbox.dataset.settingKey = useCustomUrlKey;
+  customUrlCheckboxContainer.style.marginLeft = '20px';
+  customUrlCheckboxContainer.style.marginTop = '10px';
+  group.appendChild(customUrlCheckboxContainer);
+
+  const baseUrlKey = 'openai_base_url';
+  const baseUrlSetting = settings[baseUrlKey];
+  const { container: baseUrlInputContainer } = createTextInput(
+    'OpenAI Base URL',
+    baseUrlSetting ? baseUrlSetting.current_value : '',
+    baseUrlKey,
+    'e.g., https://api.openai.com'
+  );
+  baseUrlInputContainer.style.marginLeft = '40px';
+  baseUrlInputContainer.style.marginTop = '10px';
+
+  const updateUrlInputVisibility = () => {
+    baseUrlInputContainer.style.display = customUrlCheckbox.checked ? 'block' : 'none';
+  };
+  updateUrlInputVisibility();
+  customUrlCheckbox.addEventListener('change', updateUrlInputVisibility);
+
+  group.appendChild(baseUrlInputContainer);
+
+  const apiKeyKey = 'openai_api_key';
+  const apiKeySetting = settings[apiKeyKey];
+  const { container: apiKeyInputContainer, input: apiKeyInput } = createTextInput(
+    'OpenAI API Key',
+    apiKeySetting ? apiKeySetting.current_value : '',
+    apiKeyKey,
+    'sk-...'
+  );
+  apiKeyInput.type = 'password';
+  apiKeyInput.autocomplete = 'off';
+  apiKeyInputContainer.style.marginLeft = '20px';
+  apiKeyInputContainer.style.marginTop = '10px';
+  group.appendChild(apiKeyInputContainer);
 
   return group;
 }

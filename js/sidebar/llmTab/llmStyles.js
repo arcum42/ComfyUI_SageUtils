@@ -880,15 +880,6 @@ export function addLLMStyles() {
             color: #f44336;
         }
 
-        /* Provider-specific colors */
-        .llm-provider-select option[value="ollama"] {
-            color: #6bcf7f;
-        }
-
-        .llm-provider-select option[value="lmstudio"] {
-            color: #4a9eff;
-        }
-
         /* History section */
         .llm-history-section {
             padding: 12px;
