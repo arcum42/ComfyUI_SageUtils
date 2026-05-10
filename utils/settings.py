@@ -2,13 +2,15 @@
 Settings management for SageUtils.
 
 This module provides a centralized way to manage settings with:
-- Default values and types
-- Validation and type checking
-- Automatic migration of missing settings
+- Default values and types via a Pydantic model
+- Automatic type coercion and validation
+- Automatic migration of missing/deprecated settings
 - Clear documentation of all available settings
 """
 
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Literal, Optional
+from pydantic import BaseModel, Field, ValidationError
+from pydantic_settings import BaseSettings, SettingsConfigDict
 from .config_manager import ConfigManager
 from .settings_crypto import (
     decrypt_sensitive_value,
@@ -20,311 +22,176 @@ from .settings_crypto import (
 from .logger import get_logger
 logger = get_logger('settings')
 
-# Define the schema for all SageUtils settings
-SETTINGS_SCHEMA = {
+
+class SageSettingsModel(BaseModel):
+    """Pydantic model defining all SageUtils settings with defaults and validation."""
+
     # LLM Integration Settings
-    "enable_lmstudio_rest": {
-        "default": False,
-        "type": bool,
-        "description": "Enable LM Studio REST v1 LLM integration"
-    },
-    "enable_ollama_rest": {
-        "default": False,
-        "type": bool,
-        "description": "Enable Ollama REST LLM integration (HTTP API, no SDK required)"
-    },
-    "enable_openai": {
-        "default": False,
-        "type": bool,
-        "description": "Enable OpenAI (or compatible) LLM integration"
-    },
-    "openai_api_key": {
-        "default": "",
-        "type": str,
-        "description": "API key for OpenAI or compatible endpoint (can also be set via OPENAI_API_KEY env var)"
-    },
-    "openai_use_custom_url": {
-        "default": False,
-        "type": bool,
-        "description": "Use a custom base URL for the OpenAI-compatible endpoint"
-    },
-    "openai_base_url": {
-        "default": "",
-        "type": str,
-        "description": "Custom base URL for OpenAI-compatible endpoint (e.g., 'http://localhost:8080' for LocalAI)"
-    },
-    "ollama_use_custom_url": {
-        "default": False,
-        "type": bool,
-        "description": "Use a custom URL for Ollama instead of the default"
-    },
-    "ollama_custom_url": {
-        "default": "",
-        "type": str,
-        "description": "Custom URL for Ollama service (e.g., 'http://localhost:11434')"
-    },
-    "ollama_api_key": {
-        "default": "",
-        "type": str,
-        "description": "API key for Ollama endpoint authentication (can also be set via OLLAMA_API_KEY env var)"
-    },
-    "lmstudio_use_custom_url": {
-        "default": False,
-        "type": bool,
-        "description": "Use a custom URL for LM Studio instead of the default"
-    },
-    "lmstudio_custom_url": {
-        "default": "",
-        "type": str,
-        "description": "Custom URL for LM Studio service (e.g., 'http://localhost:1234')"
-    },
-    "lmstudio_api_token": {
-        "default": "",
-        "type": str,
-        "description": "API token for LM Studio REST endpoint (can also be set via LMSTUDIO_API_TOKEN env var)"
-    },
-    "default_llm_provider": {
-        "default": "lmstudio_rest",
-        "type": str,
-        "description": "Default LLM provider for the LLM sidebar and provider-switching LLM v3 nodes",
-        "valid_values": ["lmstudio", "ollama", "lmstudio_rest", "ollama_rest", "openai", "native"]
-    },
-    "llm_raise_node_exceptions": {
-        "default": False,
-        "type": bool,
-        "description": "When enabled, LLM nodes re-raise provider load/generation exceptions after logging"
-    },
+    enable_lmstudio_rest: bool = Field(True, description="Enable LM Studio REST v1 LLM integration")
+    enable_ollama_rest: bool = Field(True, description="Enable Ollama REST LLM integration (HTTP API, no SDK required)")
+    enable_openai: bool = Field(False, description="Enable OpenAI (or compatible) LLM integration")
+    openai_api_key: str = Field("", description="API key for OpenAI or compatible endpoint (can also be set via OPENAI_API_KEY env var)")
+    openai_use_custom_url: bool = Field(False, description="Use a custom base URL for the OpenAI-compatible endpoint")
+    openai_base_url: str = Field("", description="Custom base URL for OpenAI-compatible endpoint (e.g., 'http://localhost:8080' for LocalAI)")
+    ollama_use_custom_url: bool = Field(False, description="Use a custom URL for Ollama instead of the default")
+    ollama_custom_url: str = Field("", description="Custom URL for Ollama service (e.g., 'http://localhost:11434')")
+    ollama_api_key: str = Field("", description="API key for Ollama endpoint authentication (can also be set via OLLAMA_API_KEY env var)")
+    lmstudio_use_custom_url: bool = Field(False, description="Use a custom URL for LM Studio instead of the default")
+    lmstudio_custom_url: str = Field("", description="Custom URL for LM Studio service (e.g., 'http://localhost:1234')")
+    lmstudio_api_token: str = Field("", description="API token for LM Studio REST endpoint (can also be set via LMSTUDIO_API_TOKEN env var)")
+    default_llm_provider: Literal["lmstudio", "ollama", "lmstudio_rest", "ollama_rest", "openai", "native"] = Field(
+        "lmstudio_rest", description="Default LLM provider for the LLM sidebar and provider-switching LLM v3 nodes"
+    )
+    llm_raise_node_exceptions: bool = Field(False, description="When enabled, LLM nodes re-raise provider load/generation exceptions after logging")
+
     # Sidebar Tab Visibility Settings
-    "show_models_tab": {
-        "default": True,
-        "type": bool,
-        "description": "Show Models tab in sidebar"
-    },
-    "show_files_tab": {
-        "default": True,
-        "type": bool,
-        "description": "Show Files tab in sidebar"
-    },
-    "show_search_tab": {
-        "default": True,
-        "type": bool,
-        "description": "Show Search (Civitai) tab in sidebar"
-    },
-    "show_gallery_tab": {
-        "default": True,
-        "type": bool,
-        "description": "Show Gallery tab in sidebar"
-    },
-    "show_prompts_tab": {
-        "default": True,
-        "type": bool,
-        "description": "Show Prompts (Prompt Builder) tab in sidebar"
-    },
-    "show_llm_tab": {
-        "default": True,
-        "type": bool,
-        "description": "Show LLM tab in sidebar"
-    }
-}
+    show_models_tab: bool = Field(True, description="Show Models tab in sidebar")
+    show_files_tab: bool = Field(True, description="Show Files tab in sidebar")
+    show_search_tab: bool = Field(True, description="Show Search (Civitai) tab in sidebar")
+    show_gallery_tab: bool = Field(True, description="Show Gallery tab in sidebar")
+    show_prompts_tab: bool = Field(True, description="Show Prompts (Prompt Builder) tab in sidebar")
+    show_llm_tab: bool = Field(True, description="Show LLM tab in sidebar")
+
+    model_config = {"extra": "ignore"}  # silently drop deprecated/unknown keys on load
 
 
-def is_known_setting(key: str) -> bool:
-    """Return True when the key is defined in SETTINGS_SCHEMA."""
-    return key in SETTINGS_SCHEMA
+class SageSettingsEnv(BaseSettings):
+    """Environment-variable overlay for SageUtils settings."""
 
+    enable_lmstudio_rest: Optional[bool] = None
+    enable_ollama_rest: Optional[bool] = None
+    enable_openai: Optional[bool] = None
+    openai_api_key: Optional[str] = None
+    openai_use_custom_url: Optional[bool] = None
+    openai_base_url: Optional[str] = None
+    ollama_use_custom_url: Optional[bool] = None
+    ollama_custom_url: Optional[str] = None
+    ollama_api_key: Optional[str] = None
+    lmstudio_use_custom_url: Optional[bool] = None
+    lmstudio_custom_url: Optional[str] = None
+    lmstudio_api_token: Optional[str] = None
+    default_llm_provider: Optional[Literal["lmstudio", "ollama", "lmstudio_rest", "ollama_rest", "openai", "native"]] = None
+    llm_raise_node_exceptions: Optional[bool] = None
+    show_models_tab: Optional[bool] = None
+    show_files_tab: Optional[bool] = None
+    show_search_tab: Optional[bool] = None
+    show_gallery_tab: Optional[bool] = None
+    show_prompts_tab: Optional[bool] = None
+    show_llm_tab: Optional[bool] = None
 
-def get_setting_schema_default(key: str) -> Any:
-    """Get default value for a known setting key."""
-    return SETTINGS_SCHEMA[key]["default"]
-
-
-class SettingsValidator:
-    """Validates settings values against the schema."""
-
-    @staticmethod
-    def _coerce_value(expected_type: type, value: Any) -> Any:
-        """Coerce a value to the expected settings type."""
-        if expected_type == bool:
-            if isinstance(value, str):
-                return value.lower() in ('true', '1', 'yes', 'on')
-            return bool(value)
-        if expected_type == int:
-            return int(value)
-        if expected_type == float:
-            return float(value)
-        if expected_type == str:
-            return str(value)
-
-        raise TypeError(f"Cannot convert {type(value)} to {expected_type}")
-    
-    @staticmethod
-    def validate_value(key: str, value: Any, schema_entry: Dict[str, Any]) -> Any:
-        """Validate a single setting value against its schema."""
-        expected_type = schema_entry.get("type", str)
-        valid_values = schema_entry.get("valid_values")
-        
-        # Type checking
-        if not isinstance(value, expected_type):
-            try:
-                value = SettingsValidator._coerce_value(expected_type, value)
-            except (ValueError, TypeError):
-                logger.warning(f"Setting '{key}': Invalid type. Expected {expected_type.__name__}, got {type(value).__name__}. Using default.")
-                return schema_entry["default"]
-        
-        # Valid values checking
-        if valid_values and value not in valid_values:
-            logger.warning(f"Setting '{key}': Invalid value '{value}'. Must be one of {valid_values}. Using default.")
-            return schema_entry["default"]
-        
-        return value
+    model_config = SettingsConfigDict(
+        env_prefix="",
+        case_sensitive=False,
+        extra="ignore",
+        env_ignore_empty=True,
+    )
 
 
 class SageSettings:
-    """Enhanced settings manager for SageUtils with validation and defaults."""
-    
+    """Settings manager for SageUtils backed by a Pydantic model."""
+
     def __init__(self):
         self._config_manager = ConfigManager("config")
-        self._settings: Dict[str, Any] = {}
-        self._validator = SettingsValidator()
+        self._model: SageSettingsModel = SageSettingsModel()
         self.load_and_validate()
 
-    @staticmethod
-    def _is_known_setting(key: str) -> bool:
-        """Return True when the key is defined in SETTINGS_SCHEMA."""
-        return is_known_setting(key)
-
-    @staticmethod
-    def _schema_default(key: str) -> Any:
-        """Get default value for a known setting key."""
-        return get_setting_schema_default(key)
-    
     def load_and_validate(self) -> None:
-        """Load settings from config manager and validate against schema."""
-        # Load current settings
-        raw_settings = self._config_manager.load() or {}
+        """Load settings from disk, decrypt sensitive values, and validate via Pydantic."""
+        raw_settings: Dict[str, Any] = self._config_manager.load() or {}
 
-        # Decrypt sensitive values for in-memory use.
-        current_settings: Dict[str, Any] = {}
-        settings_updated = False
+        # Decrypt sensitive values before Pydantic sees the data.
+        decrypted: Dict[str, Any] = {}
+        needs_save = False
         for key, raw_value in raw_settings.items():
-            current_settings[key] = decrypt_sensitive_value(key, raw_value)
-            # Migrate existing plaintext secrets to encrypted-at-rest values on next save.
+            decrypted[key] = decrypt_sensitive_value(key, raw_value)
+            # Flag plaintext secrets for encryption on next save.
             if (
                 is_sensitive_setting_key(key)
                 and isinstance(raw_value, str)
                 and raw_value.strip()
                 and not is_encrypted_value(raw_value)
             ):
-                settings_updated = True
+                needs_save = True
                 logger.info(f"Setting '{key}' will be migrated to encrypted storage.")
-        
-        # Start with defaults and update with current values
-        self._settings = {}
-        
-        for key, schema_entry in SETTINGS_SCHEMA.items():
-            default_value = schema_entry["default"]
-            if key in current_settings:
-                # Validate existing setting
-                validated_value = self._validator.validate_value(
-                    key, current_settings[key], schema_entry
-                )
-                self._settings[key] = validated_value
-                
-                # Check if validation changed the value
-                if validated_value != current_settings[key]:
-                    settings_updated = True
-                    logger.info(f"Setting '{key}' corrected to: {validated_value}")
-            else:
-                # Use default for missing settings
-                self._settings[key] = default_value
-                settings_updated = True
-                logger.info(f"Setting '{key}' added with default value: {default_value}")
-        
-        # Remove any settings not in schema (cleanup old/deprecated settings)
-        for key in raw_settings:
-            if key not in SETTINGS_SCHEMA:
-                logger.warning(f"Removing deprecated setting: '{key}'")
-                settings_updated = True
-        
-        # Save if any changes were made
-        if settings_updated:
+
+        # Environment variables are the top-most layer and override file-backed values.
+        env_overrides = SageSettingsEnv().model_dump(exclude_none=True)
+
+        # model_validate handles type coercion, defaults for missing keys,
+        # and silently drops unknown/deprecated keys (extra="ignore").
+        try:
+            merged_settings = {**decrypted, **env_overrides}
+            self._model = SageSettingsModel.model_validate(merged_settings)
+        except ValidationError as e:
+            logger.warning(f"Settings validation error, falling back to defaults: {e}")
+            self._model = SageSettingsModel()
+            needs_save = True
+
+        if needs_save:
             self.save()
             logger.info("Settings updated and saved.")
-    
+
     def get(self, key: str, default: Any = None) -> Any:
         """Get a setting value with optional default fallback."""
-        if self._is_known_setting(key):
-            return self._settings.get(key, self._schema_default(key))
-        return self._settings.get(key, default)
-    
+        return getattr(self._model, key, default)
+
     def set(self, key: str, value: Any) -> bool:
         """Set a setting value with validation."""
-        if not self._is_known_setting(key):
-            logger.warning(f"Setting unknown key '{key}'. Consider adding it to SETTINGS_SCHEMA.")
-            self._settings[key] = value
-            return True
-        
-        schema_entry = SETTINGS_SCHEMA[key]
-        validated_value = self._validator.validate_value(key, value, schema_entry)
-        
-        if self._settings.get(key) != validated_value:
-            self._settings[key] = validated_value
-            logger.info(f"Setting '{key}' updated to: {validated_value}")
-            return True
-        
-        return False
-    
-    def save(self) -> bool:
-        """Save current settings to file."""
+        if not hasattr(self._model, key):
+            logger.warning(f"Unknown setting key '{key}'.")
+            return False
         try:
-            persisted_settings: Dict[str, Any] = {}
-            for key, value in self._settings.items():
-                persisted_settings[key] = encrypt_sensitive_value(key, value)
-            self._config_manager.data = persisted_settings
+            updated = {**self._model.model_dump(), key: value}
+            self._model = SageSettingsModel.model_validate(updated)
+            logger.info(f"Setting '{key}' updated to: {getattr(self._model, key)}")
+            return True
+        except ValidationError as e:
+            logger.warning(f"Invalid value for setting '{key}': {e}")
+            return False
+
+    def save(self) -> bool:
+        """Save current settings to file, encrypting sensitive values."""
+        try:
+            data = self._model.model_dump()
+            persisted = {k: encrypt_sensitive_value(k, v) for k, v in data.items()}
+            self._config_manager.data = persisted
             return self._config_manager.save()
         except Exception as e:
             logger.error(f"Failed to save settings: {e}")
             return False
-    
+
     # Used in settings and server_routes.
     def reset_to_defaults(self) -> None:
         """Reset all settings to their default values."""
-        self._settings = {key: self._schema_default(key) for key in SETTINGS_SCHEMA}
+        self._model = SageSettingsModel()
         self.save()
         logger.info("All settings reset to defaults.")
-    
+
     def get_setting_info(self, key: str) -> Optional[Dict[str, Any]]:
         """Get information about a setting including description and current value."""
-        if not self._is_known_setting(key):
+        field = SageSettingsModel.model_fields.get(key)
+        if field is None:
             return None
-        
-        schema_entry = SETTINGS_SCHEMA[key].copy()
-        # Get current value, falling back to default if not set
-        schema_entry["current_value"] = self._settings.get(key, self._schema_default(key))
-        # Convert type to string representation for JSON serialization
-        if "type" in schema_entry:
-            schema_entry["type"] = schema_entry["type"].__name__
-        return schema_entry
-    
+        return {
+            "description": field.description or "",
+            "default": field.default,
+            "type": type(field.default).__name__,
+            "current_value": self.get(key),
+        }
+
     # Used in settings and server_routes.
     def list_all_settings(self) -> Dict[str, Dict[str, Any]]:
         """Get information about all settings."""
-        result = {}
-        for key in SETTINGS_SCHEMA:
-            setting_info = self.get_setting_info(key)
-            if setting_info is not None:
-                # The setting_info is already JSON-safe from get_setting_info()
-                result[key] = setting_info
-        return result
-    
+        return {key: self.get_setting_info(key) for key in SageSettingsModel.model_fields}
+
     def is_feature_enabled(self, feature: str) -> bool:
         """Check if a feature is enabled. Convenience method for boolean settings."""
         return bool(self.get(feature, False))
-    
+
     @property
     def all_settings(self) -> Dict[str, Any]:
         """Get a copy of all current settings."""
-        return self._settings.copy()
+        return self._model.model_dump()
 
 
 # Global settings instance
@@ -363,6 +230,31 @@ def save_settings() -> bool:
 def get_sage_config() -> Dict[str, Any]:
     """Get settings in the same format as the old sage_config."""
     return get_settings().all_settings
+
+
+# Compatibility shims for callers that still import these by name.
+def is_known_setting(key: str) -> bool:
+    """Return True when key is a recognised SageUtils setting."""
+    return key in SageSettingsModel.model_fields
+
+
+def get_setting_schema_default(key: str) -> Any:
+    """Return the default value for a known setting key."""
+    field = SageSettingsModel.model_fields.get(key)
+    if field is None:
+        raise KeyError(f"Unknown setting: '{key}'")
+    return field.default
+
+
+# Compatibility dict mirroring the old SETTINGS_SCHEMA shape, built from model_fields.
+SETTINGS_SCHEMA: Dict[str, Dict[str, Any]] = {
+    key: {
+        "default": field.default,
+        "type": type(field.default),
+        "description": field.description or "",
+    }
+    for key, field in SageSettingsModel.model_fields.items()
+}
 
 
 # For backwards compatibility, we'll also update the old config_manager module
