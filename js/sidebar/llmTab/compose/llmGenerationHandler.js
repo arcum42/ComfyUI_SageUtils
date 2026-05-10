@@ -3,11 +3,11 @@
  * Handles text and vision generation with streaming support
  */
 
-import * as llmApi from '../../llm/llmApi.js';
-import { loadModel } from '../../llm/llmApi.js';
-import { copyTextToSelectedNode } from '../../utils/textCopyUtils.js';
-import { copyTextFromSelectedNode } from '../../utils/textCopyFromNode.js';
-import { alertDialog } from '../../components/dialogManager.js';
+import * as llmApi from '../../../llm/llmApi.js';
+import { loadModel } from '../../../llm/llmApi.js';
+import { copyTextToSelectedNode } from '../../../utils/textCopyUtils.js';
+import { copyTextFromSelectedNode } from '../../../utils/textCopyFromNode.js';
+import { alertDialog } from '../../../components/dialogManager.js';
 
 let errorDialogOpen = false;
 let lastErrorDialogMessage = '';
@@ -561,7 +561,7 @@ async function onGenerationComplete(state, fullResponse, responseSection, sendBt
         
         // Also render the current conversation's messages (only if not skipping save)
         if (!skipSave) {
-            const { renderHistory } = await import('./llmHistorySection.js');
+            const { renderHistory } = await import('../chat/llmHistorySection.js');
             const currentConversation = state.conversationHistory?.find(c => c.id === state.currentConversationId);
             if (currentConversation) {
                 // Delete handler for individual messages

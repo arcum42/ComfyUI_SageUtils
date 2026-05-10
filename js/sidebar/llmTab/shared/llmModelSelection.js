@@ -3,16 +3,16 @@
  * Creates the model/provider selection interface with status and preset management
  */
 
-import { createSelect } from '../../components/formElements.js';
-import { alertDialog } from '../../components/dialogManager.js';
-import * as llmApi from '../../llm/llmApi.js';
+import { createSelect } from '../../../components/formElements.js';
+import { alertDialog } from '../../../components/dialogManager.js';
+import * as llmApi from '../../../llm/llmApi.js';
 import {
     getProviderDisplayName,
     getProviderStatusClass,
     getProviderStatusText,
     formatModelNameWithCapabilities,
     getModelCapabilityFlags
-} from '../../llm/llmProviders.js';
+} from '../../../llm/llmProviders.js';
 
 const LLM_LAST_MODELS_KEY = 'llm_last_models_by_provider';
 
@@ -327,7 +327,7 @@ export async function loadPresets(state, modelSelection) {
     
     try {
         // Import preset module
-        const presetModule = await import('../../llm/llmPresets.js');
+        const presetModule = await import('../../../llm/llmPresets.js');
         const presets = await presetModule.getPresets();
         
         // Store presets in state

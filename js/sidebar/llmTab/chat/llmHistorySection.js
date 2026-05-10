@@ -3,7 +3,7 @@
  * Manages conversation history display, export, import, and clearing
  */
 
-import { createSection } from '../../components/layout.js';
+import { createSection } from '../../../components/layout.js';
 
 /**
  * Creates the conversation history section
@@ -420,7 +420,7 @@ export function updateConversationList(state, historySection, responseSection) {
             e.stopPropagation();
             if (confirm('Delete this conversation?')) {
                 // Import deleteConversation dynamically to avoid circular dependency
-                const { deleteConversation } = await import('./llmGenerationHandler.js');
+                const { deleteConversation } = await import('../compose/llmGenerationHandler.js');
                 deleteConversation(state, conversation.id);
                 updateConversationList(state, historySection, responseSection);
             }
@@ -513,7 +513,7 @@ function showExportMenu(conversation, button) {
  */
 async function loadAndDisplayConversation(state, conversationId, historySection, responseSection) {
     // Import loadConversation dynamically to avoid circular dependency
-    const { loadConversation, saveConversationHistory } = await import('./llmGenerationHandler.js');
+    const { loadConversation, saveConversationHistory } = await import('../compose/llmGenerationHandler.js');
     const conversation = loadConversation(state, conversationId);
     if (!conversation) return;
     
@@ -554,7 +554,7 @@ async function loadAndDisplayConversation(state, conversationId, historySection,
     }
     
     // Show status (import dynamically)
-    const { showStatus } = await import('./llmResponseSection.js');
+    const { showStatus } = await import('../compose/llmResponseSection.js');
     showStatus(responseSection, `Loaded conversation: ${conversation.title}`, 'info');
 }
 

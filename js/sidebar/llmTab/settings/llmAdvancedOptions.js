@@ -3,8 +3,8 @@
  * Contains system prompts, templates, and provider-specific settings
  */
 
-import { createSlider, createSelect, createInput, createTextarea, createFormRow } from '../../components/formElements.js';
-import { createSection } from '../../components/layout.js';
+import { createSlider, createSelect, createInput, createTextarea, createFormRow } from '../../../components/formElements.js';
+import { createSection } from '../../../components/layout.js';
 
 /**
  * Creates the advanced options section

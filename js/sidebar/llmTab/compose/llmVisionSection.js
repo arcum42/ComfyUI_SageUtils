@@ -3,7 +3,7 @@
  * Creates the image upload interface with drag/drop, paste, and preview
  */
 
-import { createResponsiveGrid } from '../../components/layout.js';
+import { createResponsiveGrid } from '../../../components/layout.js';
 
 /**
  * Creates the vision upload section
@@ -342,7 +342,7 @@ export function setupVisionEventHandlers(state, visionSection) {
         
         // Show notifications for errors
         if (result.errors.length > 0) {
-            const { showNotification } = await import('../../shared/crossTabMessaging.js');
+            const { showNotification } = await import('../../../shared/crossTabMessaging.js');
             result.errors.forEach(err => {
                 showNotification(`${err.file}: ${err.error}`, 'error');
             });
@@ -350,7 +350,7 @@ export function setupVisionEventHandlers(state, visionSection) {
         
         // Show success notification
         if (result.added > 0) {
-            const { showNotification } = await import('../../shared/crossTabMessaging.js');
+            const { showNotification } = await import('../../../shared/crossTabMessaging.js');
             const msg = result.added === 1 ? `Added 1 image` : `Added ${result.added} images`;
             showNotification(msg, 'success');
         }
@@ -381,7 +381,7 @@ export function setupVisionEventHandlers(state, visionSection) {
         
         // Show notifications for errors
         if (result.errors.length > 0) {
-            const { showNotification } = await import('../../shared/crossTabMessaging.js');
+            const { showNotification } = await import('../../../shared/crossTabMessaging.js');
             result.errors.forEach(err => {
                 showNotification(`${err.file}: ${err.error}`, 'error');
             });
@@ -389,7 +389,7 @@ export function setupVisionEventHandlers(state, visionSection) {
         
         // Show success notification
         if (result.added > 0) {
-            const { showNotification } = await import('../../shared/crossTabMessaging.js');
+            const { showNotification } = await import('../../../shared/crossTabMessaging.js');
             const msg = result.added === 1 ? `Added 1 image` : `Added ${result.added} images`;
             showNotification(msg, 'success');
         }
@@ -431,14 +431,14 @@ export function setupClipboardPasteHandler(state, visionSection) {
                 
                 // Show notifications
                 if (result.errors.length > 0) {
-                    const { showNotification } = await import('../../shared/crossTabMessaging.js');
+                    const { showNotification } = await import('../../../shared/crossTabMessaging.js');
                     result.errors.forEach(err => {
                         showNotification(`${err.file}: ${err.error}`, 'error');
                     });
                 }
                 
                 if (result.added > 0) {
-                    const { showNotification } = await import('../../shared/crossTabMessaging.js');
+                    const { showNotification } = await import('../../../shared/crossTabMessaging.js');
                     const msg = result.added === 1 ? `Pasted 1 image` : `Pasted ${result.added} images`;
                     showNotification(msg, 'success');
                 }

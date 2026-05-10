@@ -3,12 +3,12 @@
  * Wires all components together with event listeners
  */
 
-import { handleSend, handleStop, handleCopy, handleCopyToNode, handleCopyFromNode } from './llmGenerationHandler.js';
+import { handleSend, handleStop, handleCopy, handleCopyToNode, handleCopyFromNode } from '../compose/llmGenerationHandler.js';
 import { loadModels, updateModelDropdown, loadPresets, rememberProviderModel } from './llmModelSelection.js';
 import { showSavePresetDialog, showManagePresetsDialog } from './llmPresetDialogs.js';
-import { clearAllImages, handleFileUpload } from './llmVisionSection.js';
-import { saveSettings } from '../../llm/llmSettings.js';
-import { getModelCapabilityFlags } from '../../llm/llmProviders.js';
+import { clearAllImages, handleFileUpload } from '../compose/llmVisionSection.js';
+import { saveSettings } from '../../../llm/llmSettings.js';
+import { getModelCapabilityFlags } from '../../../llm/llmProviders.js';
 
 const LLM_LAST_PROVIDER_KEY = 'llm_last_selected_provider';
 
@@ -278,7 +278,7 @@ export function setupEventHandlers(
             sendToPromptBtn.textContent = '📤 Sending...';
             
             // Use cross-tab messaging to send text to Prompt Builder
-            import('../../shared/crossTabMessaging.js').then(({ sendTextToPromptBuilder }) => {
+            import('../../../shared/crossTabMessaging.js').then(({ sendTextToPromptBuilder }) => {
                 sendTextToPromptBuilder(responseText, {
                     source: 'llm',
                     autoSwitch: true
@@ -443,9 +443,9 @@ export function setupEventHandlers(
             }
             
             // Import necessary functions
-            const { addMessageToHistory, saveConversationHistory } = await import('./llmGenerationHandler.js');
-            const { renderHistory } = await import('./llmHistorySection.js');
-            const { updateConversationList } = await import('./llmHistorySection.js');
+            const { addMessageToHistory, saveConversationHistory } = await import('../compose/llmGenerationHandler.js');
+            const { renderHistory } = await import('../chat/llmHistorySection.js');
+            const { updateConversationList } = await import('../chat/llmHistorySection.js');
             
             // Save user message
             addMessageToHistory(state, 'user', state._unsavedPrompt, {
@@ -765,8 +765,8 @@ export function cleanupEventHandlers(state) {
  * Start a new conversation
  */
 async function startNewConversation(state, historySection, responseSection, updateConversationList) {
-    const { startNewConversation: startNew } = await import('./llmGenerationHandler.js');
-    const { renderHistory } = await import('./llmHistorySection.js');
+    const { startNewConversation: startNew } = await import('../compose/llmGenerationHandler.js');
+    const { renderHistory } = await import('../chat/llmHistorySection.js');
     
     startNew(state);
     renderHistory(historySection, []);
@@ -823,7 +823,7 @@ async function importConversationHistory(state, historySection, responseSection,
             }
             
             // Merge with existing history (avoid duplicates)
-            const { saveConversationHistory } = await import('./llmGenerationHandler.js');
+            const { saveConversationHistory } = await import('../compose/llmGenerationHandler.js');
             const existingIds = new Set(state.conversationHistory.map(c => c.id));
             const newConversations = imported.filter(c => !existingIds.has(c.id));
             
@@ -849,8 +849,8 @@ async function clearConversationHistory(state, historySection, responseSection, 
         return;
     }
     
-    const { saveConversationHistory } = await import('./llmGenerationHandler.js');
-    const { renderHistory } = await import('./llmHistorySection.js');
+    const { saveConversationHistory } = await import('../compose/llmGenerationHandler.js');
+    const { renderHistory } = await import('../chat/llmHistorySection.js');
     
     state.conversationHistory = [];
     state.currentConversationId = null;

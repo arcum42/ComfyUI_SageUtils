@@ -1,0 +1,642 @@
+/**
+ * LLM Chat Tab - Main tab component for LLM interactions
+ * Provides interface for text and vision generation with streaming support
+ */
+
+// External dependencies
+import { app } from '../../../../scripts/app.js';
+import { api } from '../../../../scripts/api.js';
+import { showNotification } from '../../shared/crossTabMessaging.js';
+
+// Core utilities
+import { LLMConversation } from '../../llm/llmConversation.js';
+import { getDefaultSettings, loadSettings, updateUIFromSettings, saveSettings } from '../../llm/llmSettings.js';
+import { getModelCapabilityFlags } from '../../llm/llmProviders.js';
+
+// UI Components
+import { createHeader } from './shared/llmHeader.js';
+import { addLLMStyles } from './styles/llmStyles.js';
+import { createInputSection, getPromptText } from './compose/llmInputSection.js';
+import { createResponseSection, showStatus } from './compose/llmResponseSection.js';
+import { createVisionSection } from './compose/llmVisionSection.js';
+import { createModelSelection, loadModels, loadPresets } from './shared/llmModelSelection.js';
+import { createHistorySection, updateConversationList } from './chat/llmHistorySection.js';
+import { createAdvancedOptions } from './settings/llmAdvancedOptions.js';
+
+// Generation and event handling
+import { applyPresetToUI } from './shared/llmPresetDialogs.js';
+import { setupEventHandlers, cleanupEventHandlers } from './shared/llmEventHandlers.js';
+
+const LLM_TAB_PROMPT_KEY = 'llm_tab_prompt_text';
+const LLM_LAST_PROVIDER_KEY = 'llm_last_selected_provider';
+
+function loadSavedPromptText() {
+    try {
+        return localStorage.getItem(LLM_TAB_PROMPT_KEY) || '';
+    } catch {
+        return '';
+    }
+}
+
+function savePromptText(value) {
+    try {
+        localStorage.setItem(LLM_TAB_PROMPT_KEY, value || '');
+    } catch (error) {
+        console.warn('[LLM Tab] Failed to persist prompt text:', error);
+    }
+}
+
+function loadLastSelectedProvider() {
+    try {
+        const provider = localStorage.getItem(LLM_LAST_PROVIDER_KEY);
+        if (provider === 'lmstudio_rest' ||
+            provider === 'ollama_rest' || provider === 'openai' || provider === 'native') {
+            return provider;
+        }
+    } catch {
+        // Ignore storage access errors and fall back to defaults.
+    }
+    return null;
+}
+
+function isLlmDebugEnabled() {
+    try {
+        if (typeof window === 'undefined') {
+            return false;
+        }
+
+        const debugFlag = window.localStorage?.getItem('sageutils_llm_debug') === 'true';
+        const queryFlag = new URLSearchParams(window.location.search).get('sage_llm_debug') === '1';
+        return debugFlag || queryFlag;
+    } catch {
+        return false;
+    }
+}
+
+function logLlmDebug(...args) {
+    if (isLlmDebugEnabled()) {
+        console.debug(...args);
+    }
+}
+
+/**
+ * Load default LLM provider from settings
+ * @returns {Promise<string>} Default provider ('lmstudio_rest', 'ollama_rest', 'openai', or 'native')
+ */
+async function loadDefaultProvider() {
+    try {
+        const response = await api.fetchApi('/sage_utils/settings');
+        if (response.ok) {
+            const data = await response.json();
+            logLlmDebug('[LLM Tab] Settings API response:', data);
+            
+            if (data.success && data.settings && data.settings.default_llm_provider) {
+                const setting = data.settings.default_llm_provider;
+                logLlmDebug('[LLM Tab] default_llm_provider setting:', setting);
+                
+                // Try current_value first, then fall back to default
+                let provider = setting.current_value || setting.default;
+                if (provider === 'lmstudio') provider = 'lmstudio_rest';
+                if (provider === 'ollama') provider = 'ollama_rest';
+                logLlmDebug('[LLM Tab] Resolved provider value:', provider);
+                
+                if (provider === 'lmstudio_rest' ||
+                    provider === 'ollama_rest' || provider === 'openai' || provider === 'native') {
+                    logLlmDebug(`[LLM Tab] Loading default LLM provider: ${provider}`);
+                    return provider;
+                } else {
+                    console.warn(`[LLM Tab] Invalid provider value: ${provider}, using lmstudio_rest`);
+                }
+            } else {
+                console.warn('[LLM Tab] default_llm_provider setting not found in response');
+            }
+        } else {
+            console.warn('[LLM Tab] Settings API request failed:', response.status);
+        }
+    } catch (error) {
+        console.warn('[LLM Tab] Failed to load default LLM provider setting, using lmstudio_rest:', error);
+    }
+    return 'lmstudio_rest'; // Default fallback
+}
+
+/**
+ * Initialize tab with prompts, presets, models, and event handlers
+ */
+async function initializeTab(state, wrapper, modelSelection, visionSection, inputSection, advancedOptions, responseSection, historySection) {
+    try {
+        // Load prompts and presets in parallel
+        const [promptsData, presetsLoaded] = await Promise.all([
+            loadPrompts(state),
+            loadPresets(state, modelSelection)
+        ]);
+        
+        // Populate template categories if prompts loaded
+        if (promptsData && state.prompts?.base) {
+            populateTemplateCategories(state, advancedOptions);
+        }
+        
+        // Load models
+        await loadModels(state, modelSelection, visionSection);
+        
+        // Load and display conversation history
+        await loadAndInitializeHistory(state, historySection, responseSection);
+        
+        // Setup all event handlers
+        setupEventHandlers(
+            state,
+            wrapper,
+            modelSelection,
+            visionSection,
+            inputSection,
+            advancedOptions,
+            responseSection,
+            historySection,
+            app,
+            showNotification,
+            showStatus,
+            applyPresetToUI,
+            resetSettingsToDefaults,
+            updateConversationList
+        );
+        
+        logLlmDebug('[LLM Tab] Initialization complete');
+    } catch (error) {
+        console.error('[LLM Tab] Initialization failed:', error);
+        showStatus(responseSection, 'Failed to initialize LLM tab', 'error');
+    }
+}
+
+/**
+ * Load prompts from API
+ */
+async function loadPrompts(state) {
+    try {
+        // Import llmApi dynamically to avoid circular dependencies
+        const llmApi = await import('../../llm/llmApi.js');
+        const prompts = await llmApi.getPrompts();
+        state.prompts = prompts;
+        logLlmDebug('[LLM Tab] Loaded prompts:', prompts);
+        return prompts;
+    } catch (error) {
+        console.error('[LLM Tab] Failed to load prompts:', error);
+        state.prompts = { base: {}, extras: {} };
+        return null;
+    }
+}
+
+/**
+ * Load and initialize conversation history from localStorage
+ */
+async function loadAndInitializeHistory(state, historySection, responseSection) {
+    try {
+        // Import required functions
+        const { loadConversationHistory, saveConversationHistory } = await import('./compose/llmGenerationHandler.js');
+        const { renderHistory, updateConversationList } = await import('./chat/llmHistorySection.js');
+        
+        // Load conversation history from localStorage
+        state.conversationHistory = loadConversationHistory();
+        
+        // Update conversation list UI
+        if (state.conversationHistory && state.conversationHistory.length > 0) {
+            updateConversationList(state, historySection, responseSection);
+            
+            // Load the most recent conversation by default
+            const mostRecentConversation = state.conversationHistory[0]; // Conversations are sorted by most recent first
+            if (mostRecentConversation) {
+                state.currentConversationId = mostRecentConversation.id;
+                
+                // Create delete handler
+                const handleDeleteMessage = (index) => {
+                    mostRecentConversation.messages.splice(index, 1);
+                    mostRecentConversation.updated = Date.now();
+                    saveConversationHistory(state.conversationHistory);
+                    renderHistory(historySection, mostRecentConversation.messages, handleDeleteMessage);
+                    updateConversationList(state, historySection, responseSection);
+                };
+                
+                renderHistory(historySection, mostRecentConversation.messages, handleDeleteMessage);
+            }
+        }
+        
+        logLlmDebug('[LLM Tab] Loaded conversation history:', state.conversationHistory?.length || 0, 'conversations');
+    } catch (error) {
+        console.error('[LLM Tab] Failed to load conversation history:', error);
+        state.conversationHistory = [];
+    }
+}
+
+/**
+ * Populate template category dropdown
+ */
+function populateTemplateCategories(state, advancedOptions) {
+    const categorySelect = advancedOptions.querySelector('.llm-category-select');
+    if (!categorySelect || !state.prompts?.base) return;
+    
+    // Get unique categories
+    const categories = new Set();
+    Object.values(state.prompts.base).forEach(template => {
+        if (template.category) {
+            categories.add(template.category);
+        }
+    });
+    
+    // Populate dropdown
+    const options = ['<option value="">Select category...</option>'];
+    Array.from(categories).sort().forEach(category => {
+        options.push(`<option value="${category}">${category}</option>`);
+    });
+    
+    categorySelect.innerHTML = options.join('');
+    
+    // Also populate extras grid
+    populatePromptExtras(state, advancedOptions);
+}
+
+/**
+ * Populate prompt extras (modifiers) checkboxes
+ */
+async function populatePromptExtras(state, advancedOptions) {
+    const extrasGrid = advancedOptions.querySelector('.llm-extras-grid');
+    if (!extrasGrid || !state.prompts?.extra) return;
+    
+    // Import createCheckbox
+    const { createCheckbox } = await import('../../components/formElements.js');
+    
+    // Clear existing extras
+    extrasGrid.innerHTML = '';
+    
+    // Create checkboxes for each extra
+    Object.entries(state.prompts.extra).forEach(([key, extra]) => {
+        if (extra.type === 'boolean') {
+            const { container, checkbox } = createCheckbox(extra.name, {
+                className: 'llm-extra-checkbox',
+                labelClass: 'llm-extra-checkbox-label',
+                checked: extra.default || false,
+                title: extra.prompt
+            });
+            
+            checkbox.dataset.extraKey = key;
+            extrasGrid.appendChild(container);
+            
+            // Initialize state
+            state.selectedExtras = state.selectedExtras || {};
+            state.selectedExtras[key] = checkbox.checked;
+            
+            // Add change listener
+            checkbox.addEventListener('change', () => {
+                state.selectedExtras[key] = checkbox.checked;
+            });
+        }
+    });
+}
+
+/**
+ * Reset settings to defaults
+ */
+function resetSettingsToDefaults(state, advancedOptions) {
+    state.settings = getDefaultSettings();
+    saveSettings(state.settings);
+    updateUIFromSettings(state.settings, advancedOptions);
+    logLlmDebug('[LLM Tab] Settings reset to defaults');
+}
+
+/**
+ * Creates the main LLM tab content
+ * @param {HTMLElement} container - The container element for the tab
+ * @returns {Object} - Tab utility object with destroy method
+ */
+async function createLLMTabVanilla(container) {
+    // Clear any existing content
+    container.innerHTML = '';
+    
+    // Create main wrapper
+    const wrapper = document.createElement('div');
+    wrapper.className = 'llm-tab llm-wrapper';
+    
+    // Create all UI sections
+    const header = createHeader();
+    const modelSelection = createModelSelection();
+    const visionSection = createVisionSection();
+    const inputSection = createInputSection();
+    const advancedOptions = createAdvancedOptions();
+    const responseSection = createResponseSection();
+    const historySection = createHistorySection();
+    
+    // Create send button (positioned after advanced options)
+    const sendBtn = document.createElement('button');
+    sendBtn.className = 'llm-btn llm-btn-primary llm-send-btn';
+    sendBtn.innerHTML = '📤 Send';
+    sendBtn.title = 'Generate response (Ctrl+Enter)';
+    sendBtn.setAttribute('aria-label', 'Send message to LLM');
+    
+    // Append all sections to wrapper
+    wrapper.appendChild(header);
+    wrapper.appendChild(modelSelection);
+    wrapper.appendChild(visionSection);
+    wrapper.appendChild(inputSection);
+    wrapper.appendChild(advancedOptions);
+    wrapper.appendChild(sendBtn);
+    wrapper.appendChild(responseSection);
+    wrapper.appendChild(historySection);
+    
+    container.appendChild(wrapper);
+    
+    // Add styles
+    addLLMStyles();
+    
+    // Load default provider from settings
+    const defaultProvider = await loadDefaultProvider();
+    const sessionProvider = loadLastSelectedProvider();
+    const initialProvider = sessionProvider || defaultProvider;
+    
+    // Initialize tab state
+    const state = {
+        provider: initialProvider,
+        model: null,
+        models: { lmstudio_rest: [], ollama_rest: [], openai: [], native: [] },
+        visionModels: { lmstudio_rest: [], ollama_rest: [], openai: [], native: [] },
+        toolModels: { lmstudio_rest: [], ollama_rest: [], openai: [], native: [] },
+        reasoningModels: { lmstudio_rest: [], ollama_rest: [], openai: [], native: [] },
+        capabilities: { lmstudio_rest: {}, ollama_rest: {}, openai: {}, native: {} },
+        generating: false,
+        streamController: null,
+        // Vision support
+        images: [], // Array of { file, preview, base64 }
+        // Prompt template state
+        selectedCategory: '',
+        selectedExtras: {}, // Track which extras are enabled
+        // Conversation history
+        currentConversationId: null,
+        currentConversationMessages: [],
+        conversationHistory: [],
+        // Generation settings (will be loaded from localStorage if available)
+        settings: getDefaultSettings()
+    };
+    
+    // Load saved settings from localStorage
+    const savedSettings = loadSettings();
+    if (savedSettings) {
+        state.settings = { ...state.settings, ...savedSettings };
+    }
+    
+    // Load conversation history from localStorage
+    try {
+        const saved = localStorage.getItem('llm_conversation_history');
+        if (saved) {
+            state.conversationHistory = JSON.parse(saved);
+        }
+    } catch (error) {
+        console.warn('[LLM Tab] Failed to load conversation history:', error);
+    }
+    
+    // Initialize tab
+    await initializeTab(state, wrapper, modelSelection, visionSection, inputSection, advancedOptions, responseSection, historySection);
+    
+    // Set the provider dropdown to match the loaded default
+    const providerSelect = modelSelection.querySelector('.llm-provider-select');
+    if (providerSelect && state.provider) {
+        logLlmDebug(`[LLM Tab] Setting provider dropdown to: ${state.provider}`);
+        providerSelect.value = state.provider;
+        // Trigger change event to update model list (this will also update vision section)
+        providerSelect.dispatchEvent(new Event('change'));
+    } else {
+        // If no provider change event, manually update vision section
+        const flags = state.model ? getModelCapabilityFlags(
+            state.provider,
+            state.model,
+            state.capabilities,
+            state.visionModels,
+            state.toolModels,
+            state.reasoningModels
+        ) : null;
+        const hasVisionModel = Boolean(flags?.vision);
+        visionSection.style.display = hasVisionModel ? 'block' : 'none';
+        logLlmDebug('[LLM Tab] Initial vision section state:', {
+            model: state.model,
+            provider: state.provider,
+            hasVisionModel,
+            display: visionSection.style.display
+        });
+    }
+
+    // Restore prompt text persisted across sidebar remounts.
+    const promptTextarea = inputSection.querySelector('.llm-textarea');
+    if (promptTextarea) {
+        const savedPrompt = loadSavedPromptText();
+        if (savedPrompt) {
+            promptTextarea.value = savedPrompt;
+            promptTextarea.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+
+        const persistPromptHandler = () => {
+            savePromptText(promptTextarea.value);
+        };
+        promptTextarea.addEventListener('input', persistPromptHandler);
+        state._promptPersistHandler = persistPromptHandler;
+        state._promptTextarea = promptTextarea;
+    }
+    
+    // Update UI from loaded settings
+    updateUIFromSettings(state.settings, advancedOptions);
+    
+    // Initialize history panel
+    updateConversationList(state, historySection, responseSection);
+    
+    // Subscribe to cross-tab messages for Prompt Builder and Gallery integration
+    const { getEventBus, MessageTypes } = await import('../../shared/crossTabMessaging.js');
+    const bus = getEventBus();
+    
+    logLlmDebug('[LLM Tab] Setting up cross-tab message subscriptions');
+    logLlmDebug('[LLM Tab] Available MessageTypes:', MessageTypes);
+    
+    // Shared handler for incoming prompt text messages
+    const handleIncomingPromptText = (data) => {
+        const textarea = inputSection.querySelector('.llm-textarea');
+        if (textarea && data.text) {
+            textarea.value = data.text;
+            textarea.dispatchEvent(new Event('input', { bubbles: true })); // Update character counter
+            showNotification('Prompt received from Prompt Builder', 'success');
+        }
+    };
+
+    // Handle text from Prompt Builder via event bus
+    const textSubscription = bus.subscribe(MessageTypes.TEXT_TO_LLM, (message) => {
+        const data = message?.data || message;
+        handleIncomingPromptText(data);
+    });
+    
+    logLlmDebug('[LLM Tab] Text subscription created');
+    
+    // Handle images from Gallery
+    const imageSubscription = bus.subscribe(MessageTypes.IMAGE_TRANSFER, async (eventData) => {
+        logLlmDebug('[LLM Tab] IMAGE_TRANSFER handler called!', eventData);
+        
+        // Extract the actual data from the event wrapper
+        const data = eventData.data || eventData;
+        
+        if (!data.images || !Array.isArray(data.images)) {
+            logLlmDebug('[LLM Tab] No valid images array in data:', data);
+            return;
+        }
+        
+        logLlmDebug('[LLM Tab] Received IMAGE_TRANSFER:', {
+            imageCount: data.images.length,
+            source: data.source,
+            firstImage: data.images[0]
+        });
+        
+        // Only process if vision section is visible
+        if (visionSection.style.display === 'none') {
+            showNotification('Please select a vision model first', 'warning');
+            return;
+        }
+        
+        // Import handleFileUpload
+        const { handleFileUpload } = await import('./compose/llmVisionSection.js');
+        
+        // Convert image data to File objects
+        const files = await Promise.all(data.images.map(async (imgData, index) => {
+            try {
+                // If it's an object with base64 property (from gallery)
+                let base64Data;
+                if (typeof imgData === 'object' && imgData.base64) {
+                    base64Data = imgData.base64;
+                } else if (typeof imgData === 'string') {
+                    base64Data = imgData;
+                } else if (imgData instanceof Blob) {
+                    // Convert blob to file directly
+                    const fileName = imgData.name || `image_${index + 1}.png`;
+                    return new File([imgData], fileName, { type: imgData.type || 'image/png' });
+                } else {
+                    console.warn('[LLM Tab] Unknown image data format:', imgData);
+                    return null;
+                }
+                
+                // Ensure data URL has proper prefix
+                const dataUrl = base64Data.startsWith('data:') ? base64Data : `data:image/png;base64,${base64Data}`;
+                
+                // Convert data URL to blob
+                const response = await fetch(dataUrl);
+                const blob = await response.blob();
+                
+                // Get filename from imgData if available
+                const fileName = (imgData.name || imgData.file?.name || `image_${index + 1}.png`);
+                
+                // Create File from blob
+                return new File([blob], fileName, { type: blob.type || 'image/png' });
+            } catch (error) {
+                console.error('[LLM Tab] Failed to convert image:', error);
+                return null;
+            }
+        }));
+        
+        const validFiles = files.filter(Boolean);
+        if (validFiles.length > 0) {
+            const result = await handleFileUpload(state, visionSection, validFiles);
+            
+            if (result.added > 0) {
+                const msg = result.added === 1 ? 'Added 1 image from gallery' : `Added ${result.added} images from gallery`;
+                showNotification(msg, 'success');
+            }
+            
+            if (result.errors.length > 0) {
+                result.errors.forEach(err => {
+                    showNotification(`${err.file}: ${err.error}`, 'error');
+                });
+            }
+        }
+    });
+
+    // Respond to state requests from other tabs/APIs (e.g. preset API).
+    const llmStateRequestSubscription = bus.subscribe(MessageTypes.LLM_STATE_REQUEST, (message) => {
+        const source = message?.data?.source || 'unknown';
+        bus.publish(MessageTypes.LLM_STATE_RESPONSE, {
+            source: 'llm-tab',
+            target: source,
+            state
+        });
+    });
+
+    // Apply preset changes pushed from external APIs/routes.
+    const llmPresetAppliedSubscription = bus.subscribe(MessageTypes.LLM_PRESET_APPLIED, async (message) => {
+        const data = message?.data || {};
+        const presetId = data.presetId;
+
+        // Primary path: apply by preset ID through shared UI helper.
+        if (presetId && state.presets && state.presets[presetId]) {
+            await applyPresetToUI(state, presetId, modelSelection, advancedOptions, inputSection);
+
+            const presetSelect = modelSelection.querySelector('.llm-preset-select');
+            if (presetSelect) {
+                presetSelect.value = presetId;
+            }
+
+            const presetName = state.presets[presetId]?.name || data.presetName || presetId;
+            showNotification(`Preset "${presetName}" applied`, 'success');
+            return;
+        }
+
+        // Fallback path: if a full state snapshot is provided, merge and refresh UI settings.
+        if (data.state && typeof data.state === 'object') {
+            state.settings = {
+                ...state.settings,
+                ...(data.state.settings || {})
+            };
+            updateUIFromSettings(state.settings, advancedOptions);
+
+            if (data.presetName) {
+                showNotification(`Preset "${data.presetName}" applied`, 'success');
+            }
+            return;
+        }
+
+        console.warn('[LLM Tab] Received LLM_PRESET_APPLIED without usable preset payload:', data);
+    });
+    
+    // Return tab utilities
+    let isDestroyed = false;
+    const destroyTab = () => {
+            if (isDestroyed) {
+                return;
+            }
+            isDestroyed = true;
+
+            logLlmDebug('[LLM Tab] Destroying tab...');
+            
+            // Cleanup event handlers
+            cleanupEventHandlers(state);
+
+            if (state._promptTextarea && state._promptPersistHandler) {
+                state._promptTextarea.removeEventListener('input', state._promptPersistHandler);
+                savePromptText(state._promptTextarea.value);
+            }
+            
+            // Cleanup cross-tab messaging
+            if (typeof textSubscription === 'function') textSubscription();
+            if (typeof imageSubscription === 'function') imageSubscription();
+            if (typeof llmStateRequestSubscription === 'function') llmStateRequestSubscription();
+            if (typeof llmPresetAppliedSubscription === 'function') llmPresetAppliedSubscription();
+            
+            // Stop any active generation
+            if (state.generating && state.streamController) {
+                state.streamController.abort();
+            }
+            
+            // Clear container
+            container.innerHTML = '';
+            
+            logLlmDebug('[LLM Tab] Tab destroyed');
+        };
+
+    return {
+        // New lifecycle contract expected by TabManager.
+        unmount: destroyTab,
+        // Legacy compatibility for existing call sites.
+        destroy: destroyTab
+    };
+}
+
+export async function createLLMTab(container) {
+    // React pilot path is currently disabled; always use stable vanilla implementation.
+    return createLLMTabVanilla(container);
+}

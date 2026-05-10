@@ -3,7 +3,7 @@
  * Handles all preset and system prompt management dialogs
  */
 
-import { createSelect } from '../../components/formElements.js';
+import { createSelect } from '../../../components/formElements.js';
 
 /**
  * Show save preset dialog
@@ -107,7 +107,7 @@ export async function showSavePresetDialog(state, modelSelection, loadPresets, s
         
         try {
             // Import preset module
-            const presetModule = await import('../../llm/llmPresets.js');
+            const presetModule = await import('../../../llm/llmPresets.js');
             
             // Create preset from current state
             const presetData = presetModule.createPresetFromState(state, name, description, category);
@@ -321,7 +321,7 @@ function createPresetsPanel(state, modelSelection, advancedOptions, inputSection
                     
                     if (confirm(confirmMsg)) {
                         try {
-                            const presetModule = await import('../../llm/llmPresets.js');
+                            const presetModule = await import('../../../llm/llmPresets.js');
                             await presetModule.deletePreset(id);
                             await loadPresets(state, modelSelection);
                             
@@ -357,7 +357,7 @@ function createPresetsPanel(state, modelSelection, advancedOptions, inputSection
  * Show preset editor dialog for creating or editing presets
  */
 async function showPresetEditor(state, modelSelection, advancedOptions, inputSection, presetId = null, existingPreset = null, loadPresets, showNotification) {
-    const presetModule = await import('../../llm/llmPresets.js');
+    const presetModule = await import('../../../llm/llmPresets.js');
     const { api } = await import('/scripts/api.js');
     
     // If editing a built-in, get the original for comparison
@@ -797,7 +797,7 @@ function createSystemPromptsPanel(state, modelSelection, advancedOptions, inputS
     list.innerHTML = '<p class="llm-placeholder">Loading system prompts...</p>';
     
     // Load system prompts
-    import('../../llm/llmPresets.js').then(async (presetModule) => {
+    import('../../../llm/llmPresets.js').then(async (presetModule) => {
         const systemPrompts = await presetModule.getSystemPrompts();
         
         list.innerHTML = '';
@@ -993,7 +993,7 @@ export async function showSystemPromptEditor(state, modelSelection, advancedOpti
         
         try {
             // Import preset module
-            const presetModule = await import('../../llm/llmPresets.js');
+            const presetModule = await import('../../../llm/llmPresets.js');
             
             // Generate ID from name (or use existing)
             const id = existingPrompt?.id || name.toLowerCase().replace(/[^a-z0-9]+/g, '_');
@@ -1062,8 +1062,8 @@ export async function applyPresetToUI(state, presetId, modelSelection, advancedO
     
     try {
         // Import preset module and settings
-        const presetModule = await import('../../llm/llmPresets.js');
-        const { updateUIFromSettings } = await import('../../llm/llmSettings.js');
+        const presetModule = await import('../../../llm/llmPresets.js');
+        const { updateUIFromSettings } = await import('../../../llm/llmSettings.js');
         
         // Apply preset to state
         presetModule.applyPreset(state, preset);

@@ -3,7 +3,7 @@
  * Creates the prompt input area with character counter and action buttons
  */
 
-import { createTextarea } from '../../components/formElements.js';
+import { createTextarea } from '../../../components/formElements.js';
 
 /**
  * Creates the input section
