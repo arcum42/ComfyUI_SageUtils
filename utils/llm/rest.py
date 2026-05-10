@@ -33,7 +33,7 @@ def request_json(
     path: str,
     payload: Optional[dict[str, Any]] = None,
     headers: Optional[dict[str, str]] = None,
-    timeout: float = 30.0,
+    timeout: float = 300.0,
 ) -> Any:
     """Perform an HTTP JSON request and return decoded JSON response."""
     url = f"{base_url.rstrip('/')}/{path.lstrip('/')}"

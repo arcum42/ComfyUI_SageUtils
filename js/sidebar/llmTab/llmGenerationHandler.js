@@ -111,6 +111,7 @@ export async function handleSend(state, textarea, responseSection, sendBtn, stop
     
     // Clear any previous error/status when starting new generation
     showStatus(responseSection, '', '');
+    updatePhaseBadge(responseSection, 'loading-model', 'Loading model');
     
     // Update UI for generation
     state.generating = true;
@@ -127,6 +128,7 @@ export async function handleSend(state, textarea, responseSection, sendBtn, stop
     // Phase 1: show loading spinner
     showLoadingOverlay(responseDisplay, state.model);
     showStatus(responseSection, 'Loading model...', 'info');
+    updatePhaseBadge(responseSection, 'loading-model', 'Loading model');
 
     try {
         // Pre-load the model so the user sees the phase boundary
@@ -144,9 +146,11 @@ export async function handleSend(state, textarea, responseSection, sendBtn, stop
     // Phase 2: switch to generation view
     responseDisplay.innerHTML = '';
     showStatus(responseSection, 'Generating...', 'info');
+    updatePhaseBadge(responseSection, 'generating', 'Generating');
 
     try {
         let fullResponse = '';
+        let terminalStateHandled = false;
 
         // Helper: clear overlay on first real chunk
         let overlayCleared = false;
@@ -184,7 +188,9 @@ export async function handleSend(state, textarea, responseSection, sendBtn, stop
                     options: options
                 },
                 // onChunk callback
-                (chunk, done, full) => {
+                (chunk, done, full, payload) => {
+                    handleStreamingEventStatus(payload, responseSection);
+
                     if (chunk) {
                         clearOverlayOnce();
                         fullResponse += chunk;
@@ -193,12 +199,21 @@ export async function handleSend(state, textarea, responseSection, sendBtn, stop
                         responseDisplay.scrollTop = responseDisplay.scrollHeight;
                     }
 
-                    if (done) {
+                    if (typeof full === 'string' && full) {
+                        fullResponse = full;
+                    }
+
+                    if (done && !terminalStateHandled) {
+                        terminalStateHandled = true;
                         onGenerationComplete(state, fullResponse, responseSection, sendBtn, stopBtn, historySection, updateConversationList);
                     }
                 },
                 // onError callback
                 (error) => {
+                    if (terminalStateHandled) {
+                        return;
+                    }
+                    terminalStateHandled = true;
                     onGenerationError(state, error, responseSection, sendBtn, stopBtn);
                 }
             );
@@ -213,7 +228,9 @@ export async function handleSend(state, textarea, responseSection, sendBtn, stop
                     options: options
                 },
                 // onChunk callback
-                (chunk, done, full) => {
+                (chunk, done, full, payload) => {
+                    handleStreamingEventStatus(payload, responseSection);
+
                     if (chunk) {
                         clearOverlayOnce();
                         fullResponse += chunk;
@@ -222,12 +239,21 @@ export async function handleSend(state, textarea, responseSection, sendBtn, stop
                         responseDisplay.scrollTop = responseDisplay.scrollHeight;
                     }
 
-                    if (done) {
+                    if (typeof full === 'string' && full) {
+                        fullResponse = full;
+                    }
+
+                    if (done && !terminalStateHandled) {
+                        terminalStateHandled = true;
                         onGenerationComplete(state, fullResponse, responseSection, sendBtn, stopBtn, historySection, updateConversationList);
                     }
                 },
                 // onError callback
                 (error) => {
+                    if (terminalStateHandled) {
+                        return;
+                    }
+                    terminalStateHandled = true;
                     onGenerationError(state, error, responseSection, sendBtn, stopBtn);
                 }
             );
@@ -236,6 +262,123 @@ export async function handleSend(state, textarea, responseSection, sendBtn, stop
     } catch (error) {
         onGenerationError(state, error, responseSection, sendBtn, stopBtn);
     }
+}
+
+function handleStreamingEventStatus(payload, responseSection) {
+    if (!payload || typeof payload !== 'object') {
+        return;
+    }
+
+    const eventType = payload.event || payload.event_data?.type;
+    if (!eventType) {
+        return;
+    }
+
+    if (eventType === 'model_load.start') {
+        showStatus(responseSection, 'Loading model...', 'info');
+        updatePhaseBadge(responseSection, 'loading-model', 'Loading model');
+        return;
+    }
+
+    if (eventType === 'model_load.progress') {
+        const progress = Number(payload.progress);
+        if (Number.isFinite(progress)) {
+            const percent = Math.round(Math.max(0, Math.min(1, progress)) * 100);
+            showStatus(responseSection, `Loading model... ${percent}%`, 'info', { autoHide: false, progress });
+            updatePhaseBadge(responseSection, 'loading-model', `Loading model ${percent}%`);
+        } else {
+            showStatus(responseSection, 'Loading model...', 'info', { autoHide: false });
+            updatePhaseBadge(responseSection, 'loading-model', 'Loading model');
+        }
+        return;
+    }
+
+    if (eventType === 'model_load.end') {
+        showStatus(responseSection, 'Model loaded. Processing prompt...', 'info');
+        updatePhaseBadge(responseSection, 'processing-prompt', 'Processing prompt');
+        return;
+    }
+
+    if (eventType === 'prompt_processing.start') {
+        showStatus(responseSection, 'Processing prompt...', 'info');
+        updatePhaseBadge(responseSection, 'processing-prompt', 'Processing prompt');
+        return;
+    }
+
+    if (eventType === 'prompt_processing.progress') {
+        const progress = Number(payload.progress);
+        if (Number.isFinite(progress)) {
+            const percent = Math.round(Math.max(0, Math.min(1, progress)) * 100);
+            showStatus(responseSection, `Processing prompt... ${percent}%`, 'info', { autoHide: false, progress });
+            updatePhaseBadge(responseSection, 'processing-prompt', `Processing prompt ${percent}%`);
+        } else {
+            showStatus(responseSection, 'Processing prompt...', 'info', { autoHide: false });
+            updatePhaseBadge(responseSection, 'processing-prompt', 'Processing prompt');
+        }
+        return;
+    }
+
+    if (eventType === 'prompt_processing.end') {
+        showStatus(responseSection, 'Generating...', 'info');
+        updatePhaseBadge(responseSection, 'generating', 'Generating');
+        return;
+    }
+
+    // OpenAI generation events
+    if (eventType === 'generation.start') {
+        showStatus(responseSection, 'Generating response...', 'info');
+        updatePhaseBadge(responseSection, 'generating', 'Generating');
+        return;
+    }
+
+    if (eventType === 'generation.progress') {
+        const progress = Number(payload.progress);
+        if (Number.isFinite(progress)) {
+            const percent = Math.round(Math.max(0, Math.min(1, progress)) * 100);
+            showStatus(responseSection, `Generating... ${percent}%`, 'info', { autoHide: false, progress });
+            updatePhaseBadge(responseSection, 'generating', `Generating ${percent}%`);
+        } else {
+            showStatus(responseSection, 'Generating response...', 'info', { autoHide: false });
+            updatePhaseBadge(responseSection, 'generating', 'Generating');
+        }
+        return;
+    }
+
+    if (eventType === 'generation.end') {
+        updatePhaseBadge(responseSection, 'complete', 'Complete');
+        return;
+    }
+
+    if (eventType === 'error') {
+        const errorMessage = payload.error || payload.event_data?.error?.message || 'Streaming error';
+        showStatus(responseSection, `Error: ${errorMessage}`, 'error');
+        updatePhaseBadge(responseSection, 'error', 'Error');
+    }
+}
+
+function updatePhaseBadge(responseSection, phase, label) {
+    const badge = responseSection?.querySelector('.llm-phase-badge');
+    if (!badge) {
+        return;
+    }
+
+    const classNames = [
+        'llm-phase-idle',
+        'llm-phase-loading-model',
+        'llm-phase-processing-prompt',
+        'llm-phase-generating',
+        'llm-phase-complete',
+        'llm-phase-stopped',
+        'llm-phase-error',
+    ];
+    for (const className of classNames) {
+        badge.classList.remove(className);
+    }
+
+    const phaseKey = String(phase || 'idle').toLowerCase().replace(/[^a-z0-9-]/g, '-');
+    badge.classList.add(`llm-phase-${phaseKey}`);
+    badge.textContent = label || 'Idle';
+    badge.style.display = 'inline-flex';
 }
 
 /**
@@ -259,6 +402,7 @@ export function handleStop(state, responseSection, sendBtn, stopBtn) {
     responseDisplay.classList.remove('generating');
     
     showStatus(responseSection, 'Generation stopped', 'warning');
+    updatePhaseBadge(responseSection, 'stopped', 'Stopped');
 }
 
 /**
@@ -473,6 +617,7 @@ async function onGenerationComplete(state, fullResponse, responseSection, sendBt
     if (sendToPromptBtn) sendToPromptBtn.style.display = 'inline-block';
     
     showStatus(responseSection, 'Generation complete', 'success');
+    updatePhaseBadge(responseSection, 'complete', 'Complete');
 }
 
 /**
@@ -489,6 +634,7 @@ function onGenerationError(state, error, responseSection, sendBtn, stopBtn) {
 
     const errorMessage = error?.message || 'An unknown error occurred during generation';
     showStatus(responseSection, `Error: ${errorMessage}`, 'error');
+    updatePhaseBadge(responseSection, 'error', 'Error');
     showGenerationErrorDialog(errorMessage);
 }
 
@@ -522,17 +668,37 @@ function showGenerationErrorDialog(message) {
  * @param {HTMLElement} responseSection - Response section
  * @param {string} message - Status message
  * @param {string} type - Message type: 'info', 'success', 'warning', 'error'
+ * @param {Object} [options] - Additional options
+ * @param {boolean} [options.autoHide] - Auto-hide after 5 seconds (default: true for non-errors)
+ * @param {number} [options.progress] - Progress 0-1 to show progress bar
  */
-function showStatus(responseSection, message, type) {
+function showStatus(responseSection, message, type, options = {}) {
     const statusMessage = responseSection.querySelector('.llm-status-message');
+    if (!statusMessage) return;
+    
+    const { autoHide = (type !== 'error'), progress = null } = options;
+    
     statusMessage.textContent = message;
     statusMessage.className = `llm-status-message llm-status-${type}`;
     statusMessage.style.display = message ? 'block' : 'none';
     
-    // Auto-hide after 5 seconds (except errors)
-    if (type !== 'error' && message) {
+    const progressBar = responseSection.querySelector('.llm-progress-bar-container');
+    if (progressBar) {
+        if (progress !== null && progress >= 0 && progress <= 1) {
+            progressBar.style.display = 'block';
+            const fill = progressBar.querySelector('.llm-progress-bar-fill');
+            fill.style.width = `${Math.round(progress * 100)}%`;
+        } else {
+            progressBar.style.display = 'none';
+        }
+    }
+    
+    // Auto-hide after 5 seconds (only if enabled)
+    if (message && autoHide && type !== 'error') {
         setTimeout(() => {
-            statusMessage.style.display = 'none';
+            if (statusMessage.textContent === message) {
+                statusMessage.style.display = 'none';
+            }
         }, 5000);
     }
 }

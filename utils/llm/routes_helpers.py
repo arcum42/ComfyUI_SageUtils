@@ -416,7 +416,7 @@ def check_model_vision_capability(provider: str, model: str) -> tuple[bool, Opti
             return False, f"Model '{model}' not found in {provider}. Available: {available}..."
         
         capabilities = cap_map[model]
-        if not capabilities.vision:
+        if not capabilities.get('vision', False):
             return False, f"Model '{model}' does not support vision capability on provider {provider}"
         
         return True, None

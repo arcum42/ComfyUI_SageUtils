@@ -68,6 +68,14 @@ export function createResponseSection() {
     
     responseHeader.appendChild(responseTitle);
     responseHeader.appendChild(responseActions);
+
+    const phaseBadge = document.createElement('div');
+    phaseBadge.className = 'llm-phase-badge llm-phase-idle';
+    phaseBadge.style.display = 'none';
+    phaseBadge.textContent = 'Idle';
+    phaseBadge.setAttribute('role', 'status');
+    phaseBadge.setAttribute('aria-live', 'polite');
+    phaseBadge.setAttribute('aria-atomic', 'true');
     
     // Response display area
     const responseDisplay = document.createElement('div');
@@ -85,10 +93,20 @@ export function createResponseSection() {
     statusMessage.setAttribute('role', 'status');
     statusMessage.setAttribute('aria-live', 'polite');
     statusMessage.setAttribute('aria-atomic', 'true');
+
+    // Progress bar (shown during streaming)
+    const progressBar = document.createElement('div');
+    progressBar.className = 'llm-progress-bar-container';
+    progressBar.style.display = 'none';
+    const progressFill = document.createElement('div');
+    progressFill.className = 'llm-progress-bar-fill';
+    progressBar.appendChild(progressFill);
     
     section.appendChild(responseHeader);
+    section.appendChild(phaseBadge);
     section.appendChild(responseDisplay);
     section.appendChild(statusMessage);
+    section.appendChild(progressBar);
     
     return section;
 }
@@ -98,19 +116,37 @@ export function createResponseSection() {
  * @param {HTMLElement} responseSection - Response section element
  * @param {string} message - Status message
  * @param {string} type - Message type: 'info', 'success', 'warning', 'error'
+ * @param {Object} [options] - Additional options
+ * @param {boolean} [options.autoHide] - Auto-hide after 5 seconds (default: true for non-errors)
+ * @param {number} [options.progress] - Progress 0-1 to show progress bar
  */
-export function showStatus(responseSection, message, type) {
+export function showStatus(responseSection, message, type, options = {}) {
     const statusMessage = responseSection.querySelector('.llm-status-message');
     if (!statusMessage) return;
+    
+    const { autoHide = (type !== 'error'), progress = null } = options;
     
     statusMessage.textContent = message;
     statusMessage.className = `llm-status-message llm-status-${type}`;
     statusMessage.style.display = message ? 'block' : 'none';
     
-    // Auto-hide after 5 seconds (except errors)
-    if (message && type !== 'error') {
+    const progressBar = responseSection.querySelector('.llm-progress-bar-container');
+    if (progressBar) {
+        if (progress !== null && progress >= 0 && progress <= 1) {
+            progressBar.style.display = 'block';
+            const fill = progressBar.querySelector('.llm-progress-bar-fill');
+            fill.style.width = `${Math.round(progress * 100)}%`;
+        } else {
+            progressBar.style.display = 'none';
+        }
+    }
+    
+    // Auto-hide after 5 seconds (only if enabled)
+    if (message && autoHide && type !== 'error') {
         setTimeout(() => {
-            statusMessage.style.display = 'none';
+            if (statusMessage.textContent === message) {
+                statusMessage.style.display = 'none';
+            }
         }, 5000);
     }
 }

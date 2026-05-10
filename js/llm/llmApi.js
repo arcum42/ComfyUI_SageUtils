@@ -25,6 +25,111 @@ function createApiErrorFromPayload(payload, fallbackMessage, status) {
     });
 }
 
+function extractStreamErrorMessage(payload, fallbackMessage) {
+    if (!payload || typeof payload !== 'object') {
+        return fallbackMessage;
+    }
+
+    if (typeof payload.error === 'string' && payload.error.trim()) {
+        return payload.error.trim();
+    }
+
+    const nestedError = payload.event_data?.error;
+    if (nestedError && typeof nestedError === 'object') {
+        const nestedMessage = nestedError.message;
+        if (typeof nestedMessage === 'string' && nestedMessage.trim()) {
+            return nestedMessage.trim();
+        }
+    }
+
+    return fallbackMessage;
+}
+
+async function consumeSseStream(response, onChunk, onError, defaultErrorMessage) {
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let stopped = false;
+
+    const controller = {
+        stop: () => {
+            stopped = true;
+            reader.cancel();
+        }
+    };
+
+    (async () => {
+        try {
+            while (!stopped) {
+                const { done, value } = await reader.read();
+
+                if (done) {
+                    break;
+                }
+
+                buffer += decoder.decode(value, { stream: true });
+                const lines = buffer.split('\n');
+                buffer = lines.pop() || '';
+
+                let shouldStopFromPayload = false;
+
+                for (const line of lines) {
+                    if (!line.startsWith('data: ')) {
+                        continue;
+                    }
+
+                    try {
+                        const data = JSON.parse(line.slice(6));
+
+                        if (onChunk) {
+                            onChunk(
+                                data.chunk || '',
+                                data.done || false,
+                                data.full_response || null,
+                                data
+                            );
+                        }
+
+                        const isErrorEvent = data.event === 'error';
+                        const hasErrorField = Boolean(data.error);
+                        if (isErrorEvent || hasErrorField) {
+                            if (onError) {
+                                const message = extractStreamErrorMessage(data, defaultErrorMessage);
+                                onError(createApiErrorFromPayload(data, message, response.status));
+                            }
+                            shouldStopFromPayload = true;
+                            break;
+                        }
+
+                        if (data.done) {
+                            shouldStopFromPayload = true;
+                            break;
+                        }
+                    } catch (parseError) {
+                        console.error('Error parsing SSE data:', parseError, line);
+                    }
+                }
+
+                if (shouldStopFromPayload) {
+                    stopped = true;
+                    try {
+                        await reader.cancel();
+                    } catch {
+                        // Ignore cancellation errors during normal stream teardown.
+                    }
+                    break;
+                }
+            }
+        } catch (error) {
+            if (!stopped && onError) {
+                onError(error);
+            }
+        }
+    })();
+
+    return controller;
+}
+
 async function createApiErrorFromResponse(response, fallbackMessage) {
     const fallback = fallbackMessage || `HTTP ${response.status}: ${response.statusText}`;
 
@@ -192,7 +297,7 @@ export async function generateText(params) {
  * @param {string} params.prompt - Input prompt
  * @param {string} [params.system_prompt] - Optional system prompt
  * @param {Object} [params.options] - Generation options
- * @param {Function} onChunk - Callback for each chunk: (chunk, done, fullResponse) => void
+ * @param {Function} onChunk - Callback for each chunk: (chunk, done, fullResponse, rawPayload) => void
  * @param {Function} [onError] - Callback for errors: (error) => void
  * @returns {Promise<Object>} - Controller object with stop() method
  */
@@ -210,76 +315,7 @@ export async function generateStream(params, onChunk, onError) {
             throw await createApiErrorFromResponse(response, `HTTP ${response.status}: ${response.statusText}`);
         }
         
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder();
-        let buffer = '';
-        let stopped = false;
-        
-        // Controller object to allow stopping the stream
-        const controller = {
-            stop: () => {
-                stopped = true;
-                reader.cancel();
-            }
-        };
-        
-        // Read stream asynchronously
-        (async () => {
-            try {
-                while (!stopped) {
-                    const { done, value } = await reader.read();
-                    
-                    if (done) {
-                        break;
-                    }
-                    
-                    // Decode chunk and add to buffer
-                    buffer += decoder.decode(value, { stream: true });
-                    
-                    // Process complete SSE messages
-                    const lines = buffer.split('\n');
-                    buffer = lines.pop() || ''; // Keep incomplete line in buffer
-                    
-                    for (const line of lines) {
-                        if (line.startsWith('data: ')) {
-                            try {
-                                const data = JSON.parse(line.slice(6)); // Remove 'data: ' prefix
-                                
-                                // Call chunk callback
-                                if (onChunk) {
-                                    onChunk(
-                                        data.chunk || '',
-                                        data.done || false,
-                                        data.full_response || null
-                                    );
-                                }
-                                
-                                // Handle errors in stream
-                                if (data.error) {
-                                    if (onError) {
-                                        onError(createApiErrorFromPayload(data, data.error || 'Streaming failed', response.status));
-                                    }
-                                    break;
-                                }
-                                
-                                // Stop on completion
-                                if (data.done) {
-                                    break;
-                                }
-                            } catch (parseError) {
-                                console.error('Error parsing SSE data:', parseError, line);
-                            }
-                        }
-                    }
-                }
-            } catch (error) {
-                if (!stopped && onError) {
-                    onError(error);
-                }
-            }
-        })();
-        
-        return controller;
+        return consumeSseStream(response, onChunk, onError, 'Streaming failed');
     } catch (error) {
         console.error('Error in generateStream:', error);
         if (onError) {
@@ -336,7 +372,7 @@ export async function generateVision(params) {
  * @param {string[]} params.images - Array of base64-encoded images
  * @param {string} [params.system_prompt] - Optional system prompt
  * @param {Object} [params.options] - Generation options
- * @param {Function} onChunk - Callback for each chunk: (chunk, done, fullResponse) => void
+ * @param {Function} onChunk - Callback for each chunk: (chunk, done, fullResponse, rawPayload) => void
  * @param {Function} [onError] - Callback for errors: (error) => void
  * @returns {Promise<Object>} - Controller object with stop() method
  */
@@ -354,76 +390,7 @@ export async function generateVisionStream(params, onChunk, onError) {
             throw await createApiErrorFromResponse(response, `HTTP ${response.status}: ${response.statusText}`);
         }
         
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder();
-        let buffer = '';
-        let stopped = false;
-        
-        // Controller object to allow stopping the stream
-        const controller = {
-            stop: () => {
-                stopped = true;
-                reader.cancel();
-            }
-        };
-        
-        // Read stream asynchronously
-        (async () => {
-            try {
-                while (!stopped) {
-                    const { done, value } = await reader.read();
-                    
-                    if (done) {
-                        break;
-                    }
-                    
-                    // Decode chunk and add to buffer
-                    buffer += decoder.decode(value, { stream: true });
-                    
-                    // Process complete SSE messages
-                    const lines = buffer.split('\n');
-                    buffer = lines.pop() || ''; // Keep incomplete line in buffer
-                    
-                    for (const line of lines) {
-                        if (line.startsWith('data: ')) {
-                            try {
-                                const data = JSON.parse(line.slice(6)); // Remove 'data: ' prefix
-                                
-                                // Call chunk callback
-                                if (onChunk) {
-                                    onChunk(
-                                        data.chunk || '',
-                                        data.done || false,
-                                        data.full_response || null
-                                    );
-                                }
-                                
-                                // Handle errors in stream
-                                if (data.error) {
-                                    if (onError) {
-                                        onError(createApiErrorFromPayload(data, data.error || 'Vision streaming failed', response.status));
-                                    }
-                                    break;
-                                }
-                                
-                                // Stop on completion
-                                if (data.done) {
-                                    break;
-                                }
-                            } catch (parseError) {
-                                console.error('Error parsing SSE data:', parseError, line);
-                            }
-                        }
-                    }
-                }
-            } catch (error) {
-                if (!stopped && onError) {
-                    onError(error);
-                }
-            }
-        })();
-        
-        return controller;
+        return consumeSseStream(response, onChunk, onError, 'Vision streaming failed');
     } catch (error) {
         console.error('Error in generateVisionStream:', error);
         if (onError) {

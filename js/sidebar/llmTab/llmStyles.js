@@ -709,6 +709,52 @@ export function addLLMStyles() {
             gap: 6px;
         }
 
+        .llm-phase-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            width: fit-content;
+            margin: 0 0 8px 0;
+            padding: 4px 10px;
+            border-radius: 999px;
+            border: 1px solid transparent;
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 0.01em;
+        }
+
+        .llm-phase-idle {
+            background: rgba(153, 153, 153, 0.12);
+            border-color: rgba(153, 153, 153, 0.35);
+            color: #aaaaaa;
+        }
+
+        .llm-phase-loading-model,
+        .llm-phase-processing-prompt,
+        .llm-phase-generating {
+            background: rgba(74, 158, 255, 0.15);
+            border-color: rgba(74, 158, 255, 0.35);
+            color: #6db1ff;
+        }
+
+        .llm-phase-complete {
+            background: rgba(107, 207, 127, 0.15);
+            border-color: rgba(107, 207, 127, 0.35);
+            color: #6bcf7f;
+        }
+
+        .llm-phase-stopped {
+            background: rgba(255, 167, 38, 0.15);
+            border-color: rgba(255, 167, 38, 0.35);
+            color: #ffb74d;
+        }
+
+        .llm-phase-error {
+            background: rgba(244, 67, 54, 0.15);
+            border-color: rgba(244, 67, 54, 0.35);
+            color: #f44336;
+        }
+
         .llm-response-display {
             flex: 1;
             padding: 10px;
@@ -878,6 +924,25 @@ export function addLLMStyles() {
             background: rgba(244, 67, 54, 0.15);
             border: 1px solid rgba(244, 67, 54, 0.3);
             color: #f44336;
+        }
+
+        /* Progress bar */
+        .llm-progress-bar-container {
+            margin-top: 8px;
+            height: 4px;
+            background: rgba(74, 158, 255, 0.1);
+            border: 1px solid rgba(74, 158, 255, 0.25);
+            border-radius: 2px;
+            overflow: hidden;
+            display: none;
+        }
+
+        .llm-progress-bar-fill {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, #4a9eff 0%, #6db1ff 100%);
+            transition: width 0.3s ease;
+            box-shadow: 0 0 8px rgba(74, 158, 255, 0.5);
         }
 
         /* History section */

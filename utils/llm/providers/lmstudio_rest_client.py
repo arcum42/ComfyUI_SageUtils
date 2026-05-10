@@ -15,6 +15,14 @@ logger = get_logger('llm.providers.lmstudio_rest')
 _PROVIDER_NAME = 'lmstudio_rest'
 _DEFAULT_BASE_URL = 'http://localhost:1234'
 _UNAVAILABLE_MESSAGE = '(LM Studio REST not available)'
+_PROGRESS_EVENT_TYPES = {
+    'model_load.start',
+    'model_load.progress',
+    'model_load.end',
+    'prompt_processing.start',
+    'prompt_processing.progress',
+    'prompt_processing.end',
+}
 
 
 def _unavailable_models() -> list[str]:
@@ -129,6 +137,54 @@ def _extract_chat_end_text(payload: Any) -> str:
     return _extract_response_text(payload.get('result'))
 
 
+def _resolve_stream_event_type(event_name: Any, event_data: Any) -> str:
+    """Resolve LM Studio stream event type from SSE header or payload body.
+
+    LM Studio documents named SSE events, but some gateways/proxies may forward
+    generic event names and keep the canonical type in payload.type.
+    """
+    if isinstance(event_name, str) and event_name.strip() and event_name != 'message':
+        return event_name.strip()
+
+    if isinstance(event_data, dict):
+        payload_type = event_data.get('type')
+        if isinstance(payload_type, str) and payload_type.strip():
+            return payload_type.strip()
+
+    return 'message'
+
+
+def _extract_stream_text_delta(event_type: str, event_data: Any) -> str:
+    if event_type != 'message.delta':
+        return ''
+    if not isinstance(event_data, dict):
+        return ''
+    content = event_data.get('content')
+    if isinstance(content, str):
+        return content
+    return ''
+
+
+def _build_progress_event_payload(event_type: str, event_data: Any) -> dict[str, Any]:
+    payload: dict[str, Any] = {
+        'chunk': '',
+        'done': False,
+        'event': event_type,
+    }
+
+    if isinstance(event_data, dict):
+        payload['event_data'] = event_data
+
+        if 'model_instance_id' in event_data:
+            payload['model_instance_id'] = event_data.get('model_instance_id')
+        if 'progress' in event_data:
+            payload['progress'] = event_data.get('progress')
+        if 'load_time_seconds' in event_data:
+            payload['load_time_seconds'] = event_data.get('load_time_seconds')
+
+    return payload
+
+
 def _detect_capabilities_from_model_object(model_obj: dict[str, Any]) -> ModelCapabilities:
     #print('Detecting capabilities from model object:', model_obj)
     model_name = _extract_model_name(model_obj) or model_obj.get('display_name') or 'unknown'
@@ -204,6 +260,7 @@ def get_model_capabilities_map(enabled: bool) -> dict[str, ModelCapabilities]:
 
 def _stream_chat_response(payload: dict[str, Any], operation: str):
     full_response = ''
+    upstream_error_message = ''
     stream_payload = payload.copy()
     stream_payload['stream'] = True
 
@@ -217,28 +274,51 @@ def _stream_chat_response(payload: dict[str, Any], operation: str):
         for event in iter_sse_events(response):
             event_name = event.get('event') or 'message'
             event_data = event.get('data') or {}
+            event_type = _resolve_stream_event_type(event_name, event_data)
 
-            if event_name == 'message.delta':
-                chunk = event_data.get('content')
-                if isinstance(chunk, str) and chunk:
-                    full_response += chunk
-                    yield {'chunk': chunk, 'done': False}
+            chunk = _extract_stream_text_delta(event_type, event_data)
+            if chunk:
+                full_response += chunk
+                yield {'chunk': chunk, 'done': False}
                 continue
 
-            if event_name == 'error':
+            if event_type in _PROGRESS_EVENT_TYPES:
+                yield _build_progress_event_payload(event_type, event_data)
+                continue
+
+            if event_type == 'error':
                 error_payload = event_data.get('error') if isinstance(event_data, dict) else None
                 if isinstance(error_payload, dict):
-                    message = error_payload.get('message') or 'Upstream LM Studio REST streaming error.'
-                else:
-                    message = 'Upstream LM Studio REST streaming error.'
-                raise_llm_error(RuntimeError, message, provider='lmstudio_rest', operation=operation)
+                    upstream_error_message = str(error_payload.get('message') or '').strip()
+                if not upstream_error_message:
+                    upstream_error_message = 'Upstream LM Studio REST streaming error.'
+                yield {
+                    'chunk': '',
+                    'done': False,
+                    'event': 'error',
+                    'error': upstream_error_message,
+                    'event_data': event_data if isinstance(event_data, dict) else {},
+                }
+                continue
 
-            if event_name == 'chat.end':
-                final_text = clean_response(_extract_chat_end_text(event_data) or full_response)
-                yield {'chunk': '', 'done': True, 'full_response': final_text}
+            if isinstance(event_data, dict) and event_data.get('raw') == '[DONE]':
+                # Defensive fallback for OpenAI-style done sentinels.
+                yield {'chunk': '', 'done': True, 'full_response': clean_response(full_response)}
                 return
 
-    yield {'chunk': '', 'done': True, 'full_response': clean_response(full_response)}
+            if event_type == 'chat.end':
+                final_text = clean_response(_extract_chat_end_text(event_data) or full_response)
+                final_payload = {'chunk': '', 'done': True, 'full_response': final_text}
+                if upstream_error_message:
+                    final_payload['error'] = upstream_error_message
+                yield final_payload
+                return
+
+    # Fallback if upstream closes without chat.end. Preserve any partial text.
+    fallback_payload = {'chunk': '', 'done': True, 'full_response': clean_response(full_response)}
+    if upstream_error_message:
+        fallback_payload['error'] = upstream_error_message
+    yield fallback_payload
 
 
 def is_running(enabled: bool) -> bool:
