@@ -25,6 +25,51 @@ _PROGRESS_EVENT_TYPES = {
 }
 
 
+def lmstudio_request_json(
+    method: str,
+    path: str,
+    payload: Optional[dict[str, Any]] = None,
+    timeout: float = 300.0,
+) -> Any:
+    """Perform an HTTP JSON request to LM Studio REST and return decoded JSON response."""
+    return request_json(method, _get_base_url(), path, payload=payload, headers=_get_headers(), timeout=timeout)
+
+
+def lmstudio_request_json_models(timeout: float = 300.0) -> Any:
+    """Perform a models request to LM Studio REST and return decoded JSON response."""
+    return lmstudio_request_json('GET', '/api/v1/models', timeout=timeout)
+
+
+def lmstudio_request_json_chat(payload: dict[str, Any], timeout: float = 300.0) -> Any:
+    """Perform a chat request to LM Studio REST and return decoded JSON response."""
+    return lmstudio_request_json('POST', '/api/v1/chat', payload=payload, timeout=timeout)
+
+
+def lmstudio_request_json_load(payload: dict[str, Any], timeout: float = 300.0) -> Any:
+    """Perform a model load request to LM Studio REST and return decoded JSON response."""
+    return lmstudio_request_json('POST', '/api/v1/models/load', payload=payload, timeout=timeout)
+
+
+def lmstudio_request_json_unload(payload: dict[str, Any], timeout: float = 300.0) -> Any:
+    """Perform a model unload request to LM Studio REST and return decoded JSON response."""
+    return lmstudio_request_json('POST', '/api/v1/models/unload', payload=payload, timeout=timeout)
+
+
+def lmstudio_request_stream(
+    method: str,
+    path: str,
+    payload: Optional[dict[str, Any]] = None,
+    timeout: float = 30.0,
+) -> Any:
+    """Perform an HTTP streaming request to LM Studio REST and return an open response context."""
+    return request_stream(method, _get_base_url(), path, payload=payload, headers=_get_headers(), timeout=timeout)
+
+
+def lmstudio_request_stream_chat(payload: dict[str, Any], timeout: float = 30.0) -> Any:
+    """Perform a streaming chat request to LM Studio REST and return an open response context."""
+    return lmstudio_request_stream('POST', '/api/v1/chat', payload=payload, timeout=timeout)
+
+
 def _unavailable_models() -> list[str]:
     return [_UNAVAILABLE_MESSAGE]
 
@@ -266,7 +311,7 @@ def get_model_capabilities_map(enabled: bool) -> dict[str, ModelCapabilities]:
         return {}
 
     try:
-        response = request_json('GET', _get_base_url(), '/api/v1/models', headers=_get_headers())
+        response = lmstudio_request_json_models()
         models_payload = _extract_models_payload(response)
         capabilities_map: dict[str, ModelCapabilities] = {}
         for model_obj in models_payload:
@@ -286,13 +331,7 @@ def _stream_chat_response(payload: dict[str, Any], operation: str):
     stream_payload = payload.copy()
     stream_payload['stream'] = True
 
-    with request_stream(
-        'POST',
-        _get_base_url(),
-        '/api/v1/chat',
-        payload=stream_payload,
-        headers=_get_headers(),
-    ) as response:
+    with lmstudio_request_stream_chat(stream_payload) as response:
         for event in iter_sse_events(response):
             event_name = event.get('event') or 'message'
             event_data = event.get('data') or {}
@@ -357,7 +396,7 @@ def is_running(enabled: bool) -> bool:
         return False
 
     try:
-        request_json('GET', _get_base_url(), '/api/v1/models', headers=_get_headers(), timeout=5.0)
+        lmstudio_request_json_models(timeout=5.0)
         return True
     except Exception:
         return False
@@ -370,7 +409,7 @@ def get_models(enabled: bool) -> list[str]:
 
     def _fetch_models() -> list[str]:
         try:
-            response = request_json('GET', _get_base_url(), '/api/v1/models', headers=_get_headers())
+            response = lmstudio_request_json_models()
             models_payload = _extract_models_payload(response)
             models: list[str] = []
             for model_obj in models_payload:
@@ -398,7 +437,7 @@ def get_vision_models(enabled: bool) -> list[str]:
 
     def _fetch_vision_models(cache_instance) -> list[str]:
         try:
-            response = request_json('GET', _get_base_url(), '/api/v1/models', headers=_get_headers())
+            response = lmstudio_request_json_models()
             models_payload = _extract_models_payload(response)
             vision_models: list[str] = []
 
@@ -453,7 +492,7 @@ def load_model(enabled: bool, model: str, keep_alive: int = 0) -> bool:
     payload: dict[str, Any] = {'model': model}
 
     try:
-        request_json('POST', _get_base_url(), '/api/v1/models/load', payload=payload, headers=_get_headers())
+        lmstudio_request_json_load(payload)
         return True
     except Exception as e:
         raise_llm_error(RuntimeError, f"Failed to load model '{model}' via LM Studio REST", provider='lmstudio_rest', operation='load_model', cause=RuntimeError(stringify_llm_error(e)))
@@ -466,7 +505,7 @@ def unload_model(enabled: bool, model: str) -> bool:
         return False
 
     try:
-        request_json('POST', _get_base_url(), '/api/v1/models/unload', payload={'model': model}, headers=_get_headers())
+        lmstudio_request_json_unload({'model': model})
         return True
     except Exception as e:
         report_llm_error('Error unloading model via LM Studio REST', provider='lmstudio_rest', operation='unload_model', cause=e)
@@ -492,7 +531,7 @@ def generate(enabled: bool, model: str, prompt: str, options=None, system_prompt
     payload.update(_build_chat_options(options))
 
     try:
-        response = request_json('POST', _get_base_url(), '/api/v1/chat', payload=payload, headers=_get_headers())
+        response = lmstudio_request_json_chat(payload)
         response_text = _extract_response_text(response)
         if not response_text:
             raise_llm_error(ValueError, 'No valid response received from LM Studio REST.', provider='lmstudio_rest', operation='generate')
@@ -534,7 +573,7 @@ def generate_vision(enabled: bool, model: str, prompt: str, images, options=None
     payload.update(_build_chat_options(options))
 
     try:
-        response = request_json('POST', _get_base_url(), '/api/v1/chat', payload=payload, headers=_get_headers())
+        response = lmstudio_request_json_chat(payload)
         response_text = _extract_response_text(response)
         if not response_text:
             raise_llm_error(ValueError, 'No valid response received from LM Studio REST.', provider='lmstudio_rest', operation='generate_vision')

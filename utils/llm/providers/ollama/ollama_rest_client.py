@@ -23,6 +23,42 @@ _UNAVAILABLE_MESSAGE = '(Ollama REST not available)'
 _MAX_TOOL_ITERATIONS = 4
 
 
+def ollama_request_json(method: str, path: str, payload: Optional[dict[str, Any]] = None, timeout: float = 300.0) -> Any:
+    """Perform an HTTP JSON request to Ollama REST and return decoded JSON response."""
+    return request_json(method,_get_base_url(),path,payload=payload,headers=_get_headers(),timeout=timeout)
+
+def ollama_request_json_chat(payload: dict[str, Any], timeout: float = 300.0) -> Any:
+    """Perform a chat request to Ollama REST and return decoded JSON response."""
+    return ollama_request_json('POST', '/api/chat', payload=payload, timeout=timeout)
+
+def ollama_request_json_show(payload: dict[str, Any], timeout: float = 300.0) -> Any:
+    """Perform a show request to Ollama REST and return decoded JSON response."""
+    return ollama_request_json('POST', '/api/show', payload=payload, timeout=timeout)
+
+def ollama_request_json_tags(timeout: float = 300.0) -> Any:
+    """Perform a tags request to Ollama REST and return decoded JSON response."""
+    return ollama_request_json('GET', '/api/tags', timeout=timeout)
+
+def ollama_request_json_generate(payload: dict[str, Any], timeout: float = 300.0) -> Any:
+    """Perform a generate request to Ollama REST and return decoded JSON response."""
+    return ollama_request_json('POST', '/api/generate', payload=payload, timeout=timeout)
+
+
+def ollama_request_stream(
+    method: str,
+    path: str,
+    payload: Optional[dict[str, Any]] = None,
+    timeout: float = 30.0,
+) -> Any:
+    """Perform an HTTP streaming request to Ollama REST and return an open response context."""
+    return request_stream(method, _get_base_url(), path, payload=payload, headers=_get_headers(), timeout=timeout)
+
+
+def ollama_request_stream_chat(payload: dict[str, Any], timeout: float = 30.0) -> Any:
+    """Perform a streaming chat request to Ollama REST and return an open response context."""
+    return ollama_request_stream('POST', '/api/chat', payload=payload, timeout=timeout)
+
+
 def _unavailable_models() -> list[str]:
     return [_UNAVAILABLE_MESSAGE]
 
@@ -563,14 +599,7 @@ def _build_ollama_payload(model: str, messages: list[dict[str, Any]], options=No
 
 
 def _chat_once(payload: dict[str, Any], operation: str) -> dict[str, Any]:
-    response = request_json(
-        'POST',
-        _get_base_url(),
-        '/api/chat',
-        payload=payload,
-        headers=_get_headers(),
-        timeout=_get_request_timeout(),
-    )
+    response = ollama_request_json_chat(payload, timeout=_get_request_timeout())
 
     if not isinstance(response, dict):
         raise_llm_error(
@@ -661,14 +690,7 @@ def _normalize_raw_images(images=None) -> list[str]:
 def _query_model_metadata(model_name: str) -> dict[str, Any]:
     """Query Ollama /api/show to get model metadata and template details."""
     try:
-        response = request_json(
-            'POST',
-            _get_base_url(),
-            '/api/show',
-            payload={'name': model_name},
-            headers=_get_headers(),
-            timeout=_get_request_timeout(),
-        )
+        response = ollama_request_json_show({'name': model_name}, timeout=_get_request_timeout())
         return response if isinstance(response, dict) else {}
     except Exception as e:
         logger.debug(f"Failed to query /api/show for '{model_name}': {e}")
@@ -789,14 +811,7 @@ def _stream_chat_response(payload: dict[str, Any], operation: str):
     stream_payload = payload.copy()
     stream_payload['stream'] = True
 
-    with request_stream(
-        'POST',
-        _get_base_url(),
-        '/api/chat',
-        payload=stream_payload,
-        headers=_get_headers(),
-        timeout=_get_request_timeout(),
-    ) as response:
+    with ollama_request_stream_chat(stream_payload, timeout=_get_request_timeout()) as response:
         for item in iter_json_lines(response):
             if not isinstance(item, dict):
                 continue
@@ -828,7 +843,7 @@ def is_running(enabled: bool) -> bool:
         return False
 
     try:
-        request_json('GET', _get_base_url(), '/api/tags', headers=_get_headers(), timeout=5.0)
+        ollama_request_json_tags(timeout=5.0)
         return True
     except Exception:
         return False
@@ -841,7 +856,7 @@ def get_models(enabled: bool) -> list[str]:
 
     def _fetch_models() -> list[str]:
         try:
-            response = request_json('GET', _get_base_url(), '/api/tags', headers=_get_headers())
+            response = ollama_request_json_tags(timeout=_get_request_timeout())
             models_payload = _extract_models_payload(response)
             models: list[str] = []
             for model_obj in models_payload:
@@ -869,7 +884,7 @@ def get_vision_models(enabled: bool) -> list[str]:
 
     def _fetch_vision_models(cache_instance) -> list[str]:
         try:
-            response = request_json('GET', _get_base_url(), '/api/tags', headers=_get_headers())
+            response = ollama_request_json_tags(timeout=_get_request_timeout())
             models_payload = _extract_models_payload(response)
             vision_models: list[str] = []
 
@@ -932,14 +947,7 @@ def load_model(enabled: bool, model: str, keep_alive: int = 60) -> bool:
     }
 
     try:
-        response = request_json(
-            'POST',
-            _get_base_url(),
-            '/api/generate',
-            payload=payload,
-            headers=_get_headers(),
-            timeout=_get_request_timeout(),
-        )
+        response = ollama_request_json_generate(payload, timeout=_get_request_timeout())
         if isinstance(response, dict) and response.get('error'):
             raise_llm_error(RuntimeError, str(response.get('error')), provider=_PROVIDER_NAME, operation='load_model')
         return True
@@ -1003,14 +1011,7 @@ def generate_vision(enabled: bool, model: str, prompt: str, images=None, options
         payload['options'] = built_options
 
     try:
-        response = request_json(
-            'POST',
-            _get_base_url(),
-            '/api/chat',
-            payload=payload,
-            headers=_get_headers(),
-            timeout=_get_request_timeout(),
-        )
+        response = ollama_request_json_chat(payload, timeout=_get_request_timeout())
         response_text = _extract_response_text(response)
         if not response_text:
             raise_llm_error(ValueError, 'No valid response received from Ollama REST.', provider=_PROVIDER_NAME, operation='generate_vision')

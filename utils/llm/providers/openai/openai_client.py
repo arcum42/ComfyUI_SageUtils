@@ -63,6 +63,41 @@ _OPENAI_MODEL_CAPABILITIES: dict[str, dict[str, bool]] = {
 _PROGRESS_EVENT_TYPES = {'generation.start', 'generation.progress', 'generation.end'}
 
 
+def openai_request_json(
+    method: str,
+    path: str,
+    payload: Optional[dict[str, Any]] = None,
+    timeout: float = 300.0,
+) -> Any:
+    """Perform an HTTP JSON request to an OpenAI-compatible endpoint and return decoded JSON response."""
+    return request_json(method, _get_base_url(), path, payload=payload, headers=_get_headers(), timeout=timeout)
+
+
+def openai_request_json_models(timeout: float = 300.0) -> Any:
+    """Perform a models request to an OpenAI-compatible endpoint and return decoded JSON response."""
+    return openai_request_json('GET', '/v1/models', timeout=timeout)
+
+
+def openai_request_json_chat(payload: dict[str, Any], timeout: float = 300.0) -> Any:
+    """Perform a chat completions request to an OpenAI-compatible endpoint and return decoded JSON response."""
+    return openai_request_json('POST', '/v1/chat/completions', payload=payload, timeout=timeout)
+
+
+def openai_request_stream(
+    method: str,
+    path: str,
+    payload: Optional[dict[str, Any]] = None,
+    timeout: float = 30.0,
+) -> Any:
+    """Perform an HTTP streaming request to an OpenAI-compatible endpoint and return an open response context."""
+    return request_stream(method, _get_base_url(), path, payload=payload, headers=_get_headers(), timeout=timeout)
+
+
+def openai_request_stream_chat(payload: dict[str, Any], timeout: float = 30.0) -> Any:
+    """Perform a streaming chat completions request and return an open response context."""
+    return openai_request_stream('POST', '/v1/chat/completions', payload=payload, timeout=timeout)
+
+
 def _unavailable_models() -> list[str]:
     return [_UNAVAILABLE_MESSAGE]
 
@@ -343,7 +378,7 @@ def get_model_capabilities_map(enabled: bool) -> dict[str, ModelCapabilities]:
         return {}
 
     try:
-        response = request_json('GET', _get_base_url(), '/v1/models', headers=_get_headers())
+        response = openai_request_json_models()
         models_payload = _extract_models_payload(response)
         capabilities_map: dict[str, ModelCapabilities] = {}
         for model_obj in models_payload:
@@ -366,13 +401,7 @@ def _stream_chat_response(payload: dict[str, Any], operation: str):
     stream_payload = payload.copy()
     stream_payload['stream'] = True
 
-    with request_stream(
-        'POST',
-        _get_base_url(),
-        '/v1/chat/completions',
-        payload=stream_payload,
-        headers=_get_headers(),
-    ) as response:
+    with openai_request_stream_chat(stream_payload) as response:
         for event in iter_sse_events(response):
             event_data = event.get('data') or {}
 
@@ -437,7 +466,7 @@ def is_running(enabled: bool) -> bool:
         return False
 
     try:
-        request_json('GET', _get_base_url(), '/v1/models', headers=_get_headers(), timeout=10.0)
+        openai_request_json_models(timeout=10.0)
         return True
     except Exception:
         return False
@@ -450,7 +479,7 @@ def get_models(enabled: bool) -> list[str]:
 
     def _fetch_models() -> list[str]:
         try:
-            response = request_json('GET', _get_base_url(), '/v1/models', headers=_get_headers())
+            response = openai_request_json_models()
             models_payload = _extract_models_payload(response)
             models: list[str] = []
             for model_obj in models_payload:
@@ -478,7 +507,7 @@ def get_vision_models(enabled: bool) -> list[str]:
 
     def _fetch_vision_models(cache_instance) -> list[str]:
         try:
-            response = request_json('GET', _get_base_url(), '/v1/models', headers=_get_headers())
+            response = openai_request_json_models()
             models_payload = _extract_models_payload(response)
             vision_models: list[str] = []
 
@@ -536,7 +565,7 @@ def generate(enabled: bool, model: str, prompt: str, options=None, system_prompt
     payload.update(_build_options(options))
 
     try:
-        response = request_json('POST', _get_base_url(), '/v1/chat/completions', payload=payload, headers=_get_headers())
+        response = openai_request_json_chat(payload)
         response_text = _extract_response_text(response)
         if not response_text:
             raise_llm_error(ValueError, 'No valid response received from OpenAI.', provider=_PROVIDER_NAME, operation='generate')
@@ -562,7 +591,7 @@ def generate_vision(enabled: bool, model: str, prompt: str, images=None, options
     payload.update(_build_options(options))
 
     try:
-        response = request_json('POST', _get_base_url(), '/v1/chat/completions', payload=payload, headers=_get_headers())
+        response = openai_request_json_chat(payload)
         response_text = _extract_response_text(response)
         if not response_text:
             raise_llm_error(ValueError, 'No valid response received from OpenAI.', provider=_PROVIDER_NAME, operation='generate_vision')
