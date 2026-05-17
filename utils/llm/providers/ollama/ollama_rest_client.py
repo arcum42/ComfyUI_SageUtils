@@ -1,10 +1,9 @@
 """Ollama REST provider operations using the native HTTP API (no SDK required)."""
 
 import json
-import os
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 import folder_paths
 from ....path_manager import path_manager
 
@@ -12,51 +11,21 @@ from ...cache import get_llm_cache
 from ....logger import get_logger
 from ...common import clean_response
 from ...errors import raise_llm_error, report_llm_error, stringify_llm_error
-from ...rest import iter_json_lines, normalize_base_url, normalize_raw_image_base64, request_json, request_stream, with_bearer_auth
+from ...rest import iter_json_lines, normalize_raw_image_base64
 from ...capabilities import ModelCapabilities, get_capability_cache
+from .requests import (
+    ollama_request_json_chat,
+    ollama_request_json_generate,
+    ollama_request_json_show,
+    ollama_request_json_tags,
+    ollama_request_stream_chat,
+)
 
 logger = get_logger('llm.providers.ollama_rest')
 
 _PROVIDER_NAME = 'ollama_rest'
-_DEFAULT_BASE_URL = 'http://localhost:11434'
 _UNAVAILABLE_MESSAGE = '(Ollama REST not available)'
 _MAX_TOOL_ITERATIONS = 4
-
-
-def ollama_request_json(method: str, path: str, payload: Optional[dict[str, Any]] = None, timeout: float = 300.0) -> Any:
-    """Perform an HTTP JSON request to Ollama REST and return decoded JSON response."""
-    return request_json(method,_get_base_url(),path,payload=payload,headers=_get_headers(),timeout=timeout)
-
-def ollama_request_json_chat(payload: dict[str, Any], timeout: float = 300.0) -> Any:
-    """Perform a chat request to Ollama REST and return decoded JSON response."""
-    return ollama_request_json('POST', '/api/chat', payload=payload, timeout=timeout)
-
-def ollama_request_json_show(payload: dict[str, Any], timeout: float = 300.0) -> Any:
-    """Perform a show request to Ollama REST and return decoded JSON response."""
-    return ollama_request_json('POST', '/api/show', payload=payload, timeout=timeout)
-
-def ollama_request_json_tags(timeout: float = 300.0) -> Any:
-    """Perform a tags request to Ollama REST and return decoded JSON response."""
-    return ollama_request_json('GET', '/api/tags', timeout=timeout)
-
-def ollama_request_json_generate(payload: dict[str, Any], timeout: float = 300.0) -> Any:
-    """Perform a generate request to Ollama REST and return decoded JSON response."""
-    return ollama_request_json('POST', '/api/generate', payload=payload, timeout=timeout)
-
-
-def ollama_request_stream(
-    method: str,
-    path: str,
-    payload: Optional[dict[str, Any]] = None,
-    timeout: float = 30.0,
-) -> Any:
-    """Perform an HTTP streaming request to Ollama REST and return an open response context."""
-    return request_stream(method, _get_base_url(), path, payload=payload, headers=_get_headers(), timeout=timeout)
-
-
-def ollama_request_stream_chat(payload: dict[str, Any], timeout: float = 30.0) -> Any:
-    """Perform a streaming chat request to Ollama REST and return an open response context."""
-    return ollama_request_stream('POST', '/api/chat', payload=payload, timeout=timeout)
 
 
 def _unavailable_models() -> list[str]:
@@ -65,28 +34,6 @@ def _unavailable_models() -> list[str]:
 
 def _is_unavailable(enabled: bool) -> bool:
     return not enabled
-
-
-def _get_base_url() -> str:
-    from ....settings import get_setting
-
-    use_custom = bool(get_setting('ollama_use_custom_url', False))
-    custom_url = str(
-        get_setting('ollama_custom_url', get_setting('custom_ollama_url', ''))
-    ) if use_custom else ''
-    return normalize_base_url(custom_url, _DEFAULT_BASE_URL)
-
-
-def _get_headers() -> Dict[str, str]:
-    from ....settings import get_setting
-
-    # Prefer explicit setting, then environment variable(s).
-    token = str(get_setting('ollama_api_key', '')).strip()
-    if not token:
-        token = os.environ.get('OLLAMA_API_KEY', '').strip()
-    if not token:
-        token = os.environ.get('OLLAMA_API_TOKEN', '').strip()
-    return with_bearer_auth({}, token)
 
 
 def _get_request_timeout() -> float:
