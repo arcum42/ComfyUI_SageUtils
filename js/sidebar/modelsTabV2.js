@@ -51,6 +51,16 @@ function createHeaderAndControls(onRefresh, onScan, onReport) {
     
     // Get the content area to append our controls to
     const contentArea = section.querySelector('div:last-child');
+
+    // Create collapsible search/filter controls section
+    const searchControlsSection = createSection('Search & Filters', null, {
+        collapsible: true,
+        collapsed: false,
+        style: {
+            marginBottom: '0'
+        }
+    });
+    const searchControlsContent = searchControlsSection.querySelector('div:last-child');
     
     // Helper to create labeled select
     const createLabeledSelect = (labelText, items) => {
@@ -181,11 +191,12 @@ function createHeaderAndControls(onRefresh, onScan, onReport) {
     buttonContainer.appendChild(scanButton);
     buttonContainer.appendChild(reportButton);
     
-    // Assemble section - append to contentArea, not section
-    contentArea.appendChild(filterGrid);
-    contentArea.appendChild(sortContainer);
-    contentArea.appendChild(searchInput);
-    contentArea.appendChild(buttonContainer);
+    // Assemble search controls inside collapsible section
+    searchControlsContent.appendChild(filterGrid);
+    searchControlsContent.appendChild(sortContainer);
+    searchControlsContent.appendChild(searchInput);
+    searchControlsContent.appendChild(buttonContainer);
+    contentArea.appendChild(searchControlsSection);
     
     // Restore persisted filter values from state
     const savedFilters = selectors.modelFilters();

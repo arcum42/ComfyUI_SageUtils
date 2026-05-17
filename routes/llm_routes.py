@@ -601,6 +601,23 @@ def register_routes(routes_instance):
         "path": "/sage_llm/prompts",
         "description": "Get LLM prompt templates"
     })
+
+    @routes_instance.get('/sage_llm/integration_profiles')
+    @route_error_handler
+    async def get_llm_integration_profiles(request):
+        """Get tool and MCP integration profile metadata for selector population."""
+        try:
+            profiles = routes_helpers.get_integration_profiles()
+            return success_response(data={'profiles': profiles})
+        except Exception as e:
+            logger.error(f"Failed to get integration profiles: {str(e)}")
+            return error_response(f"Failed to get integration profiles: {str(e)}", status=500)
+
+    _route_list.append({
+        "method": "GET",
+        "path": "/sage_llm/integration_profiles",
+        "description": "Get tool and MCP profile metadata"
+    })
     
     @routes_instance.post('/sage_llm/generate')
     @route_error_handler
@@ -642,7 +659,10 @@ def register_routes(routes_instance):
             model = data["model"]
             prompt = data["prompt"]
             system_prompt = data.get("system_prompt", "")
-            options = data.get("options", {})
+            is_valid, error_msg = routes_helpers.validate_generation_payload_options(provider, data)
+            if not is_valid:
+                return _error_response_with_metadata(error_msg, status=400, error_code='LLM_VALIDATION_ERROR')
+            options = routes_helpers.build_generation_payload_options(provider, data)
             
             from ..utils.llm import service as llm
             
@@ -783,7 +803,10 @@ def register_routes(routes_instance):
             model = data["model"]
             prompt = data["prompt"]
             system_prompt = data.get("system_prompt", "")
-            options = data.get("options", {})
+            is_valid, error_msg = routes_helpers.validate_generation_payload_options(provider, data)
+            if not is_valid:
+                return _error_response_with_metadata(error_msg, status=400, error_code='LLM_VALIDATION_ERROR')
+            options = routes_helpers.build_generation_payload_options(provider, data)
             
             # Validate provider
             if provider not in ["lmstudio_rest", "ollama_rest", "openai", "native"]:
@@ -993,7 +1016,10 @@ def register_routes(routes_instance):
             prompt = data["prompt"]
             images_data = data["images"]
             system_prompt = data.get("system_prompt", "")
-            options = data.get("options", {})
+            is_valid, error_msg = routes_helpers.validate_generation_payload_options(provider, data)
+            if not is_valid:
+                return _error_response_with_metadata(error_msg, status=400, error_code='LLM_VALIDATION_ERROR')
+            options = routes_helpers.build_generation_payload_options(provider, data)
             
             from ..utils.llm import service as llm
             
@@ -1119,7 +1145,10 @@ def register_routes(routes_instance):
             prompt = data["prompt"]
             images_data = data["images"]
             system_prompt = data.get("system_prompt", "")
-            options = data.get("options", {})
+            is_valid, error_msg = routes_helpers.validate_generation_payload_options(provider, data)
+            if not is_valid:
+                return _error_response_with_metadata(error_msg, status=400, error_code='LLM_VALIDATION_ERROR')
+            options = routes_helpers.build_generation_payload_options(provider, data)
             
             from ..utils.llm import service as llm
             

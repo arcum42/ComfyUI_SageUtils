@@ -32,7 +32,7 @@ export function createLLMGenerationPanel({ onGenerateCurrent, onGenerateAll, bat
   `;
 
   // Use shared collapsible panel (Unicode carets explicitly enabled per user override)
-  const section = createCollapsiblePanel({ titleText: 'AI Generate Description', defaultExpanded: true, useUnicodeCarets: true });
+  const section = createCollapsiblePanel({ titleText: 'LLM Caption Generator', defaultExpanded: true, useUnicodeCarets: true });
   // NOTE: Using Unicode caret glyphs (▾/▸) here by explicit override of the ASCII-only rule.
   // Some search tools may not work properly around these characters; edit with care.
   const content = section.contentEl;

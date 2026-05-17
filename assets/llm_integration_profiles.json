@@ -1,0 +1,184 @@
+{
+  "tool_profiles": {
+    "none": [],
+    "sage_core": [
+      {
+        "type": "function",
+        "function": {
+          "name": "sage.get_time",
+          "description": "Return current local or UTC time.",
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "utc": {
+                "type": "boolean"
+              }
+            }
+          }
+        }
+      },
+      {
+        "type": "function",
+        "function": {
+          "name": "sage.echo",
+          "description": "Echo text back to the model.",
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "text": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "text"
+            ]
+          }
+        }
+      },
+      {
+        "type": "function",
+        "function": {
+          "name": "sage.notes.list",
+          "description": "List notes files under SageUtils notes directory.",
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "limit": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 200
+              }
+            }
+          }
+        }
+      },
+      {
+        "type": "function",
+        "function": {
+          "name": "sage.notes.read",
+          "description": "Read a note by filename from SageUtils notes directory.",
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "filename": {
+                "type": "string"
+              },
+              "max_chars": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 20000
+              }
+            },
+            "required": [
+              "filename"
+            ]
+          }
+        }
+      },
+      {
+        "type": "function",
+        "function": {
+          "name": "sage.notes.search",
+          "description": "Search notes content for a query string.",
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "query": {
+                "type": "string"
+              },
+              "limit": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 100
+              }
+            },
+            "required": [
+              "query"
+            ]
+          }
+        }
+      },
+      {
+        "type": "function",
+        "function": {
+          "name": "sage.prompts.list",
+          "description": "List saved prompt entries.",
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "category": {
+                "type": "string"
+              },
+              "limit": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 200
+              }
+            }
+          }
+        }
+      },
+      {
+        "type": "function",
+        "function": {
+          "name": "sage.prompts.get",
+          "description": "Get one saved prompt by id.",
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id"
+            ]
+          }
+        }
+      },
+      {
+        "type": "function",
+        "function": {
+          "name": "sage.prompts.search",
+          "description": "Search saved prompts by text.",
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "query": {
+                "type": "string"
+              },
+              "limit": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 100
+              }
+            },
+            "required": [
+              "query"
+            ]
+          }
+        }
+      },
+      {
+        "type": "function",
+        "function": {
+          "name": "sage.workflow.read_latest",
+          "description": "Read the most recently modified workflow JSON from ComfyUI user workflows directory.",
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "max_chars": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 200000
+              }
+            }
+          }
+        }
+      }
+    ]
+  },
+  "mcp_profiles": {
+    "none": []
+  }
+}

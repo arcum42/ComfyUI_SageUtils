@@ -98,11 +98,17 @@ def _build_chat_options(options: Optional[dict[str, Any]]) -> dict[str, Any]:
         'max_tokens': 'max_output_tokens',
         'maxTokens': 'max_output_tokens',
         'max_output_tokens': 'max_output_tokens',
+        'context_length': 'context_length',
+        'reasoning': 'reasoning',
     }
 
     for key, mapped_key in option_map.items():
         if key in input_options and input_options[key] is not None:
             payload_options[mapped_key] = input_options[key]
+
+    integrations = input_options.get('integrations')
+    if isinstance(integrations, list):
+        payload_options['integrations'] = integrations
 
     return payload_options
 
@@ -183,6 +189,22 @@ def _build_progress_event_payload(event_type: str, event_data: Any) -> dict[str,
             payload['load_time_seconds'] = event_data.get('load_time_seconds')
 
     return payload
+
+
+def _extract_error_message(event_data: Any) -> str:
+    """Extract a readable error message from LM Studio SSE payloads."""
+    if isinstance(event_data, dict):
+        error_payload = event_data.get('error')
+        if isinstance(error_payload, dict):
+            message = error_payload.get('message')
+            if isinstance(message, str) and message.strip():
+                return message.strip()
+
+        message = event_data.get('message')
+        if isinstance(message, str) and message.strip():
+            return message.strip()
+
+    return ''
 
 
 def _detect_capabilities_from_model_object(model_obj: dict[str, Any]) -> ModelCapabilities:
@@ -286,20 +308,22 @@ def _stream_chat_response(payload: dict[str, Any], operation: str):
                 yield _build_progress_event_payload(event_type, event_data)
                 continue
 
-            if event_type == 'error':
-                error_payload = event_data.get('error') if isinstance(event_data, dict) else None
-                if isinstance(error_payload, dict):
-                    upstream_error_message = str(error_payload.get('message') or '').strip()
+            is_error_event = event_type == 'error' or event_type.endswith('.error')
+            error_message = _extract_error_message(event_data)
+
+            if is_error_event or error_message:
+                if error_message:
+                    upstream_error_message = error_message
                 if not upstream_error_message:
                     upstream_error_message = 'Upstream LM Studio REST streaming error.'
                 yield {
                     'chunk': '',
-                    'done': False,
+                    'done': True,
                     'event': 'error',
                     'error': upstream_error_message,
                     'event_data': event_data if isinstance(event_data, dict) else {},
                 }
-                continue
+                return
 
             if isinstance(event_data, dict) and event_data.get('raw') == '[DONE]':
                 # Defensive fallback for OpenAI-style done sentinels.
@@ -315,9 +339,15 @@ def _stream_chat_response(payload: dict[str, Any], operation: str):
                 return
 
     # Fallback if upstream closes without chat.end. Preserve any partial text.
-    fallback_payload = {'chunk': '', 'done': True, 'full_response': clean_response(full_response)}
+    cleaned_response = clean_response(full_response)
+    fallback_payload = {'chunk': '', 'done': True, 'full_response': cleaned_response}
     if upstream_error_message:
         fallback_payload['error'] = upstream_error_message
+    elif not cleaned_response:
+        fallback_payload['error'] = (
+            'LM Studio stream ended before completion. '
+            'The model may have failed to load or ran out of VRAM.'
+        )
     yield fallback_payload
 
 

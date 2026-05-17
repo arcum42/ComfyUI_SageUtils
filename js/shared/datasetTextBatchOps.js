@@ -32,7 +32,7 @@ export function createBatchOpsPanel({ onCreateMissing, onAppendStart, onAppendEn
   `;
 
   // Use shared collapsible panel (Unicode carets explicitly enabled per user override)
-  const section = createCollapsiblePanel({ titleText: 'Batch Operations', defaultExpanded: true, useUnicodeCarets: true });
+  const section = createCollapsiblePanel({ titleText: 'Batch Caption Replace', defaultExpanded: true, useUnicodeCarets: true });
   // NOTE: Using Unicode caret glyphs (▾/▸) here by explicit override of the ASCII-only rule.
   // Some search tools may not work properly around these characters; edit with care.
   // Scope selector

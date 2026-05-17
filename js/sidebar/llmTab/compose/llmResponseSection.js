@@ -80,7 +80,19 @@ export function createResponseSection() {
     // Response display area
     const responseDisplay = document.createElement('div');
     responseDisplay.className = 'llm-response-display';
-    responseDisplay.innerHTML = '<p class="llm-placeholder">Response will appear here...</p>';
+    responseDisplay.innerHTML = `
+        <div class="llm-reasoning-panel" hidden>
+            <div class="llm-reasoning-header">
+                <span class="llm-reasoning-title">Reasoning</span>
+                <span class="llm-reasoning-badge">Hidden</span>
+            </div>
+            <div class="llm-reasoning-content"></div>
+        </div>
+        <div class="llm-response-answer-panel">
+            <p class="llm-placeholder llm-response-placeholder">Response will appear here...</p>
+            <div class="llm-response-answer"></div>
+        </div>
+    `;
     responseDisplay.setAttribute('role', 'log');
     responseDisplay.setAttribute('aria-live', 'polite');
     responseDisplay.setAttribute('aria-atomic', 'false');
@@ -159,7 +171,14 @@ export function showStatus(responseSection, message, type, options = {}) {
 export function setResponseText(responseSection, text) {
     const responseDisplay = responseSection.querySelector('.llm-response-display');
     if (responseDisplay) {
-        responseDisplay.textContent = text;
+        const placeholder = responseDisplay.querySelector('.llm-response-placeholder');
+        const answer = responseDisplay.querySelector('.llm-response-answer');
+        if (placeholder) {
+            placeholder.style.display = text ? 'none' : 'block';
+        }
+        if (answer) {
+            answer.textContent = text || '';
+        }
     }
 }
 
@@ -170,7 +189,32 @@ export function setResponseText(responseSection, text) {
  */
 export function getResponseText(responseSection) {
     const responseDisplay = responseSection.querySelector('.llm-response-display');
-    return responseDisplay ? responseDisplay.textContent : '';
+    if (!responseDisplay) return '';
+    const answer = responseDisplay.querySelector('.llm-response-answer');
+    return answer ? answer.textContent : '';
+}
+
+/**
+ * Get the full transcript text, including reasoning when present.
+ * @param {HTMLElement} responseSection - Response section element
+ * @returns {string} - Combined transcript text
+ */
+export function getTranscriptText(responseSection) {
+    const responseDisplay = responseSection.querySelector('.llm-response-display');
+    if (!responseDisplay) return '';
+
+    const parts = [];
+    const reasoning = responseDisplay.querySelector('.llm-reasoning-content')?.textContent?.trim();
+    const answer = responseDisplay.querySelector('.llm-response-answer')?.textContent?.trim();
+
+    if (reasoning) {
+        parts.push(`Reasoning:\n${reasoning}`);
+    }
+    if (answer) {
+        parts.push(`Response:\n${answer}`);
+    }
+
+    return parts.join('\n\n');
 }
 
 /**
@@ -179,6 +223,89 @@ export function getResponseText(responseSection) {
  */
 export function clearResponseText(responseSection) {
     setResponseText(responseSection, '');
+}
+
+/**
+ * Show or hide the reasoning transcript block.
+ * @param {HTMLElement} responseSection - Response section element
+ * @param {boolean} show - Whether to show reasoning output
+ */
+export function setReasoningVisible(responseSection, show) {
+    const reasoningPanel = responseSection.querySelector('.llm-reasoning-panel');
+    if (reasoningPanel) {
+        reasoningPanel.hidden = !show;
+    }
+}
+
+/**
+ * Set reasoning text.
+ * @param {HTMLElement} responseSection - Response section element
+ * @param {string} text - Reasoning text
+ */
+export function setReasoningText(responseSection, text) {
+    const reasoningPanel = responseSection.querySelector('.llm-reasoning-panel');
+    const reasoningContent = responseSection.querySelector('.llm-reasoning-content');
+    const reasoningBadge = responseSection.querySelector('.llm-reasoning-badge');
+    const normalizedText = typeof text === 'string' ? text : '';
+    const hasContent = normalizedText.trim().length > 0;
+
+    if (reasoningContent) {
+        reasoningContent.textContent = normalizedText;
+    }
+    if (reasoningPanel) {
+        reasoningPanel.hidden = !hasContent;
+    }
+    if (reasoningBadge) {
+        reasoningBadge.textContent = hasContent ? 'Visible' : 'Hidden';
+    }
+}
+
+/**
+ * Append reasoning text for streaming updates.
+ * @param {HTMLElement} responseSection - Response section element
+ * @param {string} text - Reasoning text to append
+ * @param {boolean} autoScroll - Whether to auto-scroll to bottom
+ */
+export function appendReasoningText(responseSection, text, autoScroll = true) {
+    if (typeof text !== 'string' || text.trim().length === 0) {
+        return;
+    }
+
+    const responseDisplay = responseSection.querySelector('.llm-response-display');
+    const reasoningPanel = responseSection.querySelector('.llm-reasoning-panel');
+    const reasoningContent = responseSection.querySelector('.llm-reasoning-content');
+    const reasoningBadge = responseSection.querySelector('.llm-reasoning-badge');
+
+    if (reasoningPanel) {
+        reasoningPanel.hidden = false;
+    }
+    if (reasoningContent) {
+        reasoningContent.textContent += text;
+    }
+    if (reasoningBadge) {
+        reasoningBadge.textContent = 'Visible';
+    }
+
+    if (autoScroll && responseDisplay) {
+        responseDisplay.scrollTop = responseDisplay.scrollHeight;
+    }
+}
+
+/**
+ * Clear reasoning output.
+ * @param {HTMLElement} responseSection - Response section element
+ */
+export function clearReasoningText(responseSection) {
+    setReasoningText(responseSection, '');
+}
+
+/**
+ * Clear both reasoning and answer text.
+ * @param {HTMLElement} responseSection - Response section element
+ */
+export function clearResponseTranscript(responseSection) {
+    clearReasoningText(responseSection);
+    clearResponseText(responseSection);
 }
 
 /**
@@ -236,11 +363,14 @@ export function setGeneratingState(responseSection, generating) {
  */
 export function appendResponseText(responseSection, text, autoScroll = true) {
     const responseDisplay = responseSection.querySelector('.llm-response-display');
-    if (responseDisplay) {
-        responseDisplay.textContent += text;
+    const responseText = responseSection.querySelector('.llm-response-answer');
+    if (responseText) {
+        responseText.textContent += text;
         
         if (autoScroll) {
-            responseDisplay.scrollTop = responseDisplay.scrollHeight;
+            if (responseDisplay) {
+                responseDisplay.scrollTop = responseDisplay.scrollHeight;
+            }
         }
     }
 }

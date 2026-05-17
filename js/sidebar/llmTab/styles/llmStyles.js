@@ -1217,6 +1217,77 @@ export function addLLMStyles() {
             word-wrap: break-word;
         }
 
+        .llm-response-answer-panel,
+        .llm-reasoning-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+
+        .llm-response-answer-panel:last-child,
+        .llm-reasoning-panel:last-child {
+            margin-bottom: 0;
+        }
+
+        .llm-reasoning-panel {
+            padding: 10px;
+            border: 1px solid rgba(107, 207, 127, 0.28);
+            border-radius: 6px;
+            background: rgba(107, 207, 127, 0.08);
+        }
+
+        .llm-reasoning-panel[hidden] {
+            display: none !important;
+        }
+
+        .llm-reasoning-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+        }
+
+        .llm-reasoning-title {
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: #8ee39f;
+        }
+
+        .llm-reasoning-badge {
+            font-size: 10px;
+            font-weight: 700;
+            padding: 2px 8px;
+            border-radius: 999px;
+            color: #d6f8dd;
+            background: rgba(107, 207, 127, 0.16);
+            border: 1px solid rgba(107, 207, 127, 0.28);
+        }
+
+        .llm-reasoning-content {
+            color: #cdeed2;
+            white-space: pre-wrap;
+            word-break: break-word;
+            line-height: 1.55;
+        }
+
+        .llm-response-answer-panel {
+            min-height: 0;
+        }
+
+        .llm-response-placeholder {
+            margin-top: 0;
+        }
+
+        .llm-response-answer {
+            color: var(--fg-color, #ffffff);
+            white-space: pre-wrap;
+            word-break: break-word;
+            line-height: 1.55;
+        }
+
         .llm-response-display.generating {
             border-color: var(--primary-color, #4a9eff);
             box-shadow: 0 0 0 2px rgba(74, 158, 255, 0.1);

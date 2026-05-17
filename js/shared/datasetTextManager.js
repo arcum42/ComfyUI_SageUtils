@@ -169,10 +169,22 @@ export async function showCombinedImageTextEditor(image) {
         display: flex;
         flex-direction: column;
         align-items: center;
-        justify-content: center;
+        justify-content: flex-start;
         background: #333;
         overflow: hidden;
         box-sizing: border-box;
+        gap: 12px;
+    `;
+
+    const imageFrame = document.createElement('div');
+    imageFrame.style.cssText = `
+        flex: 1;
+        width: 100%;
+        min-height: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
     `;
     
     // Image display
@@ -236,7 +248,54 @@ export async function showCombinedImageTextEditor(image) {
         }
     };
     
-    imagePanel.appendChild(imageDisplay);
+        imageFrame.appendChild(imageDisplay);
+        imagePanel.appendChild(imageFrame);
+
+        const imageMetaRow = document.createElement('div');
+        imageMetaRow.style.cssText = `
+                width: 100%;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 10px;
+                padding-top: 8px;
+                border-top: 1px solid #4a4a4a;
+        `;
+
+        const imageNameLabel = document.createElement('div');
+        imageNameLabel.style.cssText = `
+                color: #ddd;
+                font-size: 12px;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+                flex: 1;
+        `;
+
+        const imageStepControls = document.createElement('div');
+        imageStepControls.style.cssText = `
+                display: flex;
+                gap: 8px;
+                align-items: center;
+        `;
+
+        const backImageButton = createButton('Back', {
+            variant: BUTTON_VARIANTS.SECONDARY,
+            size: 'small',
+            style: { marginTop: '0' }
+        });
+
+        const nextImageButton = createButton('Next', {
+            variant: BUTTON_VARIANTS.SECONDARY,
+            size: 'small',
+            style: { marginTop: '0' }
+        });
+
+        imageStepControls.appendChild(backImageButton);
+        imageStepControls.appendChild(nextImageButton);
+        imageMetaRow.appendChild(imageNameLabel);
+        imageMetaRow.appendChild(imageStepControls);
+        imagePanel.appendChild(imageMetaRow);
     
     // Text panel (right side)
     const textPanel = document.createElement('div');
@@ -258,6 +317,15 @@ export async function showCombinedImageTextEditor(image) {
         position: relative;
         flex: 1;
         margin-bottom: 15px;
+    `;
+
+    const captionCandidatesTitle = document.createElement('div');
+    captionCandidatesTitle.textContent = 'Caption Candidates';
+    captionCandidatesTitle.style.cssText = `
+        color: #fff;
+        font-size: 13px;
+        font-weight: 600;
+        margin-bottom: 8px;
     `;
     
     // Text area
@@ -456,9 +524,12 @@ export async function showCombinedImageTextEditor(image) {
         currentImage = allImages[currentImageIndex];
         const imageNameUpdate = currentImage.name || currentImage.path.split('/').pop() || 'Unknown Image';
         title.textContent = `${isNew ? 'Create' : 'Edit'} Dataset Text for ${imageNameUpdate}`;
+        imageNameLabel.textContent = imageNameUpdate;
         
         // Update navigation button states using shared component
         navButtons.updateButtonStates(currentImageIndex, allImages.length);
+        backImageButton.disabled = currentImageIndex <= 0;
+        nextImageButton.disabled = currentImageIndex >= allImages.length - 1;
         
         // Load new image
         await loadCurrentImage();
@@ -493,6 +564,20 @@ export async function showCombinedImageTextEditor(image) {
     lastButton.addEventListener('click', async () => {
         if (currentImageIndex < allImages.length - 1) {
             currentImageIndex = allImages.length - 1;
+            await updateForCurrentImage();
+        }
+    });
+
+    backImageButton.addEventListener('click', async () => {
+        if (currentImageIndex > 0) {
+            currentImageIndex--;
+            await updateForCurrentImage();
+        }
+    });
+
+    nextImageButton.addEventListener('click', async () => {
+        if (currentImageIndex < allImages.length - 1) {
+            currentImageIndex++;
             await updateForCurrentImage();
         }
     });
@@ -540,6 +625,8 @@ export async function showCombinedImageTextEditor(image) {
     textPanel.appendChild(textAreaContainer);
     textPanel.appendChild(llmPanel);
     textPanel.appendChild(batchOpsPanel);
+
+    textPanel.insertBefore(captionCandidatesTitle, textAreaContainer);
     
     // Build split pane using shared component
     const splitPane = createSplitPane(imagePanel, textPanel, {
@@ -582,6 +669,9 @@ export async function showCombinedImageTextEditor(image) {
     
     // Initialize button states
     navButtons.updateButtonStates(currentImageIndex, allImages.length);
+    imageNameLabel.textContent = imageName;
+    backImageButton.disabled = currentImageIndex <= 0;
+    nextImageButton.disabled = currentImageIndex >= allImages.length - 1;
     
     // Keyboard navigation
     const handleKeydown = (e) => {

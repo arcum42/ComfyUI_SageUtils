@@ -8,6 +8,8 @@ import { loadModel } from '../../../llm/llmApi.js';
 import { copyTextToSelectedNode } from '../../../utils/textCopyUtils.js';
 import { copyTextFromSelectedNode } from '../../../utils/textCopyFromNode.js';
 import { alertDialog } from '../../../components/dialogManager.js';
+import { getModelCapabilityFlags } from '../../../llm/llmProviders.js';
+import { clearResponseTranscript, appendResponseText, appendReasoningText, getTranscriptText, getResponseText, setResponseText } from './llmResponseSection.js';
 
 let errorDialogOpen = false;
 let lastErrorDialogMessage = '';
@@ -140,12 +142,20 @@ export async function handleSend(state, textarea, responseSection, sendBtn, stop
             keep_alive: keepAlive,
         });
     } catch (loadError) {
-        // Non-fatal: model may already be loaded or preload unsupported — continue
-        console.warn('[LLM] Model preload failed (continuing anyway):', loadError);
+        // Preload is a readiness check; if it fails, stop here and surface the error.
+        console.error('[LLM] Model preload failed:', loadError);
+        const baseMessage = loadError?.message || 'Model preload failed';
+        const preloadMessage = `Model preload failed before generation: ${baseMessage}`;
+        const wrappedError = new Error(preloadMessage);
+        if (loadError && typeof loadError === 'object') {
+            Object.assign(wrappedError, loadError);
+        }
+        onGenerationError(state, wrappedError, responseSection, sendBtn, stopBtn);
+        return;
     }
 
     // Phase 2: switch to generation view
-    responseDisplay.innerHTML = '';
+    clearResponseTranscript(responseSection);
     showStatus(responseSection, 'Generating...', 'info');
     updatePhaseBadge(responseSection, 'generating', 'Generating');
 
@@ -158,7 +168,10 @@ export async function handleSend(state, textarea, responseSection, sendBtn, stop
         const clearOverlayOnce = () => {
             if (!overlayCleared) {
                 overlayCleared = true;
-                responseDisplay.innerHTML = '';
+                const overlay = responseDisplay.querySelector('.llm-loading-overlay');
+                if (overlay) {
+                    overlay.remove();
+                }
             }
         };
 
@@ -192,12 +205,18 @@ export async function handleSend(state, textarea, responseSection, sendBtn, stop
                 (chunk, done, full, payload) => {
                     handleStreamingEventStatus(payload, responseSection);
 
+                    const isReasoningChunk = isReasoningPayload(payload);
+
                     if (chunk) {
                         clearOverlayOnce();
-                        fullResponse += chunk;
-                        responseDisplay.textContent = fullResponse;
-                        // Auto-scroll to bottom
-                        responseDisplay.scrollTop = responseDisplay.scrollHeight;
+                        if (isReasoningChunk) {
+                            if (state.settings?.showReasoning !== false) {
+                                appendReasoningText(responseSection, chunk);
+                            }
+                        } else {
+                            fullResponse += chunk;
+                            appendResponseText(responseSection, chunk);
+                        }
                     }
 
                     if (typeof full === 'string' && full) {
@@ -232,12 +251,18 @@ export async function handleSend(state, textarea, responseSection, sendBtn, stop
                 (chunk, done, full, payload) => {
                     handleStreamingEventStatus(payload, responseSection);
 
+                    const isReasoningChunk = isReasoningPayload(payload);
+
                     if (chunk) {
                         clearOverlayOnce();
-                        fullResponse += chunk;
-                        responseDisplay.textContent = fullResponse;
-                        // Auto-scroll to bottom
-                        responseDisplay.scrollTop = responseDisplay.scrollHeight;
+                        if (isReasoningChunk) {
+                            if (state.settings?.showReasoning !== false) {
+                                appendReasoningText(responseSection, chunk);
+                            }
+                        } else {
+                            fullResponse += chunk;
+                            appendResponseText(responseSection, chunk);
+                        }
                     }
 
                     if (typeof full === 'string' && full) {
@@ -325,6 +350,24 @@ function handleStreamingEventStatus(payload, responseSection) {
         return;
     }
 
+    if (eventType === 'reasoning.start') {
+        showStatus(responseSection, 'Reasoning...', 'info', { autoHide: false });
+        updatePhaseBadge(responseSection, 'reasoning', 'Reasoning');
+        return;
+    }
+
+    if (eventType === 'reasoning.delta') {
+        showStatus(responseSection, 'Reasoning...', 'info', { autoHide: false });
+        updatePhaseBadge(responseSection, 'reasoning', 'Reasoning');
+        return;
+    }
+
+    if (eventType === 'reasoning.end') {
+        showStatus(responseSection, 'Reasoning complete', 'info');
+        updatePhaseBadge(responseSection, 'generating', 'Generating');
+        return;
+    }
+
     // OpenAI generation events
     if (eventType === 'generation.start') {
         showStatus(responseSection, 'Generating response...', 'info');
@@ -355,6 +398,23 @@ function handleStreamingEventStatus(payload, responseSection) {
         showStatus(responseSection, `Error: ${errorMessage}`, 'error');
         updatePhaseBadge(responseSection, 'error', 'Error');
     }
+}
+
+function isReasoningPayload(payload) {
+    if (!payload || typeof payload !== 'object') {
+        return false;
+    }
+
+    const eventType = String(payload.event || payload.event_data?.type || '').toLowerCase();
+    if (eventType.startsWith('reasoning')) {
+        return true;
+    }
+
+    if (payload.reasoning || payload.thinking) {
+        return true;
+    }
+
+    return false;
 }
 
 function updatePhaseBadge(responseSection, phase, label) {
@@ -412,8 +472,7 @@ export function handleStop(state, responseSection, sendBtn, stopBtn) {
  * @param {HTMLButtonElement} copyBtn - Copy button
  */
 export async function handleCopy(responseSection, copyBtn) {
-    const responseDisplay = responseSection.querySelector('.llm-response-display');
-    const text = responseDisplay.textContent;
+    const text = getTranscriptText(responseSection);
     
     try {
         await navigator.clipboard.writeText(text);
@@ -435,8 +494,7 @@ export async function handleCopy(responseSection, copyBtn) {
  * @param {Object} app - ComfyUI app instance
  */
 export function handleCopyToNode(responseSection, copyToNodeBtn, app) {
-    const responseDisplay = responseSection.querySelector('.llm-response-display');
-    const text = responseDisplay.textContent;
+    const text = getTranscriptText(responseSection);
     
     const success = copyTextToSelectedNode(app, text);
     
@@ -490,8 +548,19 @@ function showLoadingOverlay(responseDisplay, modelName) {
   overlay.appendChild(spinner);
   overlay.appendChild(label);
 
-  responseDisplay.innerHTML = '';
   responseDisplay.appendChild(overlay);
+}
+
+function clearLoadingOverlay(responseSection) {
+    const responseDisplay = responseSection?.querySelector('.llm-response-display');
+    if (!responseDisplay) {
+        return;
+    }
+
+    const overlay = responseDisplay.querySelector('.llm-loading-overlay');
+    if (overlay) {
+        overlay.remove();
+    }
 }
 
 /**
@@ -502,6 +571,15 @@ function showLoadingOverlay(responseDisplay, modelName) {
 function buildGenerationOptions(state) {
     const options = {};
     const settings = state.settings || {};
+    const capabilityFlags = state.model ? getModelCapabilityFlags(
+        state.provider,
+        state.model,
+        state.capabilities,
+        state.visionModels,
+        state.toolModels,
+        state.reasoningModels
+    ) : null;
+    const supportsReasoning = Boolean(capabilityFlags?.reasoning) && (state.provider === 'lmstudio_rest' || state.provider === 'ollama_rest');
 
     const getSetting = (...keys) => {
         for (const key of keys) {
@@ -515,6 +593,73 @@ function buildGenerationOptions(state) {
     const addIfDefined = (key, value) => {
         if (value !== undefined && value !== null && value !== '') {
             options[key] = value;
+        }
+    };
+
+    const getBoolean = (...keys) => {
+        const value = getSetting(...keys);
+        return value === undefined ? undefined : Boolean(value);
+    };
+
+    const resolveReasoningValue = () => {
+        const reasoningEnabled = getBoolean('reasoningEnabled', 'reasoning_enabled');
+        if (reasoningEnabled === false) {
+            return undefined;
+        }
+
+        const reasoningLevel = getSetting('reasoningLevel', 'reasoning_level', 'reasoning');
+
+        if (typeof reasoningLevel === 'string' && reasoningLevel) {
+            const normalized = reasoningLevel.toLowerCase();
+            if (normalized === 'on') return state.provider === 'lmstudio_rest' ? 'on' : true;
+            if (normalized === 'off') return state.provider === 'lmstudio_rest' ? 'off' : false;
+            if (normalized === 'low' || normalized === 'medium' || normalized === 'high') return normalized;
+        }
+
+        if (reasoningEnabled !== undefined) {
+            if (state.provider === 'lmstudio_rest') {
+                return reasoningEnabled ? 'on' : 'off';
+            }
+            return reasoningEnabled;
+        }
+
+        return undefined;
+    };
+
+    const applySharedAdvancedControls = () => {
+        const contextLength = getSetting('contextLength', 'context_length');
+        const contextLengthEnabled = getBoolean('contextLengthEnabled', 'context_length_enabled', 'send_context_length');
+        const shouldSendContextLength = contextLengthEnabled !== false;
+        if (state.provider === 'lmstudio_rest') {
+            if (shouldSendContextLength) {
+                addIfDefined('context_length', contextLength);
+            }
+            if (supportsReasoning) {
+                addIfDefined('reasoning', resolveReasoningValue());
+            }
+        } else if (state.provider === 'ollama_rest') {
+            if (shouldSendContextLength) {
+                addIfDefined('num_ctx', contextLength);
+            }
+            if (supportsReasoning) {
+                addIfDefined('think', resolveReasoningValue());
+            }
+        }
+
+        const toolsEnabled = getBoolean('toolsEnabled', 'tools_enabled');
+        addIfDefined('tools_enabled', toolsEnabled);
+        addIfDefined('tool_profile', getSetting('toolProfile', 'tool_profile'));
+        const tools = getSetting('tools');
+        if (toolsEnabled === true && Array.isArray(tools) && tools.length > 0) {
+            addIfDefined('tools', tools);
+        }
+
+        const mcpEnabled = getBoolean('mcpEnabled', 'mcp_enabled');
+        addIfDefined('mcp_enabled', mcpEnabled);
+        addIfDefined('mcp_profile', getSetting('mcpProfile', 'mcp_profile'));
+        const integrations = getSetting('integrations');
+        if (mcpEnabled === true && Array.isArray(integrations) && integrations.length > 0) {
+            addIfDefined('integrations', integrations);
         }
     };
 
@@ -549,6 +694,7 @@ function buildGenerationOptions(state) {
         if (isOptionEnabled('repeat_penalty')) addIfDefined('repeatPenalty', getSetting('lmsRepeatPenalty', 'repeat_penalty'));
         if (isOptionEnabled('presence_penalty')) addIfDefined('presence_penalty', getSetting('presencePenalty', 'presence_penalty'));
         if (isOptionEnabled('frequency_penalty')) addIfDefined('frequency_penalty', getSetting('frequencyPenalty', 'frequency_penalty'));
+        applySharedAdvancedControls();
     } else if (state.provider === 'ollama_rest') {
         if (isOptionEnabled('temperature')) addIfDefined('temperature', getSetting('temperature'));
         if (isOptionEnabled('seed')) addIfDefined('seed', getSetting('seed'));
@@ -560,6 +706,7 @@ function buildGenerationOptions(state) {
         if (isOptionEnabled('frequency_penalty')) addIfDefined('frequency_penalty', getSetting('frequencyPenalty', 'frequency_penalty'));
         if (isOptionEnabled('num_ctx')) addIfDefined('num_ctx', getSetting('numCtx', 'num_ctx'));
         if (isOptionEnabled('keep_alive')) addIfDefined('keep_alive', getSetting('keepAlive', 'keep_alive'));
+        applySharedAdvancedControls();
     } else if (state.provider === 'openai') {
         addIfDefined('temperature', getSetting('temperature'));
         addIfDefined('seed', getSetting('seed'));
@@ -583,6 +730,13 @@ function buildGenerationOptions(state) {
  * Called when generation completes successfully
  */
 async function onGenerationComplete(state, fullResponse, responseSection, sendBtn, stopBtn, historySection, updateConversationList) {
+    clearLoadingOverlay(responseSection);
+
+    // Some providers may only provide a final aggregate response without chunk deltas.
+    if (!getResponseText(responseSection)?.trim() && fullResponse) {
+        setResponseText(responseSection, fullResponse);
+    }
+
     // Check if we should skip saving to history
     const skipSaveCheckbox = document.querySelector('.llm-skip-save-checkbox');
     const skipSave = skipSaveCheckbox && skipSaveCheckbox.checked;
@@ -667,6 +821,8 @@ async function onGenerationComplete(state, fullResponse, responseSection, sendBt
  * Called when generation encounters an error
  */
 function onGenerationError(state, error, responseSection, sendBtn, stopBtn) {
+    clearLoadingOverlay(responseSection);
+
     state.generating = false;
     state.streamController = null;
     sendBtn.disabled = false;

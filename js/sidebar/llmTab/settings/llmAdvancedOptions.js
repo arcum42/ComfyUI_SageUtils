@@ -30,10 +30,18 @@ export function createAdvancedOptions() {
     contextGroup.content.appendChild(createHistoryContextControls());
     container.appendChild(contextGroup.element);
 
+    const contextLengthGroup = createSettingsGroup(
+        'Context Length',
+        'Set the token budget separately from reasoning and tool controls.'
+    );
+    contextLengthGroup.content.appendChild(createContextLengthControl());
+    container.appendChild(contextLengthGroup.element);
+
     const generationGroup = createSettingsGroup(
         'Generation And Provider',
         'Provider-tuned generation parameters are kept in their own collapsible sections.'
     );
+    generationGroup.content.appendChild(createReasoningToolsMcpControls());
     generationGroup.content.appendChild(createOllamaOptions());
     generationGroup.content.appendChild(createLMStudioOptions());
     const noProviderOptions = document.createElement('p');
@@ -192,6 +200,141 @@ function createHistoryContextControls() {
         collapsed: true,
         className: 'llm-history-context-section'
     });
+}
+
+/**
+ * Creates shared advanced controls used by provider payload mapping.
+ */
+function createContextLengthControl() {
+    const content = document.createElement('div');
+    content.className = 'llm-context-length-content';
+
+    const contextLengthEnabledRow = document.createElement('div');
+    contextLengthEnabledRow.className = 'llm-form-row llm-checkbox-row llm-context-length-enabled-row';
+    const contextLengthEnabledLabel = document.createElement('label');
+    contextLengthEnabledLabel.className = 'llm-label';
+    contextLengthEnabledLabel.textContent = 'Send context length in requests';
+    const contextLengthEnabledCheckbox = document.createElement('input');
+    contextLengthEnabledCheckbox.type = 'checkbox';
+    contextLengthEnabledCheckbox.className = 'llm-context-length-enabled';
+    contextLengthEnabledCheckbox.checked = true;
+    contextLengthEnabledLabel.prepend(contextLengthEnabledCheckbox);
+    contextLengthEnabledRow.appendChild(contextLengthEnabledLabel);
+    content.appendChild(contextLengthEnabledRow);
+
+    const { container: contextLengthSlider } = createSlider('Context Length', {
+        min: 512,
+        max: 32768,
+        step: 512,
+        value: 4096,
+        className: 'llm-slider-container',
+        sliderClass: 'llm-slider llm-context-length-slider',
+        valueClass: 'llm-slider-value',
+        showValue: true
+    });
+    contextLengthSlider.classList.add('llm-context-length-row');
+    content.appendChild(contextLengthSlider);
+
+    return content;
+}
+
+function createReasoningToolsMcpControls() {
+    const content = document.createElement('div');
+    content.className = 'llm-shared-advanced-options-content';
+
+    // Reasoning controls
+    const reasoningEnabledRow = document.createElement('div');
+    reasoningEnabledRow.className = 'llm-form-row llm-checkbox-row llm-reasoning-enabled-row';
+    const reasoningEnabledLabel = document.createElement('label');
+    reasoningEnabledLabel.className = 'llm-label';
+    reasoningEnabledLabel.textContent = 'Enable reasoning / thinking';
+    const reasoningEnabledCheckbox = document.createElement('input');
+    reasoningEnabledCheckbox.type = 'checkbox';
+    reasoningEnabledCheckbox.className = 'llm-reasoning-enabled';
+    reasoningEnabledLabel.prepend(reasoningEnabledCheckbox);
+    reasoningEnabledRow.appendChild(reasoningEnabledLabel);
+    content.appendChild(reasoningEnabledRow);
+
+    const reasoningLevelSelect = createSelect({
+        items: [
+            { value: 'off', text: 'Off' },
+            { value: 'on', text: 'On (provider default)' },
+            { value: 'low', text: 'Low' },
+            { value: 'medium', text: 'Medium' },
+            { value: 'high', text: 'High' }
+        ],
+        className: 'llm-reasoning-level-select'
+    });
+    const reasoningLevelRow = createFormRow('Reasoning Level', reasoningLevelSelect, {
+        helpText: 'Used where providers support explicit reasoning levels'
+    });
+    reasoningLevelRow.classList.add('llm-reasoning-level-row');
+    content.appendChild(reasoningLevelRow);
+
+    const showReasoningRow = document.createElement('div');
+    showReasoningRow.className = 'llm-form-row llm-checkbox-row llm-show-reasoning-row';
+    const showReasoningLabel = document.createElement('label');
+    showReasoningLabel.className = 'llm-label';
+    showReasoningLabel.textContent = 'Show reasoning output in chat';
+    const showReasoningCheckbox = document.createElement('input');
+    showReasoningCheckbox.type = 'checkbox';
+    showReasoningCheckbox.className = 'llm-show-reasoning';
+    showReasoningLabel.prepend(showReasoningCheckbox);
+    showReasoningRow.appendChild(showReasoningLabel);
+    content.appendChild(showReasoningRow);
+
+    // Tools and MCP
+    const toolsEnabledRow = document.createElement('div');
+    toolsEnabledRow.className = 'llm-form-row llm-checkbox-row llm-tools-enabled-row';
+    const toolsEnabledLabel = document.createElement('label');
+    toolsEnabledLabel.className = 'llm-label';
+    toolsEnabledLabel.textContent = 'Enable tools';
+    const toolsEnabledCheckbox = document.createElement('input');
+    toolsEnabledCheckbox.type = 'checkbox';
+    toolsEnabledCheckbox.className = 'llm-tools-enabled';
+    toolsEnabledLabel.prepend(toolsEnabledCheckbox);
+    toolsEnabledRow.appendChild(toolsEnabledLabel);
+    content.appendChild(toolsEnabledRow);
+
+    const toolProfileSelect = createSelect({
+        items: [
+            { value: 'none', text: 'None' },
+            { value: 'sage_core', text: 'Sage Core (local tools)' }
+        ],
+        className: 'llm-tool-profile-select'
+    });
+    const toolProfileRow = createFormRow('Tool Profile', toolProfileSelect);
+    toolProfileRow.classList.add('llm-tool-profile-row');
+    content.appendChild(toolProfileRow);
+
+    const mcpEnabledRow = document.createElement('div');
+    mcpEnabledRow.className = 'llm-form-row llm-checkbox-row llm-mcp-enabled-row';
+    const mcpEnabledLabel = document.createElement('label');
+    mcpEnabledLabel.className = 'llm-label';
+    mcpEnabledLabel.textContent = 'Enable MCP integrations';
+    const mcpEnabledCheckbox = document.createElement('input');
+    mcpEnabledCheckbox.type = 'checkbox';
+    mcpEnabledCheckbox.className = 'llm-mcp-enabled';
+    mcpEnabledLabel.prepend(mcpEnabledCheckbox);
+    mcpEnabledRow.appendChild(mcpEnabledLabel);
+    content.appendChild(mcpEnabledRow);
+
+    const mcpProfileSelect = createSelect({
+        items: [{ value: 'none', text: 'None' }],
+        className: 'llm-mcp-profile-select'
+    });
+    const mcpProfileRow = createFormRow('MCP Profile', mcpProfileSelect);
+    mcpProfileRow.classList.add('llm-mcp-profile-row');
+    content.appendChild(mcpProfileRow);
+
+    const group = createSettingsGroup(
+        'Reasoning, Tools, And MCP',
+        'Capability-gated controls for thinking, tool use, and MCP integrations.'
+    );
+    group.element.classList.add('llm-shared-advanced-options');
+    group.content.appendChild(content);
+
+    return group.element;
 }
 
 function setProviderOptionControlEnabled(container, enabled) {
@@ -602,6 +745,51 @@ export function getSettingsFromUI(advancedOptions) {
         settings.keepAlive = keepAliveInput.value;
     }
 
+    const contextLengthSlider = advancedOptions.querySelector('.llm-context-length-slider');
+    if (contextLengthSlider) {
+        settings.contextLength = parseInt(contextLengthSlider.value) || 4096;
+    }
+
+    const contextLengthEnabled = advancedOptions.querySelector('.llm-context-length-enabled');
+    if (contextLengthEnabled) {
+        settings.contextLengthEnabled = contextLengthEnabled.checked;
+    }
+
+    const reasoningEnabled = advancedOptions.querySelector('.llm-reasoning-enabled');
+    if (reasoningEnabled) {
+        settings.reasoningEnabled = reasoningEnabled.checked;
+    }
+
+    const reasoningLevel = advancedOptions.querySelector('.llm-reasoning-level-select');
+    if (reasoningLevel) {
+        settings.reasoningLevel = reasoningLevel.value || 'off';
+    }
+
+    const showReasoning = advancedOptions.querySelector('.llm-show-reasoning');
+    if (showReasoning) {
+        settings.showReasoning = showReasoning.checked;
+    }
+
+    const toolsEnabled = advancedOptions.querySelector('.llm-tools-enabled');
+    if (toolsEnabled) {
+        settings.toolsEnabled = toolsEnabled.checked;
+    }
+
+    const mcpEnabled = advancedOptions.querySelector('.llm-mcp-enabled');
+    if (mcpEnabled) {
+        settings.mcpEnabled = mcpEnabled.checked;
+    }
+
+    const toolProfile = advancedOptions.querySelector('.llm-tool-profile-select');
+    if (toolProfile) {
+        settings.toolProfile = toolProfile.value || 'none';
+    }
+
+    const mcpProfile = advancedOptions.querySelector('.llm-mcp-profile-select');
+    if (mcpProfile) {
+        settings.mcpProfile = mcpProfile.value || 'none';
+    }
+
     const providerOptions = {};
     advancedOptions.querySelectorAll('.llm-provider-section-toggle').forEach((toggle) => {
         const provider = toggle.dataset.provider;
@@ -688,6 +876,57 @@ export function updateUIWithSettings(settings, advancedOptions) {
         }
     }
 
+    if (settings.contextLength !== undefined) {
+        const contextLength = advancedOptions.querySelector('.llm-context-length-slider');
+        if (contextLength) {
+            contextLength.value = settings.contextLength;
+            contextLength.dispatchEvent(new Event('input'));
+        }
+    }
+
+    if (settings.contextLengthEnabled !== undefined) {
+        const contextLengthEnabled = advancedOptions.querySelector('.llm-context-length-enabled');
+        if (contextLengthEnabled) {
+            contextLengthEnabled.checked = settings.contextLengthEnabled;
+            contextLengthEnabled.dispatchEvent(new Event('change'));
+        }
+    }
+
+    if (settings.reasoningEnabled !== undefined) {
+        const reasoningEnabled = advancedOptions.querySelector('.llm-reasoning-enabled');
+        if (reasoningEnabled) reasoningEnabled.checked = settings.reasoningEnabled;
+    }
+
+    if (settings.reasoningLevel !== undefined) {
+        const reasoningLevel = advancedOptions.querySelector('.llm-reasoning-level-select');
+        if (reasoningLevel) reasoningLevel.value = settings.reasoningLevel;
+    }
+
+    if (settings.showReasoning !== undefined) {
+        const showReasoning = advancedOptions.querySelector('.llm-show-reasoning');
+        if (showReasoning) showReasoning.checked = settings.showReasoning;
+    }
+
+    if (settings.toolsEnabled !== undefined) {
+        const toolsEnabled = advancedOptions.querySelector('.llm-tools-enabled');
+        if (toolsEnabled) toolsEnabled.checked = settings.toolsEnabled;
+    }
+
+    if (settings.mcpEnabled !== undefined) {
+        const mcpEnabled = advancedOptions.querySelector('.llm-mcp-enabled');
+        if (mcpEnabled) mcpEnabled.checked = settings.mcpEnabled;
+    }
+
+    if (settings.toolProfile !== undefined) {
+        const toolProfile = advancedOptions.querySelector('.llm-tool-profile-select');
+        if (toolProfile) toolProfile.value = settings.toolProfile;
+    }
+
+    if (settings.mcpProfile !== undefined) {
+        const mcpProfile = advancedOptions.querySelector('.llm-mcp-profile-select');
+        if (mcpProfile) mcpProfile.value = settings.mcpProfile;
+    }
+
     const providerOptions = settings.providerOptions || {};
     advancedOptions.querySelectorAll('.llm-provider-section-toggle').forEach((toggle) => {
         const provider = toggle.dataset.provider;
@@ -709,4 +948,46 @@ export function updateUIWithSettings(settings, advancedOptions) {
             toggle.dispatchEvent(new Event('change'));
         }
     });
+}
+
+/**
+ * Populate tool and MCP profile select options from profile metadata.
+ * @param {HTMLElement} advancedOptions - Advanced options container
+ * @param {Object} profiles - Profile metadata payload from API
+ */
+export function populateIntegrationProfileOptions(advancedOptions, profiles) {
+    if (!advancedOptions || !profiles || typeof profiles !== 'object') return;
+
+    const toSortedNames = (profileMap) => {
+        if (!profileMap || typeof profileMap !== 'object') return [];
+        return Object.keys(profileMap).sort((a, b) => {
+            if (a === 'none') return -1;
+            if (b === 'none') return 1;
+            return a.localeCompare(b);
+        });
+    };
+
+    const toolSelect = advancedOptions.querySelector('.llm-tool-profile-select');
+    if (toolSelect) {
+        const current = toolSelect.value || 'none';
+        const names = toSortedNames(profiles.tool_profiles);
+        if (names.length > 0) {
+            toolSelect.innerHTML = names
+                .map((name) => `<option value="${name}">${name}</option>`)
+                .join('');
+        }
+        toolSelect.value = names.includes(current) ? current : (profiles.defaults?.tool_profile || 'none');
+    }
+
+    const mcpSelect = advancedOptions.querySelector('.llm-mcp-profile-select');
+    if (mcpSelect) {
+        const current = mcpSelect.value || 'none';
+        const names = toSortedNames(profiles.mcp_profiles);
+        if (names.length > 0) {
+            mcpSelect.innerHTML = names
+                .map((name) => `<option value="${name}">${name}</option>`)
+                .join('');
+        }
+        mcpSelect.value = names.includes(current) ? current : (profiles.defaults?.mcp_profile || 'none');
+    }
 }

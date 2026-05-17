@@ -81,15 +81,6 @@ async function consumeSseStream(response, onChunk, onError, defaultErrorMessage)
                     try {
                         const data = JSON.parse(line.slice(6));
 
-                        if (onChunk) {
-                            onChunk(
-                                data.chunk || '',
-                                data.done || false,
-                                data.full_response || null,
-                                data
-                            );
-                        }
-
                         const isErrorEvent = data.event === 'error';
                         const hasErrorField = Boolean(data.error);
                         if (isErrorEvent || hasErrorField) {
@@ -99,6 +90,15 @@ async function consumeSseStream(response, onChunk, onError, defaultErrorMessage)
                             }
                             shouldStopFromPayload = true;
                             break;
+                        }
+
+                        if (onChunk) {
+                            onChunk(
+                                data.chunk || '',
+                                data.done || false,
+                                data.full_response || null,
+                                data
+                            );
                         }
 
                         if (data.done) {
@@ -248,6 +248,31 @@ export async function getPrompts() {
         return data.data.prompts;
     } catch (error) {
         console.error('Error fetching prompts:', error);
+        throw error;
+    }
+}
+
+/**
+ * Get integration profile metadata (tool profiles and MCP profiles)
+ * @returns {Promise<Object>} - Profile metadata used for selector population
+ */
+export async function getIntegrationProfiles() {
+    try {
+        const response = await fetch(`${BASE_URL}/integration_profiles`);
+
+        if (!response.ok) {
+            throw await createApiErrorFromResponse(response, 'Failed to get integration profiles');
+        }
+
+        const data = await response.json();
+
+        if (!data.success) {
+            throw createApiErrorFromPayload(data, 'Failed to get integration profiles', response.status);
+        }
+
+        return data.data.profiles || {};
+    } catch (error) {
+        console.error('Error fetching integration profiles:', error);
         throw error;
     }
 }

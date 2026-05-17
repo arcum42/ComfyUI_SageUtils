@@ -22,6 +22,7 @@ import { createVisionSection } from './compose/llmVisionSection.js';
 import { createModelSelection, loadModels, loadPresets } from './shared/llmModelSelection.js';
 import { createHistorySection, updateConversationList } from './chat/llmHistorySection.js';
 import { createAdvancedOptions } from './settings/llmAdvancedOptions.js';
+import { populateIntegrationProfileOptions } from './settings/llmAdvancedOptions.js';
 
 // Generation and event handling
 import { applyPresetToUI } from './shared/llmPresetDialogs.js';
@@ -334,11 +335,16 @@ async function loadDefaultProvider() {
  */
 async function initializeTab(state, wrapper, modelSelection, visionSection, inputSection, sendBtn, advancedOptions, responseSection, historySection) {
     try {
-        // Load prompts and presets in parallel
-        const [promptsData, presetsLoaded] = await Promise.all([
+        // Load prompts, presets, and profile metadata in parallel
+        const [promptsData, presetsLoaded, integrationProfiles] = await Promise.all([
             loadPrompts(state),
-            loadPresets(state, modelSelection)
+            loadPresets(state, modelSelection),
+            loadIntegrationProfiles(state)
         ]);
+
+        if (integrationProfiles) {
+            populateIntegrationProfileOptions(advancedOptions, integrationProfiles);
+        }
         
         // Populate template categories if prompts loaded
         if (promptsData && state.prompts?.base) {
@@ -377,6 +383,22 @@ async function initializeTab(state, wrapper, modelSelection, visionSection, inpu
     } catch (error) {
         console.error('[LLM Tab] Initialization failed:', error);
         showStatus(responseSection, 'Failed to initialize LLM tab', 'error');
+    }
+}
+
+/**
+ * Load tool/MCP profile metadata from API.
+ */
+async function loadIntegrationProfiles(state) {
+    try {
+        const llmApi = await import('../../llm/llmApi.js');
+        const profiles = await llmApi.getIntegrationProfiles();
+        state.integrationProfiles = profiles;
+        return profiles;
+    } catch (error) {
+        console.warn('[LLM Tab] Failed to load integration profiles:', error);
+        state.integrationProfiles = null;
+        return null;
     }
 }
 
@@ -641,6 +663,7 @@ async function createLLMTabVanilla(container) {
         toolModels: { lmstudio_rest: [], ollama_rest: [], openai: [], native: [] },
         reasoningModels: { lmstudio_rest: [], ollama_rest: [], openai: [], native: [] },
         capabilities: { lmstudio_rest: {}, ollama_rest: {}, openai: {}, native: {} },
+        integrationProfiles: null,
         generating: false,
         streamController: null,
         // Vision support

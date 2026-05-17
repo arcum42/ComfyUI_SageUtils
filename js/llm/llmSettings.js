@@ -14,6 +14,15 @@ export function getDefaultSettings() {
         maxTokens: 1024,
         keepAlive: 300,
         numCtx: 2048,
+        contextLength: 4096,
+        contextLengthEnabled: true,
+        reasoningEnabled: false,
+        reasoningLevel: 'off',
+        showReasoning: true,
+        toolsEnabled: false,
+        mcpEnabled: false,
+        toolProfile: 'none',
+        mcpProfile: 'none',
         systemPrompt: '',
         promptTemplate: '',
         // Context window management
@@ -128,6 +137,15 @@ const KEY_ALIASES = {
     lms_top_p: 'lmsTopP',
     lms_repeat_penalty: 'lmsRepeatPenalty',
     lms_min_p: 'lmsMinP',
+    context_length: 'contextLength',
+    context_length_enabled: 'contextLengthEnabled',
+    reasoning_enabled: 'reasoningEnabled',
+    reasoning_level: 'reasoningLevel',
+    show_reasoning: 'showReasoning',
+    tools_enabled: 'toolsEnabled',
+    mcp_enabled: 'mcpEnabled',
+    tool_profile: 'toolProfile',
+    mcp_profile: 'mcpProfile',
 };
 
 function normalizeSettingKey(key) {
@@ -505,6 +523,52 @@ export function updateUIFromSettings(settings, advancedOptions, provider = setti
         maxHistoryInput.value = getSettingValue(settings, 'maxHistoryMessages') || 10;
     }
 
+    // Shared advanced controls
+    const contextLengthSlider = queryFirst(advancedOptions, ['.llm-context-length-slider']);
+    const contextLengthEnabledCheckbox = queryFirst(advancedOptions, ['.llm-context-length-enabled']);
+    const reasoningEnabledCheckbox = queryFirst(advancedOptions, ['.llm-reasoning-enabled']);
+    const reasoningLevelSelect = queryFirst(advancedOptions, ['.llm-reasoning-level-select']);
+    const showReasoningCheckbox = queryFirst(advancedOptions, ['.llm-show-reasoning']);
+    const toolsEnabledCheckbox = queryFirst(advancedOptions, ['.llm-tools-enabled']);
+    const mcpEnabledCheckbox = queryFirst(advancedOptions, ['.llm-mcp-enabled']);
+    const toolProfileSelect = queryFirst(advancedOptions, ['.llm-tool-profile-select']);
+    const mcpProfileSelect = queryFirst(advancedOptions, ['.llm-mcp-profile-select']);
+
+    updateSlider(contextLengthSlider, getSettingValue(settings, 'contextLength', 'context_length'));
+    if (contextLengthEnabledCheckbox) {
+        contextLengthEnabledCheckbox.checked = Boolean(getSettingValue(settings, 'contextLengthEnabled', 'context_length_enabled', 'send_context_length'));
+    }
+
+    if (reasoningEnabledCheckbox) {
+        reasoningEnabledCheckbox.checked = Boolean(getSettingValue(settings, 'reasoningEnabled', 'reasoning_enabled'));
+    }
+
+    if (reasoningLevelSelect) {
+        reasoningLevelSelect.value = getSettingValue(settings, 'reasoningLevel', 'reasoning_level', 'reasoning') || 'off';
+        const reasoningEnabled = reasoningEnabledCheckbox ? reasoningEnabledCheckbox.checked : true;
+        reasoningLevelSelect.disabled = !reasoningEnabled;
+    }
+
+    if (showReasoningCheckbox) {
+        showReasoningCheckbox.checked = Boolean(getSettingValue(settings, 'showReasoning', 'show_reasoning'));
+    }
+
+    if (toolsEnabledCheckbox) {
+        toolsEnabledCheckbox.checked = Boolean(getSettingValue(settings, 'toolsEnabled', 'tools_enabled'));
+    }
+
+    if (mcpEnabledCheckbox) {
+        mcpEnabledCheckbox.checked = Boolean(getSettingValue(settings, 'mcpEnabled', 'mcp_enabled'));
+    }
+
+    if (toolProfileSelect) {
+        toolProfileSelect.value = getSettingValue(settings, 'toolProfile', 'tool_profile') || 'none';
+    }
+
+    if (mcpProfileSelect) {
+        mcpProfileSelect.value = getSettingValue(settings, 'mcpProfile', 'mcp_profile') || 'none';
+    }
+
     // Provider section "Enable … option payload" main toggles.
     // Dispatching 'change' triggers the existing updateProviderSectionUI listener
     // which re-applies the enabled/disabled visual state to all child controls.
@@ -592,6 +656,27 @@ export function extractSettingsFromUI(advancedOptions) {
 
     if (includeHistoryCheckbox) settings.includeHistory = includeHistoryCheckbox.checked;
     if (maxHistoryInput) settings.maxHistoryMessages = parseInt(maxHistoryInput.value);
+
+    // Shared advanced controls
+    const contextLengthSlider = queryFirst(advancedOptions, ['.llm-context-length-slider']);
+    const contextLengthEnabledCheckbox = queryFirst(advancedOptions, ['.llm-context-length-enabled']);
+    const reasoningEnabledCheckbox = queryFirst(advancedOptions, ['.llm-reasoning-enabled']);
+    const reasoningLevelSelect = queryFirst(advancedOptions, ['.llm-reasoning-level-select']);
+    const showReasoningCheckbox = queryFirst(advancedOptions, ['.llm-show-reasoning']);
+    const toolsEnabledCheckbox = queryFirst(advancedOptions, ['.llm-tools-enabled']);
+    const mcpEnabledCheckbox = queryFirst(advancedOptions, ['.llm-mcp-enabled']);
+    const toolProfileSelect = queryFirst(advancedOptions, ['.llm-tool-profile-select']);
+    const mcpProfileSelect = queryFirst(advancedOptions, ['.llm-mcp-profile-select']);
+
+    if (contextLengthSlider) settings.contextLength = parseInt(contextLengthSlider.value) || 4096;
+    if (contextLengthEnabledCheckbox) settings.contextLengthEnabled = contextLengthEnabledCheckbox.checked;
+    if (reasoningEnabledCheckbox) settings.reasoningEnabled = reasoningEnabledCheckbox.checked;
+    if (reasoningLevelSelect) settings.reasoningLevel = reasoningLevelSelect.value || 'off';
+    if (showReasoningCheckbox) settings.showReasoning = showReasoningCheckbox.checked;
+    if (toolsEnabledCheckbox) settings.toolsEnabled = toolsEnabledCheckbox.checked;
+    if (mcpEnabledCheckbox) settings.mcpEnabled = mcpEnabledCheckbox.checked;
+    if (toolProfileSelect) settings.toolProfile = toolProfileSelect.value || 'none';
+    if (mcpProfileSelect) settings.mcpProfile = mcpProfileSelect.value || 'none';
 
     return settings;
 }

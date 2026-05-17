@@ -100,6 +100,7 @@ export function setupEventHandlers(
         
         // Show/hide provider-specific settings
         showProviderOptions(advancedOptions, state.provider);
+        updateCapabilityControlledOptions(state, advancedOptions);
         
         // Update vision section visibility
         updateVisionSectionVisibility(state, visionSection);
@@ -116,6 +117,7 @@ export function setupEventHandlers(
         rememberProviderModel(state, state.provider, state.model);
 
         applyModelSettingsForActiveSelection(state, advancedOptions);
+        updateCapabilityControlledOptions(state, advancedOptions);
         
         // Update vision section visibility
         updateVisionSectionVisibility(state, visionSection);
@@ -232,6 +234,9 @@ export function setupEventHandlers(
     
     // Setup all slider and input event handlers
     setupSettingsEventHandlers(state, advancedOptions);
+    showProviderOptions(advancedOptions, state.provider);
+    updateCapabilityControlledOptions(state, advancedOptions);
+    updateVisionSectionVisibility(state, visionSection);
     
     // Reset settings button
     if (resetSettingsBtn) {
@@ -764,7 +769,176 @@ function setupSettingsEventHandlers(state, advancedOptions) {
         });
     }
 
+    // Shared advanced controls (provider-agnostic payload controls)
+    const contextLengthSlider = advancedOptions.querySelector('.llm-context-length-slider');
+    const contextLengthEnabledCheckbox = advancedOptions.querySelector('.llm-context-length-enabled');
+    const reasoningEnabledCheckbox = advancedOptions.querySelector('.llm-reasoning-enabled');
+    const reasoningLevelSelect = advancedOptions.querySelector('.llm-reasoning-level-select');
+    const showReasoningCheckbox = advancedOptions.querySelector('.llm-show-reasoning');
+    const toolsEnabledCheckbox = advancedOptions.querySelector('.llm-tools-enabled');
+    const mcpEnabledCheckbox = advancedOptions.querySelector('.llm-mcp-enabled');
+    const toolProfileSelect = advancedOptions.querySelector('.llm-tool-profile-select');
+    const mcpProfileSelect = advancedOptions.querySelector('.llm-mcp-profile-select');
+
+    const updateReasoningLevelEnabledState = () => {
+        if (!reasoningLevelSelect) return;
+        const enabled = reasoningEnabledCheckbox ? reasoningEnabledCheckbox.checked : true;
+        reasoningLevelSelect.disabled = !enabled;
+    };
+
+    if (contextLengthSlider) {
+        contextLengthSlider.addEventListener('input', () => {
+            state.settings.contextLength = parseInt(contextLengthSlider.value) || 4096;
+            saveSettings(state.settings);
+        });
+    }
+
+    if (contextLengthEnabledCheckbox) {
+        contextLengthEnabledCheckbox.addEventListener('change', () => {
+            state.settings.contextLengthEnabled = contextLengthEnabledCheckbox.checked;
+            if (contextLengthSlider) {
+                contextLengthSlider.disabled = !contextLengthEnabledCheckbox.checked || !(state.provider === 'lmstudio_rest' || state.provider === 'ollama_rest');
+            }
+            saveSettings(state.settings);
+        });
+    }
+
+    if (reasoningEnabledCheckbox) {
+        reasoningEnabledCheckbox.addEventListener('change', () => {
+            state.settings.reasoningEnabled = reasoningEnabledCheckbox.checked;
+            updateReasoningLevelEnabledState();
+            saveSettings(state.settings);
+        });
+        updateReasoningLevelEnabledState();
+    }
+
+    if (reasoningLevelSelect) {
+        reasoningLevelSelect.addEventListener('change', () => {
+            state.settings.reasoningLevel = reasoningLevelSelect.value || 'off';
+            saveSettings(state.settings);
+        });
+    }
+
+    if (showReasoningCheckbox) {
+        showReasoningCheckbox.addEventListener('change', () => {
+            state.settings.showReasoning = showReasoningCheckbox.checked;
+            saveSettings(state.settings);
+        });
+    }
+
+    if (toolsEnabledCheckbox) {
+        toolsEnabledCheckbox.addEventListener('change', () => {
+            state.settings.toolsEnabled = toolsEnabledCheckbox.checked;
+            saveSettings(state.settings);
+        });
+    }
+
+    if (mcpEnabledCheckbox) {
+        mcpEnabledCheckbox.addEventListener('change', () => {
+            state.settings.mcpEnabled = mcpEnabledCheckbox.checked;
+            saveSettings(state.settings);
+        });
+    }
+
+    if (toolProfileSelect) {
+        toolProfileSelect.addEventListener('change', () => {
+            state.settings.toolProfile = toolProfileSelect.value || 'none';
+            saveSettings(state.settings);
+        });
+    }
+
+    if (mcpProfileSelect) {
+        mcpProfileSelect.addEventListener('change', () => {
+            state.settings.mcpProfile = mcpProfileSelect.value || 'none';
+            saveSettings(state.settings);
+        });
+    }
+
     setupProviderOptionToggleHandlers(state, advancedOptions);
+}
+
+/**
+ * Show or hide advanced controls based on the active model/provider capabilities.
+ * @param {Object} state - Tab state object
+ * @param {HTMLElement} advancedOptions - Advanced options section
+ */
+function updateCapabilityControlledOptions(state, advancedOptions) {
+    if (!advancedOptions) return;
+
+    const flags = state.model ? getModelCapabilityFlags(
+        state.provider,
+        state.model,
+        state.capabilities,
+        state.visionModels,
+        state.toolModels,
+        state.reasoningModels
+    ) : null;
+
+    const provider = state.provider;
+    const supportsReasoning = Boolean(flags?.reasoning) && (provider === 'lmstudio_rest' || provider === 'ollama_rest');
+    const supportsTools = Boolean(flags?.toolUse) && (provider === 'lmstudio_rest' || provider === 'ollama_rest');
+    const supportsMcp = provider === 'lmstudio_rest';
+
+    const toggleRow = (selector, visible) => {
+        const row = advancedOptions.querySelector(selector);
+        if (row) {
+            row.style.display = visible ? '' : 'none';
+        }
+    };
+
+    toggleRow('.llm-context-length-enabled-row', provider === 'lmstudio_rest' || provider === 'ollama_rest');
+    toggleRow('.llm-context-length-row', provider === 'lmstudio_rest' || provider === 'ollama_rest');
+    toggleRow('.llm-reasoning-enabled-row', supportsReasoning);
+    toggleRow('.llm-reasoning-level-row', supportsReasoning);
+    toggleRow('.llm-show-reasoning-row', supportsReasoning);
+    toggleRow('.llm-tools-enabled-row', supportsTools);
+    toggleRow('.llm-tool-profile-row', supportsTools);
+    toggleRow('.llm-mcp-enabled-row', supportsMcp);
+    toggleRow('.llm-mcp-profile-row', supportsMcp);
+
+    const reasoningEnabled = advancedOptions.querySelector('.llm-reasoning-enabled');
+    const reasoningLevel = advancedOptions.querySelector('.llm-reasoning-level-select');
+    if (reasoningEnabled) {
+        reasoningEnabled.disabled = !supportsReasoning;
+    }
+    if (reasoningLevel) {
+        reasoningLevel.disabled = !supportsReasoning || !(reasoningEnabled?.checked ?? false);
+    }
+
+    const showReasoning = advancedOptions.querySelector('.llm-show-reasoning');
+    if (showReasoning) {
+        showReasoning.disabled = !supportsReasoning;
+    }
+
+    const toolsEnabled = advancedOptions.querySelector('.llm-tools-enabled');
+    const toolProfile = advancedOptions.querySelector('.llm-tool-profile-select');
+    if (toolsEnabled) {
+        toolsEnabled.disabled = !supportsTools;
+    }
+    if (toolProfile) {
+        toolProfile.disabled = !supportsTools;
+    }
+
+    const mcpEnabled = advancedOptions.querySelector('.llm-mcp-enabled');
+    const mcpProfile = advancedOptions.querySelector('.llm-mcp-profile-select');
+    if (mcpEnabled) {
+        mcpEnabled.disabled = !supportsMcp;
+    }
+    if (mcpProfile) {
+        mcpProfile.disabled = !supportsMcp;
+    }
+
+    const contextLength = advancedOptions.querySelector('.llm-context-length-slider');
+    const contextLengthEnabled = advancedOptions.querySelector('.llm-context-length-enabled');
+    if (contextLength) {
+        const providerSupportsContextLength = provider === 'lmstudio_rest' || provider === 'ollama_rest';
+        const sendContextLength = contextLengthEnabled ? contextLengthEnabled.checked : true;
+        contextLength.disabled = !providerSupportsContextLength || !sendContextLength;
+    }
+
+    if (contextLengthEnabled) {
+        contextLengthEnabled.disabled = !(provider === 'lmstudio_rest' || provider === 'ollama_rest');
+    }
 }
 
 const PROVIDER_OPTION_TOGGLE_DEFAULTS = {

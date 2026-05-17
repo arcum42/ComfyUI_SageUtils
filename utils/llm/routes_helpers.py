@@ -14,6 +14,227 @@ from . import raise_llm_error
 logger = get_logger('llm.routes_helpers')
 
 
+_BUILTIN_TOOL_PROFILES: dict[str, list[dict[str, Any]]] = {
+    'none': [],
+    'sage_core': [
+        {
+            'type': 'function',
+            'function': {
+                'name': 'sage.get_time',
+                'description': 'Return current local or UTC time.',
+                'parameters': {
+                    'type': 'object',
+                    'properties': {
+                        'utc': {'type': 'boolean'},
+                    },
+                },
+            },
+        },
+        {
+            'type': 'function',
+            'function': {
+                'name': 'sage.echo',
+                'description': 'Echo text back to the model.',
+                'parameters': {
+                    'type': 'object',
+                    'properties': {
+                        'text': {'type': 'string'},
+                    },
+                    'required': ['text'],
+                },
+            },
+        },
+        {
+            'type': 'function',
+            'function': {
+                'name': 'sage.notes.list',
+                'description': 'List notes files under SageUtils user notes directory.',
+                'parameters': {
+                    'type': 'object',
+                    'properties': {
+                        'limit': {'type': 'integer', 'minimum': 1, 'maximum': 200},
+                    },
+                },
+            },
+        },
+        {
+            'type': 'function',
+            'function': {
+                'name': 'sage.notes.read',
+                'description': 'Read a note by filename from SageUtils notes directory.',
+                'parameters': {
+                    'type': 'object',
+                    'properties': {
+                        'filename': {'type': 'string'},
+                        'max_chars': {'type': 'integer', 'minimum': 1, 'maximum': 20000},
+                    },
+                    'required': ['filename'],
+                },
+            },
+        },
+        {
+            'type': 'function',
+            'function': {
+                'name': 'sage.notes.search',
+                'description': 'Search notes content for a query string.',
+                'parameters': {
+                    'type': 'object',
+                    'properties': {
+                        'query': {'type': 'string'},
+                        'limit': {'type': 'integer', 'minimum': 1, 'maximum': 100},
+                    },
+                    'required': ['query'],
+                },
+            },
+        },
+        {
+            'type': 'function',
+            'function': {
+                'name': 'sage.prompts.list',
+                'description': 'List saved prompt entries.',
+                'parameters': {
+                    'type': 'object',
+                    'properties': {
+                        'category': {'type': 'string'},
+                        'limit': {'type': 'integer', 'minimum': 1, 'maximum': 200},
+                    },
+                },
+            },
+        },
+        {
+            'type': 'function',
+            'function': {
+                'name': 'sage.prompts.get',
+                'description': 'Get one saved prompt by id.',
+                'parameters': {
+                    'type': 'object',
+                    'properties': {
+                        'id': {'type': 'string'},
+                    },
+                    'required': ['id'],
+                },
+            },
+        },
+        {
+            'type': 'function',
+            'function': {
+                'name': 'sage.prompts.search',
+                'description': 'Search saved prompts by text.',
+                'parameters': {
+                    'type': 'object',
+                    'properties': {
+                        'query': {'type': 'string'},
+                        'limit': {'type': 'integer', 'minimum': 1, 'maximum': 100},
+                    },
+                    'required': ['query'],
+                },
+            },
+        },
+        {
+            'type': 'function',
+            'function': {
+                'name': 'sage.workflow.read_latest',
+                'description': 'Read the most recently modified workflow JSON from ComfyUI user workflows directory.',
+                'parameters': {
+                    'type': 'object',
+                    'properties': {
+                        'max_chars': {'type': 'integer', 'minimum': 1, 'maximum': 200000},
+                    },
+                },
+            },
+        },
+    ],
+}
+
+_BUILTIN_MCP_PROFILES: dict[str, list[dict[str, Any]]] = {
+    'none': [],
+}
+
+
+def _load_json_file_if_exists(path: Path) -> dict[str, Any]:
+    if not path.exists() or not path.is_file():
+        return {}
+    try:
+        with path.open('r', encoding='utf-8') as handle:
+            data = json.load(handle)
+        return data if isinstance(data, dict) else {}
+    except Exception as e:
+        logger.warning(f'Failed to load profile file {path}: {e}')
+        return {}
+
+
+def _get_profile_registry() -> dict[str, dict[str, list[dict[str, Any]]]]:
+    from ...utils.path_manager import path_manager
+
+    asset_path = path_manager.assets_path / 'llm_integration_profiles.json'
+    user_path = path_manager.sage_users_path / 'llm_integration_profiles.json'
+
+    asset_data = _load_json_file_if_exists(asset_path)
+    user_data = _load_json_file_if_exists(user_path)
+
+    tool_profiles: dict[str, list[dict[str, Any]]] = dict(_BUILTIN_TOOL_PROFILES)
+    mcp_profiles: dict[str, list[dict[str, Any]]] = dict(_BUILTIN_MCP_PROFILES)
+
+    for source in (asset_data, user_data):
+        source_tool_profiles = source.get('tool_profiles')
+        if isinstance(source_tool_profiles, dict):
+            for profile_name, profile_value in source_tool_profiles.items():
+                if isinstance(profile_value, list):
+                    tool_profiles[str(profile_name)] = profile_value
+
+        source_mcp_profiles = source.get('mcp_profiles')
+        if isinstance(source_mcp_profiles, dict):
+            for profile_name, profile_value in source_mcp_profiles.items():
+                if isinstance(profile_value, list):
+                    mcp_profiles[str(profile_name)] = profile_value
+
+    return {
+        'tool_profiles': tool_profiles,
+        'mcp_profiles': mcp_profiles,
+    }
+
+
+def get_integration_profiles() -> dict[str, Any]:
+    """Return integration profile metadata for frontend selectors."""
+    registry = _get_profile_registry()
+
+    tool_profiles = registry.get('tool_profiles', {})
+    mcp_profiles = registry.get('mcp_profiles', {})
+
+    return {
+        'tool_profiles': {
+            name: {
+                'entry_count': len(entries) if isinstance(entries, list) else 0,
+            }
+            for name, entries in tool_profiles.items()
+        },
+        'mcp_profiles': {
+            name: {
+                'entry_count': len(entries) if isinstance(entries, list) else 0,
+            }
+            for name, entries in mcp_profiles.items()
+        },
+        'defaults': {
+            'tool_profile': 'none',
+            'mcp_profile': 'none',
+        }
+    }
+
+
+def _resolve_profile_entries(
+    profile_name: Optional[str],
+    profile_map: dict[str, list[dict[str, Any]]],
+    profile_kind: str,
+) -> list[dict[str, Any]]:
+    normalized = (profile_name or 'none').strip() or 'none'
+    entries = profile_map.get(normalized)
+    if isinstance(entries, list):
+        return entries
+
+    logger.warning(f"Unknown {profile_kind} profile '{normalized}', defaulting to empty")
+    return []
+
+
 def normalize_provider(provider: str) -> str:
     """Normalize provider aliases to canonical backend keys."""
     normalized = (provider or '').strip().lower()
@@ -64,7 +285,7 @@ def decode_base64_images_to_temp(images_data: list[str]) -> list[str]:
             f'Failed to decode images: {str(e)}',
             provider='routes',
             operation='decode_base64_images_to_temp',
-            cause=stringify_llm_error(e),
+            cause=e,
         )
         # This line is unreachable but satisfies return type checker
         return []
@@ -165,8 +386,150 @@ def build_llm_options(provider: str, settings: dict[str, Any]) -> dict[str, Any]
             options['top_p'] = settings['top_p']
         if 'repeat_penalty' in settings:
             options['repeat_penalty'] = settings['repeat_penalty']
+        if 'num_ctx' in settings:
+            options['num_ctx'] = settings['num_ctx']
+        if 'think' in settings:
+            options['think'] = settings['think']
+        if 'tools' in settings and isinstance(settings.get('tools'), list):
+            options['tools'] = settings['tools']
+
+    if provider == 'lmstudio_rest':
+        if 'context_length' in settings:
+            options['context_length'] = settings['context_length']
+        if 'reasoning' in settings:
+            options['reasoning'] = settings['reasoning']
+        if 'integrations' in settings and isinstance(settings.get('integrations'), list):
+            options['integrations'] = settings['integrations']
 
     return options
+
+
+def build_generation_payload_options(provider: str, data: dict[str, Any]) -> dict[str, Any]:
+    """Build request options from incoming route payload with provider-specific normalization."""
+    provider = normalize_provider(provider)
+    options_data = data.get('options')
+    options = options_data if isinstance(options_data, dict) else {}
+    result: dict[str, Any] = dict(options)
+
+    def _first_value(*keys: str):
+        for key in keys:
+            if key in data and data.get(key) is not None:
+                return data.get(key)
+            if key in result and result.get(key) is not None:
+                return result.get(key)
+        return None
+
+    # Context length
+    context_length = _first_value('context_length', 'contextLength')
+    if context_length is not None:
+        if provider == 'lmstudio_rest':
+            result['context_length'] = context_length
+        elif provider == 'ollama_rest':
+            result['num_ctx'] = context_length
+
+    # Reasoning/thinking controls
+    reasoning_value = _first_value('reasoning', 'reasoning_level', 'reasoningLevel')
+    reasoning_enabled = _first_value('reasoning_enabled', 'reasoningEnabled')
+    if provider == 'lmstudio_rest':
+        # Remove any unvalidated incoming reasoning value from options payload.
+        result.pop('reasoning', None)
+
+        resolved_reasoning: Any = None
+        if reasoning_value is not None:
+            if isinstance(reasoning_value, bool):
+                resolved_reasoning = 'on' if reasoning_value else 'off'
+            elif isinstance(reasoning_value, str):
+                normalized = reasoning_value.strip().lower()
+                if normalized in {'on', 'off', 'low', 'medium', 'high'}:
+                    resolved_reasoning = normalized
+            elif isinstance(reasoning_enabled, bool):
+                resolved_reasoning = 'on' if reasoning_enabled else 'off'
+        elif isinstance(reasoning_enabled, bool):
+            resolved_reasoning = 'on' if reasoning_enabled else 'off'
+
+        if resolved_reasoning is not None:
+            result['reasoning'] = resolved_reasoning
+    elif provider == 'ollama_rest':
+        if reasoning_value is not None:
+            value = str(reasoning_value).strip().lower() if isinstance(reasoning_value, str) else reasoning_value
+            if value == 'on':
+                result['think'] = True
+            elif value == 'off':
+                result['think'] = False
+            else:
+                result['think'] = reasoning_value
+        elif isinstance(reasoning_enabled, bool):
+            result['think'] = reasoning_enabled
+
+    # Tool and MCP toggles
+    tools_enabled = _first_value('tools_enabled', 'toolsEnabled')
+    mcp_enabled = _first_value('mcp_enabled', 'mcpEnabled')
+    tool_profile = _first_value('tool_profile', 'toolProfile')
+    mcp_profile = _first_value('mcp_profile', 'mcpProfile')
+
+    profile_registry = _get_profile_registry()
+
+    tools_payload = _first_value('tools')
+    if tools_enabled is False:
+        result.pop('tools', None)
+    elif isinstance(tools_payload, list):
+        result['tools'] = tools_payload
+    elif tools_enabled is True:
+        resolved_tools = _resolve_profile_entries(tool_profile if isinstance(tool_profile, str) else None, profile_registry['tool_profiles'], 'tool')
+        if resolved_tools:
+            result['tools'] = resolved_tools
+
+    integrations_payload = _first_value('integrations')
+    if mcp_enabled is False:
+        result.pop('integrations', None)
+    elif isinstance(integrations_payload, list):
+        result['integrations'] = integrations_payload
+    elif mcp_enabled is True and provider == 'lmstudio_rest':
+        resolved_integrations = _resolve_profile_entries(mcp_profile if isinstance(mcp_profile, str) else None, profile_registry['mcp_profiles'], 'mcp')
+        if resolved_integrations:
+            result['integrations'] = resolved_integrations
+
+    return result
+
+
+def validate_generation_payload_options(provider: str, data: dict[str, Any]) -> tuple[bool, Optional[str]]:
+    """Validate provider-specific generation options before dispatch."""
+    provider = normalize_provider(provider)
+
+    if provider != 'lmstudio_rest':
+        return True, None
+
+    raw_options = data.get('options')
+    options_data: dict[str, Any] = raw_options if isinstance(raw_options, dict) else {}
+
+    reasoning_value = None
+    for key in ('reasoning', 'reasoning_level', 'reasoningLevel'):
+        if key in data and data.get(key) is not None:
+            reasoning_value = data.get(key)
+            break
+        if key in options_data and options_data.get(key) is not None:
+            reasoning_value = options_data.get(key)
+            break
+
+    if reasoning_value is None:
+        return True, None
+
+    if isinstance(reasoning_value, bool):
+        return True, None
+
+    if isinstance(reasoning_value, str):
+        normalized = reasoning_value.strip().lower()
+        if normalized in {'off', 'low', 'medium', 'high', 'on'}:
+            return True, None
+        return False, (
+            f"Invalid LM Studio reasoning value '{reasoning_value}'. "
+            "Expected one of: off, low, medium, high, on."
+        )
+
+    return False, (
+        f"Invalid LM Studio reasoning type '{type(reasoning_value).__name__}'. "
+        "Expected string or boolean."
+    )
 
 
 def get_system_prompt_text(
