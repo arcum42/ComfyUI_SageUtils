@@ -11,9 +11,9 @@ from .init import (
     init_ollama_rest as _init_ollama_rest,
     init_openai_provider as _init_openai_provider,
 )
-from .providers import lmstudio_rest_client as lmstudio_rest_provider
-from .providers import ollama_rest_client as ollama_rest_provider
-from .providers import openai_client as openai_provider
+from .providers.lmstudio import lmstudio_rest_client as lmstudio_rest_provider
+from .providers.ollama import ollama_rest_client as ollama_rest_provider
+from .providers.openai import openai_client as openai_provider
 
 logger = get_logger('llm')
 
@@ -179,35 +179,6 @@ def get_openai_model_capabilities_map() -> dict[str, dict[str, object]]:
     """Retrieve model capabilities map from OpenAI-compatible provider."""
     capability_map = openai_provider.get_model_capabilities_map(is_openai_enabled())
     return {model_name: capabilities.to_dict() for model_name, capabilities in capability_map.items()}
-
-
-# ============================================================================
-# HEALTH
-# ============================================================================
-
-def is_lmstudio_running() -> bool:
-    """Legacy alias: check LM Studio REST availability."""
-    return lmstudio_rest_provider.is_running(_is_lmstudio_service_enabled())
-
-
-def is_ollama_running() -> bool:
-    """Legacy alias: check Ollama REST availability."""
-    return ollama_rest_provider.is_running(_is_ollama_service_enabled())
-
-
-def is_lmstudio_rest_running() -> bool:
-    """Check LM Studio REST availability."""
-    return lmstudio_rest_provider.is_running(is_lmstudio_rest_enabled())
-
-
-def is_ollama_rest_running() -> bool:
-    """Check Ollama REST availability."""
-    return ollama_rest_provider.is_running(is_ollama_rest_enabled())
-
-
-def is_openai_running() -> bool:
-    """Check OpenAI-compatible provider availability."""
-    return openai_provider.is_running(is_openai_enabled())
 
 
 # ============================================================================

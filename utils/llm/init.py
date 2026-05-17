@@ -3,9 +3,9 @@
 from typing import Any
 
 from ..logger import get_logger
-from .providers import lmstudio_rest_client as lmstudio_rest_provider
-from .providers import ollama_rest_client as ollama_rest_provider
-from .providers import openai_client as openai_provider
+from .providers.lmstudio import lmstudio_rest_client as lmstudio_rest_provider
+from .providers.ollama import ollama_rest_client as ollama_rest_provider
+from .providers.openai import openai_client as openai_provider
 
 logger = get_logger('llm.init')
 

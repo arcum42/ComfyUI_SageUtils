@@ -5,13 +5,15 @@ import os
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, Optional
+import folder_paths
+from ....path_manager import path_manager
 
-from ..cache import get_llm_cache
-from ...logger import get_logger
-from ..common import clean_response
-from ..errors import raise_llm_error, report_llm_error, stringify_llm_error
-from ..rest import iter_json_lines, normalize_base_url, normalize_raw_image_base64, request_json, request_stream, with_bearer_auth
-from ..capabilities import ModelCapabilities, get_capability_cache
+from ...cache import get_llm_cache
+from ....logger import get_logger
+from ...common import clean_response
+from ...errors import raise_llm_error, report_llm_error, stringify_llm_error
+from ...rest import iter_json_lines, normalize_base_url, normalize_raw_image_base64, request_json, request_stream, with_bearer_auth
+from ...capabilities import ModelCapabilities, get_capability_cache
 
 logger = get_logger('llm.providers.ollama_rest')
 
@@ -30,7 +32,7 @@ def _is_unavailable(enabled: bool) -> bool:
 
 
 def _get_base_url() -> str:
-    from ...settings import get_setting
+    from ....settings import get_setting
 
     use_custom = bool(get_setting('ollama_use_custom_url', False))
     custom_url = str(
@@ -40,7 +42,7 @@ def _get_base_url() -> str:
 
 
 def _get_headers() -> Dict[str, str]:
-    from ...settings import get_setting
+    from ....settings import get_setting
 
     # Prefer explicit setting, then environment variable(s).
     token = str(get_setting('ollama_api_key', '')).strip()
@@ -57,7 +59,7 @@ def _get_request_timeout() -> float:
     Uses settings key ollama_rest_timeout_seconds when available.
     Falls back to 180s to accommodate slower first-token/model-load paths.
     """
-    from ...settings import get_setting
+    from ....settings import get_setting
 
     raw = get_setting('ollama_rest_timeout_seconds', 240)
     try:
@@ -270,8 +272,6 @@ def _truncate_text(text: str, max_chars: int = 4000) -> str:
 
 
 def _get_notes_dir() -> Path:
-    from ...path_manager import path_manager
-
     notes_dir = path_manager.notes_path
     notes_dir.mkdir(parents=True, exist_ok=True)
     return notes_dir
@@ -286,8 +286,6 @@ def _is_safe_note_filename(filename: str) -> bool:
 
 
 def _load_saved_prompts() -> dict[str, Any]:
-    from ...path_manager import path_manager
-
     prompts_file = path_manager.sage_users_path / 'saved_prompts.json'
     if not prompts_file.exists():
         return {'prompts': [], 'categories': [], 'metadata': {}}
@@ -448,8 +446,6 @@ def _local_tool_prompts_search(args: dict[str, Any]) -> dict[str, Any]:
 
 
 def _local_tool_workflow_read_latest(args: dict[str, Any]) -> dict[str, Any]:
-    import folder_paths
-
     user_dir = Path(folder_paths.get_user_directory())
     workflows_dir = user_dir / 'default' / 'workflows'
     if not workflows_dir.exists() or not workflows_dir.is_dir():
@@ -916,6 +912,40 @@ def get_reasoning_models(enabled: bool) -> list[str]:
 
     capabilities_map = get_model_capabilities_map(enabled)
     return sorted([name for name, capabilities in capabilities_map.items() if capabilities.reasoning])
+
+
+def load_model(enabled: bool, model: str, keep_alive: int = 60) -> bool:
+    """Warm-load an Ollama model via /api/generate with an empty prompt."""
+    if _is_unavailable(enabled):
+        raise_llm_error(ImportError, 'Ollama REST is not enabled.', provider=_PROVIDER_NAME, operation='load_model')
+
+    try:
+        keep_alive_seconds = max(0, int(keep_alive))
+    except (TypeError, ValueError):
+        keep_alive_seconds = 60
+
+    payload = {
+        'model': model,
+        'prompt': '',
+        'stream': False,
+        'keep_alive': f'{keep_alive_seconds}s',
+    }
+
+    try:
+        response = request_json(
+            'POST',
+            _get_base_url(),
+            '/api/generate',
+            payload=payload,
+            headers=_get_headers(),
+            timeout=_get_request_timeout(),
+        )
+        if isinstance(response, dict) and response.get('error'):
+            raise_llm_error(RuntimeError, str(response.get('error')), provider=_PROVIDER_NAME, operation='load_model')
+        return True
+    except Exception as e:
+        report_llm_error('Error preloading model via Ollama REST', provider=_PROVIDER_NAME, operation='load_model', cause=e)
+        return False
 
 
 def generate(enabled: bool, model: str, prompt: str, options=None, system_prompt: str = '', keep_alive: str = '5m') -> str:

@@ -7,12 +7,12 @@ Works with OpenAI, Azure OpenAI, and any other OpenAI-compatible endpoint
 import os
 from typing import Any, Dict, Optional
 
-from ..cache import get_llm_cache
-from ...logger import get_logger
-from ..common import clean_response
-from ..errors import raise_llm_error, report_llm_error, stringify_llm_error
-from ..rest import iter_sse_events, normalize_base_url, normalize_image_data_url, request_json, request_stream, with_bearer_auth
-from ..capabilities import ModelCapabilities, get_capability_cache
+from ...cache import get_llm_cache
+from ....logger import get_logger
+from ...common import clean_response
+from ...errors import raise_llm_error, report_llm_error, stringify_llm_error
+from ...rest import iter_sse_events, normalize_base_url, normalize_image_data_url, request_json, request_stream, with_bearer_auth
+from ...capabilities import ModelCapabilities, get_capability_cache
 
 logger = get_logger('llm.providers.openai')
 
@@ -72,7 +72,7 @@ def _is_unavailable(enabled: bool) -> bool:
 
 
 def _get_base_url() -> str:
-    from ...settings import get_setting
+    from ....settings import get_setting
 
     use_custom = bool(get_setting('openai_use_custom_url', False))
     custom_url = str(get_setting('openai_base_url', '')) if use_custom else ''
@@ -80,7 +80,7 @@ def _get_base_url() -> str:
 
 
 def _get_api_key() -> str:
-    from ...settings import get_setting
+    from ....settings import get_setting
 
     # Prefer explicit setting, then environment variable
     key = str(get_setting('openai_api_key', '')).strip()
