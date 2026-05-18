@@ -1,22 +1,17 @@
-"""LM Studio REST provider operations using the v1 API."""
-
-from typing import Any, Optional
-
+from .client import *
 from ...cache import get_llm_cache
-from ....logger import get_logger
+from ...rest import iter_sse_events
+from ...errors import report_llm_error, raise_llm_error, stringify_llm_error
 from ...common import clean_response
-from ...errors import raise_llm_error, report_llm_error, stringify_llm_error
-from ...rest import iter_sse_events, normalize_image_data_url
+from ...rest import normalize_image_data_url
 from .capabilities import get_model_capabilities, get_model_capabilities_map
 from .requests import (
+    lmstudio_request_json_models,
     lmstudio_request_json_chat,
     lmstudio_request_json_load,
-    lmstudio_request_json_models,
     lmstudio_request_json_unload,
     lmstudio_request_stream_chat,
 )
-
-logger = get_logger('llm.providers.lmstudio_rest')
 
 _PROVIDER_NAME = 'lmstudio_rest'
 _UNAVAILABLE_MESSAGE = '(LM Studio REST not available)'
