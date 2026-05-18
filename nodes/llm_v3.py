@@ -208,7 +208,7 @@ class Sage_LLMPromptText(io.ComfyNode):
 
         native_inputs = [
             io.Clip.Input("native_clip", display_name="model"),
-            io.Int.Input("native_max_length", display_name="max_length", default=256, min=1, max=2048),
+            io.Int.Input("native_max_length", display_name="max_length", default=256, min=1, max=16384),
             io.Boolean.Input("native_thinking", display_name="thinking", default=False, optional=True, tooltip="Enable model thinking mode if supported by the loaded CLIP model."),
             io.DynamicCombo.Input("native_sampling", display_name="sampling", options=[
                 io.DynamicCombo.Option("Default", []),
@@ -368,7 +368,7 @@ class Sage_LLMPromptVision(io.ComfyNode):
 
         native_inputs = [
             io.Clip.Input("native_clip", display_name="model"),
-            io.Int.Input("native_max_length", display_name="max_length", default=256, min=1, max=2048),
+            io.Int.Input("native_max_length", display_name="max_length", default=256, min=1, max=16384),
             io.Boolean.Input("native_thinking", display_name="thinking", default=False, optional=True, tooltip="Enable model thinking mode if supported by the loaded CLIP model."),
             io.DynamicCombo.Input("native_sampling", display_name="sampling", options=[
                 io.DynamicCombo.Option("Default", []),
@@ -552,7 +552,7 @@ class Sage_LLMPromptVisionRefine(io.ComfyNode):
         native_inputs = [
             io.Clip.Input("native_clip", display_name="model"),
             io.Clip.Input("native_refine_clip", display_name="refine_model", optional=True, advanced=True, tooltip="Optional second CLIP model used only for the refine pass."),
-            io.Int.Input("native_max_length", display_name="max_length", default=256, min=1, max=2048),
+            io.Int.Input("native_max_length", display_name="max_length", default=256, min=1, max=16384),
             io.Boolean.Input("native_thinking", display_name="thinking", default=False, optional=True, tooltip="Enable model thinking mode if supported by the loaded CLIP model."),
             io.DynamicCombo.Input("native_sampling", display_name="sampling", options=[
                 io.DynamicCombo.Option("Default", []),

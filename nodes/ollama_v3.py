@@ -51,7 +51,7 @@ class Sage_OllamaAdvancedOptions(io.ComfyNode):
             category=f"{SAGE_UTILS_CAT}/LLM/Ollama",
             inputs=[
                 io.Int.Input("num_keep", display_name="num_keep", default=0, min=0, max=100, step=1),
-                io.Int.Input("num_predict", display_name="num_predict", default=-1, min=-1, max=2048, step=1),
+                io.Int.Input("num_predict", display_name="num_predict", default=-1, min=-1, max=16384, step=1),
                 io.Int.Input("top_k", display_name="top_k", default=40, min=1, max=1000, step=1),
                 io.Float.Input("top_p", display_name="top_p", default=0.9, min=0.0, max=1.0, step=0.01),
                 io.Int.Input("repeat_last_n", display_name="repeat_last_n", default=64, min=0, max=256, step=1),
