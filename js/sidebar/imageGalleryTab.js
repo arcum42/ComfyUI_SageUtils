@@ -1075,31 +1075,36 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
 
     // Refresh current folder
     function refreshCurrentFolder() {
-        const currentFolder = selectors.selectedFolder();
-        const currentPath = selectors.currentPath();
-        
+        let currentFolder = selectors.selectedFolder();
+        let currentPath = selectors.currentPath();
+
+        // Handle case where selectedFolder is 'custom:/some/path'
+        if (currentFolder && currentFolder.startsWith('custom:')) {
+            currentPath = currentFolder.substring(7);
+            currentFolder = 'custom';
+        }
+
         if (currentFolder) {
             // Clear local cache for this folder
             const localCacheKey = currentFolder === 'custom' && currentPath ? `custom:${currentPath}` : currentFolder;
             folderCache.delete(localCacheKey);
-            
+
             // Clear global cache for this folder
             const globalCacheKey = currentFolder === 'custom' && currentPath 
                 ? `galleryImages:custom:${currentPath}` 
                 : `galleryImages:${currentFolder}`;
             DataCache.invalidate(globalCacheKey);
-            
+
             if (debugGallery) console.log('Gallery: Cleared cache for:', localCacheKey);
-            
+
             setStatus('Refreshing folder...');
-            
+
             // Force reload with the third parameter
             if (currentFolder === 'custom' && currentPath) {
                 loadImagesWrapper('custom', currentPath, true);
             } else {
                 loadImagesWrapper(currentFolder, null, true);
             }
-        } else {
             setStatus('No folder selected to refresh', true);
         }
     }

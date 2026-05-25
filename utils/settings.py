@@ -143,7 +143,7 @@ class SageSettings:
         try:
             updated = {**self._model.model_dump(), key: value}
             self._model = SageSettingsModel.model_validate(updated)
-            logger.info(f"Setting '{key}' updated to: {getattr(self._model, key)}")
+            logger.debug(f"Setting '{key}' updated to: {getattr(self._model, key)}")
             return True
         except ValidationError as e:
             logger.warning(f"Invalid value for setting '{key}': {e}")

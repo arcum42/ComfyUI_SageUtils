@@ -249,12 +249,18 @@ export async function loadImagesFromFolder(folderType, customPath = null, setSta
             throw new DOMException('Operation aborted', 'AbortError');
         }
         
+
         // Prepare request body
         const requestBody = { folder: folderType };
         if (customPath) {
             requestBody.path = customPath;
         }
-        
+
+        // Debug log for outgoing request
+        if (window && window.console) {
+            console.log('[GalleryApi] Sending /sage_utils/list_images request:', JSON.stringify(requestBody));
+        }
+
         const response = await api.fetchApi('/sage_utils/list_images', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },

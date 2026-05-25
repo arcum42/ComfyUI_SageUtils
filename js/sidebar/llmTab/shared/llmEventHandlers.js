@@ -717,7 +717,7 @@ function updatePromptWithTemplate(templateContent, textarea, templateState, stat
  * @param {HTMLElement} advancedOptions - Advanced options section
  */
 function setupSettingsEventHandlers(state, advancedOptions) {
-    // Common settings — both Ollama and LM Studio sections have their own
+    // Common settings: both Ollama and LM Studio sections have their own
     // temperature/seed/maxTokens controls with the same class names, so we
     // must attach a listener to every matching element, not just the first.
     advancedOptions.querySelectorAll('.llm-temperature-slider').forEach((slider) => {

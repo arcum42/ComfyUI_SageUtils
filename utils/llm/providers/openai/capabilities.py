@@ -2,7 +2,7 @@
 
 from typing import Any, Optional
 
-from ...errors import report_llm_error
+from ...errors import llm_report
 from ...capabilities import ModelCapabilities, get_capability_cache
 from .requests import openai_request_json_models
 
@@ -194,7 +194,7 @@ def get_model_capabilities_map(enabled: bool) -> dict[str, ModelCapabilities]:
             capabilities_map[model_id] = get_model_capabilities(enabled, model_obj, model_id)
         return capabilities_map
     except Exception as e:
-        report_llm_error(
+        llm_report(
             'Error retrieving model capabilities from OpenAI',
             provider=_PROVIDER_NAME,
             operation='get_model_capabilities_map',

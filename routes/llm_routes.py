@@ -5,10 +5,24 @@ Handles LLM chat endpoints for Ollama, LM Studio, and Native CLIP integration.
 
 import json
 from contextvars import ContextVar
-from ..utils.logger import get_logger
-from ..utils.llm import clean_response
-from ..utils.llm import routes_helpers
 from aiohttp import web
+from pathlib import Path
+from datetime import datetime
+
+# ComfyUI related imports
+import folder_paths
+import nodes as comfy_nodes
+from server import PromptServer
+
+# SageUtils specific imports
+from ..utils import sage_users_path
+from ..utils.logger import get_logger
+from ..utils.settings import get_setting
+from ..utils.llm import clean_response, routes_helpers, set_llm_error_reporter
+from ..utils.llm import service as llm
+from ..utils.llm.routes_helpers import get_compatible_models, get_available_presets_full
+from ..utils.config_manager import llm_prompts
+
 from .base import route_error_handler, success_response, error_response, validate_json_body
 
 logger = get_logger('routes.llm')
@@ -25,8 +39,6 @@ def _ensure_promptserver_progress_context():
     where ComfyUI's global progress hook may still expect these attributes.
     """
     try:
-        from server import PromptServer
-
         server_instance = getattr(PromptServer, 'instance', None)
         if server_instance is None:
             return
@@ -113,7 +125,6 @@ def _native_chunk_text(text: str, chunk_size: int = 8):
 def _get_native_clip_models() -> list[str]:
     """Return available native CLIP text encoder models for sidebar provider selection."""
     try:
-        import folder_paths
         models = folder_paths.get_filename_list("text_encoders") or []
         return sorted([m for m in models if isinstance(m, str) and m])
     except Exception as e:
@@ -123,7 +134,6 @@ def _get_native_clip_models() -> list[str]:
 
 def _load_native_clip(clip_name: str):
     """Load a single CLIP text encoder via ComfyUI's native CLIP loader."""
-    import nodes as comfy_nodes
 
     loader = comfy_nodes.CLIPLoader()
     loaded = loader.load_clip(clip_name=clip_name, type="stable_diffusion", device="default")
@@ -184,7 +194,6 @@ def register_routes(routes_instance):
     Returns:
         int: Number of routes registered
     """
-    from ..utils.llm import set_llm_error_reporter
 
     # Wire up structured LLM error payloads so frontend can display backend messages.
     set_llm_error_reporter(handle_llm_error_callback)
@@ -223,9 +232,6 @@ def register_routes(routes_instance):
             }
         """
         try:
-            from ..utils.settings import get_setting
-            from ..utils.llm import service as llm
-            
             # Ensure initialization has been attempted
             try:
                 llm.ensure_llm_initialized()
@@ -313,10 +319,6 @@ def register_routes(routes_instance):
             }
         """
         try:
-            from ..utils.llm import service as llm
-            from ..utils.settings import get_setting
-            from ..utils.llm.routes_helpers import get_compatible_models
-            
             # Check if force re-initialization is requested
             force = request.rel_url.query.get('force', '').lower() == 'true'
             
@@ -461,10 +463,6 @@ def register_routes(routes_instance):
             }
         """
         try:
-            from ..utils.llm import service as llm
-            from ..utils.settings import get_setting
-            from ..utils.llm.routes_helpers import get_compatible_models
-            
             # Check if force re-initialization is requested
             force = request.rel_url.query.get('force', '').lower() == 'true'
             
@@ -586,7 +584,6 @@ def register_routes(routes_instance):
             }
         """
         try:
-            from ..utils.config_manager import llm_prompts
             
             return success_response(data={
                 "prompts": llm_prompts
@@ -663,11 +660,6 @@ def register_routes(routes_instance):
             if not is_valid:
                 return _error_response_with_metadata(error_msg, status=400, error_code='LLM_VALIDATION_ERROR')
             options = routes_helpers.build_generation_payload_options(provider, data)
-            
-            from ..utils.llm import service as llm
-            
-            # Initialize LLM services if needed
-            llm.ensure_llm_initialized()
             
             # Generate response based on provider
             response_text = ""
@@ -815,8 +807,6 @@ def register_routes(routes_instance):
                     status=400,
                     error_code='LLM_VALIDATION_ERROR',
                 )
-            
-            from ..utils.llm import service as llm
             
             # Initialize LLM services if needed
             llm.ensure_llm_initialized()
@@ -1021,8 +1011,6 @@ def register_routes(routes_instance):
                 return _error_response_with_metadata(error_msg, status=400, error_code='LLM_VALIDATION_ERROR')
             options = routes_helpers.build_generation_payload_options(provider, data)
             
-            from ..utils.llm import service as llm
-            
             # Initialize LLM services if needed
             llm.ensure_llm_initialized()
             
@@ -1150,11 +1138,6 @@ def register_routes(routes_instance):
                 return _error_response_with_metadata(error_msg, status=400, error_code='LLM_VALIDATION_ERROR')
             options = routes_helpers.build_generation_payload_options(provider, data)
             
-            from ..utils.llm import service as llm
-            
-            # Initialize LLM services if needed
-            llm.ensure_llm_initialized()
-            
             # Create SSE response
             response = web.StreamResponse()
             response.headers['Content-Type'] = 'text/event-stream'
@@ -1280,9 +1263,6 @@ def register_routes(routes_instance):
             Markdown content of the system prompt
         """
         try:
-            from pathlib import Path
-            from ..utils import sage_users_path
-            
             prompt_id = request.match_info['prompt_id']
             
             # Map built-in prompt IDs to files in assets
@@ -1334,9 +1314,6 @@ def register_routes(routes_instance):
             }
         """
         try:
-            from pathlib import Path
-            from ..utils import sage_users_path
-            
             data = await request.json()
             
             prompt_id = data.get('id')
@@ -1396,9 +1373,6 @@ def register_routes(routes_instance):
             {"id": str}
         """
         try:
-            from pathlib import Path
-            from ..utils import sage_users_path
-            
             data = await request.json()
             prompt_id = data.get('id')
             
@@ -1453,9 +1427,6 @@ def register_routes(routes_instance):
             }
         """
         try:
-            from pathlib import Path
-            from ..utils import sage_users_path
-            
             prompts = {}
             
             # Add built-in prompts
@@ -1512,9 +1483,6 @@ def register_routes(routes_instance):
             }
         """
         try:
-            from pathlib import Path
-            from ..utils import sage_users_path
-            
             # Load custom presets from user directory
             user_presets_file = Path(sage_users_path) / "llm_presets.json"
             custom_presets = {}
@@ -1548,10 +1516,6 @@ def register_routes(routes_instance):
             }
         """
         try:
-            from pathlib import Path
-            from ..utils import sage_users_path
-            from datetime import datetime
-            
             data = await request.json()
             preset_id = data.get('id')
             preset_data = data.get('preset')
@@ -1601,9 +1565,6 @@ def register_routes(routes_instance):
             {"id": str}
         """
         try:
-            from pathlib import Path
-            from ..utils import sage_users_path
-            
             data = await request.json()
             preset_id = data.get('id')
             
@@ -1667,8 +1628,6 @@ def register_routes(routes_instance):
             }
         """
         try:
-            from ..utils.llm.routes_helpers import get_available_presets_full
-            
             all_presets = get_available_presets_full()
             return success_response({"presets": all_presets})
             
@@ -1708,11 +1667,6 @@ def register_routes(routes_instance):
             }
         """
         try:
-            from pathlib import Path
-            from ..utils import sage_users_path
-            from ..utils.llm import service as llm
-            from ..utils.config_manager import llm_prompts
-            
             data = await request.json()
             
             preset_id = data.get('preset_id')

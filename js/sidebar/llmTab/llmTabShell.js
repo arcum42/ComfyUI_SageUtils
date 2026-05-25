@@ -32,7 +32,7 @@ const LLM_TAB_PROMPT_KEY = 'llm_tab_prompt_text';
 const LLM_LAST_PROVIDER_KEY = 'llm_last_selected_provider';
 const LLM_ACTIVE_SUBTAB_KEY = 'llm_last_active_subtab';
 
-// Expansion feature flags — enable via localStorage in browser console:
+// Expansion feature flags: enable via localStorage in browser console:
 //   localStorage.setItem('sageutils_llm_context_sources', 'true')
 //   localStorage.setItem('sageutils_llm_tool_calls', 'true')
 function isExpansionEnabled(flag) {

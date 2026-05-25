@@ -30,7 +30,7 @@ def _normalize_line_stream(text: str) -> str:
     return ' '.join(lines)
 
 
-def stringify_llm_error(cause: Any) -> str:
+def llm_stringify(cause: Any) -> str:
     """Convert error payloads/exceptions to a single-line message.
 
     If the input is an array (list/tuple), join its parts into one string
@@ -44,7 +44,7 @@ def stringify_llm_error(cause: Any) -> str:
     if isinstance(cause, (list, tuple)):
         parts: list[str] = []
         for item in cause:
-            item_message = stringify_llm_error(item)
+            item_message = llm_stringify(item)
             if item_message:
                 parts.append(item_message)
         # Arrays may contain individual characters, so avoid injecting separators.
@@ -54,7 +54,7 @@ def stringify_llm_error(cause: Any) -> str:
         if len(args) > 1:
             parts = []
             for item in args:
-                item_message = stringify_llm_error(item)
+                item_message = llm_stringify(item)
                 if item_message:
                     parts.append(item_message)
             # Keep exception args readable while still avoiding line breaks.
@@ -63,7 +63,7 @@ def stringify_llm_error(cause: Any) -> str:
             else:
                 message = ' '.join(parts)
         elif len(args) == 1:
-            message = stringify_llm_error(args[0])
+            message = llm_stringify(args[0])
         else:
             message = str(cause)
     else:
@@ -94,7 +94,7 @@ def _emit_llm_error(payload: dict[str, Any]) -> None:
         logger.debug(f'LLM error reporter callback failed: {reporter_error}')
 
 
-def raise_llm_error(
+def llm_raise(
     error_type: Type[Exception],
     message: str,
     *,
@@ -112,7 +112,7 @@ def raise_llm_error(
             'message': message,
             'scoped_message': scoped_message,
             'error_type': error_type.__name__,
-            'cause': stringify_llm_error(cause) if cause is not None else None,
+            'cause': llm_stringify(cause) if cause is not None else None,
         }
     )
 
@@ -121,7 +121,7 @@ def raise_llm_error(
     raise error_type(scoped_message) from cause
 
 
-def report_llm_error(
+def llm_report(
     message: str,
     *,
     provider: str,
@@ -130,10 +130,10 @@ def report_llm_error(
 ) -> None:
     """Report an LLM provider error through centralized logging + callbacks.
 
-    Unlike raise_llm_error, this helper does not raise.
+    Unlike llm_raise, this helper does not raise.
     """
     scoped_message = f'[{provider}.{operation}] {message}'
-    cause_text = stringify_llm_error(cause) if cause is not None else None
+    cause_text = llm_stringify(cause) if cause is not None else None
     if cause_text:
         logger.error(f'{scoped_message}: {cause_text}')
     else:

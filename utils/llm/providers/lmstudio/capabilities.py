@@ -2,37 +2,12 @@
 
 from typing import Any, Optional
 
-from ...errors import report_llm_error
+from ...errors import llm_report
 from ...capabilities import ModelCapabilities, get_capability_cache
 from .requests import lmstudio_request_json_models
+from .extract import _extract_model_name, _extract_models_payload
 
 _PROVIDER_NAME = 'lmstudio_rest'
-
-
-def _extract_model_name(model_obj: Any) -> Optional[str]:
-    if not isinstance(model_obj, dict):
-        return None
-
-    for key in ('key', 'id', 'model_key', 'model', 'name'):
-        value = model_obj.get(key)
-        if isinstance(value, str) and value.strip():
-            return value.strip()
-
-    return None
-
-
-def _extract_models_payload(response: Any) -> list[dict[str, Any]]:
-    if isinstance(response, list):
-        return [item for item in response if isinstance(item, dict)]
-
-    if isinstance(response, dict):
-        for key in ('data', 'models', 'items'):
-            value = response.get(key)
-            if isinstance(value, list):
-                return [item for item in value if isinstance(item, dict)]
-
-    return []
-
 
 def _detect_capabilities_from_model_object(model_obj: dict[str, Any]) -> ModelCapabilities:
     model_name = _extract_model_name(model_obj) or model_obj.get('display_name') or 'unknown'
@@ -69,7 +44,6 @@ def _detect_capabilities_from_model_object(model_obj: dict[str, Any]) -> ModelCa
         confidence='api',
     )
 
-
 def get_model_capabilities(enabled: bool, model_obj: dict[str, Any]) -> ModelCapabilities:
     model_name = _extract_model_name(model_obj) or model_obj.get('display_name') or 'unknown'
     if not enabled:
@@ -83,7 +57,6 @@ def get_model_capabilities(enabled: bool, model_obj: dict[str, Any]) -> ModelCap
     capabilities = _detect_capabilities_from_model_object(model_obj)
     cap_cache.set(capabilities)
     return capabilities
-
 
 def get_model_capabilities_map(enabled: bool) -> dict[str, ModelCapabilities]:
     if not enabled:
@@ -100,7 +73,7 @@ def get_model_capabilities_map(enabled: bool) -> dict[str, ModelCapabilities]:
             capabilities_map[model_name] = get_model_capabilities(enabled, model_obj)
         return capabilities_map
     except Exception as e:
-        report_llm_error(
+        llm_report(
             'Error retrieving model capabilities from LM Studio REST',
             provider=_PROVIDER_NAME,
             operation='get_model_capabilities_map',

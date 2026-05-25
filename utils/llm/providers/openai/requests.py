@@ -2,11 +2,34 @@
 
 import os
 from typing import Any, Dict, Optional
+import logging
 
 from ...rest import normalize_base_url, request_json, request_stream, with_bearer_auth
 
 _DEFAULT_BASE_URL = 'https://api.openai.com'
+logger = logging.getLogger("llm.providers.openai.requests")
 
+# https://developers.openai.com/api/docs
+
+# Non streaming endpoints:
+# GET /v1/models
+#       https://lmstudio.ai/docs/developer/openai-compat/models
+
+# POST /v1/chat/completions
+#       https://lmstudio.ai/docs/developer/openai-compat/chat-completions
+
+# Streaming endpoints:
+# POST /v1/chat/completions
+
+# Other OpenAI-compatible endpoints (not currently used):
+# POST /v1/responses
+#       https://lmstudio.ai/docs/developer/openai-compat/responses
+
+# POST /v1/embeddings
+#       https://lmstudio.ai/docs/developer/openai-compat/embeddings
+
+# POST /v1/completions
+#       https://lmstudio.ai/docs/developer/openai-compat/completions
 
 def _get_base_url() -> str:
     from ....settings import get_setting
@@ -42,11 +65,13 @@ def openai_request_json(
 
 def openai_request_json_models(timeout: float = 300.0) -> Any:
     """Perform a models request to an OpenAI-compatible endpoint and return decoded JSON response."""
+    logger.debug('OpenAI models request')
     return openai_request_json('GET', '/v1/models', timeout=timeout)
 
 
 def openai_request_json_chat(payload: dict[str, Any], timeout: float = 300.0) -> Any:
     """Perform a chat completions request to an OpenAI-compatible endpoint and return decoded JSON response."""
+    logger.debug(f'OpenAI chat request with payload: {payload}')
     return openai_request_json('POST', '/v1/chat/completions', payload=payload, timeout=timeout)
 
 
@@ -60,6 +85,8 @@ def openai_request_stream(
     return request_stream(method, _get_base_url(), path, payload=payload, headers=_get_headers(), timeout=timeout)
 
 
+
 def openai_request_stream_chat(payload: dict[str, Any], timeout: float = 30.0) -> Any:
     """Perform a streaming chat completions request and return an open response context."""
+    logger.debug(f'OpenAI streaming chat request with payload: {payload}')
     return openai_request_stream('POST', '/v1/chat/completions', payload=payload, timeout=timeout)

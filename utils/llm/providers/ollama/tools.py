@@ -10,7 +10,7 @@ import folder_paths
 from ....path_manager import path_manager
 from ....logger import get_logger
 from ...common import clean_response
-from ...errors import raise_llm_error, stringify_llm_error
+from ...errors import llm_raise, llm_stringify
 
 logger = get_logger('llm.providers.ollama_rest')
 
@@ -146,7 +146,7 @@ def _local_tool_notes_list(args: dict[str, Any]) -> dict[str, Any]:
 def _local_tool_notes_read(args: dict[str, Any]) -> dict[str, Any]:
     filename = str(args.get('filename') or '').strip()
     if not _is_safe_note_filename(filename):
-        raise_llm_error(ValueError, 'Invalid notes filename', provider=_PROVIDER_NAME, operation='tool_execute')
+        llm_raise(ValueError, 'Invalid notes filename', provider=_PROVIDER_NAME, operation='tool_execute')
 
     notes_dir = _get_notes_dir()
     note_path = notes_dir / filename
@@ -154,7 +154,7 @@ def _local_tool_notes_read(args: dict[str, Any]) -> dict[str, Any]:
         if not note_path.resolve().is_file() or not str(note_path.resolve()).startswith(str(notes_dir.resolve())):
             raise FileNotFoundError(filename)
     except Exception:
-        raise_llm_error(ValueError, f"Note not found: {filename}", provider=_PROVIDER_NAME, operation='tool_execute')
+        llm_raise(ValueError, f"Note not found: {filename}", provider=_PROVIDER_NAME, operation='tool_execute')
 
     max_chars = _safe_limit(args.get('max_chars'), default=4000, maximum=20000)
     with note_path.open('r', encoding='utf-8') as handle:
@@ -169,7 +169,7 @@ def _local_tool_notes_read(args: dict[str, Any]) -> dict[str, Any]:
 def _local_tool_notes_search(args: dict[str, Any]) -> dict[str, Any]:
     query = str(args.get('query') or '').strip().lower()
     if not query:
-        raise_llm_error(ValueError, 'Search query is required', provider=_PROVIDER_NAME, operation='tool_execute')
+        llm_raise(ValueError, 'Search query is required', provider=_PROVIDER_NAME, operation='tool_execute')
 
     notes_dir = _get_notes_dir()
     limit = _safe_limit(args.get('limit'), default=20, maximum=100)
@@ -227,7 +227,7 @@ def _local_tool_prompts_list(args: dict[str, Any]) -> dict[str, Any]:
 def _local_tool_prompts_get(args: dict[str, Any]) -> dict[str, Any]:
     prompt_id = str(args.get('id') or '').strip()
     if not prompt_id:
-        raise_llm_error(ValueError, 'Prompt id is required', provider=_PROVIDER_NAME, operation='tool_execute')
+        llm_raise(ValueError, 'Prompt id is required', provider=_PROVIDER_NAME, operation='tool_execute')
 
     data = _load_saved_prompts()
     raw_prompts = data.get('prompts')
@@ -236,14 +236,14 @@ def _local_tool_prompts_get(args: dict[str, Any]) -> dict[str, Any]:
         if isinstance(item, dict) and str(item.get('id') or '') == prompt_id:
             return {'prompt': item}
 
-    raise_llm_error(ValueError, f"Prompt not found: {prompt_id}", provider=_PROVIDER_NAME, operation='tool_execute')
+    llm_raise(ValueError, f"Prompt not found: {prompt_id}", provider=_PROVIDER_NAME, operation='tool_execute')
     return {}
 
 
 def _local_tool_prompts_search(args: dict[str, Any]) -> dict[str, Any]:
     query = str(args.get('query') or '').strip().lower()
     if not query:
-        raise_llm_error(ValueError, 'Search query is required', provider=_PROVIDER_NAME, operation='tool_execute')
+        llm_raise(ValueError, 'Search query is required', provider=_PROVIDER_NAME, operation='tool_execute')
 
     data = _load_saved_prompts()
     raw_prompts = data.get('prompts')
@@ -319,7 +319,7 @@ def _local_tool_echo(args: dict[str, Any]) -> dict[str, Any]:
 def _execute_local_tool(name: str, args: dict[str, Any], allowed_tool_names: Optional[set[str]] = None) -> dict[str, Any]:
     tool_name = (name or '').strip()
     if not tool_name:
-        raise_llm_error(
+        llm_raise(
             ValueError,
             'Tool call missing function name',
             provider=_PROVIDER_NAME,
@@ -327,7 +327,7 @@ def _execute_local_tool(name: str, args: dict[str, Any], allowed_tool_names: Opt
         )
 
     if allowed_tool_names and tool_name not in allowed_tool_names:
-        raise_llm_error(
+        llm_raise(
             ValueError,
             f"Tool is not declared in request schema: {tool_name}",
             provider=_PROVIDER_NAME,
@@ -353,7 +353,7 @@ def _execute_local_tool(name: str, args: dict[str, Any], allowed_tool_names: Opt
     if tool_name == 'sage.workflow.read_latest':
         return _local_tool_workflow_read_latest(args)
 
-    raise_llm_error(
+    llm_raise(
         ValueError,
         f"Unsupported local tool: {tool_name}",
         provider=_PROVIDER_NAME,
@@ -431,7 +431,7 @@ def generate_with_tool_loop(
                 })
                 working_messages.append(_build_tool_message(tool_name, tool_result, call_id=tool_call_id))
             except Exception as tool_error:
-                error_text = stringify_llm_error(tool_error)
+                error_text = llm_stringify(tool_error)
                 tool_events.append({
                     'event': 'tool_call.failure',
                     'tool': {'name': tool_name, 'error': error_text, 'status': 'failure', 'id': tool_call_id},

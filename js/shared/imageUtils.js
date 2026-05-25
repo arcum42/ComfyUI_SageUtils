@@ -16,31 +16,34 @@ import { MetadataCache } from './metadataCache.js';
 export async function loadImagesFromFolder(folderType, customPath = null) {
     try {
         let url = API_ENDPOINTS.listImages;
-        const params = new URLSearchParams({ folder_type: folderType });
-        
-        if (customPath) {
-            params.append('custom_path', customPath);
-        }
-        
-        const response = await fetch(`${url}?${params}`);
-        
+        // Build the request body to match backend expectations
+        const body = {
+            folder: folderType,
+            path: customPath || ''
+        };
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+        });
+
         if (!response.ok) {
             throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
-        
+
         const result = await response.json();
-        
+
         if (!result.success) {
             throw new Error(result.error || 'Unknown error occurred');
         }
-        
+
         const images = result.images || [];
         const folders = result.folders || [];
-        
+
         // Update state with loaded images and folders
         actions.setImages(images);
         actions.setFolders(folders);
-        
+
         // Manage current path based on folder type and custom path
         if (folderType === 'custom' && customPath) {
             // We're in a custom subfolder, set the path
@@ -49,9 +52,9 @@ export async function loadImagesFromFolder(folderType, customPath = null) {
             // We're in a standard folder (input, output, etc.) or no custom path
             actions.setCurrentPath('');
         }
-        
+
         return { images, folders };
-        
+
     } catch (error) {
         console.error('Error loading images:', error);
         throw error;

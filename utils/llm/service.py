@@ -11,9 +11,9 @@ from .init import (
     init_ollama_rest as _init_ollama_rest,
     init_openai_provider as _init_openai_provider,
 )
-from .providers.lmstudio import lmstudio_rest_client as lmstudio_rest_provider
-from .providers.ollama import ollama_rest_client as ollama_rest_provider
-from .providers.openai import openai_client as openai_provider
+from .providers.lmstudio import client as lmstudio_rest_provider
+from .providers.ollama import client as ollama_rest_provider
+from .providers.openai import client as openai_provider
 
 logger = get_logger('llm')
 
@@ -215,7 +215,7 @@ def lmstudio_generate_vision_refine(
 def lmstudio_rest_generate(model: str, prompt: str, keep_alive: int = 0, options=None, system_prompt: str = '') -> str:
     """Generate text via LM Studio REST."""
     ensure_lmstudio_rest_initialized()
-    return lmstudio_rest_provider.generate(
+    return lmstudio_rest_provider.generate_with_stream(
         is_lmstudio_rest_enabled(),
         model,
         prompt,
@@ -227,7 +227,7 @@ def lmstudio_rest_generate(model: str, prompt: str, keep_alive: int = 0, options
 def lmstudio_rest_generate_vision(model: str, prompt: str, keep_alive: int = 0, images=None, options=None, system_prompt: str = '') -> str:
     """Generate vision output via LM Studio REST."""
     ensure_lmstudio_rest_initialized()
-    return lmstudio_rest_provider.generate_vision(
+    return lmstudio_rest_provider.generate_vision_with_stream(
         is_lmstudio_rest_enabled(),
         model,
         prompt,

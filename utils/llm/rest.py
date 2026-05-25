@@ -9,7 +9,6 @@ from urllib.parse import urlparse
 from urllib import error as urllib_error
 from urllib import request as urllib_request
 
-
 def normalize_base_url(base_url: str, default_url: str) -> str:
     """Return a normalized base URL with no trailing slash."""
     value = (base_url or '').strip() or default_url

@@ -9,7 +9,7 @@ from typing import Any, Optional
 
 from ..logger import get_logger
 from ..settings import get_setting
-from . import raise_llm_error
+from . import llm_raise
 
 logger = get_logger('llm.routes_helpers')
 
@@ -256,7 +256,7 @@ def get_compatible_models(provider: str, model_list: list[str]) -> list[str]:
 def decode_base64_images_to_temp(images_data: list[str]) -> list[str]:
     """Convert base64-encoded images to temporary files, return temp paths."""
     if not isinstance(images_data, list) or not images_data:
-        raise_llm_error(
+        llm_raise(
             ValueError,
             'Images must be a non-empty array',
             provider='routes',
@@ -280,7 +280,7 @@ def decode_base64_images_to_temp(images_data: list[str]) -> list[str]:
                 os.unlink(temp_path)
             except Exception:
                 pass
-        raise_llm_error(
+        llm_raise(
             ValueError,
             f'Failed to decode images: {str(e)}',
             provider='routes',
@@ -360,7 +360,7 @@ def load_preset(preset_id: str) -> dict[str, Any]:
         except Exception as e:
             logger.warning(f'Failed to load custom presets: {e}')
 
-    raise_llm_error(
+    llm_raise(
         ValueError,
         f"Preset '{preset_id}' not found",
         provider='routes',
@@ -786,5 +786,5 @@ def check_model_vision_capability(provider: str, model: str) -> tuple[bool, Opti
         
     except Exception as e:
         logger.warning(f'Error checking vision capability for {provider}:{model}: {e}')
-        # Degrade gracefully — if we can't check, allow the attempt
+        # Degrade gracefully. If we can't check, allow the attempt.
         return True, None

@@ -228,7 +228,7 @@ export function getSettingsForModel(settings, provider, model) {
     const defaults = getDefaultSettings();
     const normalizedSettings = normalizeSettingsObject(settings) || {};
     // Only the stored snapshot for this specific model is merged on top of defaults.
-    // We deliberately do NOT spread normalizedSettings here — that would inherit all
+    // We deliberately do NOT spread normalizedSettings here, as that would inherit all
     // per-model values (temperature, topK, etc.) from whatever the previous model had
     // in state.settings, making model switches bleed into one another.
     const modelSnapshot = normalizeSettingsObject(normalizedSettings?.modelSettings?.[provider]?.[model] || {});
