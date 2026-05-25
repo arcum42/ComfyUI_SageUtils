@@ -118,8 +118,16 @@
         .llm-selection-row {
             display: flex;
             gap: 8px;
-            align-items: flex-end;
+            align-items: center;
             margin-bottom: 8px;
+        }
+
+        .llm-selection-row .llm-btn {
+            height: 100%;
+        }
+
+        .llm-selection-row .llm-select {
+            min-height: 32px;
         }
 
         .llm-selection-row:last-child {

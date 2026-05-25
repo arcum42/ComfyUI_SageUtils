@@ -111,7 +111,7 @@ function createHeaderAndControls(onRefresh, onScan, onReport) {
     // Create sort controls
     const sortContainer = createFlexContainer({
         gap: '8px',
-        alignItems: 'center',
+        align: 'center',
         styles: {
             marginBottom: '8px'  // Space before search input
         }
@@ -133,7 +133,9 @@ function createHeaderAndControls(onRefresh, onScan, onReport) {
             { value: 'type', text: 'Folder Type' }
         ],
         style: {
-            flex: '1'
+            flex: '1',
+            minHeight: '36px',
+            marginBottom: '0'
         }
     });
     
@@ -148,7 +150,13 @@ function createHeaderAndControls(onRefresh, onScan, onReport) {
         title: 'Toggle sort direction',
         styles: {
             minWidth: '40px',
-            padding: '6px 8px'
+            minHeight: '36px',
+            padding: '0 10px',
+            marginBottom: '0',
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            alignSelf: 'center'
         }
     });
     

@@ -38,6 +38,7 @@ export function createFlexContainer(options = {}) {
         direction = 'row',
         justify = 'flex-start',
         align = 'stretch',
+        alignItems = null,
         gap = '0',
         wrap = false,
         padding = '0',
@@ -47,6 +48,8 @@ export function createFlexContainer(options = {}) {
         children = []
     } = options;
 
+    const effectiveAlign = alignItems || align;
+
     loadComponentStyles();
 
     const container = document.createElement('div');
@@ -55,7 +58,7 @@ export function createFlexContainer(options = {}) {
 
     container.style.setProperty('--sage-flex-direction', direction);
     container.style.setProperty('--sage-flex-justify', justify);
-    container.style.setProperty('--sage-flex-align', align);
+    container.style.setProperty('--sage-flex-align', effectiveAlign);
     container.style.setProperty('--sage-flex-gap', gap);
     container.style.setProperty('--sage-flex-wrap', wrap ? 'wrap' : 'nowrap');
     container.style.setProperty('--sage-flex-padding', padding);

@@ -215,6 +215,8 @@
 .sage-textarea {
   width: 100%;
   padding: 8px;
+  min-height: 32px;
+  line-height: 1.4;
   background: #333;
   color: #fff;
   border: 1px solid #555;
@@ -282,8 +284,6 @@
 
 .sage-checkbox-label {
   cursor: pointer;
-  color: #fff;
-  font-size: 12px;
   user-select: none;
 }
 
@@ -435,7 +435,6 @@
 }
 
 .sage-dropdown-menu,
-.cache-dropdown-menu,
 .cache-dropdown-submenu {
   position: fixed;
   left: var(--cache-dropdown-left, 0);
@@ -455,7 +454,7 @@
   box-sizing: border-box;
 }
 
-.cache-dropdown-menu.open,
+.sage-dropdown-menu.open,
 .cache-dropdown-submenu.open {
   display: block;
 }
@@ -921,8 +920,7 @@
 
 .sage-progress-label,
 .sage-progress-dialog-msg,
-.sage-inline-progress-message,
-.sage-progress-status-text {
+.sage-inline-progress-message {
   color: #fff;
   font-size: 12px;
 }
@@ -1183,12 +1181,6 @@
   overflow: hidden;
 }
 
-.sage-batch-progress-fill {
-  width: 0%;
-  height: 100%;
-  background: linear-gradient(90deg, #4CAF50, #66BB6A);
-  transition: width 0.3s ease;
-}
 
 .sage-flex-container {
   display: flex;
@@ -1662,12 +1654,6 @@
   padding: 15px;
   border-radius: 4px;
   border: 1px solid #444;
-}
-
-.dialog-confirm-message {
-  margin: 0 0 10px 0;
-  font-size: 14px;
-  line-height: 1.5;
 }
 
 .dialog-feedback-button-success {
