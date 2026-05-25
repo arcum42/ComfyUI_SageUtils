@@ -1,0 +1,11 @@
+/* testSidebar.css - Test CSS for sidebar tab
+   This will make the background of the test tab bright yellow and text bold red for visibility. */
+
+#civitai-search-tab-test-css {
+    background-color: yellow !important;
+    color: red !important;
+    font-weight: bold !important;
+    border: 3px solid orange !important;
+    font-size: 1.2em !important;
+    padding: 10px !important;
+}

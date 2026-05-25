@@ -63,6 +63,33 @@ This catches syntax errors, missing imports, and basic structural issues before 
 - Imports like `from comfy.comfy_types.node_typing import ComfyNodeABC` only work when loaded by ComfyUI
 - Don't attempt to fix import errors in test files - they require ComfyUI's runtime environment
 
+## Loading External CSS in Sidebar Tabs
+
+To load a custom CSS file for a sidebar tab (or any frontend JS in ComfyUI):
+
+- Place your `.css` file in the `js/sidebar/` directory (or another subfolder under `js/`).
+- In your JS, dynamically create a `<link>` tag with the following path format:
+
+  ```js
+  link.href = 'extensions/comfyui_sageutils/sidebar/yourFile.css';
+  ```
+  - `comfyui_sageutils` is your custom node subfolder name.
+  - `sidebar` is the subdirectory under `js/` (omit `js/` from the URL).
+  - Do **not** include `js/` in the path.
+
+- Example for a file at `js/sidebar/testSidebar.css`:
+  ```js
+  link.href = 'extensions/comfyui_sageutils/sidebar/testSidebar.css';
+  ```
+- This matches the ComfyUI convention: `extensions/<custom_node_subfolder>/<the_file.css>`
+- The value of `WEB_DIRECTORY` is `js`, but it is omitted from the URL.
+
+**Troubleshooting:**
+- If your CSS does not load, double-check the path and ensure you are not including the `js/` directory in the URL.
+- Use browser dev tools to verify the network request and path.
+
+Documented May 2026 after successful test integration.
+
 ## Documentation Updates
 - Update `README.md` for new features
 - Update `pyproject.toml` version for releases
