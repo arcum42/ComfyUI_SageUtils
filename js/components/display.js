@@ -3,6 +3,13 @@
 
 import { ComfyWidgets } from "../../../../scripts/widgets.js";
 import { renderMarkdown, ensureMarkdownStyles } from "../shared/markdown.js";
+import { loadComponentStyles as ensureComponentStyles } from './styleLoader.js';
+
+console.log('[SageUtils] display.js imported');
+
+function loadComponentStyles() {
+  ensureComponentStyles('display.js');
+}
 
 /**
  * Creates a basic text output widget for a node.
@@ -22,8 +29,7 @@ export function createTextOutputWidget(node, app, widgetName = "output") {
       app
     ).widget;
     w.inputEl.readOnly = true;
-    w.inputEl.style.opacity = 0.6;
-    w.inputEl.style.fontSize = "9pt";
+    w.inputEl.classList.add('sage-text-output-widget');
   }
   
   return w;
@@ -87,48 +93,28 @@ export function setupMarkdownDisplay(widget, content) {
   if (widget.markdownOverlay) {
     widget.markdownOverlay.remove();
     widget.markdownOverlay = null;
+    widget.inputEl?.classList.remove('sage-hidden-input');
   }
   
+  loadComponentStyles();
+
   // Create markdown display overlay
   const markdownDiv = document.createElement('div');
-  markdownDiv.className = 'markdown-overlay';
+  markdownDiv.classList.add('markdown-overlay');
   const renderedHTML = renderMarkdown(content);
   console.log("Rendered HTML length:", renderedHTML.length);
   markdownDiv.innerHTML = renderedHTML;
   
   console.log("Created markdown div with HTML:", markdownDiv.innerHTML.substring(0, 200) + "...");
   
-  // Style the overlay to match the textarea exactly
-  markdownDiv.style.cssText = `
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: #1e1e1e;
-    color: #d4d4d4;
-    padding: 8px 12px;
-    border: 1px solid #3e3e3e;
-    border-radius: 6px;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    font-size: 13px;
-    line-height: 1.5;
-    overflow-y: auto;
-    overflow-x: hidden;
-    word-wrap: break-word;
-    box-sizing: border-box;
-    z-index: 1;
-    pointer-events: auto;
-  `;
-  
   // Hide the textarea
-  widget.inputEl.style.opacity = '0';
-  console.log("Hiding textarea, opacity set to 0");
+  widget.inputEl.classList.add('sage-hidden-input');
+  console.log("Hiding textarea for markdown overlay");
   
   // Make sure the parent has position relative for absolute positioning
   const parent = widget.inputEl.parentElement;
   if (getComputedStyle(parent).position === 'static') {
-    parent.style.position = 'relative';
+    parent.classList.add('sage-overlay-parent');
   }
   
   // Insert the overlay
@@ -163,57 +149,31 @@ export function setupImageDisplay(widget, filename) {
     const existingOverlay = widget.inputEl.parentElement.querySelector('.markdown-overlay, .image-overlay, .video-overlay');
     if (existingOverlay) {
       existingOverlay.remove();
+      widget.inputEl.classList.remove('sage-hidden-input');
     }
     
     // Create image display overlay
     const imageDiv = document.createElement('div');
     imageDiv.className = 'image-overlay';
     
+    loadComponentStyles();
+
     // Create image element
     const img = document.createElement('img');
+    img.classList.add('display-overlay-media');
     // Construct the URL for the image in the notes directory
     img.src = `/sage_utils/read_note?filename=${encodeURIComponent(filename)}`;
     img.alt = filename;
     
-    // Style the image to fit nicely
-    img.style.cssText = `
-      max-width: 100%;
-      max-height: 100%;
-      width: auto;
-      height: auto;
-      object-fit: contain;
-      display: block;
-      margin: auto;
-    `;
-    
     imageDiv.appendChild(img);
     
-    // Style the overlay container
-    imageDiv.style.cssText = `
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: #1e1e1e;
-      border: 1px solid #3e3e3e;
-      border-radius: 6px;
-      padding: 8px;
-      box-sizing: border-box;
-      z-index: 1;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      overflow: auto;
-    `;
-    
     // Hide the textarea
-    widget.inputEl.style.opacity = '0';
+    widget.inputEl.classList.add('sage-hidden-input');
     
     // Make sure the parent has position relative for absolute positioning
     const parent = widget.inputEl.parentElement;
     if (getComputedStyle(parent).position === 'static') {
-      parent.style.position = 'relative';
+      parent.classList.add('sage-overlay-parent');
     }
     
     // Insert the overlay
@@ -225,9 +185,9 @@ export function setupImageDisplay(widget, filename) {
     // Handle image load errors
     img.onerror = function() {
       imageDiv.innerHTML = `
-        <div style="color: #ff6b6b; text-align: center; padding: 20px;">
-          <p>Failed to load image: ${filename}</p>
-          <p style="font-size: 12px; opacity: 0.7;">Image may not exist or format may not be supported</p>
+        <div class="display-error-container">
+          <p class="display-error-heading">Failed to load image: ${filename}</p>
+          <p class="display-error-text">Image may not exist or format may not be supported</p>
         </div>
       `;
     };
@@ -254,6 +214,7 @@ export function setupVideoDisplay(widget, filename, isSupported = true) {
     const existingOverlay = widget.inputEl.parentElement.querySelector('.markdown-overlay, .image-overlay, .video-overlay');
     if (existingOverlay) {
       existingOverlay.remove();
+      widget.inputEl.classList.remove('sage-hidden-input');
     }
     
     // Create video display overlay
@@ -264,56 +225,41 @@ export function setupVideoDisplay(widget, filename, isSupported = true) {
       // Show format not supported message
       const extension = filename.split('.').pop().toUpperCase();
       videoDiv.innerHTML = `
-        <div style="color: #ff6b6b; text-align: center; padding: 20px;">
-          <h3 style="color: #ff6b6b; margin-bottom: 16px;">Video Format Not Supported</h3>
-          <p><strong>${filename}</strong></p>
-          <p style="font-size: 14px; margin: 16px 0;">
-            ${extension} format is not supported by browsers.
-          </p>
-          <div style="background: #2d2d2d; border-radius: 8px; padding: 16px; margin: 16px 0; text-align: left;">
-            <p style="color: #4fc3f7; margin-bottom: 8px; font-weight: bold;">✅ Supported formats:</p>
-            <p style="margin: 4px 0; color: #90ee90;">• MP4 (H.264/H.265) - Best compatibility</p>
-            <p style="margin: 4px 0; color: #90ee90;">• WebM (VP8/VP9) - Good for web</p>
-            <p style="margin: 4px 0; color: #90ee90;">• OGG (Theora) - Open source</p>
-            <p style="margin: 4px 0; color: #90ee90;">• M4V - Apple format</p>
-            <br>
-            <p style="color: #ff6b6b; margin-bottom: 8px; font-weight: bold;">❌ Unsupported formats:</p>
-            <p style="margin: 4px 0; color: #ffb6b6;">• MKV, AVI, MOV, WMV, FLV</p>
+        <div class="display-error-container">
+          <h3 class="display-error-heading">Video Format Not Supported</h3>
+          <p class="display-error-text"><strong>${filename}</strong></p>
+          <p class="display-error-text">${extension} format is not supported by browsers.</p>
+          <div class="display-error-box">
+            <p class="display-error-item display-error-success">✅ Supported formats:</p>
+            <p class="display-error-item">• MP4 (H.264/H.265) - Best compatibility</p>
+            <p class="display-error-item">• WebM (VP8/VP9) - Good for web</p>
+            <p class="display-error-item">• OGG (Theora) - Open source</p>
+            <p class="display-error-item">• M4V - Apple format</p>
+            <p class="display-error-item display-error-warning">❌ Unsupported formats:</p>
+            <p class="display-error-item">• MKV, AVI, MOV, WMV, FLV</p>
           </div>
-          <p style="font-size: 12px; opacity: 0.7; margin-top: 16px;">
-            Convert your video to MP4 or WebM for browser playback.
-          </p>
+          <p class="display-error-text">Convert your video to MP4 or WebM for browser playback.</p>
         </div>
       `;
     } else {
       // Create video element for supported formats
       const video = document.createElement('video');
+      video.classList.add('display-overlay-media');
       video.controls = true;
       video.preload = 'metadata';
       video.src = `/sage_utils/read_note?filename=${encodeURIComponent(filename)}`;
-      
-      // Style the video to fit nicely
-      video.style.cssText = `
-        max-width: 100%;
-        max-height: 100%;
-        width: auto;
-        height: auto;
-        object-fit: contain;
-        display: block;
-        margin: auto;
-      `;
       
       videoDiv.appendChild(video);
       
       // Handle video load errors
       video.onerror = function() {
         videoDiv.innerHTML = `
-          <div style="color: #ff6b6b; text-align: center; padding: 20px;">
-            <p>Failed to load video: ${filename}</p>
-            <p style="font-size: 12px; opacity: 0.7;">The file may be corrupted or the codec may not be supported</p>
-            <p style="font-size: 11px; opacity: 0.5;">Try converting to H.264 MP4 for best compatibility</p>
-          </div>
-        `;
+        <div class="display-error-container">
+          <h3 class="display-error-heading">Failed to load video: ${filename}</h3>
+          <p class="display-error-text">The file may be corrupted or the codec may not be supported</p>
+          <p class="display-error-text">Try converting to H.264 MP4 for best compatibility</p>
+        </div>
+      `;
       };
       
       // Handle successful video load
@@ -327,32 +273,13 @@ export function setupVideoDisplay(widget, filename, isSupported = true) {
       };
     }
     
-    // Style the overlay container (applies to both supported and unsupported)
-    videoDiv.style.cssText = `
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: #1e1e1e;
-      border: 1px solid #3e3e3e;
-      border-radius: 6px;
-      padding: 8px;
-      box-sizing: border-box;
-      z-index: 1;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      overflow: auto;
-    `;
-    
     // Hide the textarea
-    widget.inputEl.style.opacity = '0';
+    widget.inputEl.classList.add('sage-hidden-input');
     
     // Make sure the parent has position relative for absolute positioning
     const parent = widget.inputEl.parentElement;
     if (getComputedStyle(parent).position === 'static') {
-      parent.style.position = 'relative';
+      parent.classList.add('sage-overlay-parent');
     }
     
     // Insert the overlay

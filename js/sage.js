@@ -4,6 +4,8 @@
 //   https://github.com/chrisgoringe/Comfy-Custom-Node-How-To/wiki/ui_1_starting
 //   https://github.com/chrisgoringe/Comfy-Custom-Node-How-To/wiki/remove_or_add_widget
 
+console.log('[SageUtils] sage.js imported');
+
 import { app } from "../../../scripts/app.js";
 import { _ID } from "./shared/utils.js";
 
@@ -21,6 +23,7 @@ import {
 
 // Record initialization start
 recordInitializationMilestone("SAGE_JS_START");
+console.log('[SageUtils] sage.js module loaded');
 
 // Import node setup functions
 import { setupViewTextOrAnythingNode } from "./nodes/viewAnything.js";
@@ -76,18 +79,25 @@ app.registerExtension({
       
       // Register the cache sidebar tab
       const sidebarStart = performance.now();
-      app.extensionManager.registerSidebarTab({
-        id: "sageUtilsCache",
-        icon: "pi pi-hammer",
-        title: "SageUtils",
-        tooltip: "SageUtils tools: Model browser, file manager, and prompt builder",
-        type: "custom",
-        render: createCacheSidebar
-      });
+      console.log('[SageUtils] registering sidebar tab');
+      try {
+        app.extensionManager.registerSidebarTab({
+          id: "sageUtilsCache",
+          icon: "pi pi-hammer",
+          title: "SageUtils",
+          tooltip: "SageUtils tools: Model browser, file manager, and prompt builder",
+          type: "custom",
+          render: createCacheSidebar
+        });
+      } catch (error) {
+        console.error('[SageUtils] failed to register sidebar tab:', error);
+        throw error;
+      }
       const sidebarEnd = performance.now();
       if (shouldLogTimingDetails()) {
         console.log(`Sidebar tab registration took: ${(sidebarEnd - sidebarStart).toFixed(2)}ms`);
       }
+      console.log('[SageUtils] sidebar tab registered successfully');
       
       recordInitializationMilestone("SIDEBAR_TAB_REGISTERED");
     });

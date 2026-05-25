@@ -20,154 +20,69 @@ export function createNavigationControls(options = {}) {
         variant = 'gradient'
     } = options;
 
-    // Size configurations
-    const sizeConfig = {
-        small: {
-            padding: '4px 8px',
-            fontSize: '12px',
-            borderRadius: '3px',
-            minWidth: '30px'
-        },
-        medium: {
-            padding: '8px 12px',
-            fontSize: '13px',
-            borderRadius: '6px',
-            minWidth: '40px'
-        },
-        large: {
-            padding: '10px 16px',
-            fontSize: '14px',
-            borderRadius: '8px',
-            minWidth: '50px'
-        }
+    const validSizes = ['small', 'medium', 'large'];
+    const validVariants = ['gradient', 'flat'];
+    const buttonSize = validSizes.includes(size) ? size : 'medium';
+    const buttonVariant = validVariants.includes(variant) ? variant : 'gradient';
+
+    const createNavButton = (text, title) => {
+        const button = document.createElement('button');
+        button.innerHTML = text;
+        button.title = title;
+        button.className = `sage-button sage-nav-button sage-nav-button--${buttonVariant} sage-nav-button--${buttonSize}`;
+        return button;
     };
 
-    // Style variants
-    const styleVariants = {
-        gradient: {
-            background: 'linear-gradient(145deg, #404040, #303030)',
-            border: '1px solid #555',
-            boxShadow: '0 2px 4px rgba(0,0,0,0.3)',
-            hoverBackground: 'linear-gradient(145deg, #505050, #404040)',
-            hoverBorder: '#666'
-        },
-        flat: {
-            background: '#555',
-            border: 'none',
-            boxShadow: 'none',
-            hoverBackground: '#666',
-            hoverBorder: 'none'
-        }
-    };
-
-    const currentSize = sizeConfig[size];
-    const currentStyle = styleVariants[variant];
-
-    // Create button base style
-    const getButtonStyle = (disabled = false) => `
-        background: ${disabled ? '#333' : currentStyle.background};
-        color: ${disabled ? '#666' : '#fff'};
-        border: ${currentStyle.border};
-        padding: ${currentSize.padding};
-        border-radius: ${currentSize.borderRadius};
-        cursor: ${disabled ? 'not-allowed' : 'pointer'};
-        font-size: ${currentSize.fontSize};
-        font-weight: 500;
-        transition: all 0.2s ease;
-        box-shadow: ${disabled ? 'none' : currentStyle.boxShadow};
-        min-width: ${currentSize.minWidth};
-    `;
-
-    // First button
-    const firstButton = document.createElement('button');
-    firstButton.innerHTML = showLabels ? '⏮ First' : '⏮️';
-    firstButton.title = 'First Item';
-    firstButton.style.cssText = getButtonStyle();
-
-    // Previous button
-    const prevButton = document.createElement('button');
-    prevButton.innerHTML = showLabels ? '◀ Prev' : '◀️';
-    prevButton.title = 'Previous Item';
-    prevButton.style.cssText = getButtonStyle();
-
-    // Next button
-    const nextButton = document.createElement('button');
-    nextButton.innerHTML = showLabels ? 'Next ▶' : '▶️';
-    nextButton.title = 'Next Item';
-    nextButton.style.cssText = getButtonStyle();
-
-    // Last button
-    const lastButton = document.createElement('button');
-    lastButton.innerHTML = showLabels ? 'Last ⏭' : '⏭️';
-    lastButton.title = 'Last Item';
-    lastButton.style.cssText = getButtonStyle();
+    const firstButton = createNavButton(showLabels ? '⏮ First' : '⏮️', 'First Item');
+    const prevButton = createNavButton(showLabels ? '◀ Prev' : '◀️', 'Previous Item');
+    const nextButton = createNavButton(showLabels ? 'Next ▶' : '▶️', 'Next Item');
+    const lastButton = createNavButton(showLabels ? 'Last ⏭' : '⏭️', 'Last Item');
 
     // Counter element (optional)
     let counterElement = null;
     if (showCounter) {
         counterElement = document.createElement('span');
-        counterElement.style.cssText = `
-            color: #ccc;
-            font-size: ${currentSize.fontSize === '12px' ? '11px' : '12px'};
-            margin: 0 10px;
-            min-width: 50px;
-            text-align: center;
-        `;
+        counterElement.className = `sage-nav-counter sage-nav-counter--${buttonSize}`;
     }
 
-    // Add hover effects to all buttons
     const buttons = [firstButton, prevButton, nextButton, lastButton];
-    
-    buttons.forEach(button => {
-        button.addEventListener('mouseenter', () => {
-            if (!button.disabled) {
-                button.style.background = currentStyle.hoverBackground;
-                if (currentStyle.hoverBorder !== 'none') {
-                    button.style.borderColor = currentStyle.hoverBorder;
-                }
-            }
-        });
-
-        button.addEventListener('mouseleave', () => {
-            if (!button.disabled) {
-                button.style.background = currentStyle.background;
-                if (currentStyle.border !== 'none') {
-                    button.style.borderColor = '#555';
-                }
-            }
-        });
-    });
 
     // Update button states based on current position
     const updateButtonStates = (currentIndex, totalCount) => {
         const isFirst = currentIndex === 0;
         const isLast = currentIndex === totalCount - 1;
 
-        // Update disabled states
         firstButton.disabled = isFirst;
         prevButton.disabled = isFirst;
         nextButton.disabled = isLast;
         lastButton.disabled = isLast;
 
-        // Update styles for disabled state
-        buttons.forEach(button => {
-            button.style.cssText = getButtonStyle(button.disabled);
-        });
-
-        // Update counter if present
         if (counterElement && totalCount > 0) {
             counterElement.textContent = `${currentIndex + 1} / ${totalCount}`;
         }
     };
 
     // Create container for the controls
+    const applyContainerStyleString = (element, styleString) => {
+        styleString.split(';').forEach(rule => {
+            const [key, value] = rule.split(':').map(token => token && token.trim());
+            if (key && value) {
+                const camelKey = key.replace(/-([a-z])/g, (match, char) => char.toUpperCase());
+                element.style[camelKey] = value;
+            }
+        });
+    };
+
     const createContainer = (containerStyle = '') => {
         const container = document.createElement('div');
-        container.style.cssText = containerStyle || `
-            display: flex;
-            gap: 10px;
-            align-items: center;
-        `;
+        container.className = 'sage-nav-container';
+        if (containerStyle) {
+            if (typeof containerStyle === 'string') {
+                applyContainerStyleString(container, containerStyle);
+            } else if (typeof containerStyle === 'object') {
+                Object.assign(container.style, containerStyle);
+            }
+        }
 
         container.appendChild(firstButton);
         container.appendChild(prevButton);

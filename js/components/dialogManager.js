@@ -3,111 +3,19 @@
  * Handles modal dialogs and overlays
  */
 
-/**
- * Dialog styles
- */
-const DIALOG_STYLES = {
-    overlay: `
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(0, 0, 0, 0.5);
-        z-index: 10000;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        backdrop-filter: blur(3px);
-    `,
-    dialog: `
-        background: #2a2a2a;
-        border: 1px solid #555;
-        border-radius: 8px;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.7);
-        max-width: 90%;
-        max-height: 90%;
-        overflow: auto;
-        animation: dialogFadeIn 0.2s ease-out;
-    `,
-    header: `
-        padding: 15px 20px;
-        border-bottom: 1px solid #444;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        background: #353535;
-        border-radius: 8px 8px 0 0;
-    `,
-    title: `
-        color: #fff;
-        font-size: 16px;
-        font-weight: bold;
-        margin: 0;
-    `,
-    closeButton: `
-        background: none;
-        border: none;
-        color: #999;
-        font-size: 20px;
-        cursor: pointer;
-        padding: 0;
-        width: 24px;
-        height: 24px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        border-radius: 4px;
-    `,
-    content: `
-        padding: 20px;
-        color: #fff;
-    `,
-    footer: `
-        padding: 15px 20px;
-        border-top: 1px solid #444;
-        display: flex;
-        justify-content: flex-end;
-        gap: 10px;
-        background: #353535;
-        border-radius: 0 0 8px 8px;
-    `
-};
+import { loadComponentStyles as ensureComponentStyles } from './styleLoader.js';
+
+console.log('[SageUtils] dialogManager.js imported');
+
+function loadComponentStyles() {
+    ensureComponentStyles('dialogManager.js');
+}
 
 /**
- * Add dialog animation styles to document
+ * Ensure shared component styles are loaded
  */
 function addDialogStyles() {
-    if (document.getElementById('dialog-styles')) return;
-    
-    const style = document.createElement('style');
-    style.id = 'dialog-styles';
-    style.textContent = `
-        @keyframes dialogFadeIn {
-            from {
-                opacity: 0;
-                transform: scale(0.95);
-            }
-            to {
-                opacity: 1;
-                transform: scale(1);
-            }
-        }
-        
-        .dialog-overlay.closing {
-            animation: dialogFadeOut 0.2s ease-in;
-        }
-        
-        @keyframes dialogFadeOut {
-            from {
-                opacity: 1;
-            }
-            to {
-                opacity: 0;
-            }
-        }
-    `;
-    document.head.appendChild(style);
+    loadComponentStyles();
 }
 
 /**
@@ -124,51 +32,44 @@ export function createDialog(options = {}) {
         showCloseButton = true,
         showFooter = true,
         closeOnOverlayClick = true,
+        closable = true,
         onClose = null
     } = options;
+
+    const effectiveShowCloseButton = closable && showCloseButton;
+    const effectiveCloseOnOverlayClick = closable && closeOnOverlayClick;
     
     addDialogStyles();
     
     // Create overlay
     const overlay = document.createElement('div');
     overlay.className = 'dialog-overlay';
-    overlay.style.cssText = DIALOG_STYLES.overlay;
     
     // Create dialog container
     const dialog = document.createElement('div');
     dialog.className = 'dialog-container';
-    dialog.style.cssText = DIALOG_STYLES.dialog + `width: ${width}; height: ${height};`;
+    dialog.style.setProperty('--dialog-width', width);
+    dialog.style.setProperty('--dialog-height', height);
     
     // Create header
     const header = document.createElement('div');
     header.className = 'dialog-header';
-    header.style.cssText = DIALOG_STYLES.header;
     
     const titleElement = document.createElement('h3');
-    titleElement.style.cssText = DIALOG_STYLES.title;
+    titleElement.className = 'dialog-title';
     titleElement.textContent = title;
     header.appendChild(titleElement);
     
     if (showCloseButton) {
         const closeButton = document.createElement('button');
         closeButton.className = 'dialog-close';
-        closeButton.style.cssText = DIALOG_STYLES.closeButton;
         closeButton.innerHTML = '×';
-        closeButton.addEventListener('mouseenter', () => {
-            closeButton.style.backgroundColor = '#555';
-            closeButton.style.color = '#fff';
-        });
-        closeButton.addEventListener('mouseleave', () => {
-            closeButton.style.backgroundColor = 'transparent';
-            closeButton.style.color = '#999';
-        });
         header.appendChild(closeButton);
     }
     
     // Create content area
     const contentArea = document.createElement('div');
     contentArea.className = 'dialog-content';
-    contentArea.style.cssText = DIALOG_STYLES.content;
     if (typeof content === 'string') {
         contentArea.innerHTML = content;
     } else {
@@ -178,7 +79,6 @@ export function createDialog(options = {}) {
     // Create footer
     const footer = document.createElement('div');
     footer.className = 'dialog-footer';
-    footer.style.cssText = DIALOG_STYLES.footer;
     
     // Assemble dialog
     dialog.appendChild(header);
@@ -192,6 +92,7 @@ export function createDialog(options = {}) {
     // Event handlers
     const closeDialog = () => {
         overlay.classList.add('closing');
+        document.removeEventListener('keydown', handleKeyDown);
         setTimeout(() => {
             if (overlay.parentNode) {
                 overlay.parentNode.removeChild(overlay);
@@ -200,12 +101,14 @@ export function createDialog(options = {}) {
         }, 200);
     };
     
-    if (showCloseButton) {
+    if (effectiveShowCloseButton) {
         const closeButton = header.querySelector('.dialog-close');
-        closeButton.addEventListener('click', closeDialog);
+        if (closeButton) {
+            closeButton.addEventListener('click', closeDialog);
+        }
     }
     
-    if (closeOnOverlayClick) {
+    if (effectiveCloseOnOverlayClick) {
         overlay.addEventListener('click', (e) => {
             if (e.target === overlay) {
                 closeDialog();
@@ -246,22 +149,35 @@ export function createDialog(options = {}) {
         },
         addFooterButton(text, onClick, style = {}) {
             const button = document.createElement('button');
+            button.className = 'dialog-footer-button';
             button.textContent = text;
-            button.style.cssText = `
-                padding: 8px 16px;
-                background: #007acc;
-                color: white;
-                border: none;
-                border-radius: 4px;
-                cursor: pointer;
-                font-size: 14px;
-                ${Object.entries(style).map(([k, v]) => `${k}: ${v}`).join('; ')}
-            `;
-            button.addEventListener('mouseenter', () => {
-                button.style.backgroundColor = '#005a9e';
-            });
-            button.addEventListener('mouseleave', () => {
-                button.style.backgroundColor = style.background || '#007acc';
+
+            const background = style.background;
+            const color = style.color;
+            const isSecondary = background === '#666' || style.variant === 'secondary';
+            const isDanger = background === '#d32f2f' || style.variant === 'danger';
+            const isSuccess = background === '#4CAF50' || style.variant === 'success';
+
+            if (isSecondary) {
+                button.classList.add('dialog-footer-button--secondary');
+            } else if (isDanger) {
+                button.classList.add('dialog-footer-button--danger');
+            } else if (isSuccess) {
+                button.classList.add('dialog-footer-button--success');
+            } else if (background) {
+                button.classList.add('dialog-footer-button--custom');
+                button.style.setProperty('--dialog-footer-button-bg', background);
+            }
+
+            if (color) {
+                button.classList.add('dialog-footer-button--custom');
+                button.style.setProperty('--dialog-footer-button-color', color);
+            }
+
+            Object.entries(style).forEach(([key, value]) => {
+                if (key !== 'background' && key !== 'color' && key !== 'variant') {
+                    button.style[key] = value;
+                }
             });
             button.addEventListener('click', onClick);
             footer.appendChild(button);
@@ -280,7 +196,7 @@ export function confirmDialog(message, title = 'Confirm') {
     return new Promise((resolve) => {
         const dialog = createDialog({
             title,
-            content: `<p style="margin: 0; font-size: 14px; line-height: 1.5;">${message}</p>`,
+            content: `<p class="dialog-message">${message}</p>`,
             width: '400px',
             onClose: () => resolve(false)
         });
@@ -309,7 +225,7 @@ export function alertDialog(message, title = 'Alert') {
     return new Promise((resolve) => {
         const dialog = createDialog({
             title,
-            content: `<p style="margin: 0; font-size: 14px; line-height: 1.5;">${message}</p>`,
+            content: `<p class="dialog-message">${message}</p>`,
             width: '400px',
             onClose: () => resolve()
         });
@@ -335,20 +251,10 @@ export function promptDialog(message, defaultValue = '', title = 'Input') {
         const input = document.createElement('input');
         input.type = 'text';
         input.value = defaultValue;
-        input.style.cssText = `
-            width: 100%;
-            padding: 8px;
-            margin-top: 10px;
-            background: #333;
-            color: #fff;
-            border: 1px solid #555;
-            border-radius: 4px;
-            font-size: 14px;
-            box-sizing: border-box;
-        `;
+        input.className = 'dialog-input';
         
         const content = document.createElement('div');
-        content.innerHTML = `<p style="margin: 0 0 10px 0; font-size: 14px; line-height: 1.5;">${message}</p>`;
+        content.innerHTML = `<p class="dialog-message">${message}</p>`;
         content.appendChild(input);
         
         const dialog = createDialog({
@@ -391,13 +297,7 @@ export function promptDialog(message, defaultValue = '', title = 'Input') {
 export function createImageDialog(imageSrc, title = 'Image Preview') {
     const img = document.createElement('img');
     img.src = imageSrc;
-    img.style.cssText = `
-        max-width: 100%;
-        max-height: 70vh;
-        object-fit: contain;
-        display: block;
-        margin: 0 auto;
-    `;
+    img.className = 'dialog-image-preview';
     
     const dialog = createDialog({
         title,
@@ -419,18 +319,7 @@ export function createImageDialog(imageSrc, title = 'Image Preview') {
  */
 export function createMetadataDialog(metadata, title = 'Metadata') {
     const content = document.createElement('div');
-    content.style.cssText = `
-        font-family: monospace;
-        font-size: 12px;
-        line-height: 1.4;
-        white-space: pre-wrap;
-        max-height: 60vh;
-        overflow-y: auto;
-        background: #1e1e1e;
-        padding: 15px;
-        border-radius: 4px;
-        border: 1px solid #444;
-    `;
+    content.className = 'dialog-metadata-content';
     
     content.textContent = JSON.stringify(metadata, null, 2);
     
@@ -445,16 +334,22 @@ export function createMetadataDialog(metadata, title = 'Metadata') {
         navigator.clipboard.writeText(JSON.stringify(metadata, null, 2)).then(() => {
             // Temporarily change button text to show success
             const button = dialog.footer.querySelector('button');
+            if (!button) {
+                return;
+            }
+
             const originalText = button.textContent;
             button.textContent = 'Copied!';
-            button.style.background = '#4CAF50';
+            button.classList.add('dialog-feedback-button-success');
             setTimeout(() => {
                 button.textContent = originalText;
-                button.style.background = '#007acc';
+                button.classList.remove('dialog-feedback-button-success');
             }, 1000);
+        }).catch((error) => {
+            console.warn('[SageUtils] dialogManager.createMetadataDialog clipboard copy failed', error);
         });
     });
-    
+
     dialog.show();
     return dialog;
 }

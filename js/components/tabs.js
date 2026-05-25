@@ -7,6 +7,14 @@
  * @module components/tabs
  */
 
+import { loadComponentStyles as ensureComponentStyles } from './styleLoader.js';
+
+console.log('[SageUtils] tabs.js imported');
+
+function loadComponentStyles() {
+    ensureComponentStyles('tabs.js');
+}
+
 /**
  * TabManager - Manages a tabbed interface
  * 
@@ -33,7 +41,6 @@
  * 
  * tabManager.init();
  */
-const TAB_MANAGER_STYLE_ID = 'sageutils-tab-manager-styles';
 
 function isTabDebugEnabled() {
     try {
@@ -56,72 +63,26 @@ function logTabDebug(...args) {
 }
 
 function ensureTabManagerStyles() {
-    if (document.getElementById(TAB_MANAGER_STYLE_ID)) {
+    loadComponentStyles();
+}
+
+function applyCustomStyles(element, cssText) {
+    if (!cssText || typeof cssText !== 'string') {
         return;
     }
 
-    const style = document.createElement('style');
-    style.id = TAB_MANAGER_STYLE_ID;
-    style.textContent = `
-        .sage-tabs-header {
-            display: flex;
-            background: #1e1e1e;
-            border-bottom: 2px solid #333;
-            padding: 0 10px;
-            gap: 2px;
-            overflow-x: auto;
-            min-height: 50px;
-            position: relative;
+    cssText.split(';').forEach((declaration) => {
+        const [rawName, rawValue] = declaration.split(':');
+        if (!rawName || rawValue === undefined) {
+            return;
         }
 
-        .sage-tabs-content-area {
-            flex: 1;
-            overflow: auto;
+        const styleName = rawName.trim().replace(/-([a-z])/g, (match, letter) => letter.toUpperCase());
+        const styleValue = rawValue.trim();
+        if (styleValue) {
+            element.style[styleName] = styleValue;
         }
-
-        .sage-tab-button {
-            padding: 10px 20px;
-            border: none;
-            background: #2a2a2a;
-            color: #ccc;
-            cursor: pointer;
-            border-radius: 6px 6px 0 0;
-            font-size: 13px;
-            font-weight: normal;
-            transition: all 0.2s ease;
-            border-bottom: 2px solid transparent;
-            position: relative;
-            top: 2px;
-            flex-shrink: 0;
-            transform: translateY(0);
-        }
-
-        .sage-tab-button:hover:not(.active) {
-            background: #3a3a3a;
-            color: white;
-            transform: translateY(-1px);
-        }
-
-        .sage-tab-button.active {
-            background: #4CAF50;
-            color: white;
-            font-weight: bold;
-            border-bottom: 2px solid #4CAF50;
-            transform: translateY(-1px);
-        }
-
-        .sage-tab-container {
-            display: none;
-            height: 100%;
-            overflow: auto;
-        }
-
-        .sage-tab-container.active {
-            display: block;
-        }
-    `;
-
-    document.head.appendChild(style);
+    });
 }
 
 export class TabManager {
@@ -329,14 +290,14 @@ export class TabManager {
         this.tabHeader = document.createElement('div');
         this.tabHeader.className = 'tab-header sage-tabs-header';
         if (this.customStyles.header) {
-            this.tabHeader.style.cssText = this.customStyles.header;
+            applyCustomStyles(this.tabHeader, this.customStyles.header);
         }
         
         // Create tab content area
         this.tabContent = document.createElement('div');
         this.tabContent.className = 'tab-content-area sage-tabs-content-area';
         if (this.customStyles.content) {
-            this.tabContent.style.cssText = this.customStyles.content;
+            applyCustomStyles(this.tabContent, this.customStyles.content);
         }
         
         this.container.appendChild(this.tabHeader);
@@ -409,7 +370,7 @@ export class TabManager {
         button.textContent = displayText;
         
         if (this.customStyles.button) {
-            button.style.cssText = this.customStyles.button;
+            applyCustomStyles(button, this.customStyles.button);
         }
         
         // Click handler
@@ -522,9 +483,9 @@ export class TabManager {
             // Show loading state only if requested (skip for background preloading)
             if (showLoading) {
                 container.innerHTML = `
-                    <div style="text-align: center; padding: 40px; color: #888;">
-                        <div style="font-size: 16px; margin-bottom: 10px;">Loading ${config.label}...</div>
-                        <div style="font-size: 12px;">Please wait</div>
+                    <div class="sage-tab-loading">
+                        <div class="sage-tab-loading-heading">Loading ${config.label}...</div>
+                        <div class="sage-tab-loading-message">Please wait</div>
                     </div>
                 `;
             }
@@ -579,9 +540,9 @@ export class TabManager {
                 } catch (error) {
                     console.error(`TabManager: Error initializing tab '${tabId}':`, error);
                     container.innerHTML = `
-                        <div style="color: #f44336; padding: 20px; text-align: center;">
-                            <div style="font-size: 16px; margin-bottom: 10px;">Error loading ${config.label}</div>
-                            <div style="font-size: 14px; opacity: 0.8;">${error.message}</div>
+                        <div class="sage-tab-error">
+                            <div class="sage-tab-error-heading">Error loading ${config.label}</div>
+                            <div class="sage-tab-error-text">${error.message}</div>
                         </div>
                     `;
                 } finally {
@@ -593,8 +554,8 @@ export class TabManager {
         } catch (error) {
             console.error(`TabManager: Error setting up initialization for tab '${tabId}':`, error);
             container.innerHTML = `
-                <div style="color: #f44336; padding: 20px; text-align: center;">
-                    Error: ${error.message}
+                <div class="sage-tab-error">
+                    <div class="sage-tab-error-text">Error: ${error.message}</div>
                 </div>
             `;
             this.initializingTabs.delete(tabId);
@@ -671,7 +632,7 @@ export class TabManager {
             this.createTabButton(tabId);
         } else {
             const button = this.tabButtons.get(tabId);
-            button.style.display = 'block';
+            button.classList.remove('sage-tab-hidden');
         }
         
         return true;
@@ -693,7 +654,7 @@ export class TabManager {
         
         const button = this.tabButtons.get(tabId);
         if (button) {
-            button.style.display = 'none';
+            button.classList.add('sage-tab-hidden');
         }
         
         // If active tab is being hidden, switch to first visible
@@ -964,39 +925,9 @@ export class TabManager {
 export function createTabButton(text, isActive = false, options = {}) {
     const button = document.createElement('button');
     button.textContent = text;
-    button.style.cssText = `
-        padding: 10px 20px;
-        border: none;
-        background: ${isActive ? '#4CAF50' : '#2a2a2a'};
-        color: ${isActive ? 'white' : '#ccc'};
-        cursor: pointer;
-        border-radius: 6px 6px 0 0;
-        margin-right: 2px;
-        font-size: 13px;
-        font-weight: ${isActive ? 'bold' : 'normal'};
-        transition: all 0.2s ease;
-        border-bottom: 2px solid ${isActive ? '#4CAF50' : 'transparent'};
-        position: relative;
-        top: 2px;
-        ${options.customStyles || ''}
-    `;
-    
-    // Hover effects
-    button.addEventListener('mouseenter', () => {
-        if (!button.classList.contains('active')) {
-            button.style.background = '#3a3a3a';
-            button.style.color = 'white';
-            button.style.transform = 'translateY(-1px)';
-        }
-    });
-    
-    button.addEventListener('mouseleave', () => {
-        if (!button.classList.contains('active')) {
-            button.style.background = '#2a2a2a';
-            button.style.color = '#ccc';
-            button.style.transform = 'translateY(0)';
-        }
-    });
-    
+    button.className = `tab-button sage-tab-button${isActive ? ' active' : ''}`;
+    if (options.customStyles) {
+        applyCustomStyles(button, options.customStyles);
+    }
     return button;
 }

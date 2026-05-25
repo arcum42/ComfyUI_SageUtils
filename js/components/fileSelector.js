@@ -38,7 +38,7 @@ import {
  */
 export function createModelsFileSelector() {
     const selectorContainer = document.createElement('div');
-    selectorContainer.style.marginBottom = '15px';
+    selectorContainer.classList.add('sage-file-selector-container');
 
     const { container: selectorLabelContainer, label: selectorLabel } = createLabeledContainer('Select File:');
 
@@ -60,6 +60,75 @@ export function createModelsFileSelector() {
 }
 
 /**
+ * Position a dropdown menu under its button and match the button width.
+ * @param {HTMLElement} button
+ * @param {HTMLElement} menu
+ */
+function setCacheDropdownPosition(menu, left, top, width) {
+    menu.style.setProperty('--cache-dropdown-left', `${left}px`);
+    menu.style.setProperty('--cache-dropdown-top', `${top}px`);
+    if (width !== undefined && width !== null) {
+        menu.style.setProperty('--cache-dropdown-width', `${width}px`);
+    }
+}
+
+function setDropdownMenuPosition(button, menu) {
+    const rect = button.getBoundingClientRect();
+    setCacheDropdownPosition(menu, rect.left, rect.bottom, rect.width);
+}
+
+function setSubmenuPosition(folderItem, submenu) {
+    const rect = folderItem.getBoundingClientRect();
+    const submenuWidth = submenu.offsetWidth || 240;
+    const submenuHeight = submenu.offsetHeight || 300;
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+
+    let left = rect.right + 5;
+    if (left + submenuWidth > viewportWidth - 10) {
+        left = Math.max(rect.left - submenuWidth - 5, 10);
+    }
+
+    let top = rect.top;
+    if (top + submenuHeight > viewportHeight - 10) {
+        top = Math.max(viewportHeight - submenuHeight - 10, 10);
+    }
+
+    setCacheDropdownPosition(submenu, left, top);
+}
+
+/**
+ * Update the dropdown button label and chevron.
+ * @param {HTMLElement} button
+ * @param {string} text
+ * @param {boolean} [isOpen=false]
+ */
+function setDropdownButtonText(button, text, isOpen = false) {
+    button.innerHTML = `<span>${text}</span><span>${isOpen ? '▲' : '▼'}</span>`;
+}
+
+/**
+ * Update the dropdown button chevron only.
+ * @param {HTMLElement} button
+ * @param {boolean} isOpen
+ */
+function updateDropdownButtonChevron(button, isOpen) {
+    const chevron = button.querySelector('span:last-child');
+    if (chevron) {
+        chevron.textContent = isOpen ? '▲' : '▼';
+    }
+}
+
+/**
+ * Close all cache dropdown submenus.
+ */
+function closeCacheDropdownSubmenus() {
+    document.querySelectorAll('.cache-dropdown-submenu').forEach(menu => {
+        menu.classList.remove('open');
+    });
+}
+
+/**
  * Sets up event handlers for the file selector dropdown
  * @param {Object} fileSelector - File selector object from createModelsFileSelector
  * @param {Object} actionButtons - Action buttons object
@@ -77,21 +146,13 @@ export function setupFileSelectorEventHandlers(fileSelector, actionButtons, info
         actions.toggleDropdown(!currentDropdownState); // Toggle dropdown state
         
         if (!currentDropdownState) { // Opening dropdown
-            // Position dropdown menu dynamically
-            const rect = dropdownButton.getBoundingClientRect();
-            dropdownMenu.style.left = `${rect.left}px`;
-            dropdownMenu.style.top = `${rect.bottom}px`;
-            dropdownMenu.style.width = `${rect.width}px`;
-            dropdownMenu.style.display = 'block';
-            dropdownButton.innerHTML = '<span>Select a file...</span><span>▲</span>';
+            setDropdownMenuPosition(dropdownButton, dropdownMenu);
+            dropdownMenu.classList.add('open');
+            updateDropdownButtonChevron(dropdownButton, true);
         } else { // Closing dropdown
-            dropdownMenu.style.display = 'none';
-            dropdownButton.innerHTML = '<span>Select a file...</span><span>▼</span>';
-            
-            // Hide all submenus when closing dropdown
-            document.querySelectorAll('.cache-dropdown-submenu').forEach(menu => {
-                menu.style.display = 'none';
-            });
+            dropdownMenu.classList.remove('open');
+            updateDropdownButtonChevron(dropdownButton, false);
+            closeCacheDropdownSubmenus();
         }
     });
     
@@ -99,17 +160,15 @@ export function setupFileSelectorEventHandlers(fileSelector, actionButtons, info
     document.addEventListener('click', (e) => {
         const isDropdownOpen = selectors.isDropdownOpen();
         if (!selector.contains(e.target) && !dropdownMenu.contains(e.target) && isDropdownOpen) {
-            dropdownMenu.style.display = 'none';
+            dropdownMenu.classList.remove('open');
             actions.toggleDropdown(false); // Close dropdown via state action
             const selectedHash = selectors.selectedHash();
-            dropdownButton.innerHTML = selectedHash ? 
-                dropdownButton.innerHTML.replace('▲', '▼') : 
-                '<span>Select a file...</span><span>▼</span>';
-            
-            // Hide all submenus when closing dropdown
-            document.querySelectorAll('.cache-dropdown-submenu').forEach(menu => {
-                menu.style.display = 'none';
-            });
+            if (selectedHash) {
+                updateDropdownButtonChevron(dropdownButton, false);
+            } else {
+                updateDropdownButtonChevron(dropdownButton, false);
+            }
+            closeCacheDropdownSubmenus();
         }
     });
 }
@@ -381,35 +440,33 @@ export function createDropdownItems(folderStructure, sortBy, hashData, infoData,
             // Hide all other submenus first
             document.querySelectorAll('.cache-dropdown-submenu').forEach(menu => {
                 if (menu !== submenu) {
-                    menu.style.display = 'none';
+                    menu.classList.remove('open');
                 }
             });
             
             // Position submenu next to the folder item
-            const rect = folderItem.getBoundingClientRect();
-            submenu.style.left = `${rect.right + 5}px`;
-            submenu.style.top = `${rect.top}px`;
+            setSubmenuPosition(folderItem, submenu);
             
             // Show this submenu
-            submenu.style.display = 'block';
+            submenu.classList.add('open');
         });
         
         // Keep submenu open when hovering over the submenu itself
         submenu.addEventListener('mouseenter', () => {
             clearTimeout(submenuTimeout);
-            submenu.style.display = 'block';
+            submenu.classList.add('open');
         });
         
         // Hide submenu when leaving both folder and submenu
         folderItem.addEventListener('mouseleave', (e) => {
             submenuTimeout = setTimeout(() => {
-                submenu.style.display = 'none';
+                submenu.classList.remove('open');
             }, 150);
         });
         
         submenu.addEventListener('mouseleave', (e) => {
             submenuTimeout = setTimeout(() => {
-                submenu.style.display = 'none';
+                submenu.classList.remove('open');
             }, 150);
         });
         
@@ -430,19 +487,17 @@ export function createDropdownItems(folderStructure, sortBy, hashData, infoData,
             // Hide all other submenus
             document.querySelectorAll('.cache-dropdown-submenu').forEach(menu => {
                 if (menu !== submenu) {
-                    menu.style.display = 'none';
+                    menu.classList.remove('open');
                 }
             });
             
             // Toggle this submenu
-            if (submenu.style.display === 'block') {
-                submenu.style.display = 'none';
+            if (submenu.classList.contains('open')) {
+                submenu.classList.remove('open');
             } else {
                 // Position submenu next to the folder item
-                const rect = folderItem.getBoundingClientRect();
-                submenu.style.left = `${rect.right + 5}px`;
-                submenu.style.top = `${rect.top}px`;
-                submenu.style.display = 'block';
+                setSubmenuPosition(folderItem, submenu);
+                submenu.classList.add('open');
             }
         });
         
@@ -531,8 +586,7 @@ export function createFileItem(file, fileSelector, actionButtons, infoDisplay, f
     // Add visual indicator for uncached models
     if (!file.isCached) {
         displayName += ' (uncached)';
-        item.style.fontStyle = 'italic';
-        item.style.color = '#999';
+        item.classList.add('uncached');
     }
     
     item.textContent = displayName;
@@ -542,27 +596,27 @@ export function createFileItem(file, fileSelector, actionButtons, infoDisplay, f
         if (file.isCached) {
             // Handle cached model selection
             actions.selectModel(file.hash);
-            dropdownButton.innerHTML = `<span>${displayName}</span><span>▼</span>`;
-            dropdownMenu.style.display = 'none';
+            setDropdownButtonText(dropdownButton, displayName, false);
+            dropdownMenu.classList.remove('open');
             actions.toggleDropdown(false);
             
             // Hide all submenus when selecting a file
             document.querySelectorAll('.cache-dropdown-submenu').forEach(menu => {
-                menu.style.display = 'none';
+                menu.classList.remove('open');
             });
             
             // Enable buttons when a file is selected
             if (pullButton) {
                 pullButton.disabled = false;
-                pullButton.style.opacity = '1';
+                pullButton.classList.add('enabled');
             }
             if (editButton) {
                 editButton.disabled = false;
-                editButton.style.opacity = '1';
+                editButton.classList.add('enabled');
             }
             
             // Show loading while creating info display
-            infoDisplay.innerHTML = '<div style="text-align: center; padding: 20px; color: #888; font-style: italic;">Loading model information...</div>';
+            infoDisplay.innerHTML = '<div class="sage-info-message">Loading model information...</div>';
             
             // Update info display - use selector to get current selected hash
             const selectedHash = selectors.selectedHash();
@@ -578,19 +632,19 @@ export function createFileItem(file, fileSelector, actionButtons, infoDisplay, f
             } catch (error) {
                 console.error('Error updating info display:', error);
                 infoDisplay.innerHTML = `
-                    <div style="padding: 15px; background: #2a2a2a; border-radius: 8px; margin: 10px 0;">
-                        <h3 style="margin: 0 0 10px 0; color: #569cd6;">Error loading model information</h3>
-                        <p>Failed to update display: ${error.message}</p>
+                    <div class="sage-info-box sage-info-warning">
+                        <h3 class="sage-info-heading">Error loading model information</h3>
+                        <p class="sage-info-text">Failed to update display: ${error.message}</p>
                     </div>
                 `;
             }
         } else {
             // Handle uncached model - automatically pull metadata
-            dropdownButton.innerHTML = `<span>Processing ${file.fileName}...</span><span>▼</span>`;
-            dropdownMenu.style.display = 'none';
+            setDropdownButtonText(dropdownButton, `Processing ${file.fileName}...`, false);
+            dropdownMenu.classList.remove('open');
             actions.toggleDropdown(false);
             
-            infoDisplay.innerHTML = '<div style="text-align: center; padding: 20px; color: #569cd6; font-style: italic;">🔄 Automatically pulling metadata for uncached model...</div>';
+            infoDisplay.innerHTML = '<div class="sage-info-message">🔄 Automatically pulling metadata for uncached model...</div>';
             
             try {
                 // Automatically pull metadata for uncached model
@@ -601,11 +655,11 @@ export function createFileItem(file, fileSelector, actionButtons, infoDisplay, f
                     // This needs to be handled by the parent component
                     // For now, show success message
                     infoDisplay.innerHTML = `
-                        <div style="padding: 15px; background: #2d4a2d; border-radius: 8px; margin: 10px 0; border: 1px solid #4CAF50;">
-                            <h3 style="margin: 0 0 10px 0; color: #4CAF50;">✅ Model Cached Successfully</h3>
-                            <p><strong>File:</strong> ${file.fileName}</p>
-                            <p><strong>Hash:</strong> ${result.hash || 'Generated'}</p>
-                            <p>Model information has been cached. Please refresh the list to see the updated model.</p>
+                        <div class="sage-info-box sage-info-success">
+                            <h3 class="sage-info-heading">✅ Model Cached Successfully</h3>
+                            <p class="sage-info-text"><strong>File:</strong> ${file.fileName}</p>
+                            <p class="sage-info-text"><strong>Hash:</strong> ${result.hash || 'Generated'}</p>
+                            <p class="sage-info-text">Model information has been cached. Please refresh the list to see the updated model.</p>
                         </div>
                     `;
                 } else {
@@ -614,14 +668,14 @@ export function createFileItem(file, fileSelector, actionButtons, infoDisplay, f
             } catch (error) {
                 console.error('Error auto-pulling metadata:', error);
                 infoDisplay.innerHTML = `
-                    <div style="padding: 15px; background: #4a2d2d; border-radius: 8px; margin: 10px 0; border: 1px solid #F44336;">
-                        <h3 style="margin: 0 0 10px 0; color: #F44336;">❌ Failed to Cache Model</h3>
-                        <p><strong>File:</strong> ${file.fileName}</p>
-                        <p><strong>Error:</strong> ${error.message}</p>
-                        <p>You can try again by clicking the Pull button or manually refreshing the list.</p>
+                    <div class="sage-info-box sage-info-error">
+                        <h3 class="sage-info-heading">❌ Failed to Cache Model</h3>
+                        <p class="sage-info-text"><strong>File:</strong> ${file.fileName}</p>
+                        <p class="sage-info-text"><strong>Error:</strong> ${error.message}</p>
+                        <p class="sage-info-text">You can try again by clicking the Pull button or manually refreshing the list.</p>
                     </div>
                 `;
-                dropdownButton.innerHTML = '<span>Select a file...</span><span>▼</span>';
+                setDropdownButtonText(dropdownButton, 'Select a file...', false);
             }
         }
     });
@@ -642,7 +696,7 @@ export async function updateFileList(fileSelector, filterControls, actionButtons
         const { dropdownMenu, dropdownButton } = fileSelector;
         
         // Show loading state
-        infoDisplay.innerHTML = '<div style="text-align: center; padding: 20px; color: #888; font-style: italic;">Loading models from filesystem and cache...</div>';
+        infoDisplay.innerHTML = '<div class="sage-info-message">Loading models from filesystem and cache...</div>';
 
         // Clean up any existing submenus
         document.querySelectorAll('.cache-dropdown-submenu').forEach(menu => {
@@ -673,7 +727,7 @@ export async function updateFileList(fileSelector, filterControls, actionButtons
 
         // Clear and populate dropdown menu
         dropdownMenu.innerHTML = '';
-        dropdownButton.innerHTML = '<span>Select a file...</span><span>▼</span>';
+        setDropdownButtonText(dropdownButton, 'Select a file...', false);
         actions.selectModel(null);
 
         // Get current filter values
@@ -791,11 +845,10 @@ export async function updateFileList(fileSelector, filterControls, actionButtons
         if (sortedFiles.length === 0) {
             const filterText = filterType === 'all' ? 'model files' : `files from ${filterType} folder`;
             const noFilesItem = document.createElement('div');
-            noFilesItem.className = 'cache-dropdown-item';
+            noFilesItem.className = 'cache-dropdown-item cache-dropdown-empty';
             noFilesItem.textContent = `No ${filterText} found`;
-            noFilesItem.style.color = '#888';
             dropdownMenu.appendChild(noFilesItem);
-            infoDisplay.innerHTML = `<div style="text-align: center; padding: 20px; color: #888;">No ${filterText} available</div>`;
+            infoDisplay.innerHTML = `<div class="sage-info-message">No ${filterText} available</div>`;
             return;
         }
 
@@ -805,7 +858,7 @@ export async function updateFileList(fileSelector, filterControls, actionButtons
         // Create dropdown items
         createDropdownItems(folderStructure, sortBy, hashData, infoData, fileSelector, actionButtons, infoDisplay, filterControls);
 
-        infoDisplay.innerHTML = '<div style="text-align: center; padding: 20px; color: #888;">Select a file to view its information</div>';
+        infoDisplay.innerHTML = '<div class="sage-info-message">Select a file to view its information</div>';
 
         // Call refresh callback if provided
         if (onRefreshCallback && typeof onRefreshCallback === 'function') {
@@ -815,7 +868,7 @@ export async function updateFileList(fileSelector, filterControls, actionButtons
     } catch (error) {
         console.error('Error updating file list:', error);
         const { dropdownMenu } = fileSelector;
-        dropdownMenu.innerHTML = '<div class="cache-dropdown-item" style="color: #f44336;">Error loading files</div>';
-        infoDisplay.innerHTML = '<div style="text-align: center; padding: 20px; color: #f44336;">Error loading cache data</div>';
+        dropdownMenu.innerHTML = '<div class="cache-dropdown-item cache-dropdown-error">Error loading files</div>';
+        infoDisplay.innerHTML = '<div class="sage-info-message sage-info-error">Error loading cache data</div>';
     }
 }

@@ -30,6 +30,8 @@ import { pullMetadata, updateCacheInfo } from "../shared/api/cacheApi.js";
 import { escapeHtml, generateHtmlContent, openHtmlReport } from "../reports/reportGenerator.js";
 import { createComponentLogger } from "../utils/logger.js";
 
+console.log('[SageUtils] modelsTabV2.js imported');
+
 // Component logger
 const log = createComponentLogger('ModelsTabV2');
 

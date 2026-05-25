@@ -125,22 +125,13 @@ async function createCivitaiImageGallery(hash, showNsfw = false) {
         }
         
         const galleryContainer = document.createElement('div');
-        galleryContainer.style.cssText = `
-            margin-top: 15px;
-            padding-top: 15px;
-            border-top: 1px solid #444;
-        `;
+        galleryContainer.className = 'sage-gallery-container';
         
         const galleryHeader = document.createElement('div');
-        galleryHeader.style.cssText = `
-            margin-bottom: 10px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        `;
+        galleryHeader.className = 'sage-gallery-header';
         
         const titleSpan = document.createElement('span');
-        titleSpan.innerHTML = `<strong style="color: #E91E63;">Preview Images (${filteredImages.length}):</strong>`;
+        titleSpan.innerHTML = `<strong class="sage-gallery-title">Preview Images (${filteredImages.length}):</strong>`;
         galleryHeader.appendChild(titleSpan);
         
         // Add NSFW toggle placeholder (will be populated from parent)
@@ -151,36 +142,16 @@ async function createCivitaiImageGallery(hash, showNsfw = false) {
         galleryContainer.appendChild(galleryHeader);
         
         const imagesGrid = document.createElement('div');
-        imagesGrid.style.cssText = `
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-            gap: 10px;
-            max-height: 500px;
-            overflow-y: auto;
-        `;
+        imagesGrid.className = 'sage-gallery-grid';
         
         // Create image elements with the same styling as report generator
         filteredImages.forEach((image, index) => {
             const imageContainer = document.createElement('div');
-            imageContainer.style.cssText = `
-                position: relative;
-                border-radius: 4px;
-                overflow: hidden;
-                background: #1a1a1a;
-                width: 150px;
-                height: 100px;
-            `;
+            imageContainer.className = 'sage-gallery-item';
             
             const img = document.createElement('img');
             img.src = image.url;
-            img.style.cssText = `
-                width: 150px;
-                height: 100px;
-                object-fit: cover;
-                border-radius: 4px;
-                cursor: pointer;
-                transition: all 0.3s ease;
-            `;
+            img.className = 'sage-gallery-image';
             img.alt = 'Model example image';
             img.loading = 'lazy';
             img.title = 'Click to expand/collapse';
@@ -192,24 +163,14 @@ async function createCivitaiImageGallery(hash, showNsfw = false) {
             });
             
             img.onerror = function() { 
-                this.parentElement.innerHTML = '<span style="color:#999;font-size:11px;display:flex;align-items:center;justify-content:center;height:100px;">No image</span>';
+                this.parentElement.innerHTML = '<span class="sage-gallery-no-image">No image</span>';
             };
             
             // Add NSFW indicator if needed
             if ((image.nsfwLevel || 0) > 1) {
                 const nsfwIndicator = document.createElement('div');
                 nsfwIndicator.textContent = 'NSFW';
-                nsfwIndicator.style.cssText = `
-                    position: absolute;
-                    top: 4px;
-                    right: 4px;
-                    background: #F44336;
-                    color: white;
-                    padding: 2px 6px;
-                    border-radius: 3px;
-                    font-size: 10px;
-                    font-weight: bold;
-                `;
+                nsfwIndicator.className = 'sage-nsfw-indicator';
                 imageContainer.appendChild(nsfwIndicator);
             }
             
@@ -238,28 +199,11 @@ function toggleImageExpand(img) {
     } else {
         // Expand the image
         const backdrop = document.createElement('div');
-        backdrop.style.cssText = `
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.9);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 10000;
-            cursor: pointer;
-        `;
+        backdrop.className = 'sage-backdrop';
         
         const expandedImg = document.createElement('img');
         expandedImg.src = img.src;
-        expandedImg.style.cssText = `
-            max-width: 90%;
-            max-height: 90%;
-            object-fit: contain;
-            border-radius: 8px;
-        `;
+        expandedImg.className = 'sage-backdrop-image';
         
         backdrop.appendChild(expandedImg);
         
@@ -294,20 +238,11 @@ function toggleImageExpand(img) {
  */
 export async function createDetailedInfoDisplay(hash, info, showNsfw = false) {
     const container = document.createElement('div');
-    container.style.cssText = `
-        padding: 15px;
-        background: #2a2a2a;
-        border-radius: 8px;
-        margin-top: 10px;
-        font-family: monospace;
-        font-size: 12px;
-        line-height: 1.4;
-        color: #e0e0e0;
-    `;
+    container.className = 'sage-info-panel';
 
     if (!info) {
         container.innerHTML = `
-            <div style="color: #888; text-align: center; padding: 20px;">
+            <div class="sage-info-empty">
                 No information available for this file
             </div>
         `;
@@ -351,12 +286,12 @@ export async function createDetailedInfoDisplay(hash, info, showNsfw = false) {
     const modelType = enhancedInfo.model?.type || enhancedInfo.model_type || 'Unknown';
     
     sections.push(`
-        <div style="margin-bottom: 15px; padding-bottom: 10px; border-bottom: 2px solid #444;">
-            <h2 style="margin: 0 0 5px 0; color: #569cd6; font-size: 16px;">${escapeHtml(modelName)}</h2>
-            <div style="color: #4CAF50; font-size: 14px; margin-bottom: 5px;">${escapeHtml(versionName)}</div>
-            <div style="color: #FF9800; font-size: 12px;">
-                <span style="background: #333; padding: 2px 6px; border-radius: 3px;">${escapeHtml(modelType)}</span>
-                ${enhancedInfo.baseModel ? `<span style="background: #333; padding: 2px 6px; border-radius: 3px; margin-left: 5px;">${escapeHtml(enhancedInfo.baseModel)}</span>` : ''}
+        <div class="sage-info-header">
+            <h2 class="sage-info-title">${escapeHtml(modelName)}</h2>
+            <div class="sage-info-version">${escapeHtml(versionName)}</div>
+            <div class="sage-info-chip-row">
+                <span class="sage-info-chip">${escapeHtml(modelType)}</span>
+                ${enhancedInfo.baseModel ? `<span class="sage-info-chip">${escapeHtml(enhancedInfo.baseModel)}</span>` : ''}
             </div>
         </div>
     `);
@@ -366,9 +301,9 @@ export async function createDetailedInfoDisplay(hash, info, showNsfw = false) {
         // Clean up HTML description
         const cleanDescription = enhancedInfo.description.replace(/<[^>]*>/g, '').substring(0, 500);
         sections.push(`
-            <div style="margin-bottom: 12px;">
-                <strong style="color: #2196F3;">Description:</strong><br>
-                <div style="color: #B0BEC5; font-style: italic; padding: 8px; background: #1a1a1a; border-radius: 4px; margin-top: 5px;">
+            <div class="sage-info-block">
+                <strong class="sage-info-label sage-info-label--blue">Description:</strong><br>
+                <div class="sage-description-text">
                     ${escapeHtml(cleanDescription)}${enhancedInfo.description.length > 500 ? '...' : ''}
                 </div>
             </div>
@@ -379,15 +314,15 @@ export async function createDetailedInfoDisplay(hash, info, showNsfw = false) {
     if (enhancedInfo.trainedWords && enhancedInfo.trainedWords.length > 0) {
         const triggers = enhancedInfo.trainedWords.join(', ');
         sections.push(`
-            <div class="trigger-words-block" style="margin-bottom: 12px;">
-                <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
-                    <strong style="color: #E91E63;">Trigger Words:</strong>
-                    <div class="trigger-words-actions" style="display: flex; gap: 6px;">
-                        <button type="button" class="trigger-copy-btn" style="padding: 2px 6px; font-size: 11px; border: 1px solid #555; background: #2a2a2a; color: #ddd; border-radius: 3px; cursor: pointer;">Copy</button>
-                        <button type="button" class="trigger-append-btn" style="padding: 2px 6px; font-size: 11px; border: 1px solid #555; background: #2a2a2a; color: #ddd; border-radius: 3px; cursor: pointer;">Append to Prompt</button>
+            <div class="sage-trigger-words-block">
+                <div class="sage-trigger-words-row">
+                    <strong class="sage-info-label sage-info-label--magenta">Trigger Words:</strong>
+                    <div class="sage-trigger-words-actions">
+                        <button type="button" class="sage-trigger-btn trigger-copy-btn">Copy</button>
+                        <button type="button" class="sage-trigger-btn trigger-append-btn">Append to Prompt</button>
                     </div>
                 </div>
-                <div class="trigger-words-text" style="color: #F8BBD9; background: #2a1a2a; padding: 6px; border-radius: 4px; margin-top: 5px; font-family: monospace;">
+                <div class="sage-trigger-words-text">
                     ${escapeHtml(triggers)}
                 </div>
             </div>
@@ -398,13 +333,13 @@ export async function createDetailedInfoDisplay(hash, info, showNsfw = false) {
     if (enhancedInfo.stats) {
         const stats = enhancedInfo.stats;
         sections.push(`
-            <div style="margin-bottom: 12px;">
-                <strong style="color: #9C27B0;">Community Stats:</strong><br>
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 5px;">
-                    ${stats.downloadCount !== undefined ? `<span style="color: #BA68C8;">Downloads:</span> <span style="color: #CE93D8;">${stats.downloadCount.toLocaleString()}</span>` : ''}
-                    ${stats.thumbsUpCount !== undefined ? `<span style="color: #BA68C8;">👍 Likes:</span> <span style="color: #CE93D8;">${stats.thumbsUpCount.toLocaleString()}</span>` : ''}
-                    ${stats.thumbsDownCount !== undefined ? `<span style="color: #BA68C8;">👎 Dislikes:</span> <span style="color: #CE93D8;">${stats.thumbsDownCount.toLocaleString()}</span>` : ''}
-                    ${stats.commentCount !== undefined ? `<span style="color: #BA68C8;">Comments:</span> <span style="color: #CE93D8;">${stats.commentCount.toLocaleString()}</span>` : ''}
+            <div class="sage-info-block">
+                <strong class="sage-info-label sage-info-label--purple">Community Stats:</strong><br>
+                <div class="sage-stats-grid">
+                    ${stats.downloadCount !== undefined ? `<span class="sage-info-key">Downloads:</span> <span class="sage-info-value">${stats.downloadCount.toLocaleString()}</span>` : ''}
+                    ${stats.thumbsUpCount !== undefined ? `<span class="sage-info-key">👍 Likes:</span> <span class="sage-info-value">${stats.thumbsUpCount.toLocaleString()}</span>` : ''}
+                    ${stats.thumbsDownCount !== undefined ? `<span class="sage-info-key">👎 Dislikes:</span> <span class="sage-info-value">${stats.thumbsDownCount.toLocaleString()}</span>` : ''}
+                    ${stats.commentCount !== undefined ? `<span class="sage-info-key">Comments:</span> <span class="sage-info-value">${stats.commentCount.toLocaleString()}</span>` : ''}
                 </div>
             </div>
         `);
@@ -413,35 +348,35 @@ export async function createDetailedInfoDisplay(hash, info, showNsfw = false) {
     // Basic file information
     if (hash) {
         sections.push(`
-            <div style="margin-bottom: 12px;">
-                <strong style="color: #4CAF50;">Hash:</strong><br>
-                <span style="color: #81C784; word-break: break-all;">${hash}</span>
+            <div class="sage-info-block">
+                <strong class="sage-info-label sage-info-label--green">Hash:</strong><br>
+                <span class="sage-info-value sage-info-value--break">${hash}</span>
             </div>
         `);
     }
 
     // Model information
     if (enhancedInfo.model_name || enhancedInfo.base_model || enhancedInfo.model_type || (enhancedInfo.model && (enhancedInfo.model.name || enhancedInfo.model.type))) {
-        let modelInfo = '<div style="margin-bottom: 12px;"><strong style="color: #2196F3;">Model Information:</strong><br>';
+        let modelInfo = '<div class="sage-info-block"><strong class="sage-info-label sage-info-label--blue">Model Information:</strong><br>';
         
         // Check both old and new data structure
         const modelName = enhancedInfo.model_name || (enhancedInfo.model && enhancedInfo.model.name) || enhancedInfo.name;
         const baseModel = enhancedInfo.base_model || enhancedInfo.baseModel;
         const modelType = enhancedInfo.model_type || (enhancedInfo.model && enhancedInfo.model.type);
         
-        if (modelName) modelInfo += `<span style="color: #64B5F6;">Name:</span> ${escapeHtml(modelName)}<br>`;
-        if (baseModel) modelInfo += `<span style="color: #64B5F6;">Base Model:</span> ${escapeHtml(baseModel)}<br>`;
-        if (modelType) modelInfo += `<span style="color: #64B5F6;">Type:</span> ${escapeHtml(modelType)}<br>`;
+        if (modelName) modelInfo += `<span class="sage-info-key">Name:</span> ${escapeHtml(modelName)}<br>`;
+        if (baseModel) modelInfo += `<span class="sage-info-key">Base Model:</span> ${escapeHtml(baseModel)}<br>`;
+        if (modelType) modelInfo += `<span class="sage-info-key">Type:</span> ${escapeHtml(modelType)}<br>`;
         modelInfo += '</div>';
         sections.push(modelInfo);
     }
 
     // File details
     if (enhancedInfo.file_size || enhancedInfo.file_path || enhancedInfo.files) {
-        let fileInfo = '<div style="margin-bottom: 12px;"><strong style="color: #FF9800;">File Details:</strong><br>';
+        let fileInfo = '<div class="sage-info-block"><strong class="sage-info-label sage-info-label--orange">File Details:</strong><br>';
         
         if (enhancedInfo.file_path) {
-            fileInfo += `<span style="color: #FFB74D;">Path:</span> ${escapeHtml(enhancedInfo.file_path)}<br>`;
+            fileInfo += `<span class="sage-info-key">Path:</span> ${escapeHtml(enhancedInfo.file_path)}<br>`;
         }
         
         // File size from local cache or Civitai
@@ -452,18 +387,18 @@ export async function createDetailedInfoDisplay(hash, info, showNsfw = false) {
         
         if (fileSize) {
             const sizeInMB = (fileSize / (1024 * 1024)).toFixed(2);
-            fileInfo += `<span style="color: #FFB74D;">Size:</span> ${sizeInMB} MB<br>`;
+            fileInfo += `<span class="sage-info-key">Size:</span> ${sizeInMB} MB<br>`;
         }
         
         // File format and other metadata from Civitai
         if (enhancedInfo.files && enhancedInfo.files[0]) {
             const file = enhancedInfo.files[0];
             if (file.metadata) {
-                if (file.metadata.format) fileInfo += `<span style="color: #FFB74D;">Format:</span> ${file.metadata.format}<br>`;
-                if (file.metadata.fp) fileInfo += `<span style="color: #FFB74D;">Precision:</span> ${file.metadata.fp}<br>`;
-                if (file.metadata.size) fileInfo += `<span style="color: #FFB74D;">Model Size:</span> ${file.metadata.size}<br>`;
+                if (file.metadata.format) fileInfo += `<span class="sage-info-key">Format:</span> ${file.metadata.format}<br>`;
+                if (file.metadata.fp) fileInfo += `<span class="sage-info-key">Precision:</span> ${file.metadata.fp}<br>`;
+                if (file.metadata.size) fileInfo += `<span class="sage-info-key">Model Size:</span> ${file.metadata.size}<br>`;
             }
-            if (file.pickleScanResult) fileInfo += `<span style="color: #FFB74D;">Safety Scan:</span> ${file.pickleScanResult}<br>`;
+            if (file.pickleScanResult) fileInfo += `<span class="sage-info-key">Safety Scan:</span> ${file.pickleScanResult}<br>`;
         }
         
         fileInfo += '</div>';
@@ -473,18 +408,18 @@ export async function createDetailedInfoDisplay(hash, info, showNsfw = false) {
     // Civitai information
     const civitaiData = extractCivitaiInfo(enhancedInfo);
     if (civitaiData.hasInfo) {
-        let civitaiInfo = '<div style="margin-bottom: 12px;"><strong style="color: #9C27B0;">Civitai Information:</strong><br>';
+        let civitaiInfo = '<div class="sage-info-block"><strong class="sage-info-label sage-info-label--purple">Civitai Information:</strong><br>';
         
         if (civitaiData.versionId) {
-            civitaiInfo += `<span style="color: #BA68C8;">Version ID:</span> ${civitaiData.versionId}<br>`;
+            civitaiInfo += `<span class="sage-info-key">Version ID:</span> ${civitaiData.versionId}<br>`;
         }
         if (civitaiData.modelId) {
-            civitaiInfo += `<span style="color: #BA68C8;">Model ID:</span> ${civitaiData.modelId}<br>`;
+            civitaiInfo += `<span class="sage-info-key">Model ID:</span> ${civitaiData.modelId}<br>`;
         }
         
         // Show current version link
         if (civitaiData.modelUrl !== '#') {
-            civitaiInfo += `<span style="color: #BA68C8;">Current Version:</span> <a href="${civitaiData.modelUrl}" style="color: #CE93D8;" target="_blank">View on Civitai</a><br>`;
+            civitaiInfo += `<span class="sage-info-key">Current Version:</span> <a class="sage-info-link" href="${civitaiData.modelUrl}" target="_blank">View on Civitai</a><br>`;
         }
         
         // Show updated version link only if we don't already have it locally
@@ -502,14 +437,14 @@ export async function createDetailedInfoDisplay(hash, info, showNsfw = false) {
             }
             
             if (!alreadyHaveUpdate) {
-                civitaiInfo += `<span style="color: #FF9800;">Updated Version:</span> <a href="${civitaiData.updateUrl}" style="color: #FFB74D;" target="_blank">🔗 New Version Available</a><br>`;
+                civitaiInfo += `<span class="sage-info-key">Updated Version:</span> <a class="sage-info-link sage-info-link--warning" href="${civitaiData.updateUrl}" target="_blank">🔗 New Version Available</a><br>`;
             } else {
-                civitaiInfo += `<span style="color: #4CAF50;">Updated Version:</span> <span style="color: #81C784;">✓ Already downloaded locally</span><br>`;
+                civitaiInfo += `<span class="sage-info-key">Updated Version:</span> <span class="sage-info-value sage-info-value--success">✓ Already downloaded locally</span><br>`;
             }
         }
         
         if (civitaiData.downloadUrl !== '#') {
-            civitaiInfo += `<span style="color: #BA68C8;">Download URL:</span> <a href="${civitaiData.downloadUrl}" style="color: #CE93D8;" target="_blank">Link</a><br>`;
+            civitaiInfo += `<span class="sage-info-key">Download URL:</span> <a class="sage-info-link" href="${civitaiData.downloadUrl}" target="_blank">Link</a><br>`;
         }
         
         civitaiInfo += '</div>';
@@ -518,11 +453,11 @@ export async function createDetailedInfoDisplay(hash, info, showNsfw = false) {
 
     // Timestamps
     if (enhancedInfo.created_at || enhancedInfo.updated_at || enhancedInfo.last_accessed || enhancedInfo.lastUsed) {
-        let timeInfo = '<div style="margin-bottom: 12px;"><strong style="color: #607D8B;">Timestamps:</strong><br>';
-        if (enhancedInfo.created_at) timeInfo += `<span style="color: #90A4AE;">Created:</span> ${new Date(enhancedInfo.created_at).toLocaleString()}<br>`;
-        if (enhancedInfo.updated_at) timeInfo += `<span style="color: #90A4AE;">Updated:</span> ${new Date(enhancedInfo.updated_at).toLocaleString()}<br>`;
-        if (enhancedInfo.last_accessed) timeInfo += `<span style="color: #90A4AE;">Last Accessed:</span> ${new Date(enhancedInfo.last_accessed).toLocaleString()}<br>`;
-        if (enhancedInfo.lastUsed) timeInfo += `<span style="color: #90A4AE;">Last Used:</span> ${new Date(enhancedInfo.lastUsed).toLocaleString()}<br>`;
+        let timeInfo = '<div class="sage-info-block"><strong class="sage-info-label sage-info-label--gray">Timestamps:</strong><br>';
+        if (enhancedInfo.created_at) timeInfo += `<span class="sage-info-key">Created:</span> ${new Date(enhancedInfo.created_at).toLocaleString()}<br>`;
+        if (enhancedInfo.updated_at) timeInfo += `<span class="sage-info-key">Updated:</span> ${new Date(enhancedInfo.updated_at).toLocaleString()}<br>`;
+        if (enhancedInfo.last_accessed) timeInfo += `<span class="sage-info-key">Last Accessed:</span> ${new Date(enhancedInfo.last_accessed).toLocaleString()}<br>`;
+        if (enhancedInfo.lastUsed) timeInfo += `<span class="sage-info-key">Last Used:</span> ${new Date(enhancedInfo.lastUsed).toLocaleString()}<br>`;
         timeInfo += '</div>';
         sections.push(timeInfo);
     }
@@ -532,7 +467,7 @@ export async function createDetailedInfoDisplay(hash, info, showNsfw = false) {
         try {
             const allVersions = await findAllModelVersions(enhancedInfo.modelId, hash);
             if (allVersions.length > 1) {
-                let versionsInfo = '<div style="margin-bottom: 12px;"><strong style="color: #00BCD4;">All Versions:</strong><br>';
+                let versionsInfo = '<div class="sage-info-block"><strong class="sage-info-label sage-info-label--teal">All Versions:</strong><br>';
                 allVersions.forEach(version => {
                     const fileName = version.filePath ? getFileNameFromPath(version.filePath) : 'Not downloaded';
                     const isCurrentVersion = version.isCurrent;
@@ -541,36 +476,19 @@ export async function createDetailedInfoDisplay(hash, info, showNsfw = false) {
                     const versionId = version.info.id || 'N/A';
                     const createdAt = version.info.createdAt ? new Date(version.info.createdAt).toLocaleDateString() : 'Unknown';
                     
-                    // Different styling based on download status
-                    let backgroundColor = '#1a1a1a';
-                    let borderColor = 'transparent';
-                    let statusIndicator = '';
+                    const cardClass = isCurrentVersion ? 'sage-version-card sage-version-card--current' : isDownloaded ? 'sage-version-card sage-version-card--downloaded' : 'sage-version-card sage-version-card--available';
+                    let statusIndicator = isCurrentVersion ? '<span class="sage-version-card-status sage-version-card-status--current">◄ CURRENT</span>' : isDownloaded ? '<span class="sage-version-card-status sage-version-card-status--downloaded">● DOWNLOADED</span>' : '<span class="sage-version-card-status sage-version-card-status--available">○ AVAILABLE</span>';
                     
-                    if (isCurrentVersion) {
-                        backgroundColor = '#333';
-                        borderColor = '#00BCD4';
-                        statusIndicator = '<br><span style="color: #00E676; font-size: 10px; font-weight: bold;">◄ CURRENT</span>';
-                    } else if (isDownloaded) {
-                        backgroundColor = '#1a2a1a';
-                        borderColor = '#4CAF50';
-                        statusIndicator = '<br><span style="color: #4CAF50; font-size: 10px; font-weight: bold;">● DOWNLOADED</span>';
-                    } else {
-                        backgroundColor = '#2a1a1a';
-                        borderColor = '#FF9800';
-                        statusIndicator = '<br><span style="color: #FF9800; font-size: 10px; font-weight: bold;">○ AVAILABLE</span>';
-                    }
-                    
-                    versionsInfo += `<div style="margin: 4px 0; padding: 6px; background: ${backgroundColor}; border-left: 3px solid ${borderColor}; border-radius: 3px;">`;
-                    versionsInfo += `<span style="color: #81D4FA;">Version:</span> ${versionName}<br>`;
-                    versionsInfo += `<span style="color: #81D4FA;">ID:</span> ${versionId}<br>`;
-                    versionsInfo += `<span style="color: #81D4FA;">Created:</span> ${createdAt}<br>`;
+                    versionsInfo += `<div class="${cardClass}">`;
+                    versionsInfo += `<span class="sage-info-key">Version:</span> ${versionName}<br>`;
+                    versionsInfo += `<span class="sage-info-key">ID:</span> ${versionId}<br>`;
+                    versionsInfo += `<span class="sage-info-key">Created:</span> ${createdAt}<br>`;
                     
                     if (isDownloaded) {
-                        versionsInfo += `<span style="color: #81D4FA;">File:</span> <span style="font-size: 11px; color: #B0BEC5;">${fileName}</span>`;
+                        versionsInfo += `<span class="sage-info-key">File:</span> <span class="sage-info-value sage-info-value--small">${fileName}</span>`;
                     } else {
-                        // Add download link for undownloaded versions
                         const downloadUrl = version.info.downloadUrl || `https://civitai.com/api/download/models/${versionId}`;
-                        versionsInfo += `<span style="color: #81D4FA;">Download:</span> <a href="${downloadUrl}" style="color: #FFB74D; font-size: 11px;" target="_blank" title="Download this version">Download Link</a>`;
+                        versionsInfo += `<span class="sage-info-key">Download:</span> <a class="sage-info-link sage-info-link--warning" href="${downloadUrl}" target="_blank" title="Download this version">Download Link</a>`;
                     }
                     
                     versionsInfo += statusIndicator;
@@ -597,19 +515,20 @@ export async function createDetailedInfoDisplay(hash, info, showNsfw = false) {
             });
             
             if (localVersions.length > 1) {
-                let versionsInfo = '<div style="margin-bottom: 12px;"><strong style="color: #00BCD4;">Local Versions:</strong><br>';
+                let versionsInfo = '<div class="sage-info-block"><strong class="sage-info-label sage-info-label--teal">Local Versions:</strong><br>';
                 localVersions.forEach(version => {
                     const fileName = getFileNameFromPath(version.filePath);
                     const isCurrentVersion = version.isCurrent;
                     const versionName = version.info.name || version.info.id || 'Unknown';
                     const versionId = version.info.id || 'N/A';
+                    const cardClass = isCurrentVersion ? 'sage-version-card sage-version-card--current' : 'sage-version-card';
                     
-                    versionsInfo += `<div style="margin: 4px 0; padding: 4px; ${isCurrentVersion ? 'background: #333; border-left: 3px solid #00BCD4;' : 'background: #1a1a1a;'} border-radius: 3px;">`;
-                    versionsInfo += `<span style="color: #81D4FA;">Version:</span> ${versionName}<br>`;
-                    versionsInfo += `<span style="color: #81D4FA;">ID:</span> ${versionId}<br>`;
-                    versionsInfo += `<span style="color: #81D4FA;">File:</span> <span style="font-size: 11px; color: #B0BEC5;">${fileName}</span>`;
+                    versionsInfo += `<div class="${cardClass}">`;
+                    versionsInfo += `<span class="sage-info-key">Version:</span> ${versionName}<br>`;
+                    versionsInfo += `<span class="sage-info-key">ID:</span> ${versionId}<br>`;
+                    versionsInfo += `<span class="sage-info-key">File:</span> <span class="sage-info-value sage-info-value--small">${fileName}</span>`;
                     if (isCurrentVersion) {
-                        versionsInfo += '<br><span style="color: #00E676; font-size: 10px; font-weight: bold;">◄ CURRENT</span>';
+                        versionsInfo += '<br><span class="sage-version-card-status sage-version-card-status--current">◄ CURRENT</span>';
                     }
                     versionsInfo += '</div>';
                 });
@@ -625,11 +544,11 @@ export async function createDetailedInfoDisplay(hash, info, showNsfw = false) {
     );
 
     if (metadataKeys.length > 0) {
-        let metadataInfo = '<div style="margin-bottom: 12px;"><strong style="color: #795548;">Additional Metadata:</strong><br>';
+        let metadataInfo = '<div class="sage-info-block"><strong class="sage-info-label sage-info-label--brown">Additional Metadata:</strong><br>';
         metadataKeys.forEach(key => {
             const value = enhancedInfo[key];
             if (value !== null && value !== undefined && value !== '') {
-                metadataInfo += `<span style="color: #A1887F;">${escapeHtml(key)}:</span> ${escapeHtml(JSON.stringify(value))}<br>`;
+                metadataInfo += `<span class="sage-info-meta-key">${escapeHtml(key)}:</span> ${escapeHtml(JSON.stringify(value))}<br>`;
             }
         });
         metadataInfo += '</div>';

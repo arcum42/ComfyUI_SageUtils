@@ -10,6 +10,14 @@
  * @module components/layout
  */
 
+import { loadComponentStyles as ensureComponentStyles } from './styleLoader.js';
+
+console.log('[SageUtils] layout.js imported');
+
+function loadComponentStyles() {
+    ensureComponentStyles('layout.js');
+}
+
 /**
  * Create a flex container with common configurations
  * @param {Object} options - Configuration options
@@ -39,19 +47,19 @@ export function createFlexContainer(options = {}) {
         children = []
     } = options;
 
-    const container = document.createElement('div');
-    if (className) container.className = className;
+    loadComponentStyles();
 
-    container.style.cssText = `
-        display: flex;
-        flex-direction: ${direction};
-        justify-content: ${justify};
-        align-items: ${align};
-        gap: ${gap};
-        flex-wrap: ${wrap ? 'wrap' : 'nowrap'};
-        padding: ${padding};
-        background: ${background};
-    `;
+    const container = document.createElement('div');
+    container.classList.add('sage-flex-container');
+    if (className) container.classList.add(...className.split(' ').filter(Boolean));
+
+    container.style.setProperty('--sage-flex-direction', direction);
+    container.style.setProperty('--sage-flex-justify', justify);
+    container.style.setProperty('--sage-flex-align', align);
+    container.style.setProperty('--sage-flex-gap', gap);
+    container.style.setProperty('--sage-flex-wrap', wrap ? 'wrap' : 'nowrap');
+    container.style.setProperty('--sage-flex-padding', padding);
+    container.style.setProperty('--sage-flex-background', background);
 
     // Apply custom style overrides
     Object.assign(container.style, style);
@@ -95,8 +103,11 @@ export function createGrid(options = {}) {
         children = []
     } = options;
 
+    loadComponentStyles();
+
     const container = document.createElement('div');
-    if (className) container.className = className;
+    container.classList.add('sage-grid-container');
+    if (className) container.classList.add(...className.split(' ').filter(Boolean));
 
     // Build grid-template-columns
     let gridColumns;
@@ -106,26 +117,19 @@ export function createGrid(options = {}) {
         gridColumns = columns;
     }
 
-    // Build grid-template-rows
-    let gridRows = '';
+    container.style.setProperty('--sage-grid-columns', gridColumns);
     if (rows !== null) {
         if (typeof rows === 'number') {
-            gridRows = `grid-template-rows: repeat(${rows}, 1fr);`;
+            container.style.setProperty('--sage-grid-rows', `repeat(${rows}, 1fr)`);
         } else {
-            gridRows = `grid-template-rows: ${rows};`;
+            container.style.setProperty('--sage-grid-rows', rows);
         }
     }
-
-    container.style.cssText = `
-        display: grid;
-        grid-template-columns: ${gridColumns};
-        ${gridRows}
-        gap: ${gap};
-        ${columnGap ? `column-gap: ${columnGap};` : ''}
-        ${rowGap ? `row-gap: ${rowGap};` : ''}
-        padding: ${padding};
-        background: ${background};
-    `;
+    container.style.setProperty('--sage-grid-gap', gap);
+    if (columnGap) container.style.setProperty('--sage-grid-column-gap', columnGap);
+    if (rowGap) container.style.setProperty('--sage-grid-row-gap', rowGap);
+    container.style.setProperty('--sage-grid-padding', padding);
+    container.style.setProperty('--sage-grid-background', background);
 
     // Apply custom style overrides
     Object.assign(container.style, style);
@@ -167,15 +171,15 @@ export function createCard(options = {}) {
         style = {}
     } = options;
 
-    const card = document.createElement('div');
-    if (className) card.className = className;
+    loadComponentStyles();
 
-    card.style.cssText = `
-        background: ${background};
-        border: 1px solid ${borderColor};
-        border-radius: ${borderRadius};
-        overflow: hidden;
-    `;
+    const card = document.createElement('div');
+    card.classList.add('sage-card');
+    if (className) card.classList.add(...className.split(' ').filter(Boolean));
+
+    card.style.setProperty('--sage-card-background', background);
+    card.style.setProperty('--sage-card-border', `1px solid ${borderColor}`);
+    card.style.setProperty('--sage-card-border-radius', borderRadius);
 
     // Apply custom style overrides
     Object.assign(card.style, style);
@@ -183,40 +187,22 @@ export function createCard(options = {}) {
     // Create header if title or actions are provided
     if (title || actions.length > 0) {
         const header = document.createElement('div');
-        header.style.cssText = `
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 12px ${padding};
-            background: rgba(0, 0, 0, 0.2);
-            border-bottom: 1px solid ${borderColor};
-        `;
+        header.classList.add('sage-card-header');
+        header.style.setProperty('--sage-card-header-padding', `12px ${padding}`);
+        header.style.setProperty('--sage-card-header-border-color', borderColor);
 
         if (title) {
             const titleElement = document.createElement('h3');
             titleElement.textContent = title;
-            titleElement.style.cssText = `
-                margin: 0;
-                color: #ccc;
-                font-size: 14px;
-                font-weight: bold;
-            `;
+            titleElement.classList.add('sage-card-title');
             header.appendChild(titleElement);
         }
 
         if (actions.length > 0) {
             const actionsContainer = document.createElement('div');
-            actionsContainer.style.cssText = `
-                display: flex;
-                gap: 8px;
-                align-items: center;
-            `;
+            actionsContainer.classList.add('sage-card-actions');
             actions.forEach(action => {
                 if (action instanceof HTMLElement) {
-                    // Remove margin-top from buttons in header
-                    if (action.style.marginTop) {
-                        action.style.marginTop = '0';
-                    }
                     actionsContainer.appendChild(action);
                 }
             });
@@ -229,9 +215,8 @@ export function createCard(options = {}) {
     // Create content area
     if (content) {
         const contentArea = document.createElement('div');
-        contentArea.style.cssText = `
-            padding: ${padding};
-        `;
+        contentArea.classList.add('sage-card-content');
+        contentArea.style.setProperty('--sage-card-content-padding', padding);
 
         if (typeof content === 'string') {
             contentArea.innerHTML = content;
@@ -276,36 +261,32 @@ export function createSection(title, content, options = {}) {
         style = {}
     } = options;
 
-    const section = document.createElement('div');
-    if (className) section.className = className;
+    loadComponentStyles();
 
-    section.style.cssText = `
-        margin-top: ${marginTop};
-        background: ${background};
-    `;
+    const section = document.createElement('div');
+    section.classList.add('sage-section');
+    if (className) section.classList.add(...className.split(' ').filter(Boolean));
+
+    section.style.setProperty('--sage-section-margin-top', marginTop);
+    section.style.setProperty('--sage-section-background', background);
 
     // Apply custom style overrides
     Object.assign(section.style, style);
 
     // Create title
     const titleElement = document.createElement('div');
-    titleElement.style.cssText = `
-        font-size: ${titleSize};
-        font-weight: bold;
-        color: ${titleColor};
-        padding-bottom: 8px;
-        border-bottom: 2px solid ${borderColor};
-        margin-bottom: 12px;
-        ${collapsible ? 'cursor: pointer; user-select: none;' : ''}
-    `;
+    titleElement.classList.add('sage-section-title');
+    if (collapsible) {
+        titleElement.classList.add('sage-section-title--collapsible');
+    }
+    titleElement.style.setProperty('--sage-section-title-size', titleSize);
+    titleElement.style.setProperty('--sage-section-title-color', titleColor);
+    titleElement.style.setProperty('--sage-section-border-color', borderColor);
 
     if (collapsible) {
         const arrow = document.createElement('span');
         arrow.textContent = collapsed ? '▶ ' : '▼ ';
-        arrow.style.cssText = `
-            display: inline-block;
-            transition: transform 0.2s;
-        `;
+        arrow.classList.add('sage-section-title-arrow');
         titleElement.appendChild(arrow);
     }
 
@@ -317,10 +298,11 @@ export function createSection(title, content, options = {}) {
 
     // Create content area
     const contentArea = document.createElement('div');
-    contentArea.style.cssText = `
-        padding: ${padding};
-        ${collapsed ? 'display: none;' : ''}
-    `;
+    contentArea.classList.add('sage-section-content');
+    contentArea.style.setProperty('--sage-section-content-padding', padding);
+    if (collapsed) {
+        contentArea.classList.add('sage-section-content--collapsed');
+    }
 
     if (typeof content === 'string') {
         contentArea.innerHTML = content;
@@ -333,10 +315,9 @@ export function createSection(title, content, options = {}) {
     // Add collapsible functionality
     if (collapsible) {
         titleElement.addEventListener('click', () => {
-            const isCollapsed = contentArea.style.display === 'none';
-            contentArea.style.display = isCollapsed ? '' : 'none';
+            const isCollapsed = contentArea.classList.toggle('sage-section-content--collapsed');
             const arrow = titleElement.querySelector('span');
-            arrow.textContent = isCollapsed ? '▼ ' : '▶ ';
+            arrow.textContent = isCollapsed ? '▶ ' : '▼ ';
         });
     }
 
@@ -367,29 +348,18 @@ export function createScrollContainer(content, options = {}) {
         style = {}
     } = options;
 
+    loadComponentStyles();
+
     const container = document.createElement('div');
-    if (className) container.className = className;
+    container.classList.add('sage-scroll-container');
+    if (className) container.classList.add(...className.split(' ').filter(Boolean));
 
-    container.style.cssText = `
-        max-height: ${maxHeight};
-        max-width: ${maxWidth};
-        overflow-y: auto;
-        overflow-x: auto;
-        padding: ${padding};
-        background: ${background};
-        ${!showScrollbar ? `
-            scrollbar-width: none; /* Firefox */
-            -ms-overflow-style: none; /* IE and Edge */
-        ` : ''}
-    `;
-
-    // Hide scrollbar for WebKit browsers if requested
+    container.style.setProperty('--sage-scroll-max-height', maxHeight);
+    container.style.setProperty('--sage-scroll-max-width', maxWidth);
+    container.style.setProperty('--sage-scroll-padding', padding);
+    container.style.setProperty('--sage-scroll-background', background);
     if (!showScrollbar) {
-        const style = document.createElement('style');
-        const uniqueClass = `scroll-container-${Date.now()}`;
-        container.classList.add(uniqueClass);
-        style.textContent = `.${uniqueClass}::-webkit-scrollbar { display: none; }`;
-        document.head.appendChild(style);
+        container.classList.add('sage-scroll-container--hidden-scrollbar');
     }
 
     // Apply custom style overrides
@@ -430,8 +400,11 @@ export function createSplitPane(leftContent, rightContent, options = {}) {
         style = {}
     } = options;
 
+    loadComponentStyles();
+
     const container = document.createElement('div');
-    if (className) container.className = className;
+    container.classList.add('sage-split-pane');
+    if (className) container.classList.add(...className.split(' ').filter(Boolean));
 
     // Parse split ratio
     const [leftRatio, rightRatio] = splitRatio.split('-').map(Number);
@@ -439,31 +412,23 @@ export function createSplitPane(leftContent, rightContent, options = {}) {
     const leftPercent = (leftRatio / totalRatio) * 100;
     const rightPercent = (rightRatio / totalRatio) * 100;
 
-    container.style.cssText = `
-        display: flex;
-        gap: ${gap};
-        width: 100%;
-    `;
+    container.style.setProperty('--sage-split-gap', gap);
 
     // Apply custom style overrides
     Object.assign(container.style, style);
 
     // Create left pane
     const leftPane = document.createElement('div');
-    leftPane.style.cssText = `
-        flex: 0 0 ${leftPercent}%;
-        min-width: ${minLeftWidth};
-        overflow: auto;
-    `;
+    leftPane.classList.add('sage-split-pane-left');
+    leftPane.style.setProperty('--sage-split-left-flex', `0 0 ${leftPercent}%`);
+    leftPane.style.setProperty('--sage-split-left-min-width', minLeftWidth);
     leftPane.appendChild(leftContent);
 
     // Create right pane
     const rightPane = document.createElement('div');
-    rightPane.style.cssText = `
-        flex: 0 0 ${rightPercent}%;
-        min-width: ${minRightWidth};
-        overflow: auto;
-    `;
+    rightPane.classList.add('sage-split-pane-right');
+    rightPane.style.setProperty('--sage-split-right-flex', `0 0 ${rightPercent}%`);
+    rightPane.style.setProperty('--sage-split-right-min-width', minRightWidth);
     rightPane.appendChild(rightContent);
 
     container.appendChild(leftPane);
@@ -471,20 +436,14 @@ export function createSplitPane(leftContent, rightContent, options = {}) {
     // Add resize handle if resizable
     if (resizable) {
         const resizeHandle = document.createElement('div');
-        resizeHandle.style.cssText = `
-            width: 4px;
-            background: #444;
-            cursor: col-resize;
-            flex-shrink: 0;
-            transition: background 0.2s;
-        `;
+        resizeHandle.classList.add('sage-split-pane-handle');
 
         resizeHandle.addEventListener('mouseenter', () => {
-            resizeHandle.style.background = '#4CAF50';
+            resizeHandle.classList.add('sage-split-pane-handle-active');
         });
 
         resizeHandle.addEventListener('mouseleave', () => {
-            resizeHandle.style.background = '#444';
+            resizeHandle.classList.remove('sage-split-pane-handle-active');
         });
 
         // Implement resize functionality
@@ -496,7 +455,7 @@ export function createSplitPane(leftContent, rightContent, options = {}) {
             isResizing = true;
             startX = e.clientX;
             startLeftWidth = leftPane.offsetWidth;
-            document.body.style.cursor = 'col-resize';
+            document.body.classList.add('sage-resizing');
             e.preventDefault();
         });
 
@@ -510,15 +469,15 @@ export function createSplitPane(leftContent, rightContent, options = {}) {
 
             // Check minimum widths
             if (newLeftWidth >= parseInt(minLeftWidth) && newRightWidth >= parseInt(minRightWidth)) {
-                leftPane.style.flex = `0 0 ${newLeftWidth}px`;
-                rightPane.style.flex = `0 0 ${newRightWidth}px`;
+                leftPane.style.setProperty('--sage-split-left-flex', `0 0 ${newLeftWidth}px`);
+                rightPane.style.setProperty('--sage-split-right-flex', `0 0 ${newRightWidth}px`);
             }
         });
 
         document.addEventListener('mouseup', () => {
             if (isResizing) {
                 isResizing = false;
-                document.body.style.cursor = '';
+                document.body.classList.remove('sage-resizing');
             }
         });
 
@@ -588,15 +547,16 @@ export function createCenteredContainer(content, options = {}) {
         style = {}
     } = options;
 
-    const container = document.createElement('div');
-    if (className) container.className = className;
+    loadComponentStyles();
 
-    container.style.cssText = `
-        max-width: ${maxWidth};
-        margin: ${marginTop} auto 0 auto;
-        padding: ${padding};
-        background: ${background};
-    `;
+    const container = document.createElement('div');
+    container.classList.add('sage-centered-container');
+    if (className) container.classList.add(...className.split(' ').filter(Boolean));
+
+    container.style.setProperty('--sage-centered-max-width', maxWidth);
+    container.style.setProperty('--sage-centered-margin', `${marginTop} auto 0 auto`);
+    container.style.setProperty('--sage-centered-padding', padding);
+    container.style.setProperty('--sage-centered-background', background);
 
     // Apply custom style overrides
     Object.assign(container.style, style);

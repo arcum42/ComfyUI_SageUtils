@@ -18,9 +18,7 @@ export async function copyToClipboard(text) {
             // Fallback for older browsers using execCommand
             const textArea = document.createElement('textarea');
             textArea.value = text;
-            textArea.style.position = 'fixed';
-            textArea.style.left = '-9999px';
-            textArea.style.top = '0';
+            textArea.className = 'sage-hidden-copy-textarea';
             textArea.setAttribute('readonly', '');
             
             document.body.appendChild(textArea);

@@ -15,18 +15,10 @@
 
 export function createCollapsiblePanel({ titleText, defaultExpanded = true, useUnicodeCarets = false } = {}) {
   const container = document.createElement('div');
-  container.style.cssText = `
-    display: block;
-  `;
+  container.className = 'sage-collapsible-panel';
 
   const header = document.createElement('div');
-  header.style.cssText = `
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    cursor: pointer;
-    user-select: none;
-  `;
+  header.className = 'sage-collapsible-header';
 
   const caretEl = document.createElement('span');
   // Unicode caret override: using \u25BE (▾) expanded and \u25B8 (▸) collapsed per user request.
@@ -34,26 +26,14 @@ export function createCollapsiblePanel({ titleText, defaultExpanded = true, useU
   // properly around these characters. Handle edits with care.
   const caretChars = useUnicodeCarets ? { open: '\u25BE', closed: '\u25B8' } : { open: 'v', closed: '>' };
   caretEl.textContent = defaultExpanded ? caretChars.open : caretChars.closed;
-  caretEl.style.cssText = `
-    display: inline-block;
-    width: 14px;
-    color: #fff;
-  `;
+  caretEl.className = 'sage-collapsible-caret';
 
   const titleEl = document.createElement('h4');
   titleEl.textContent = titleText || '';
-  titleEl.style.cssText = `
-    color: #fff;
-    margin: 0;
-    font-size: 14px;
-    flex: 1;
-  `;
+  titleEl.className = 'sage-collapsible-title';
 
   const contentEl = document.createElement('div');
-  contentEl.style.cssText = `
-    display: ${defaultExpanded ? 'block' : 'none'};
-    margin-top: 10px;
-  `;
+  contentEl.className = `sage-collapsible-content${defaultExpanded ? '' : ' sage-collapsible-content--collapsed'}`;
 
   header.appendChild(caretEl);
   header.appendChild(titleEl);
@@ -63,7 +43,7 @@ export function createCollapsiblePanel({ titleText, defaultExpanded = true, useU
   let expanded = !!defaultExpanded;
   const setExpanded = (val) => {
     expanded = !!val;
-    contentEl.style.display = expanded ? 'block' : 'none';
+    contentEl.classList.toggle('sage-collapsible-content--collapsed', !expanded);
     caretEl.textContent = expanded ? caretChars.open : caretChars.closed;
   };
 

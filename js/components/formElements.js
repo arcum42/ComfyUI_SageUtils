@@ -9,63 +9,6 @@
  */
 
 /**
- * Default style configurations for form elements
- */
-const DEFAULT_STYLES = {
-  input: {
-    width: '100%',
-    padding: '8px',
-    background: '#333',
-    color: '#fff',
-    border: '1px solid #555',
-    borderRadius: '4px',
-    fontSize: '12px',
-    fontFamily: 'inherit'
-  },
-  select: {
-    width: '100%',
-    padding: '8px',
-    background: '#333',
-    color: '#fff',
-    border: '1px solid #555',
-    borderRadius: '4px',
-    fontSize: '12px',
-    cursor: 'pointer'
-  },
-  textarea: {
-    width: '100%',
-    minHeight: '150px',
-    padding: '8px',
-    background: '#333',
-    color: '#fff',
-    border: '1px solid #555',
-    borderRadius: '4px',
-    fontSize: '12px',
-    fontFamily: 'monospace',
-    resize: 'vertical'
-  },
-  slider: {
-    width: '100%',
-    margin: '5px 0'
-  },
-  checkbox: {
-    marginRight: '8px',
-    cursor: 'pointer'
-  },
-  radio: {
-    marginRight: '6px',
-    cursor: 'pointer'
-  },
-  label: {
-    display: 'block',
-    marginBottom: '4px',
-    color: '#fff',
-    fontSize: '12px',
-    fontWeight: '500'
-  }
-};
-
-/**
  * Apply styles to an element from a style object
  * @param {HTMLElement} element - Element to style
  * @param {Object} styles - Style object
@@ -140,12 +83,12 @@ export function createInput(options = {}) {
   if (ariaLabel) input.setAttribute('aria-label', ariaLabel);
   if (disabled) input.disabled = disabled;
   
-  if (className) {
-    input.className = className;
-  }
+  input.className = `sage-input ${className}`.trim();
   
-  // Apply default styles
-  applyStyles(input, { ...DEFAULT_STYLES.input, ...style });
+  // Apply custom style overrides only
+  if (Object.keys(style).length > 0) {
+    applyStyles(input, style);
+  }
   
   // Event handlers
   if (onInput) input.addEventListener('input', onInput);
@@ -207,10 +150,12 @@ export function createSelect(options = {}) {
   if (name) select.name = name;
   if (ariaLabel) select.setAttribute('aria-label', ariaLabel);
   if (disabled) select.disabled = disabled;
-  if (className) select.className = className;
+  select.className = `sage-select ${className}`.trim();
   
-  // Apply default styles
-  applyStyles(select, { ...DEFAULT_STYLES.select, ...style });
+  // Apply custom style overrides only
+  if (Object.keys(style).length > 0) {
+    applyStyles(select, style);
+  }
   
   // Add placeholder option if provided
   if (placeholder) {
@@ -306,16 +251,17 @@ export function createTextarea(options = {}) {
   if (name) textarea.name = name;
   if (ariaLabel) textarea.setAttribute('aria-label', ariaLabel);
   if (disabled) textarea.disabled = disabled;
-  if (className) textarea.className = className;
-  
-  // Apply default styles
-  const textareaStyles = {
-    ...DEFAULT_STYLES.textarea,
-    fontFamily: monospace ? 'monospace' : 'inherit',
-    resize,
-    ...style
-  };
-  applyStyles(textarea, textareaStyles);
+  textarea.className = `sage-textarea ${className}`.trim();
+  textarea.classList.add(monospace ? 'sage-textarea--monospace' : 'sage-textarea--inherit');
+
+  const allowedResizeModes = new Set(['vertical', 'horizontal', 'both', 'none']);
+  const normalizedResize = allowedResizeModes.has(resize) ? resize : 'vertical';
+  textarea.classList.add(`sage-textarea--resize-${normalizedResize}`);
+
+  // Apply any custom style overrides only
+  if (Object.keys(style).length > 0) {
+    applyStyles(textarea, style);
+  }
   
   // Event handlers
   if (onInput) textarea.addEventListener('input', onInput);
@@ -363,36 +309,25 @@ export function createCheckbox(labelText, options = {}) {
   } = options;
 
   const container = document.createElement('div');
-  container.className = `checkbox-container ${className}`.trim();
-  applyStyles(container, {
-    display: 'flex',
-    alignItems: 'center',
-    marginBottom: '8px',
-    ...style
-  });
+  container.className = `sage-checkbox-row ${className}`.trim();
+  if (Object.keys(style).length > 0) {
+    applyStyles(container, style);
+  }
 
   const checkbox = document.createElement('input');
   checkbox.type = 'checkbox';
   checkbox.checked = checked;
-  checkbox.className = checkboxClass;
+  checkbox.className = `sage-checkbox-input ${checkboxClass}`.trim();
   if (id) checkbox.id = id;
   if (name) checkbox.name = name;
   if (value !== undefined) checkbox.value = value;
   if (disabled) checkbox.disabled = disabled;
   
-  applyStyles(checkbox, DEFAULT_STYLES.checkbox);
-  
-  const label = document.createElement('label');
-  label.textContent = labelText;
-  label.className = labelClass;
-  if (id) label.setAttribute('for', id);
-  
-  applyStyles(label, {
-    cursor: disabled ? 'default' : 'pointer',
-    color: disabled ? '#888' : '#fff',
-    fontSize: '12px',
-    userSelect: 'none'
-  });
+  label.className = `sage-checkbox-label ${labelClass}`.trim();
+  if (disabled) {
+    label.classList.add('sage-disabled');
+  }
+  if (onChange) checkbox.addEventListener('change', onChange);
   
   if (onChange) checkbox.addEventListener('change', onChange);
   
@@ -456,37 +391,23 @@ export function createSlider(labelText, options = {}) {
   } = options;
 
   const container = document.createElement('div');
-  container.className = `slider-container ${className}`.trim();
-  applyStyles(container, {
-    marginBottom: '12px',
-    ...style
-  });
+  container.className = `sage-slider-row ${className}`.trim();
+  if (Object.keys(style).length > 0) {
+    applyStyles(container, style);
+  }
 
   // Header with label and value
   const header = document.createElement('div');
-  applyStyles(header, {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: '4px'
-  });
+  header.className = 'sage-slider-header';
 
   const label = document.createElement('label');
   label.textContent = labelText;
-  label.className = labelClass;
+  label.className = `sage-slider-label ${labelClass}`.trim();
   if (id) label.setAttribute('for', id);
-  applyStyles(label, DEFAULT_STYLES.label);
 
   const valueDisplay = document.createElement('span');
-  valueDisplay.className = `slider-value ${valueClass}`.trim();
+  valueDisplay.className = `sage-slider-value ${valueClass}`.trim();
   valueDisplay.textContent = formatValue(value);
-  applyStyles(valueDisplay, {
-    color: '#fff',
-    fontSize: '12px',
-    fontWeight: '500',
-    minWidth: '40px',
-    textAlign: 'right'
-  });
 
   header.appendChild(label);
   if (showValue) {
@@ -500,12 +421,10 @@ export function createSlider(labelText, options = {}) {
   slider.max = max;
   slider.step = step;
   slider.value = value;
-  slider.className = sliderClass;
+  slider.className = `sage-slider ${sliderClass}`.trim();
   if (id) slider.id = id;
   if (name) slider.name = name;
   if (disabled) slider.disabled = disabled;
-  
-  applyStyles(slider, DEFAULT_STYLES.slider);
 
   // Update value display on input
   const updateValue = (e) => {
@@ -563,13 +482,10 @@ export function createRadioGroup(name, items = [], options = {}) {
   } = options;
 
   const container = document.createElement('div');
-  container.className = `radio-group ${className}`.trim();
-  applyStyles(container, {
-    display: 'flex',
-    flexDirection: layout === 'horizontal' ? 'row' : 'column',
-    gap: layout === 'horizontal' ? '16px' : '8px',
-    ...style
-  });
+  container.className = `sage-radio-group sage-radio-group--${layout} ${className}`.trim();
+  if (Object.keys(style).length > 0) {
+    applyStyles(container, style);
+  }
 
   const radios = [];
 
@@ -580,10 +496,7 @@ export function createRadioGroup(name, items = [], options = {}) {
     const itemDisabled = typeof item === 'string' ? disabled : (item.disabled || disabled);
 
     const radioContainer = document.createElement('div');
-    applyStyles(radioContainer, {
-      display: 'flex',
-      alignItems: 'center'
-    });
+    radioContainer.className = 'sage-radio-item';
 
     const radio = document.createElement('input');
     radio.type = 'radio';
@@ -592,21 +505,13 @@ export function createRadioGroup(name, items = [], options = {}) {
     radio.id = `${name}-${index}`;
     radio.checked = itemChecked;
     radio.disabled = itemDisabled;
-    radio.className = radioClass;
-    
-    applyStyles(radio, DEFAULT_STYLES.radio);
+    radio.className = `sage-radio-input ${radioClass}`.trim();
 
     const label = document.createElement('label');
     label.textContent = itemLabel;
     label.setAttribute('for', radio.id);
-    label.className = labelClass;
-    
-    applyStyles(label, {
-      cursor: itemDisabled ? 'default' : 'pointer',
-      color: itemDisabled ? '#888' : '#fff',
-      fontSize: '12px',
-      userSelect: 'none'
-    });
+    label.className = `sage-radio-label ${labelClass}`.trim();
+    if (itemDisabled) label.classList.add('sage-disabled');
 
     if (onChange) radio.addEventListener('change', onChange);
 
@@ -654,38 +559,21 @@ export function createFormRow(labelText, element, options = {}) {
   } = options;
 
   const container = document.createElement('div');
-  container.className = `form-row ${className}`.trim();
-  
-  const containerStyles = {
-    marginBottom: '16px',
-    ...style
-  };
-  
-  if (layout === 'horizontal') {
-    containerStyles.display = 'flex';
-    containerStyles.alignItems = 'center';
-    containerStyles.gap = '12px';
+  container.className = `sage-form-row sage-form-row--${layout} ${className}`.trim();
+  if (Object.keys(style).length > 0) {
+    applyStyles(container, style);
   }
-  
-  applyStyles(container, containerStyles);
 
   const label = document.createElement('label');
   label.textContent = labelText + (required ? ' *' : '');
-  label.className = labelClass;
+  label.className = `sage-form-label ${labelClass}`.trim();
   if (id) label.setAttribute('for', id);
-  
-  const labelStyles = { ...DEFAULT_STYLES.label };
-  if (layout === 'horizontal') {
-    labelStyles.minWidth = '120px';
-    labelStyles.marginBottom = '0';
-  }
-  applyStyles(label, labelStyles);
 
   container.appendChild(label);
   
   if (layout === 'horizontal') {
     const elementWrapper = document.createElement('div');
-    applyStyles(elementWrapper, { flex: '1' });
+    elementWrapper.className = 'sage-form-row-element';
     elementWrapper.appendChild(element);
     container.appendChild(elementWrapper);
   } else {
@@ -694,14 +582,8 @@ export function createFormRow(labelText, element, options = {}) {
 
   if (helpText) {
     const help = document.createElement('div');
-    help.className = 'form-help-text';
+    help.className = 'sage-form-help-text';
     help.textContent = helpText;
-    applyStyles(help, {
-      fontSize: '11px',
-      color: '#999',
-      marginTop: '4px',
-      fontStyle: 'italic'
-    });
     container.appendChild(help);
   }
 
@@ -734,22 +616,15 @@ export function createFormGroup(elements, options = {}) {
   } = options;
 
   const container = document.createElement('div');
-  container.className = `form-group ${className}`.trim();
-  applyStyles(container, {
-    marginBottom: '24px',
-    ...style
-  });
+  container.className = `sage-form-group ${className}`.trim();
+  if (Object.keys(style).length > 0) {
+    applyStyles(container, style);
+  }
 
   if (title) {
     const titleElement = document.createElement('h3');
     titleElement.textContent = title;
-    applyStyles(titleElement, {
-      color: '#fff',
-      fontSize: '14px',
-      fontWeight: '600',
-      marginBottom: '12px',
-      marginTop: '0'
-    });
+    titleElement.className = 'sage-form-group-title';
     container.appendChild(titleElement);
   }
 

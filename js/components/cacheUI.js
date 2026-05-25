@@ -11,17 +11,14 @@ export { createButton, createIconButton, createButtonGroup, BUTTON_VARIANTS, BUT
  */
 export function createLabeledContainer(labelText, marginBottom = '10px') {
     const container = document.createElement('div');
-    container.style.marginBottom = marginBottom;
+    container.classList.add('sage-labeled-container');
+    if (marginBottom !== '10px') {
+        container.style.setProperty('--sage-label-margin-bottom', marginBottom);
+    }
 
     const label = document.createElement('label');
     label.textContent = labelText;
-    label.style.cssText = `
-        display: block;
-        margin-bottom: 5px;
-        color: #ffffff;
-        font-size: 13px;
-        font-weight: bold;
-    `;
+    label.classList.add('sage-label');
 
     container.appendChild(label);
     return { container, label };
@@ -32,16 +29,7 @@ export function createLabeledContainer(labelText, marginBottom = '10px') {
  */
 export function createStyledSelect(options = []) {
     const select = document.createElement('select');
-    select.style.cssText = `
-        width: 100%;
-        padding: 8px;
-        background: #333;
-        color: #fff;
-        border: 1px solid #555;
-        border-radius: 4px;
-        font-size: 12px;
-        margin-bottom: 10px;
-    `;
+    select.classList.add('sage-select');
 
     // Add options if provided
     options.forEach(option => {
@@ -61,17 +49,7 @@ export function createStyledInput(type = 'text', placeholder = '') {
     const input = document.createElement('input');
     input.type = type;
     input.placeholder = placeholder;
-    input.style.cssText = `
-        width: 100%;
-        padding: 8px;
-        background: #333;
-        color: #fff;
-        border: 1px solid #555;
-        border-radius: 4px;
-        font-size: 12px;
-        margin-bottom: 10px;
-        box-sizing: border-box;
-    `;
+    input.classList.add('sage-input');
 
     return input;
 }
@@ -119,31 +97,17 @@ export function createSearchSection(labelText = 'Search Models:', placeholder = 
  */
 export function createToggleSection(labelText, checkboxId) {
     const container = document.createElement('div');
-    container.style.cssText = `
-        margin-bottom: 10px;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-    `;
+    container.classList.add('sage-toggle-row');
 
     const checkbox = document.createElement('input');
     checkbox.type = 'checkbox';
     checkbox.id = checkboxId;
-    checkbox.style.cssText = `
-        margin: 0;
-        transform: scale(1.2);
-    `;
+    checkbox.classList.add('sage-checkbox');
 
     const label = document.createElement('label');
     label.htmlFor = checkboxId;
     label.textContent = labelText;
-    label.style.cssText = `
-        color: #ffffff;
-        font-size: 13px;
-        font-weight: bold;
-        cursor: pointer;
-        user-select: none;
-    `;
+    label.classList.add('sage-toggle-label');
 
     container.appendChild(checkbox);
     container.appendChild(label);
@@ -156,41 +120,14 @@ export function createToggleSection(labelText, checkboxId) {
  */
 export function createCustomDropdown(buttonText = 'Select a file...') {
     const container = document.createElement('div');
-    container.style.cssText = `
-        position: relative;
-        width: 100%;
-    `;
+    container.classList.add('sage-dropdown-container');
     
     const button = document.createElement('div');
-    button.style.cssText = `
-        width: 100%;
-        padding: 8px;
-        background: #333;
-        color: #fff;
-        border: 1px solid #555;
-        border-radius: 4px;
-        font-size: 12px;
-        cursor: pointer;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        user-select: none;
-    `;
+    button.classList.add('sage-dropdown-button');
     button.innerHTML = `<span>${buttonText}</span><span>▼</span>`;
     
     const menu = document.createElement('div');
-    menu.style.cssText = `
-        position: fixed;
-        background: #333;
-        border: 1px solid #555;
-        border-top: none;
-        border-radius: 0 0 4px 4px;
-        max-height: 600px;
-        overflow-y: auto;
-        z-index: 1000;
-        display: none;
-        box-shadow: 2px 2px 8px rgba(0,0,0,0.3);
-    `;
+    menu.classList.add('sage-dropdown-menu');
     
     container.appendChild(button);
     // Append menu to body to avoid container constraints
@@ -209,12 +146,7 @@ export { createProgressBar } from './progressBar.js';
 export function createButtonContainer() {
     console.warn('createButtonContainer is deprecated. Use createButtonGroup() from buttons.js instead.');
     const container = document.createElement('div');
-    container.style.cssText = `
-        display: flex;
-        gap: 4px;
-        margin-top: 8px;
-        flex-wrap: wrap;
-    `;
+    container.classList.add('sage-button-group');
 
     return container;
 }
@@ -224,13 +156,7 @@ export function createButtonContainer() {
  */
 export function createMainContainer() {
     const container = document.createElement('div');
-    container.style.cssText = `
-        padding: 10px;
-        height: 100%;
-        overflow-y: auto;
-        background: #1e1e1e;
-        color: #ffffff;
-    `;
+    container.classList.add('sage-main-container');
 
     return container;
 }
@@ -240,14 +166,10 @@ export function createMainContainer() {
  */
 export function createHeader(title, subtitle) {
     const header = document.createElement('div');
-    header.style.cssText = `
-        margin-bottom: 15px;
-        padding-bottom: 10px;
-        border-bottom: 1px solid #444;
-    `;
+    header.classList.add('sage-header');
     
-    const titleHtml = `<h3 style="margin: 0; color: #ffffff; font-size: 16px;">${title}</h3>`;
-    const subtitleHtml = subtitle ? `<p style="margin: 5px 0 0 0; color: #aaa; font-size: 12px;">${subtitle}</p>` : '';
+    const titleHtml = `<h3 class="sage-header-title">${title}</h3>`;
+    const subtitleHtml = subtitle ? `<p class="sage-header-subtitle">${subtitle}</p>` : '';
     
     header.innerHTML = titleHtml + subtitleHtml;
 
@@ -259,12 +181,7 @@ export function createHeader(title, subtitle) {
  */
 export function createLoadingIndicator(text = 'Loading...') {
     const indicator = document.createElement('div');
-    indicator.style.cssText = `
-        text-align: center;
-        padding: 20px;
-        color: #888;
-        font-style: italic;
-    `;
+    indicator.classList.add('sage-loading-indicator');
     indicator.textContent = text;
 
     return indicator;
@@ -284,49 +201,7 @@ export function createInfoDisplay() {
  * Add dropdown styles to the document head
  */
 export function addDropdownStyles() {
-    const style = document.createElement('style');
-    style.textContent = `
-        .cache-dropdown-item {
-            padding: 6px 10px;
-            cursor: pointer;
-            position: relative;
-            border-bottom: 1px solid #444;
-            font-size: 11px;
-        }
-        .cache-dropdown-item:hover {
-            background: #444;
-        }
-        .cache-dropdown-item.folder {
-            background: #383838;
-            font-weight: bold;
-        }
-        .cache-dropdown-item.folder:hover {
-            background: #484848;
-        }
-        .cache-dropdown-item.folder::after {
-            content: "▶";
-            float: right;
-        }
-        .cache-dropdown-submenu {
-            position: fixed;
-            background: #333;
-            border: 1px solid #555;
-            border-radius: 4px;
-            min-width: 250px;
-            max-height: 300px;
-            overflow-y: auto;
-            z-index: 1001;
-            display: none;
-            box-shadow: 2px 2px 8px rgba(0,0,0,0.3);
-        }
-        .cache-dropdown-item.file {
-            color: #e0e0e0;
-        }
-        .cache-dropdown-item.selected {
-            background: #4CAF50;
-        }
-    `;
-    document.head.appendChild(style);
+    // Styles are provided by the shared component stylesheet.
 }
 
 /**
@@ -341,38 +216,7 @@ export function createTabButton(text, isActive = false) {
     
     const button = document.createElement('button');
     button.textContent = text;
-    button.style.cssText = `
-        padding: 10px 20px;
-        border: none;
-        background: ${isActive ? '#4CAF50' : '#2a2a2a'};
-        color: ${isActive ? 'white' : '#ccc'};
-        cursor: pointer;
-        border-radius: 6px 6px 0 0;
-        margin-right: 2px;
-        font-size: 13px;
-        font-weight: ${isActive ? 'bold' : 'normal'};
-        transition: all 0.2s ease;
-        border-bottom: 2px solid ${isActive ? '#4CAF50' : 'transparent'};
-        position: relative;
-        top: 2px;
-    `;
-    
-    // Hover effects
-    button.addEventListener('mouseenter', () => {
-        if (!button.classList.contains('active')) {
-            button.style.background = '#3a3a3a';
-            button.style.color = 'white';
-            button.style.transform = 'translateY(-1px)';
-        }
-    });
-    
-    button.addEventListener('mouseleave', () => {
-        if (!button.classList.contains('active')) {
-            button.style.background = '#2a2a2a';
-            button.style.color = '#ccc';
-            button.style.transform = 'translateY(0)';
-        }
-    });
+    button.className = `tab-button sage-tab-button${isActive ? ' active' : ''}`;
     
     return button;
 }

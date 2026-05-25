@@ -62,6 +62,8 @@ import {
 // Import performance timing utilities for telemetry persistence
 import { startTimer, endTimer, javascriptTimer, shouldSendTimingData, shouldLogTimingDetails } from "../shared/performanceTimer.js";
 
+console.log('[SageUtils] cacheSidebar.js imported');
+
 // Always use Models Tab V2
 
 // Track the current sidebar element for reloading
@@ -525,6 +527,12 @@ async function initializeSidebarData(lifecycle) {
  * @param {HTMLElement} el - Element to populate with the sidebar
  */
 export function createCacheSidebar(el) {
+    const sidebarRenderStart = performance.now();
+    console.log('[Sidebar] createCacheSidebar invoked', { el });
+    if (!el) {
+        console.error('[Sidebar] createCacheSidebar called with no container element');
+        throw new Error('createCacheSidebar requires a valid container element');
+    }
     // Store reference for potential reload
     currentSidebarElement = el;
     const lifecycle = createCleanupRegistry();
@@ -597,6 +605,7 @@ export function createCacheSidebar(el) {
     
     // Add to provided element
     el.appendChild(mainContainer);
+    console.log('[Sidebar] mainContainer appended to sidebar element');
     
     // Add a lightweight settings loading indicator in the tab header
     const settingsIndicator = document.createElement('div');
@@ -610,6 +619,13 @@ export function createCacheSidebar(el) {
     
     // Activate the first visible tab
     tabManager.activateFirstTab();
+    console.log('[Sidebar] initial tab activation completed', {
+        activeTab: tabManager.getActiveTab(),
+        visibleTabs: tabManager.getVisibleTabIds()
+    });
+    console.log('[Sidebar] createCacheSidebar initial render completed', {
+        durationMs: +(performance.now() - sidebarRenderStart).toFixed(2)
+    });
 
     // Load tab visibility settings asynchronously and apply when ready
     // This prevents a blank sidebar if the settings endpoint is slow or unavailable at startup
@@ -973,6 +989,8 @@ export function createCacheSidebar(el) {
             console.warn('[Sidebar] Failed to load cross-tab messaging:', err);
         });
     }, 100);
+
+    console.log('[Sidebar] createCacheSidebar completed and sidebar is ready');
 }
 
 /**

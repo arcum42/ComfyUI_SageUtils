@@ -6,6 +6,8 @@
 /**
  * Button variants with predefined colors
  */
+import { loadComponentStyles as ensureComponentStyles } from './styleLoader.js';
+
 export const BUTTON_VARIANTS = {
     PRIMARY: 'primary',
     SECONDARY: 'secondary',
@@ -14,6 +16,17 @@ export const BUTTON_VARIANTS = {
     DANGER: 'danger',
     INFO: 'info'
 };
+
+function loadComponentStyles() {
+    ensureComponentStyles('buttons.js');
+}
+
+try {
+    loadComponentStyles();
+    console.log('[SageUtils] buttons.js import-time style injection succeeded');
+} catch (err) {
+    console.error('[SageUtils] buttons.js import-time style injection failed', err);
+}
 
 /**
  * Button sizes
@@ -29,45 +42,6 @@ export const BUTTON_SIZES = {
  * @param {string} variant - Button variant
  * @returns {string} - Background color
  */
-function getVariantColor(variant) {
-    const colors = {
-        [BUTTON_VARIANTS.PRIMARY]: '#2196F3',
-        [BUTTON_VARIANTS.SECONDARY]: '#757575',
-        [BUTTON_VARIANTS.SUCCESS]: '#4CAF50',
-        [BUTTON_VARIANTS.WARNING]: '#FF9800',
-        [BUTTON_VARIANTS.DANGER]: '#f44336',
-        [BUTTON_VARIANTS.INFO]: '#00BCD4'
-    };
-    return colors[variant] || colors[BUTTON_VARIANTS.PRIMARY];
-}
-
-/**
- * Get padding for button size
- * @param {string} size - Button size
- * @returns {string} - CSS padding value
- */
-function getSizePadding(size) {
-    const paddings = {
-        [BUTTON_SIZES.SMALL]: '4px 8px',
-        [BUTTON_SIZES.MEDIUM]: '6px 12px',
-        [BUTTON_SIZES.LARGE]: '8px 16px'
-    };
-    return paddings[size] || paddings[BUTTON_SIZES.MEDIUM];
-}
-
-/**
- * Get font size for button size
- * @param {string} size - Button size
- * @returns {string} - CSS font-size value
- */
-function getSizeFontSize(size) {
-    const fontSizes = {
-        [BUTTON_SIZES.SMALL]: '11px',
-        [BUTTON_SIZES.MEDIUM]: '12px',
-        [BUTTON_SIZES.LARGE]: '14px'
-    };
-    return fontSizes[size] || fontSizes[BUTTON_SIZES.MEDIUM];
-}
 
 /**
  * Create a styled button
@@ -113,42 +87,35 @@ export function createButton(text, options = {}) {
     if (className) button.className = className;
     if (id) button.id = id;
     button.disabled = disabled;
+
+    loadComponentStyles();
+    button.classList.add('sage-button');
+    button.classList.add(`sage-button--${size}`);
+    if (!hoverEffect) {
+        button.classList.add('sage-button--no-hover');
+    }
     
-    // Determine background color
-    const backgroundColor = color || getVariantColor(variant);
-    const padding = getSizePadding(size);
-    const fontSize = getSizeFontSize(size);
+    if (color) {
+        button.classList.add('sage-button--custom');
+        button.style.setProperty('--sage-button-bg', color);
+    } else {
+        button.classList.add(`sage-button--${variant}`);
+    }
     
-    // Apply base styles
-    button.style.cssText = `
-        background: ${backgroundColor};
-        color: white;
-        border: none;
-        padding: ${padding};
-        border-radius: 4px;
-        cursor: ${disabled ? 'not-allowed' : 'pointer'};
-        font-size: ${fontSize};
-        margin-top: ${marginTop};
-        transition: ${hoverEffect ? 'opacity 0.2s' : 'none'};
-        opacity: ${disabled ? '0.6' : '1'};
-    `;
-    
+    if (marginTop && marginTop !== '8px') {
+        if (marginTop === '0') {
+            button.classList.add('sage-button--no-margin');
+        } else {
+            button.style.setProperty('--sage-button-margin-top', marginTop);
+        }
+    }
+
     // Apply custom style overrides
     Object.assign(button.style, style);
     
     // Add click handler
     if (onClick && !disabled) {
         button.addEventListener('click', onClick);
-    }
-    
-    // Add hover effects if enabled
-    if (hoverEffect && !disabled) {
-        button.addEventListener('mouseenter', () => {
-            button.style.opacity = '0.8';
-        });
-        button.addEventListener('mouseleave', () => {
-            button.style.opacity = '1';
-        });
     }
     
     return button;
@@ -161,12 +128,12 @@ export function createButton(text, options = {}) {
  * @returns {HTMLButtonElement}
  */
 export function createIconButton(icon, options = {}) {
+    const iconClasses = ['sage-button--icon', options.className].filter(Boolean).join(' ');
     return createButton('', {
         ...options,
         icon,
+        className: iconClasses,
         style: {
-            minWidth: '32px',
-            padding: '6px',
             ...options.style
         }
     });
@@ -189,18 +156,25 @@ export function createButtonGroup(buttons, options = {}) {
     } = options;
     
     const container = document.createElement('div');
-    container.style.cssText = `
-        display: flex;
-        gap: ${gap};
-        margin-top: ${marginTop};
-        flex-wrap: ${wrap ? 'wrap' : 'nowrap'};
-    `;
+    container.classList.add('sage-button-group');
+    if (!wrap) {
+        container.classList.add('sage-button-group--nowrap');
+    }
+    
+    if (gap !== '4px') {
+        container.style.setProperty('--sage-button-group-gap', gap);
+    }
+    if (marginTop !== '8px') {
+        container.style.setProperty('--sage-button-group-margin-top', marginTop);
+    }
     
     buttons.forEach(button => {
         // Remove individual margin-top from buttons in group
         if (button.style.marginTop) {
-            button.style.marginTop = '0';
+            button.style.removeProperty('--sage-button-margin-top');
+            button.style.marginTop = '';
         }
+        button.classList.add('sage-button--no-margin');
         container.appendChild(button);
     });
     
