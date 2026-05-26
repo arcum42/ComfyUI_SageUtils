@@ -40,11 +40,7 @@ const SETTING_KEY_TO_ID_MAP = {
  */
 export async function showSettingsDialog() {
   const content = document.createElement('div');
-  content.style.cssText = `
-    min-width: 600px;
-    max-width: 700px;
-    min-height: 400px;
-  `;
+  content.className = 'settings-dialog-content';
 
   const dialog = createDialog({
     title: 'SageUtils Settings',
@@ -57,14 +53,10 @@ export async function showSettingsDialog() {
 
   // Create loading indicator
   const loadingSection = document.createElement('div');
-  loadingSection.style.cssText = `
-    text-align: center;
-    padding: 40px;
-    color: #888;
-  `;
+  loadingSection.className = 'dialog-loading-section';
   loadingSection.innerHTML = `
-    <div style="font-size: 16px; margin-bottom: 10px;">Loading settings...</div>
-    <div style="font-size: 12px;">Please wait</div>
+    <div class="dialog-loading-title">Loading settings...</div>
+    <div class="dialog-loading-subtitle">Please wait</div>
   `;
   content.appendChild(loadingSection);
 
@@ -94,9 +86,9 @@ export async function showSettingsDialog() {
 
   } catch (error) {
     content.innerHTML = `
-      <div style="color: #f44336; padding: 20px; text-align: center;">
-        <div style="font-size: 16px; margin-bottom: 10px;">Error loading settings</div>
-        <div style="font-size: 14px; opacity: 0.8;">${error.message}</div>
+      <div class="dialog-error-message">
+        <div class="dialog-loading-title">Error loading settings</div>
+        <div class="dialog-loading-subtitle">${error.message}</div>
       </div>
     `;
     handleError(error, 'Failed to load settings');
@@ -112,11 +104,7 @@ export async function showSettingsDialog() {
 function buildSettingsUI(container, settings, dialog) {
   // Create main settings container
   const settingsContainer = document.createElement('div');
-  settingsContainer.style.cssText = `
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
-  `;
+  settingsContainer.className = 'settings-dialog-content';
 
   // LLM Integration Section
   const llmSection = createLLMSection(settings);
@@ -155,21 +143,11 @@ function buildSettingsUI(container, settings, dialog) {
  */
 function createLLMSection(settings) {
   const section = document.createElement('div');
-  section.style.cssText = `
-    padding: 15px;
-    background: #1e1e1e;
-    border-radius: 6px;
-    border: 1px solid #444;
-  `;
+  section.className = 'settings-section';
 
   const title = document.createElement('h3');
   title.textContent = 'LLM Integration';
-  title.style.cssText = `
-    margin: 0 0 15px 0;
-    color: #4CAF50;
-    font-size: 16px;
-    font-weight: 600;
-  `;
+  title.className = 'settings-section-title';
   section.appendChild(title);
 
   // Default provider selection
@@ -178,11 +156,7 @@ function createLLMSection(settings) {
 
   // Separator after default provider
   const topSeparator = document.createElement('div');
-  topSeparator.style.cssText = `
-    height: 1px;
-    background: #444;
-    margin: 15px 0;
-  `;
+  topSeparator.className = 'settings-divider';
   section.appendChild(topSeparator);
 
   // Ollama settings
@@ -191,11 +165,7 @@ function createLLMSection(settings) {
 
   // Separator
   const separator = document.createElement('div');
-  separator.style.cssText = `
-    height: 1px;
-    background: #444;
-    margin: 15px 0;
-  `;
+  separator.className = 'settings-divider';
   section.appendChild(separator);
 
   // OpenAI settings
@@ -204,11 +174,7 @@ function createLLMSection(settings) {
 
   // Separator
   const openaiSeparator = document.createElement('div');
-  openaiSeparator.style.cssText = `
-    height: 1px;
-    background: #444;
-    margin: 15px 0;
-  `;
+  openaiSeparator.className = 'settings-divider';
   section.appendChild(openaiSeparator);
 
   // LM Studio settings
@@ -225,27 +191,16 @@ function createLLMSection(settings) {
  */
 function createDefaultProviderSelector(settings) {
   const group = document.createElement('div');
-  group.style.cssText = 'margin-bottom: 15px;';
+  group.className = 'settings-group';
 
   const label = document.createElement('label');
   label.textContent = 'Default LLM Provider:';
-  label.style.cssText = `
-    display: block;
-    color: #ccc;
-    font-size: 14px;
-    margin-bottom: 8px;
-    font-weight: 500;
-  `;
+  label.className = 'settings-label';
   group.appendChild(label);
 
   const description = document.createElement('div');
   description.textContent = 'Select which provider to use by default in the LLM tab and provider-switching LLM v3 nodes';
-  description.style.cssText = `
-    color: #888;
-    font-size: 12px;
-    margin-bottom: 10px;
-    font-style: italic;
-  `;
+  description.className = 'settings-description';
   group.appendChild(description);
 
   // Get current setting
@@ -263,11 +218,7 @@ function createDefaultProviderSelector(settings) {
   const { container: radioContainer } = createRadioGroup('default_llm_provider', radioItems, {
     selectedValue: currentValue,
     layout: 'horizontal',
-    style: {
-      display: 'flex',
-      gap: '20px',
-      marginLeft: '10px'
-    }
+    className: 'settings-radio-group'
   });
 
   // Add data attributes to radios for settings management
@@ -288,40 +239,21 @@ function createDefaultProviderSelector(settings) {
  */
 function createTabVisibilitySection(settings) {
   const section = document.createElement('div');
-  section.style.cssText = `
-    padding: 15px;
-    background: #1e1e1e;
-    border-radius: 6px;
-    border: 1px solid #444;
-  `;
+  section.className = 'settings-section';
 
   const title = document.createElement('h3');
   title.textContent = 'Sidebar Tab Visibility';
-  title.style.cssText = `
-    margin: 0 0 15px 0;
-    color: #4CAF50;
-    font-size: 16px;
-    font-weight: 600;
-  `;
+  title.className = 'settings-section-title';
   section.appendChild(title);
 
   const description = document.createElement('p');
   description.textContent = 'Control which tabs are visible in the sidebar. Changes take effect immediately.';
-  description.style.cssText = `
-    margin: 0 0 15px 0;
-    color: #888;
-    font-size: 13px;
-    font-style: italic;
-  `;
+  description.className = 'settings-description';
   section.appendChild(description);
 
   // Create a grid for tab checkboxes
   const tabsGrid = document.createElement('div');
-  tabsGrid.style.cssText = `
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 10px;
-  `;
+  tabsGrid.className = 'tabs-grid';
 
   const visibilitySettings = normalizeTabVisibilitySettings(settings);
 
@@ -335,7 +267,7 @@ function createTabVisibilitySection(settings) {
     // Add setting key to checkbox for saving later
     checkbox.dataset.settingKey = tab.settingKey;
     
-    container.style.marginBottom = '5px';
+    container.classList.add('settings-item-spacing');
     tabsGrid.appendChild(container);
   });
 
@@ -354,7 +286,7 @@ function createTabVisibilitySection(settings) {
  */
 function createProviderGroup(providerName, settings, providerKey, urlKeyPrefix) {
   const group = document.createElement('div');
-  group.style.cssText = 'margin-bottom: 15px;';
+  group.className = 'settings-group';
 
   // Enable checkbox
   const enableKey = `enable_${providerKey}`;
@@ -380,7 +312,7 @@ function createProviderGroup(providerName, settings, providerKey, urlKeyPrefix) 
     }
   );
   customUrlCheckbox.dataset.settingKey = useCustomUrlKey;
-  customUrlCheckboxContainer.style.marginLeft = '20px';
+  customUrlCheckboxContainer.classList.add('settings-indent');
   group.appendChild(customUrlCheckboxContainer);
 
   // Custom URL input
@@ -392,13 +324,11 @@ function createProviderGroup(providerName, settings, providerKey, urlKeyPrefix) 
     customUrlKey,
     `e.g., http://localhost:${urlKeyPrefix === 'ollama' ? '11434' : '1234'}`
   );
-  customUrlInputContainer.style.marginLeft = '40px';
-  customUrlInputContainer.style.marginTop = '10px';
+  customUrlInputContainer.classList.add('settings-indent', 'settings-indent-large');
   
   // Show/hide URL input based on checkbox
   const updateUrlInputVisibility = () => {
-    customUrlInputContainer.style.display = 
-      customUrlCheckbox.checked ? 'block' : 'none';
+    customUrlInputContainer.classList.toggle('hidden', !customUrlCheckbox.checked);
   };
   updateUrlInputVisibility();
   customUrlCheckbox.addEventListener('change', updateUrlInputVisibility);
@@ -418,8 +348,7 @@ function createProviderGroup(providerName, settings, providerKey, urlKeyPrefix) 
     );
     tokenInput.type = 'password';
     tokenInput.autocomplete = 'off';
-    tokenInputContainer.style.marginLeft = '20px';
-    tokenInputContainer.style.marginTop = '10px';
+    tokenInputContainer.classList.add('settings-indent', 'settings-indent-large');
     group.appendChild(tokenInputContainer);
   }
 
@@ -433,9 +362,7 @@ function createProviderGroup(providerName, settings, providerKey, urlKeyPrefix) 
  */
 function createOpenAIProviderGroup(settings) {
   const group = document.createElement('div');
-  group.style.cssText = 'margin-bottom: 15px;';
-
-  const enableKey = 'enable_openai';
+  group.className = 'settings-group';
   const enableSetting = settings[enableKey];
   const { container: enableContainer, checkbox: enableCheckbox } = createCheckbox(
     'Enable OpenAI',
@@ -457,8 +384,8 @@ function createOpenAIProviderGroup(settings) {
     }
   );
   customUrlCheckbox.dataset.settingKey = useCustomUrlKey;
-  customUrlCheckboxContainer.style.marginLeft = '20px';
-  customUrlCheckboxContainer.style.marginTop = '10px';
+  customUrlCheckboxContainer.classList.add('settings-indent');
+  customUrlCheckboxContainer.classList.add('settings-indent-large');
   group.appendChild(customUrlCheckboxContainer);
 
   const baseUrlKey = 'openai_base_url';
@@ -469,11 +396,10 @@ function createOpenAIProviderGroup(settings) {
     baseUrlKey,
     'e.g., https://api.openai.com'
   );
-  baseUrlInputContainer.style.marginLeft = '40px';
-  baseUrlInputContainer.style.marginTop = '10px';
+  baseUrlInputContainer.classList.add('settings-indent', 'settings-indent-large');
 
   const updateUrlInputVisibility = () => {
-    baseUrlInputContainer.style.display = customUrlCheckbox.checked ? 'block' : 'none';
+    baseUrlInputContainer.classList.toggle('hidden', !customUrlCheckbox.checked);
   };
   updateUrlInputVisibility();
   customUrlCheckbox.addEventListener('change', updateUrlInputVisibility);
@@ -490,8 +416,7 @@ function createOpenAIProviderGroup(settings) {
   );
   apiKeyInput.type = 'password';
   apiKeyInput.autocomplete = 'off';
-  apiKeyInputContainer.style.marginLeft = '20px';
-  apiKeyInputContainer.style.marginTop = '10px';
+  apiKeyInputContainer.classList.add('settings-indent', 'settings-indent-large');
   group.appendChild(apiKeyInputContainer);
 
   return group;
@@ -511,32 +436,18 @@ function createTextInput(label, value, settingKey, placeholder = '') {
     id: `setting-${settingKey}`,
     value: value || '',
     placeholder: placeholder,
-    style: {
-      width: '100%',
-      padding: '8px',
-      background: '#2a2a2a',
-      border: '1px solid #555',
-      borderRadius: '4px',
-      color: '#ccc',
-      fontSize: '13px',
-      boxSizing: 'border-box'
-    }
+    className: 'settings-input'
   });
 
   input.dataset.settingKey = settingKey;
 
   const container = document.createElement('div');
-  container.style.cssText = 'margin-bottom: 10px;';
+  container.className = 'settings-input-container';
 
   const labelElement = document.createElement('label');
   labelElement.textContent = label;
   labelElement.htmlFor = `setting-${settingKey}`;
-  labelElement.style.cssText = `
-    display: block;
-    color: #ccc;
-    font-size: 13px;
-    margin-bottom: 5px;
-  `;
+  labelElement.className = 'settings-input-label';
 
   container.appendChild(labelElement);
   container.appendChild(input);
@@ -689,40 +600,20 @@ async function saveSettings(dialog, container, originalSettings) {
  */
 function createPerformanceSection() {
   const section = document.createElement('div');
-  section.style.cssText = `
-    padding: 15px;
-    background: #1e1e1e;
-    border-radius: 6px;
-    border: 1px solid #444;
-  `;
+  section.className = 'settings-section';
 
   const title = document.createElement('h3');
   title.textContent = 'Performance & Telemetry';
-  title.style.cssText = `
-    margin: 0 0 10px 0;
-    color: #4CAF50;
-    font-size: 16px;
-    font-weight: 600;
-  `;
+  title.className = 'settings-section-title';
   section.appendChild(title);
 
   const note = document.createElement('div');
   note.textContent = 'These options affect local performance monitoring and telemetry upload.';
-  note.style.cssText = `
-    margin: 0 0 12px 0;
-    color: #888;
-    font-size: 12px;
-    font-style: italic;
-  `;
+  note.className = 'settings-description';
   section.appendChild(note);
 
   const grid = document.createElement('div');
-  grid.style.cssText = `
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 10px 16px;
-    align-items: center;
-  `;
+  grid.className = 'settings-grid';
 
   // Current values from localStorage
   const perfMonitoring = localStorage.getItem('sageutils_perf_monitoring') === 'true';
@@ -763,25 +654,12 @@ function createPerformanceSection() {
 
   // Action buttons row
   const actions = document.createElement('div');
-  actions.style.cssText = `
-    display: flex;
-    gap: 8px;
-    margin-top: 12px;
-    flex-wrap: wrap;
-  `;
+  actions.className = 'settings-actions';
 
   const btn = (label, onClick, variant = 'default') => {
     const b = document.createElement('button');
     b.textContent = label;
-    b.style.cssText = `
-      padding: 6px 10px;
-      background: ${variant === 'primary' ? '#4CAF50' : '#2a2a2a'};
-      color: #fff;
-      border: 1px solid #444;
-      border-radius: 4px;
-      cursor: pointer;
-      font-size: 12px;
-    `;
+    b.className = `settings-action-button ${variant === 'primary' ? 'primary' : ''}`;
     b.addEventListener('click', onClick);
     return b;
   };

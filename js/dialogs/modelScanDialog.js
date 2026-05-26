@@ -10,6 +10,7 @@
  */
 
 import { createDialog } from '../components/dialogManager.js';
+import { createInput } from '../components/formElements.js';
 import { notifications } from '../shared/notifications.js';
 import { selectors } from '../shared/stateManager.js';
 
@@ -53,13 +54,7 @@ class ModelScanDialog {
     buildDialog() {
         // Create the main content container
         const content = document.createElement('div');
-        content.style.cssText = `
-            min-width: 550px;
-            max-width: 600px;
-            display: flex;
-            flex-direction: column;
-            gap: 16px;
-        `;
+        content.className = 'scan-dialog-content';
 
         // Create scan options section
         const scanOptions = this.createScanOptionsSection();
@@ -111,11 +106,6 @@ class ModelScanDialog {
     createScanOptionsSection() {
         const section = document.createElement('div');
         section.className = 'scan-options';
-        section.style.cssText = `
-            display: flex;
-            flex-direction: column;
-            gap: 16px;
-        `;
 
         // Folder selection
         const folderGroup = this.createFolderSelectionGroup();
@@ -152,44 +142,21 @@ class ModelScanDialog {
     createFolderSelectionGroup() {
         const group = document.createElement('div');
         group.className = 'option-group';
-        group.style.cssText = `
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-        `;
 
         const label = document.createElement('label');
         label.className = 'option-label';
         label.innerHTML = '<strong>Scan Folders:</strong>';
-        label.style.cssText = `
-            color: var(--input-text);
-            font-weight: 500;
-        `;
 
         const folderList = document.createElement('div');
         folderList.id = 'folderList';
         folderList.className = 'folder-list';
-        folderList.style.cssText = `
-            border: 1px solid var(--border-color);
-            border-radius: 4px;
-            max-height: 150px;
-            overflow-y: auto;
-            background: var(--comfy-input-bg);
-        `;
-        folderList.innerHTML = '<div class="loading" style="padding: 20px; text-align: center; color: var(--descrip-text);">Loading folders...</div>';
+        folderList.innerHTML = '<div class="loading-message">Loading folders...</div>';
 
         const folderSummary = document.createElement('div');
         folderSummary.id = 'folderSummary';
         folderSummary.className = 'folder-summary';
-        folderSummary.style.cssText = `
-            display: none;
-            padding: 8px 12px;
-            background: var(--comfy-menu-bg);
-            border: 1px solid var(--border-color);
-            border-radius: 4px;
-        `;
         folderSummary.innerHTML = `
-            <small class="help-text" style="margin: 0; font-weight: 500; color: var(--input-text); font-size: 12px;">
+            <small class="help-text folder-summary-text">
                 <span id="selectedFolderCount">0</span> folders selected, 
                 <span id="totalFileCount">0</span> files total
             </small>
@@ -210,20 +177,12 @@ class ModelScanDialog {
         group.className = 'option-group';
 
         const label = document.createElement('label');
-        label.className = 'checkbox-label';
-        label.style.cssText = `
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            color: var(--input-text);
-            cursor: pointer;
-        `;
+        label.className = 'sage-checkbox-label';
 
         const checkbox = document.createElement('input');
         checkbox.type = 'checkbox';
         checkbox.id = id;
         checkbox.checked = checked;
-        checkbox.style.margin = '0';
 
         label.appendChild(checkbox);
         label.appendChild(document.createTextNode(labelText));
@@ -231,14 +190,6 @@ class ModelScanDialog {
         const help = document.createElement('small');
         help.className = 'help-text';
         help.textContent = helpText;
-        help.style.cssText = `
-            display: block;
-            margin-top: 4px;
-            margin-left: 24px;
-            color: var(--descrip-text);
-            font-size: 12px;
-            line-height: 1.4;
-        `;
 
         group.appendChild(label);
         group.appendChild(help);
@@ -252,47 +203,28 @@ class ModelScanDialog {
     createRateLimitGroup() {
         const group = document.createElement('div');
         group.className = 'option-group';
-        group.style.cssText = `
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-        `;
 
         const label = document.createElement('label');
         label.htmlFor = 'rateLimitDelay';
         label.className = 'option-label';
         label.textContent = 'Civitai API Rate Limit (ms):';
-        label.style.cssText = `
-            color: var(--input-text);
-            font-weight: 500;
-        `;
 
-        const input = document.createElement('input');
-        input.type = 'number';
-        input.id = 'rateLimitDelay';
-        input.value = '1000';
-        input.min = '100';
-        input.max = '5000';
-        input.step = '100';
-        input.style.cssText = `
-            width: 100px;
-            padding: 6px 8px;
-            border: 1px solid var(--border-color);
-            border-radius: 4px;
-            background: var(--comfy-input-bg);
-            color: var(--input-text);
-        `;
+        const input = createInput({
+          type: 'number',
+          id: 'rateLimitDelay',
+          value: '1000',
+          min: '100',
+          max: '5000',
+          step: '100',
+          className: 'settings-input',
+          style: {
+            width: '100px'
+          }
+        });
 
         const help = document.createElement('small');
         help.className = 'help-text';
         help.textContent = 'Delay between API requests to prevent rate limiting (recommended: 1000ms)';
-        help.style.cssText = `
-            display: block;
-            margin-top: 4px;
-            color: var(--descrip-text);
-            font-size: 12px;
-            line-height: 1.4;
-        `;
 
         group.appendChild(label);
         group.appendChild(input);
@@ -307,57 +239,29 @@ class ModelScanDialog {
     createProgressSection() {
         const section = document.createElement('div');
         section.id = 'scanProgress';
-        section.className = 'scan-progress';
-        section.style.cssText = `
-            display: none;
-            border: 1px solid var(--border-color);
-            border-radius: 6px;
-            padding: 16px;
-            background: var(--comfy-input-bg);
-        `;
+        section.className = 'scan-progress hidden';
 
         // Progress info header
         const progressInfo = document.createElement('div');
         progressInfo.className = 'progress-info';
-        progressInfo.style.cssText = `
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 12px;
-        `;
 
         const progressStats = document.createElement('div');
         progressStats.className = 'progress-stats';
-        progressStats.style.flex = '1';
 
         const progressText = document.createElement('span');
         progressText.id = 'progressText';
+        progressText.className = 'progress-text';
         progressText.textContent = 'Initializing scan...';
-        progressText.style.cssText = `
-            display: block;
-            color: var(--input-text);
-            font-weight: 500;
-            margin-bottom: 4px;
-        `;
 
         const statsText = document.createElement('span');
         statsText.id = 'progressStats';
         statsText.className = 'stats-text';
-        statsText.style.cssText = `
-            color: var(--descrip-text);
-            font-size: 13px;
-        `;
 
         progressStats.appendChild(progressText);
         progressStats.appendChild(statsText);
 
         const progressTime = document.createElement('div');
         progressTime.className = 'progress-time';
-        progressTime.style.cssText = `
-            color: var(--descrip-text);
-            font-size: 14px;
-            font-family: monospace;
-        `;
 
         const elapsedTime = document.createElement('span');
         elapsedTime.id = 'elapsedTime';
@@ -370,35 +274,14 @@ class ModelScanDialog {
         // Progress bar container
         const progressBarContainer = document.createElement('div');
         progressBarContainer.className = 'progress-bar-container';
-        progressBarContainer.style.cssText = `
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            margin-bottom: 12px;
-        `;
 
         const progressBar = document.createElement('div');
         progressBar.id = 'progressBar';
         progressBar.className = 'progress-bar';
-        progressBar.style.cssText = `
-            flex: 1;
-            height: 20px;
-            background: var(--comfy-menu-bg, #2a2a2a);
-            border: 1px solid var(--border-color, #555);
-            border-radius: 10px;
-            overflow: hidden;
-            position: relative;
-        `;
 
         const progressFill = document.createElement('div');
         progressFill.id = 'progressFill';
         progressFill.className = 'progress-fill';
-        progressFill.style.cssText = `
-            height: 100%;
-            background: linear-gradient(90deg, var(--primary-color, #007acc), var(--primary-color-hover, #005a9e));
-            transition: width 0.3s ease;
-            width: 0%;
-        `;
 
         progressBar.appendChild(progressFill);
 
@@ -406,13 +289,6 @@ class ModelScanDialog {
         progressPercentage.id = 'progressPercentage';
         progressPercentage.className = 'progress-percentage';
         progressPercentage.textContent = '0%';
-        progressPercentage.style.cssText = `
-            min-width: 45px;
-            text-align: right;
-            color: var(--input-text);
-            font-family: monospace;
-            font-size: 13px;
-        `;
 
         progressBarContainer.appendChild(progressBar);
         progressBarContainer.appendChild(progressPercentage);
@@ -421,17 +297,6 @@ class ModelScanDialog {
         const scanLog = document.createElement('div');
         scanLog.id = 'scanLog';
         scanLog.className = 'scan-log';
-        scanLog.style.cssText = `
-            max-height: 120px;
-            overflow-y: auto;
-            font-family: monospace;
-            font-size: 12px;
-            line-height: 1.4;
-            background: var(--comfy-menu-bg);
-            border: 1px solid var(--border-color);
-            border-radius: 4px;
-            padding: 8px;
-        `;
 
         section.appendChild(progressInfo);
         section.appendChild(progressBarContainer);
@@ -495,26 +360,25 @@ class ModelScanDialog {
         }
         
         if (errorMessage) {
-            folderList.innerHTML = `<div class="loading error" style="padding: 20px; text-align: center; color: var(--error-text);">${errorMessage}</div>`;
+            folderList.innerHTML = `<div class="loading-message error">${errorMessage}</div>`;
             return;
         }
 
         if (!folders.length) {
-            folderList.innerHTML = '<div class="loading" style="padding: 20px; text-align: center; color: var(--descrip-text);">No model folders found</div>';
+            folderList.innerHTML = '<div class="loading-message">No model folders found</div>';
             return;
         }
 
         folderList.innerHTML = folders.map(folder => `
-            <div class="folder-item" style="padding: 8px 12px; border-bottom: 1px solid var(--border-color); display: flex; align-items: center; gap: 8px;">
+            <div class="folder-item">
                 <input type="checkbox" id="folder_${folder.name.replace(/[^a-zA-Z0-9]/g, '_')}" 
                        value="${JSON.stringify(folder.paths || [folder.path]).replace(/"/g, '&quot;')}" 
-                       checked style="margin: 0;" />
+                       checked class="sage-checkbox-input" />
                 <label for="folder_${folder.name.replace(/[^a-zA-Z0-9]/g, '_')}" 
-                       class="folder-name" 
-                       style="flex: 1; color: var(--input-text); font-family: monospace; font-size: 13px; cursor: pointer;">
+                       class="folder-name">
                     ${folder.name}
                 </label>
-                <span class="folder-count" style="color: var(--descrip-text); font-size: 12px;">(${folder.count || 0} files)</span>
+                <span class="folder-count">(${folder.count || 0} files)</span>
             </div>
         `).join('');
         
@@ -602,7 +466,7 @@ class ModelScanDialog {
         if (summaryElement && selectedCountElement && totalFileCountElement) {
             selectedCountElement.textContent = selectedFolderData.length; // Number of categories, not paths
             totalFileCountElement.textContent = totalFiles;
-            summaryElement.style.display = selectedFolderData.length > 0 ? 'block' : 'none';
+            summaryElement.classList.toggle('hidden', selectedFolderData.length === 0);
         }
     }
 
@@ -856,11 +720,13 @@ class ModelScanDialog {
             startBtn.disabled = true;
             startBtn.textContent = 'Scanning...';
             cancelBtn.textContent = 'Cancel Scan';
-            progressSection.style.display = 'block';
-            optionsSection.style.display = 'none';
+            progressSection.classList.remove('hidden');
+            optionsSection.classList.add('hidden');
             
             this.startProgressTimer();
         } else {
+            progressSection.classList.add('hidden');
+            optionsSection.classList.remove('hidden');
             startBtn.disabled = false;
             startBtn.textContent = 'Start Scan';
             cancelBtn.textContent = 'Cancel';
@@ -960,19 +826,6 @@ class ModelScanDialog {
         
         const entry = document.createElement('div');
         entry.className = `log-entry ${type}`;
-        entry.style.cssText = `
-            margin-bottom: 2px;
-            color: var(--descrip-text);
-        `;
-        
-        // Add type-specific colors
-        if (type === 'success') {
-            entry.style.color = 'var(--success-text, #4CAF50)';
-        } else if (type === 'error') {
-            entry.style.color = 'var(--error-text, #f44336)';
-        } else if (type === 'info') {
-            entry.style.color = 'var(--info-text, #2196F3)';
-        }
         
         entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
         

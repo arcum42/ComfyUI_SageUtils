@@ -15,11 +15,7 @@ import { handleError } from '../shared/errorHandler.js';
  */
 export async function showDuplicateFinderDialog(folderPath, includeSubfolders = false, onComplete = null) {
   const content = document.createElement('div');
-  content.style.cssText = `
-    min-width: 800px;
-    max-width: 1000px;
-    min-height: 500px;
-  `;
+  content.className = 'dialog-content-wide';
 
   const dialog = createDialog({
     title: 'Find Duplicate Images',
@@ -32,99 +28,51 @@ export async function showDuplicateFinderDialog(folderPath, includeSubfolders = 
 
   // Create scanning section
   const scanSection = document.createElement('div');
-  scanSection.style.cssText = `
-    margin-bottom: 20px;
-    padding: 15px;
-    background: #1e1e1e;
-    border-radius: 6px;
-    border: 1px solid #444;
-  `;
+  scanSection.className = 'dialog-panel';
 
   const folderInfo = document.createElement('div');
-  folderInfo.style.cssText = 'color: #ccc; margin-bottom: 10px; font-size: 13px;';
+  folderInfo.className = 'dialog-info-text';
   folderInfo.innerHTML = `
-    <div style="margin-bottom: 8px;"><strong>Scanning folder:</strong> ${folderPath}</div>
+    <div class="dialog-info-line"><strong>Scanning folder:</strong> ${folderPath}</div>
   `;
   scanSection.appendChild(folderInfo);
 
   // Add checkbox for including subfolders
   const subfolderCheckboxContainer = document.createElement('div');
-  subfolderCheckboxContainer.style.cssText = `
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-bottom: 15px;
-  `;
+  subfolderCheckboxContainer.className = 'dialog-checkbox-row';
 
   const subfolderCheckbox = document.createElement('input');
   subfolderCheckbox.type = 'checkbox';
   subfolderCheckbox.id = 'include-subfolders-checkbox';
   subfolderCheckbox.checked = includeSubfolders;
-  subfolderCheckbox.style.cssText = 'cursor: pointer;';
+  subfolderCheckbox.className = 'sage-checkbox-input';
 
   const subfolderLabel = document.createElement('label');
   subfolderLabel.htmlFor = 'include-subfolders-checkbox';
   subfolderLabel.textContent = 'Include subfolders in scan';
-  subfolderLabel.style.cssText = `
-    color: #ccc;
-    font-size: 13px;
-    cursor: pointer;
-    user-select: none;
-  `;
+  subfolderLabel.className = 'dialog-checkbox-label';
 
   subfolderCheckboxContainer.appendChild(subfolderCheckbox);
   subfolderCheckboxContainer.appendChild(subfolderLabel);
   scanSection.appendChild(subfolderCheckboxContainer);
 
   const progressContainer = document.createElement('div');
-  progressContainer.style.cssText = `
-    margin-top: 15px;
-    padding: 12px;
-    background: #2a2a2a;
-    border-radius: 4px;
-    border: 1px solid #555;
-  `;
+  progressContainer.className = 'dialog-progress-panel';
 
   const progressText = document.createElement('div');
-  progressText.style.cssText = 'color: #4CAF50; margin-bottom: 8px; font-size: 14px;';
+  progressText.className = 'dialog-progress-status';
   progressText.textContent = 'Initializing scan...';
   progressContainer.appendChild(progressText);
 
   const progressBarOuter = document.createElement('div');
-  progressBarOuter.style.cssText = `
-    width: 100%;
-    height: 20px;
-    background: #333;
-    border-radius: 10px;
-    overflow: hidden;
-    border: 1px solid #555;
-    position: relative;
-  `;
+  progressBarOuter.className = 'dialog-progress-bar';
 
   const progressBarInner = document.createElement('div');
-  progressBarInner.style.cssText = `
-    width: 0%;
-    height: 100%;
-    background: linear-gradient(90deg, #4CAF50, #66BB6A);
-    transition: width 0.3s ease;
-  `;
+  progressBarInner.className = 'dialog-progress-fill';
   progressBarOuter.appendChild(progressBarInner);
 
   const progressPercent = document.createElement('div');
-  progressPercent.style.cssText = `
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: white;
-    font-weight: bold;
-    font-size: 11px;
-    text-shadow: 0 1px 2px rgba(0,0,0,0.8);
-  `;
+  progressPercent.className = 'dialog-progress-text';
   progressPercent.textContent = '0%';
   progressBarOuter.appendChild(progressPercent);
 
@@ -135,7 +83,7 @@ export async function showDuplicateFinderDialog(folderPath, includeSubfolders = 
 
   // Create results section (initially hidden)
   const resultsSection = document.createElement('div');
-  resultsSection.style.cssText = 'display: none;';
+  resultsSection.className = 'dialog-results-section hidden';
   content.appendChild(resultsSection);
 
   // Show the dialog
@@ -145,8 +93,6 @@ export async function showDuplicateFinderDialog(folderPath, includeSubfolders = 
   const scanButton = dialog.addFooterButton('Start Scan', async () => {
     // Disable scan button during scan
     scanButton.disabled = true;
-    scanButton.style.opacity = '0.5';
-    scanButton.style.cursor = 'not-allowed';
     
     // Get the current checkbox value
     const includeSubfoldersValue = subfolderCheckbox.checked;
@@ -183,21 +129,18 @@ export async function showDuplicateFinderDialog(folderPath, includeSubfolders = 
 
       // Hide scan section and show results
       setTimeout(() => {
-        scanSection.style.display = 'none';
-        resultsSection.style.display = 'block';
+        scanSection.classList.add('hidden');
+        resultsSection.classList.remove('hidden');
         displayDuplicates(resultsSection, result, dialog, folderPath, onComplete);
       }, 500);
 
     } catch (error) {
       progressText.textContent = 'Error: ' + error.message;
-      progressText.style.color = '#f44336';
-      progressBarInner.style.background = '#f44336';
-      handleError(error, 'Failed to scan for duplicates');
+    progressText.classList.add('error');
+    progressBarInner.classList.add('error');
       
       // Re-enable scan button on error
       scanButton.disabled = false;
-      scanButton.style.opacity = '1';
-      scanButton.style.cursor = 'pointer';
     }
   }, { background: '#4CAF50' });
 
@@ -220,22 +163,12 @@ function displayDuplicates(container, result, dialog, folderPath, onComplete) {
 
   // Summary section
   const summary = document.createElement('div');
-  summary.style.cssText = `
-    padding: 15px;
-    background: #1e1e1e;
-    border-radius: 6px;
-    border: 1px solid #444;
-    margin-bottom: 20px;
-  `;
+  summary.className = 'dialog-results-summary';
 
   if (result.duplicate_groups === 0) {
     summary.innerHTML = `
-      <div style="color: #4CAF50; font-size: 16px; font-weight: bold; margin-bottom: 10px;">
-        No duplicates found!
-      </div>
-      <div style="color: #ccc; font-size: 13px;">
-        All ${result.total_images} images in this folder are unique.
-      </div>
+      <div class="dialog-summary-title">No duplicates found!</div>
+      <div class="dialog-summary-message">All ${result.total_images} images in this folder are unique.</div>
     `;
     container.appendChild(summary);
 
@@ -248,74 +181,35 @@ function displayDuplicates(container, result, dialog, folderPath, onComplete) {
   }
 
   summary.innerHTML = `
-    <div style="color: #ff9800; font-size: 16px; font-weight: bold; margin-bottom: 10px;">
-      Found ${result.duplicate_groups} duplicate group${result.duplicate_groups !== 1 ? 's' : ''}
-    </div>
-    <div style="color: #ccc; font-size: 13px;">
-      Total images scanned: ${result.total_images}<br>
+    <div class="dialog-summary-title">Found ${result.duplicate_groups} duplicate group${result.duplicate_groups !== 1 ? 's' : ''}</div>
+    <div class="dialog-summary-message">Total images scanned: ${result.total_images}<br>
       Total duplicate files: ${result.total_duplicates} (can be deleted)
     </div>
-    <div style="color: #888; font-size: 12px; margin-top: 8px; font-style: italic;">
-      Tip: For each group, keep one image and delete the rest. Uncheck any duplicates you want to keep.
-    </div>
+    <div class="dialog-summary-tip">Tip: For each group, keep one image and delete the rest. Uncheck any duplicates you want to keep.</div>
   `;
   container.appendChild(summary);
 
   // Duplicate groups
   const groupsContainer = document.createElement('div');
-  groupsContainer.style.cssText = `
-    max-height: 450px;
-    overflow-y: auto;
-    padding: 10px;
-    background: #2a2a2a;
-    border-radius: 6px;
-    border: 1px solid #444;
-  `;
+  groupsContainer.className = 'dialog-results-grid';
 
   // Track which images to delete (all duplicates except first by default)
   const imagesToDelete = new Set();
 
   result.duplicates.forEach((group, groupIndex) => {
     const groupDiv = document.createElement('div');
-    groupDiv.style.cssText = `
-      margin-bottom: 20px;
-      padding: 15px;
-      background: #1e1e1e;
-      border-radius: 6px;
-      border: 1px solid #555;
-    `;
+    groupDiv.className = 'dialog-group';
 
     const groupHeader = document.createElement('div');
-    groupHeader.style.cssText = `
-      font-weight: bold;
-      color: #fff;
-      margin-bottom: 12px;
-      padding-bottom: 8px;
-      border-bottom: 1px solid #444;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    `;
+    groupHeader.className = 'dialog-group-header';
     groupHeader.innerHTML = `
       <span>Duplicate Group ${groupIndex + 1} - ${group.length} copies (${group[0].size_human})</span>
-      <button class="select-all-btn" style="
-        padding: 4px 12px;
-        background: #666;
-        color: white;
-        border: none;
-        border-radius: 4px;
-        cursor: pointer;
-        font-size: 12px;
-      ">Select All Duplicates</button>
+      <button class="dialog-select-all-btn">Select All Duplicates</button>
     `;
     groupDiv.appendChild(groupHeader);
 
     const imageGrid = document.createElement('div');
-    imageGrid.style.cssText = `
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-      gap: 10px;
-    `;
+    imageGrid.className = 'dialog-image-grid';
 
     group.forEach((image, index) => {
       const imageItem = createDuplicateImageItem(image, index === 0, (checked) => {
@@ -359,8 +253,6 @@ function displayDuplicates(container, result, dialog, folderPath, onComplete) {
   }, { background: '#d32f2f' });
 
   deleteButton.disabled = true;
-  deleteButton.style.opacity = '0.5';
-  deleteButton.style.cursor = 'not-allowed';
 
   dialog.addFooterButton('Cancel', () => {
     dialog.close();
@@ -372,8 +264,6 @@ function displayDuplicates(container, result, dialog, folderPath, onComplete) {
     const count = imagesToDelete.size;
     deleteButton.textContent = `Delete Selected (${count})`;
     deleteButton.disabled = count === 0;
-    deleteButton.style.opacity = count === 0 ? '0.5' : '1';
-    deleteButton.style.cursor = count === 0 ? 'not-allowed' : 'pointer';
   }
 
   // Initial update
@@ -389,36 +279,17 @@ function displayDuplicates(container, result, dialog, folderPath, onComplete) {
  */
 function createDuplicateImageItem(image, isOriginal, onToggle) {
   const item = document.createElement('div');
-  item.style.cssText = `
-    background: #2a2a2a;
-    border: 2px solid ${isOriginal ? '#4CAF50' : '#555'};
-    border-radius: 6px;
-    padding: 8px;
-    position: relative;
-    display: flex;
-    flex-direction: column;
-  `;
+  item.className = 'duplicate-image-item';
+  if (isOriginal) {
+    item.classList.add('duplicate-original');
+  }
 
   // Thumbnail
   const thumbnail = document.createElement('div');
-  thumbnail.style.cssText = `
-    width: 100%;
-    height: 120px;
-    background: #1e1e1e;
-    border-radius: 4px;
-    margin-bottom: 8px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    overflow: hidden;
-  `;
+  thumbnail.className = 'duplicate-thumbnail';
 
   const img = document.createElement('img');
-  img.style.cssText = `
-    max-width: 100%;
-    max-height: 100%;
-    object-fit: contain;
-  `;
+  img.className = 'duplicate-thumbnail-img';
 
   // Load thumbnail
   api.fetchApi('/sage_utils/thumbnail', {
@@ -436,7 +307,7 @@ function createDuplicateImageItem(image, isOriginal, onToggle) {
   }).then(blob => {
     img.src = URL.createObjectURL(blob);
   }).catch(() => {
-    thumbnail.innerHTML = '<div style="color: #888; font-size: 12px;">No preview</div>';
+    thumbnail.innerHTML = '<div class="dialog-no-preview">No preview</div>';
   });
 
   thumbnail.appendChild(img);
@@ -444,43 +315,39 @@ function createDuplicateImageItem(image, isOriginal, onToggle) {
 
   // Info section
   const info = document.createElement('div');
-  info.style.cssText = 'color: #ccc; font-size: 11px; margin-bottom: 8px;';
-  info.innerHTML = `
-    <div style="font-weight: bold; margin-bottom: 3px; overflow: hidden; text-overflow: ellipsis;" title="${image.filename}">
-      ${image.filename}
-    </div>
-    <div style="color: #888;">${image.size_human}</div>
-  `;
+  info.className = 'duplicate-info';
+
+  const title = document.createElement('div');
+  title.className = 'duplicate-info-title';
+  title.title = image.filename;
+  title.textContent = image.filename;
+
+  const subtitle = document.createElement('div');
+  subtitle.className = 'duplicate-info-subtitle';
+  subtitle.textContent = image.size_human;
+
+  info.appendChild(title);
+  info.appendChild(subtitle);
   item.appendChild(info);
 
   // Checkbox section
   const checkboxContainer = document.createElement('div');
-  checkboxContainer.style.cssText = `
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    margin-top: auto;
-  `;
+  checkboxContainer.className = 'duplicate-checkbox-row';
 
   const checkbox = document.createElement('input');
   checkbox.type = 'checkbox';
   checkbox.checked = !isOriginal;
   checkbox.disabled = isOriginal;
-  checkbox.style.cssText = 'cursor: pointer;';
+  checkbox.className = 'sage-checkbox-input';
 
   const label = document.createElement('label');
-  label.style.cssText = `
-    color: ${isOriginal ? '#4CAF50' : '#fff'};
-    font-size: 11px;
-    cursor: ${isOriginal ? 'default' : 'pointer'};
-    user-select: none;
-  `;
+  label.className = `duplicate-checkbox-label ${isOriginal ? 'keep' : 'delete'}`;
   label.textContent = isOriginal ? 'Keep (Original)' : 'Delete';
 
   if (!isOriginal) {
     checkbox.addEventListener('change', (e) => {
       onToggle(e.target.checked);
-      item.style.borderColor = e.target.checked ? '#d32f2f' : '#555';
+      item.classList.toggle('duplicate-selected', e.target.checked);
     });
 
     label.addEventListener('click', () => {
@@ -493,9 +360,9 @@ function createDuplicateImageItem(image, isOriginal, onToggle) {
   checkboxContainer.appendChild(label);
   item.appendChild(checkboxContainer);
 
-  // Set initial border color for checked items
+  // Set initial state for checked items
   if (!isOriginal && checkbox.checked) {
-    item.style.borderColor = '#d32f2f';
+    item.classList.add('duplicate-selected');
   }
 
   return item;
@@ -517,7 +384,7 @@ async function deleteDuplicates(imagePaths, dialog, folderPath, onComplete) {
   const confirmMessage = `
     Are you sure you want to delete ${imagePaths.length} duplicate image${imagePaths.length !== 1 ? 's' : ''}?
     <br><br>
-    <strong style="color: #ff9800;">This action cannot be undone!</strong>
+    <strong class="dialog-warning-text">This action cannot be undone!</strong>
   `;
 
   const confirmed = await showConfirmDialog(confirmMessage);
@@ -527,47 +394,22 @@ async function deleteDuplicates(imagePaths, dialog, folderPath, onComplete) {
 
   // Show progress
   const progressOverlay = document.createElement('div');
-  progressOverlay.style.cssText = `
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0, 0, 0, 0.8);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-direction: column;
-    z-index: 1000;
-  `;
+  progressOverlay.className = 'dialog-progress-overlay';
 
   const progressText = document.createElement('div');
-  progressText.style.cssText = 'color: #4CAF50; font-size: 16px; margin-bottom: 15px;';
+  progressText.className = 'dialog-progress-overlay-text';
   progressText.textContent = 'Deleting duplicates...';
   progressOverlay.appendChild(progressText);
 
   const progressBarOuter = document.createElement('div');
-  progressBarOuter.style.cssText = `
-    width: 300px;
-    height: 24px;
-    background: #333;
-    border-radius: 12px;
-    overflow: hidden;
-    border: 1px solid #555;
-    position: relative;
-  `;
+  progressBarOuter.className = 'dialog-progress-overlay-bar';
 
   const progressBarInner = document.createElement('div');
-  progressBarInner.style.cssText = `
-    width: 0%;
-    height: 100%;
-    background: linear-gradient(90deg, #4CAF50, #66BB6A);
-    transition: width 0.3s ease;
-  `;
+  progressBarInner.className = 'dialog-progress-overlay-fill';
   progressBarOuter.appendChild(progressBarInner);
 
   progressOverlay.appendChild(progressBarOuter);
-  dialog.contentArea.style.position = 'relative';
+  dialog.contentArea.classList.add('dialog-content--relative');
   dialog.contentArea.appendChild(progressOverlay);
 
   try {
@@ -594,7 +436,7 @@ async function deleteDuplicates(imagePaths, dialog, folderPath, onComplete) {
       if (result.deleted > 0) {
         await showAlertDialog(`
           Successfully deleted ${result.deleted} duplicate image${result.deleted !== 1 ? 's' : ''}!
-          ${result.failed > 0 ? `<br><br><span style="color: #ff9800;">Failed to delete ${result.failed} file${result.failed !== 1 ? 's' : ''}.</span>` : ''}
+          ${result.failed > 0 ? `<br><br><span class="dialog-warning-text">Failed to delete ${result.failed} file${result.failed !== 1 ? 's' : ''}.</span>` : ''}
         `, 'Deletion Complete');
       } else {
         await showAlertDialog('No files were deleted.', 'Deletion Failed');
@@ -620,7 +462,7 @@ async function showConfirmDialog(message) {
   return new Promise((resolve) => {
     const confirmDialog = createDialog({
       title: 'Confirm Deletion',
-      content: `<div style="font-size: 14px; line-height: 1.6;">${message}</div>`,
+      content: `<div class="dialog-confirm-message">${message}</div>`,
       width: '450px',
       onClose: () => resolve(false)
     });
@@ -649,7 +491,7 @@ async function showAlertDialog(message, title = 'Alert') {
   return new Promise((resolve) => {
     const alertDialog = createDialog({
       title: title,
-      content: `<div style="font-size: 14px; line-height: 1.6;">${message}</div>`,
+      content: `<div class="dialog-alert-message">${message}</div>`,
       width: '400px',
       onClose: () => resolve()
     });
