@@ -36,111 +36,43 @@ async function showNativeFolderPicker() {
 async function showFolderBrowserDialog(callback) {
     // Create modal overlay
     const modal = document.createElement('div');
-    modal.style.cssText = `
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(0, 0, 0, 0.8);
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        z-index: 10000;
-    `;
+    modal.className = 'gallery-modal-overlay';
     
     // Create dialog container
     const dialog = document.createElement('div');
-    dialog.style.cssText = `
-        background: #2a2a2a;
-        border-radius: 8px;
-        width: 600px;
-        height: 500px;
-        display: flex;
-        flex-direction: column;
-        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
-        border: 1px solid #444;
-    `;
+    dialog.className = 'gallery-folder-dialog';
     
     // Create header
     const header = document.createElement('div');
-    header.style.cssText = `
-        padding: 16px 20px;
-        border-bottom: 1px solid #444;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        background: #333;
-        border-radius: 8px 8px 0 0;
-    `;
+    header.className = 'gallery-dialog-header';
     
     const title = document.createElement('h3');
     title.textContent = 'Select Folder';
-    title.style.cssText = `
-        margin: 0;
-        color: #e0e0e0;
-        font-size: 16px;
-    `;
+    title.className = 'gallery-dialog-title';
     
     const closeBtn = document.createElement('button');
     closeBtn.innerHTML = '✕';
-    closeBtn.style.cssText = `
-        background: none;
-        border: none;
-        color: #999;
-        font-size: 18px;
-        cursor: pointer;
-        padding: 4px;
-        border-radius: 4px;
-    `;
-    closeBtn.addEventListener('mouseover', () => closeBtn.style.color = '#fff');
-    closeBtn.addEventListener('mouseout', () => closeBtn.style.color = '#999');
+    closeBtn.className = 'gallery-dialog-close';
     
     header.appendChild(title);
     header.appendChild(closeBtn);
     
     // Create path navigation with manual input
     const pathNav = document.createElement('div');
-    pathNav.style.cssText = `
-        padding: 12px 20px;
-        border-bottom: 1px solid #444;
-        background: #333;
-        display: flex;
-        align-items: center;
-        gap: 10px;
-    `;
+    pathNav.className = 'gallery-dialog-path-nav';
     
     const pathLabel = document.createElement('span');
     pathLabel.textContent = '📁';
-    pathLabel.style.cssText = `
-        font-size: 16px;
-    `;
+    pathLabel.className = 'gallery-path-label';
     
     const pathInput = document.createElement('input');
     pathInput.type = 'text';
-    pathInput.style.cssText = `
-        flex: 1;
-        background: #2a2a2a;
-        border: 1px solid #555;
-        border-radius: 4px;
-        padding: 6px 10px;
-        color: #e0e0e0;
-        font-family: monospace;
-        font-size: 13px;
-    `;
+    pathInput.className = 'gallery-path-input';
     pathInput.placeholder = 'Enter path or click folders below...';
     
     const goButton = document.createElement('button');
     goButton.textContent = 'Go';
-    goButton.style.cssText = `
-        padding: 6px 12px;
-        background: #4CAF50;
-        border: none;
-        border-radius: 4px;
-        color: white;
-        cursor: pointer;
-        font-size: 12px;
-    `;
+    goButton.className = 'gallery-go-button gallery-button-success';
     goButton.addEventListener('click', () => {
         const inputPath = pathInput.value.trim();
         if (inputPath) {
@@ -160,51 +92,19 @@ async function showFolderBrowserDialog(callback) {
     
     // Create directory listing
     const directoryList = document.createElement('div');
-    directoryList.style.cssText = `
-        flex: 1;
-        overflow-y: auto;
-        padding: 8px;
-    `;
+    directoryList.className = 'gallery-dialog-directory-list';
     
     // Create footer with buttons
     const footer = document.createElement('div');
-    footer.style.cssText = `
-        padding: 16px 20px;
-        border-top: 1px solid #444;
-        display: flex;
-        justify-content: flex-end;
-        gap: 10px;
-        background: #333;
-        border-radius: 0 0 8px 8px;
-    `;
+    footer.className = 'gallery-dialog-footer';
     
     const cancelBtn = document.createElement('button');
     cancelBtn.textContent = 'Cancel';
-    cancelBtn.style.cssText = `
-        padding: 8px 16px;
-        background: #555;
-        border: none;
-        border-radius: 4px;
-        color: #e0e0e0;
-        cursor: pointer;
-        transition: background-color 0.2s;
-    `;
-    cancelBtn.addEventListener('mouseover', () => cancelBtn.style.backgroundColor = '#666');
-    cancelBtn.addEventListener('mouseout', () => cancelBtn.style.backgroundColor = '#555');
+    cancelBtn.className = 'gallery-button gallery-button-secondary';
     
     const selectBtn = document.createElement('button');
     selectBtn.textContent = 'Select Folder';
-    selectBtn.style.cssText = `
-        padding: 8px 16px;
-        background: #4CAF50;
-        border: none;
-        border-radius: 4px;
-        color: white;
-        cursor: pointer;
-        transition: background-color 0.2s;
-    `;
-    selectBtn.addEventListener('mouseover', () => selectBtn.style.backgroundColor = '#45a049');
-    selectBtn.addEventListener('mouseout', () => selectBtn.style.backgroundColor = '#4CAF50');
+    selectBtn.className = 'gallery-button gallery-button-success';
     
     footer.appendChild(cancelBtn);
     footer.appendChild(selectBtn);
@@ -228,14 +128,7 @@ async function showFolderBrowserDialog(callback) {
     
     // Add quick access buttons for common locations
     const quickAccess = document.createElement('div');
-    quickAccess.style.cssText = `
-        padding: 8px 12px;
-        border-bottom: 1px solid #444;
-        background: #2a2a2a;
-        display: flex;
-        gap: 8px;
-        flex-wrap: wrap;
-    `;
+    quickAccess.className = 'gallery-quick-access';
     
     const commonPaths = [
         { label: '🏠 Home', path: '/home' },
@@ -290,29 +183,14 @@ async function showFolderBrowserDialog(callback) {
         // Add favorites label
         const favoritesLabel = document.createElement('span');
         favoritesLabel.textContent = '⭐ Favorites:';
-        favoritesLabel.style.cssText = `
-            color: #999;
-            font-size: 11px;
-            margin-right: 8px;
-        `;
+        favoritesLabel.className = 'gallery-favorites-label';
         quickAccess.appendChild(favoritesLabel);
         
         // Add favorite buttons
         favorites.forEach((fav, index) => {
             const btn = document.createElement('button');
             btn.textContent = fav.label;
-            btn.style.cssText = `
-                padding: 4px 8px;
-                background: #444;
-                border: none;
-                border-radius: 3px;
-                color: #e0e0e0;
-                cursor: pointer;
-                font-size: 11px;
-                transition: background-color 0.2s;
-            `;
-            btn.addEventListener('mouseover', () => btn.style.backgroundColor = '#555');
-            btn.addEventListener('mouseout', () => btn.style.backgroundColor = '#444');
+            btn.className = 'gallery-button gallery-button-secondary gallery-favorite-btn';
             btn.addEventListener('click', () => loadDirectory(fav.path));
             
             // Right-click to remove favorite
@@ -331,18 +209,7 @@ async function showFolderBrowserDialog(callback) {
         // Add "Add Favorite" button
         const addBtn = document.createElement('button');
         addBtn.textContent = '+ Add';
-        addBtn.style.cssText = `
-            padding: 4px 8px;
-            background: #4CAF50;
-            border: none;
-            border-radius: 3px;
-            color: white;
-            cursor: pointer;
-            font-size: 11px;
-            transition: background-color 0.2s;
-        `;
-        addBtn.addEventListener('mouseover', () => addBtn.style.backgroundColor = '#45a049');
-        addBtn.addEventListener('mouseout', () => addBtn.style.backgroundColor = '#4CAF50');
+        addBtn.className = 'gallery-button gallery-button-success gallery-favorite-add-btn';
         addBtn.addEventListener('click', () => {
             const label = prompt('Enter a label for this favorite:', `📁 ${currentPath.split(/[/\\]/).pop() || 'Folder'}`);
             if (label && label.trim()) {
@@ -357,15 +224,7 @@ async function showFolderBrowserDialog(callback) {
         const helpBtn = document.createElement('button');
         helpBtn.textContent = '?';
         helpBtn.title = 'Favorites help';
-        helpBtn.style.cssText = `
-            padding: 4px 8px;
-            background: #666;
-            border: none;
-            border-radius: 3px;
-            color: white;
-            cursor: pointer;
-            font-size: 11px;
-        `;
+        helpBtn.className = 'gallery-button gallery-button-secondary gallery-favorite-help-btn';
         helpBtn.addEventListener('click', () => {
             notifications.info('Favorites:\n\n• Click to navigate to folder\n• Right-click to remove\n• "+ Add" to save current folder\n• Saved per system/browser', 8000);
         });
@@ -407,70 +266,42 @@ async function showFolderBrowserDialog(callback) {
                 
                 if (result.directories.length === 0) {
                     directoryList.innerHTML = `
-                        <div style="
-                            text-align: center;
-                            padding: 40px;
-                            color: #888;
-                        ">
-                            <div style="font-size: 24px; margin-bottom: 10px;">📁</div>
+                        <div class="gallery-empty-state">
+                            <div class="gallery-empty-state-icon">📁</div>
                             <div>No accessible subdirectories</div>
                         </div>
                     `;
                 } else {
                     result.directories.forEach(dir => {
                         const dirItem = document.createElement('div');
-                        dirItem.style.cssText = `
-                            padding: 12px 16px;
-                            border-radius: 4px;
-                            cursor: pointer;
-                            display: flex;
-                            align-items: center;
-                            gap: 12px;
-                            color: ${dir.accessible ? '#e0e0e0' : '#888'};
-                            margin-bottom: 2px;
-                            transition: background-color 0.2s;
-                        `;
+                        dirItem.className = `gallery-dir-item${dir.accessible ? '' : ' disabled'}`;
                         
                         const icon = document.createElement('span');
-                        icon.style.fontSize = '18px';
+                        icon.className = 'gallery-dir-icon';
                         icon.textContent = dir.type === 'parent' ? '⬆️' : '📁';
                         
                         const name = document.createElement('span');
-                        name.style.flex = '1';
+                        name.className = 'gallery-dir-name';
                         name.textContent = dir.name;
                         
                         const info = document.createElement('span');
-                        info.style.cssText = `
-                            font-size: 12px;
-                            color: #888;
-                        `;
+                        info.className = 'gallery-dir-info';
                         
                         if (dir.type === 'directory' && dir.image_count !== undefined) {
                             if (dir.image_count > 0) {
                                 info.textContent = `${dir.image_count}${dir.image_count >= 10 ? '+' : ''} images`;
-                                info.style.color = '#4CAF50';
+                                info.classList.add('gallery-dir-info-positive');
                             } else if (dir.image_count === 0) {
                                 info.textContent = 'No images';
                             } else {
                                 info.textContent = 'Access denied';
-                                info.style.color = '#f44336';
+                                info.classList.add('gallery-dir-info-negative');
                             }
                         }
                         
                         dirItem.appendChild(icon);
                         dirItem.appendChild(name);
                         dirItem.appendChild(info);
-                        
-                        // Add hover effects
-                        dirItem.addEventListener('mouseenter', () => {
-                            if (dir.accessible) {
-                                dirItem.style.backgroundColor = '#444';
-                            }
-                        });
-                        
-                        dirItem.addEventListener('mouseleave', () => {
-                            dirItem.style.backgroundColor = 'transparent';
-                        });
                         
                         // Add click handler
                         if (dir.accessible) {
@@ -489,14 +320,10 @@ async function showFolderBrowserDialog(callback) {
         } catch (error) {
             console.error('Error loading directory:', error);
             directoryList.innerHTML = `
-                <div style="
-                    text-align: center;
-                    padding: 40px;
-                    color: #f44336;
-                ">
-                    <div style="font-size: 24px; margin-bottom: 10px;">❌</div>
+                <div class="gallery-error-state">
+                    <div class="gallery-error-state-icon">❌</div>
                     <div>Error loading directory</div>
-                    <div style="font-size: 12px; margin-top: 8px;">${error.message}</div>
+                    <div class="gallery-filename-path" style="font-size: 12px; margin-top: 8px;">${error.message}</div>
                 </div>
             `;
         }
@@ -589,56 +416,17 @@ function showMetadataModal(image, metadataHtml, hasErrors = false, metadata = nu
     // Create modal overlay
     const modal = document.createElement('div');
     modal.className = 'metadata-modal';
-    modal.style.cssText = `
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(0, 0, 0, 0.8);
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        z-index: 10000;
-        backdrop-filter: blur(2px);
-    `;
 
     // Create modal content container
     const modalContent = document.createElement('div');
-    modalContent.style.cssText = `
-        background: #2a2a2a;
-        border-radius: 8px;
-        width: 90%;
-        max-width: 700px;
-        max-height: 90%;
-        display: flex;
-        flex-direction: column;
-        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
-        border: 1px solid #444;
-        overflow: hidden;
-    `;
+    modalContent.className = 'metadata-modal-content';
 
     // Create header
     const header = document.createElement('div');
-    header.style.cssText = `
-        padding: 16px 20px;
-        border-bottom: 1px solid #444;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        background: #333;
-        flex-shrink: 0;
-    `;
+    header.className = 'metadata-modal-header';
 
     const title = document.createElement('div');
-    title.style.cssText = `
-        color: #e0e0e0;
-        font-size: 16px;
-        font-weight: bold;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-    `;
+    title.className = 'metadata-modal-title';
     
     const statusIcon = hasErrors ? '⚠️' : '📄';
     const statusText = hasErrors ? 'Image Metadata (with warnings)' : 'Image Metadata';
@@ -646,54 +434,22 @@ function showMetadataModal(image, metadataHtml, hasErrors = false, metadata = nu
 
     const closeBtn = document.createElement('button');
     closeBtn.innerHTML = '✕';
-    closeBtn.style.cssText = `
-        background: none;
-        border: none;
-        color: #999;
-        font-size: 18px;
-        cursor: pointer;
-        padding: 4px 8px;
-        border-radius: 4px;
-        transition: all 0.2s ease;
-    `;
-    closeBtn.addEventListener('mouseover', () => {
-        closeBtn.style.backgroundColor = '#444';
-        closeBtn.style.color = '#fff';
-    });
-    closeBtn.addEventListener('mouseout', () => {
-        closeBtn.style.backgroundColor = 'transparent';
-        closeBtn.style.color = '#999';
-    });
+    closeBtn.className = 'metadata-close-button';
 
     header.appendChild(title);
     header.appendChild(closeBtn);
 
     // Create content area
     const content = document.createElement('div');
-    content.style.cssText = `
-        padding: 20px;
-        overflow-y: auto;
-        flex: 1;
-        color: #e0e0e0;
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-        font-size: 13px;
-        line-height: 1.4;
-    `;
+    content.className = 'metadata-content-area';
 
     // Add filename info at the top
     const filenameInfo = document.createElement('div');
-    filenameInfo.style.cssText = `
-        background: #333;
-        border: 1px solid #555;
-        border-radius: 4px;
-        padding: 12px;
-        margin-bottom: 16px;
-        word-break: break-all;
-    `;
+    filenameInfo.className = 'metadata-filename-info';
     filenameInfo.innerHTML = `
-        <div style="color: #4CAF50; font-weight: bold; margin-bottom: 6px;">📁 File Information</div>
+        <div class="metadata-filename-title">📁 File Information</div>
         <div><strong>Name:</strong> ${image.filename || image.name || 'Unknown'}</div>
-        <div style="font-size: 11px; color: #888; margin-top: 4px; font-family: monospace;">
+        <div class="metadata-filename-path">
             ${image.path || image.relative_path || 'No path available'}
         </div>
     `;
@@ -721,46 +477,13 @@ function showMetadataModal(image, metadataHtml, hasErrors = false, metadata = nu
         if (genParamsHeader) {
             // Create a container for the header and button
             const headerContainer = document.createElement('div');
-            headerContainer.style.cssText = `
-                display: flex;
-                align-items: center;
-                justify-content: space-between;
-                margin-bottom: 10px;
-            `;
+            headerContainer.className = 'metadata-header-container';
             
             // Create the copy button
             const copyBtn = document.createElement('button');
             copyBtn.innerHTML = '📋';
             copyBtn.title = 'Copy generation parameters to clipboard';
-            copyBtn.style.cssText = `
-                background: #4CAF50;
-                border: none;
-                color: white;
-                font-size: 12px;
-                cursor: pointer;
-                padding: 4px 6px;
-                border-radius: 3px;
-                transition: all 0.2s ease;
-                margin-left: 8px;
-                flex-shrink: 0;
-                min-width: 24px;
-                height: 24px;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-            `;
-            
-            copyBtn.addEventListener('mouseover', () => {
-                if (!copyBtn.disabled) {
-                    copyBtn.style.backgroundColor = '#45a049';
-                }
-            });
-            
-            copyBtn.addEventListener('mouseout', () => {
-                if (!copyBtn.disabled) {
-                    copyBtn.style.backgroundColor = '#4CAF50';
-                }
-            });
+            copyBtn.className = 'metadata-copy-button';
             
             copyBtn.addEventListener('click', async () => {
                 try {
@@ -920,89 +643,40 @@ export async function showFullImage(imageInput, images) {
     // Create modal overlay
     const modal = document.createElement('div');
     modal.className = 'fullimage-modal';
-    modal.style.cssText = `
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(0, 0, 0, 0.95);
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        z-index: 10000;
-        cursor: grab;
-    `;
     
     // Create image container
     const imageContainer = document.createElement('div');
-    imageContainer.style.cssText = `
-        position: relative;
-        max-width: 95%;
-        max-height: 95%;
-        width: 100%;
-        height: 100%;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        overflow: auto;
-    `;
+    imageContainer.className = 'fullimage-image-container';
     
     // Create the main image element
     const img = document.createElement('img');
-    img.style.cssText = `
-        max-width: 100%;
-        max-height: 100%;
-        object-fit: contain;
-        transition: transform 0.3s ease;
-        user-select: none;
-        pointer-events: none;
-    `;
+    img.className = 'fullimage-img';
     
     // Create controls container
     const controls = document.createElement('div');
-    controls.style.cssText = `
-        position: absolute;
-        top: 20px;
-        right: 20px;
-        display: flex;
-        gap: 10px;
-        z-index: 1;
-    `;
+    controls.className = 'fullimage-controls';
     
     // Close button
     const closeBtn = document.createElement('button');
     closeBtn.innerHTML = '✕';
     closeBtn.title = 'Close (Esc)';
-    closeBtn.style.cssText = `
-        background: rgba(0, 0, 0, 0.7);
-        color: white;
-        border: none;
-        width: 40px;
-        height: 40px;
-        border-radius: 50%;
-        cursor: pointer;
-        font-size: 18px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    `;
+    closeBtn.className = 'fullimage-button';
     
     // Zoom controls
     const zoomInBtn = document.createElement('button');
     zoomInBtn.innerHTML = '+';
     zoomInBtn.title = 'Zoom In (+)';
-    zoomInBtn.style.cssText = closeBtn.style.cssText;
+    zoomInBtn.className = 'fullimage-button';
     
     const zoomOutBtn = document.createElement('button');
     zoomOutBtn.innerHTML = '−';
     zoomOutBtn.title = 'Zoom Out (-)';
-    zoomOutBtn.style.cssText = closeBtn.style.cssText;
+    zoomOutBtn.className = 'fullimage-button';
     
     const resetZoomBtn = document.createElement('button');
     resetZoomBtn.innerHTML = '1:1';
     resetZoomBtn.title = 'Reset Zoom (0)';
-    resetZoomBtn.style.cssText = closeBtn.style.cssText;
+    resetZoomBtn.className = 'fullimage-button';
     resetZoomBtn.style.fontSize = '12px';
     
     // Navigation arrows (only show if multiple images)
@@ -1011,48 +685,22 @@ export async function showFullImage(imageInput, images) {
         prevBtn = document.createElement('button');
         prevBtn.innerHTML = '◀';
         prevBtn.title = 'Previous Image (←)';
-        prevBtn.style.cssText = `
-            position: absolute;
-            left: 20px;
-            top: 50%;
-            transform: translateY(-50%);
-            background: rgba(0, 0, 0, 0.7);
-            color: white;
-            border: none;
-            width: 50px;
-            height: 50px;
-            border-radius: 50%;
-            cursor: pointer;
-            font-size: 20px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        `;
+        prevBtn.className = 'fullimage-nav-button';
+        prevBtn.style.left = '20px';
+        prevBtn.style.top = '50%';
+        prevBtn.style.transform = 'translateY(-50%)';
         
         nextBtn = document.createElement('button');
         nextBtn.innerHTML = '▶';
         nextBtn.title = 'Next Image (→)';
-        nextBtn.style.cssText = prevBtn.style.cssText;
+        nextBtn.className = 'fullimage-nav-button';
         nextBtn.style.left = 'auto';
         nextBtn.style.right = '20px';
     }
     
     // Image info overlay
     const infoOverlay = document.createElement('div');
-    infoOverlay.style.cssText = `
-        position: absolute;
-        bottom: 20px;
-        left: 50%;
-        transform: translateX(-50%);
-        background: rgba(0, 0, 0, 0.8);
-        color: white;
-        padding: 10px 20px;
-        border-radius: 5px;
-        font-size: 14px;
-        pointer-events: none;
-        max-width: 80%;
-        text-align: center;
-    `;
+    infoOverlay.className = 'fullimage-info-overlay';
     
     // Function to update image display
     async function updateImage() {
@@ -1295,17 +943,6 @@ export function showImageContextMenu(event, image) {
     
     const contextMenu = document.createElement('div');
     contextMenu.className = 'image-context-menu';
-    contextMenu.style.cssText = `
-        position: fixed;
-        background: #2a2a2a;
-        border: 1px solid #555;
-        border-radius: 4px;
-        padding: 5px 0;
-        min-width: 150px;
-        z-index: 10001;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-        font-size: 13px;
-    `;
     
     // Import cross-tab messaging dynamically
     import('../shared/crossTabMessaging.js').then(({ sendImagesToLLM, showNotification }) => {
@@ -1444,29 +1081,14 @@ function renderContextMenuItems(contextMenu, menuItems) {
     menuItems.forEach(item => {
         if (item.text === '---') {
             const separator = document.createElement('div');
-            separator.style.cssText = `
-                height: 1px;
-                background: #555;
-                margin: 5px 0;
-            `;
+            separator.className = 'image-context-menu-separator';
             contextMenu.appendChild(separator);
         } else {
             const menuItem = document.createElement('div');
             menuItem.textContent = item.text;
-            menuItem.style.cssText = `
-                padding: 8px 15px;
-                color: #e0e0e0;
-                cursor: pointer;
-                user-select: none;
-            `;
+            menuItem.className = 'image-context-menu-item';
             
-            menuItem.addEventListener('mouseenter', () => {
-                menuItem.style.background = '#4CAF50';
-            });
-            
-            menuItem.addEventListener('mouseleave', () => {
-                menuItem.style.background = 'transparent';
-            });
+            // Hover handled by CSS
             
             menuItem.addEventListener('click', () => {
                 if (item.action) {

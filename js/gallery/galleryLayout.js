@@ -125,13 +125,7 @@ export function createGalleryHeader() {
     
     // Add status display area
     const statusDiv = document.createElement('div');
-    statusDiv.style.cssText = `
-        font-size: 11px;
-        margin-top: 5px;
-        min-height: 16px;
-        color: #4CAF50;
-        font-style: italic;
-    `;
+    statusDiv.className = 'gallery-status';
     statusDiv.textContent = '';
     
     header.appendChild(statusDiv);
@@ -146,36 +140,15 @@ export function createGalleryHeader() {
  */
 export function createFolderSelectorAndControls() {
     const folderSection = document.createElement('div');
-    folderSection.style.cssText = `
-        margin-bottom: 15px;
-        padding: 15px;
-        background: #2a2a2a;
-        border-radius: 6px;
-        border: 1px solid #444;
-    `;
+    folderSection.className = 'gallery-folder-section';
     
     const folderHeader = document.createElement('h4');
-    folderHeader.style.cssText = `
-        margin: 0 0 10px 0;
-        color: #4CAF50;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-    `;
+    folderHeader.className = 'gallery-folder-header';
     folderHeader.textContent = 'Folder & Controls';
     
     const folderDropdown = document.createElement('select');
     folderDropdown.id = 'gallery-folder-selector';
-    folderDropdown.style.cssText = `
-        width: 100%;
-        padding: 8px;
-        background: #333;
-        color: #fff;
-        border: 1px solid #555;
-        border-radius: 4px;
-        font-size: 12px;
-        cursor: pointer;
-    `;
+    folderDropdown.className = 'gallery-folder-dropdown';
     
     // Populate dropdown with current state
     const currentPath = selectors.currentPath();
@@ -190,34 +163,15 @@ export function createFolderSelectorAndControls() {
     // Add controls to the same section
     // Sort controls
     const sortContainer = document.createElement('div');
-    sortContainer.style.cssText = `
-        margin-top: 15px;
-        margin-bottom: 10px;
-        display: flex;
-        gap: 8px;
-        align-items: center;
-    `;
+    sortContainer.className = 'gallery-sort-container';
     
     const sortLabel = document.createElement('label');
     sortLabel.textContent = 'Sort:';
-    sortLabel.style.cssText = `
-        color: #ccc;
-        font-size: 12px;
-        min-width: 35px;
-    `;
+    sortLabel.className = 'gallery-sort-label';
     
     const sortSelect = document.createElement('select');
     sortSelect.id = 'gallery-sort';
-    sortSelect.style.cssText = `
-        flex: 1;
-        padding: 4px 8px;
-        background: #333;
-        color: #fff;
-        border: 1px solid #555;
-        border-radius: 4px;
-        font-size: 11px;
-        cursor: pointer;
-    `;
+    sortSelect.className = 'gallery-sort-select';
     
     const sortOptions = [
         { value: 'name', text: 'Name' },
@@ -236,16 +190,7 @@ export function createFolderSelectorAndControls() {
     const orderButton = document.createElement('button');
     orderButton.textContent = '↑';
     orderButton.title = 'Toggle sort order';
-    orderButton.style.cssText = `
-        background: #444;
-        color: white;
-        border: none;
-        padding: 4px 8px;
-        border-radius: 4px;
-        cursor: pointer;
-        font-size: 12px;
-        min-width: 30px;
-    `;
+    orderButton.className = 'gallery-button gallery-button-secondary gallery-order-button';
     
     sortContainer.appendChild(sortLabel);
     sortContainer.appendChild(sortSelect);
@@ -253,26 +198,11 @@ export function createFolderSelectorAndControls() {
 
     // Thumbnail size and control buttons
     const buttonsContainer = document.createElement('div');
-    buttonsContainer.style.cssText = `
-        margin-bottom: 10px;
-        display: flex;
-        gap: 8px;
-        flex-wrap: wrap;
-    `;
+    buttonsContainer.className = 'gallery-buttons-container';
     
     const thumbnailSizeSelect = document.createElement('select');
     thumbnailSizeSelect.id = 'gallery-thumbnail-size';
-    thumbnailSizeSelect.style.cssText = `
-        flex: 1;
-        min-width: 80px;
-        padding: 4px 8px;
-        background: #333;
-        color: #fff;
-        border: 1px solid #555;
-        border-radius: 4px;
-        font-size: 11px;
-        cursor: pointer;
-    `;
+    thumbnailSizeSelect.className = 'gallery-thumbnail-size-select';
     
     const sizeOptions = [
         { value: 'small', text: 'Small' },
@@ -290,28 +220,12 @@ export function createFolderSelectorAndControls() {
     const viewModeButton = document.createElement('button');
     viewModeButton.textContent = '⊞ Grid View';
     viewModeButton.title = 'Toggle view mode';
-    viewModeButton.style.cssText = `
-        background: #2196F3;
-        color: white;
-        border: none;
-        padding: 4px 8px;
-        border-radius: 4px;
-        cursor: pointer;
-        font-size: 12px;
-    `;
+    viewModeButton.className = 'gallery-button gallery-button-primary';
     
     const datasetTextButton = document.createElement('button');
     datasetTextButton.textContent = '📝 Dataset';
     datasetTextButton.title = 'Manage dataset text files';
-    datasetTextButton.style.cssText = `
-        background: #FF9800;
-        color: white;
-        border: none;
-        padding: 4px 8px;
-        border-radius: 4px;
-        cursor: pointer;
-        font-size: 12px;
-    `;
+    datasetTextButton.className = 'gallery-button gallery-button-warning';
     
     buttonsContainer.appendChild(thumbnailSizeSelect);
     buttonsContainer.appendChild(viewModeButton);
@@ -319,49 +233,23 @@ export function createFolderSelectorAndControls() {
 
     // Search bar - moved to bottom to match Models tab
     const searchContainer = document.createElement('div');
-    searchContainer.style.cssText = `
-        margin-top: 15px;
-        display: flex;
-        gap: 8px;
-        align-items: center;
-    `;
+    searchContainer.className = 'gallery-search-container';
     
     // Add search label for better UX (matching Models tab)
     const searchLabel = document.createElement('label');
     searchLabel.textContent = 'Search:';
-    searchLabel.style.cssText = `
-        color: #ccc;
-        font-size: 12px;
-        min-width: 50px;
-        white-space: nowrap;
-    `;
+    searchLabel.className = 'gallery-search-label';
     
     const searchInput = document.createElement('input');
     searchInput.type = 'text';
     searchInput.id = 'gallery-search';
     searchInput.placeholder = 'Search images...';
-    searchInput.style.cssText = `
-        flex: 1;
-        padding: 6px 10px;
-        background: #333;
-        color: #fff;
-        border: 1px solid #555;
-        border-radius: 4px;
-        font-size: 12px;
-    `;
+    searchInput.className = 'gallery-search-input';
     
     const clearButton = document.createElement('button');
     clearButton.textContent = '✕';
     clearButton.title = 'Clear search';
-    clearButton.style.cssText = `
-        background: #666;
-        color: white;
-        border: none;
-        padding: 6px 10px;
-        border-radius: 4px;
-        cursor: pointer;
-        font-size: 12px;
-    `;
+    clearButton.className = 'gallery-button gallery-button-secondary';
     
     searchContainer.appendChild(searchLabel);
     searchContainer.appendChild(searchInput);
@@ -369,31 +257,18 @@ export function createFolderSelectorAndControls() {
 
     // Metadata filter checkbox
     const metadataFilterContainer = document.createElement('div');
-    metadataFilterContainer.style.cssText = `
-        margin-top: 10px;
-        display: flex;
-        gap: 8px;
-        align-items: center;
-    `;
+    metadataFilterContainer.className = 'gallery-metadata-filter-container';
     
     const metadataFilterCheckbox = document.createElement('input');
     metadataFilterCheckbox.type = 'checkbox';
     metadataFilterCheckbox.id = 'gallery-metadata-filter';
-    metadataFilterCheckbox.style.cssText = `
-        cursor: pointer;
-    `;
-    
+    metadataFilterCheckbox.className = 'gallery-metadata-filter-checkbox';
+
     const metadataFilterLabel = document.createElement('label');
     metadataFilterLabel.htmlFor = 'gallery-metadata-filter';
     metadataFilterLabel.textContent = 'Show only images with generation parameters';
     metadataFilterLabel.title = 'Filter for images containing AI generation metadata (parameters, prompt, extra_pnginfo, etc.)';
-    metadataFilterLabel.style.cssText = `
-        color: #ccc;
-        font-size: 12px;
-        cursor: pointer;
-        user-select: none;
-    `;
-    
+    metadataFilterLabel.className = 'gallery-metadata-filter-label';
     metadataFilterContainer.appendChild(metadataFilterCheckbox);
     metadataFilterContainer.appendChild(metadataFilterLabel);
 
@@ -491,75 +366,33 @@ export function createFolderSelectorAndControls() {
  */
 export function createWrappedThumbnailGrid() {
     const gridSection = document.createElement('div');
-    gridSection.style.cssText = `
-        margin-bottom: 15px;
-        padding: 15px;
-        background: #2a2a2a;
-        border-radius: 6px;
-        border: 1px solid #444;
-        flex: 1;
-        display: flex;
-        flex-direction: column;
-    `;
+    gridSection.className = 'gallery-grid-section';
     
     const gridHeader = document.createElement('h4');
-    gridHeader.style.cssText = `
-        margin: 0 0 10px 0;
-        color: #4CAF50;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-    `;
+    gridHeader.className = 'gallery-grid-header';
     
     // Create header content with count
     const headerContent = document.createElement('span');
-    headerContent.innerHTML = 'Images <span id="image-count" style="color: #999; font-weight: normal;"></span>';
+    headerContent.innerHTML = 'Images <span id="image-count" class="gallery-image-count"></span>';
     
     // Create reload button (small icon)
     const refreshButton = document.createElement('button');
     refreshButton.textContent = '🔄';
     refreshButton.title = 'Reload folder';
-    refreshButton.style.cssText = `
-        background: #4CAF50;
-        color: white;
-        border: none;
-        padding: 4px 8px;
-        border-radius: 4px;
-        cursor: pointer;
-        font-size: 14px;
-        margin-left: 10px;
-    `;
-    
-    refreshButton.addEventListener('mouseenter', () => {
-        refreshButton.style.background = '#45a049';
-    });
-    
-    refreshButton.addEventListener('mouseleave', () => {
-        refreshButton.style.background = '#4CAF50';
-    });
+    refreshButton.className = 'gallery-button gallery-button-success gallery-refresh-button';
     
     gridHeader.appendChild(headerContent);
     gridHeader.appendChild(refreshButton);
     
     // Use imported thumbnail grid component
     const grid = createThumbnailGrid();
-    grid.gridContainer.style.cssText += `
-        border: 1px solid #555;
-        border-radius: 4px;
-        background: #333;
-        flex: 1;
-    `;
+    grid.gridContainer.classList.add('gallery-grid-container');
     
     // Add placeholder content initially
     grid.gridContainer.innerHTML = `
-        <div style="
-            grid-column: 1 / -1;
-            text-align: center;
-            color: #888;
-            padding: 40px;
-            font-style: italic;
-        ">
-            🖼️ Select a folder to view images
+        <div class="gallery-empty-state">
+            <div class="gallery-empty-state-icon">🖼️</div>
+            <div>Select a folder to view images</div>
         </div>
     `;
 
@@ -586,50 +419,19 @@ export function createWrappedThumbnailGrid() {
  */
 export function createMetadataPanel() {
     const metadataSection = document.createElement('div');
-    metadataSection.style.cssText = `
-        padding: 15px;
-        background: #2a2a2a;
-        border-radius: 6px;
-        border: 1px solid #444;
-        display: block;
-    `;
+    metadataSection.className = 'gallery-metadata-section';
     
     const metadataHeader = document.createElement('h4');
-    metadataHeader.style.cssText = `
-        margin: 0 0 10px 0;
-        color: #4CAF50;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-    `;
+    metadataHeader.className = 'gallery-metadata-header';
     metadataHeader.innerHTML = `
         <span>Image Details</span>
-        <button id="close-metadata" style="
-            background: #f44336;
-            color: white;
-            border: none;
-            padding: 4px 8px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 11px;
-        ">Clear</button>
+        <button id="close-metadata" class="gallery-button gallery-button-danger metadata-close-button">Clear</button>
     `;
     
     const metadataContent = document.createElement('div');
     metadataContent.id = 'metadata-content';
-    metadataContent.style.cssText = `
-        max-height: 300px;
-        overflow-y: auto;
-        background: #333;
-        border: 1px solid #555;
-        border-radius: 4px;
-        padding: 15px;
-        color: #e0e0e0;
-        font-family: 'Courier New', monospace;
-        font-size: 11px;
-        line-height: 1.4;
-    `;
-    metadataContent.innerHTML = '<em style="color: #999;">Select an image to view details...</em>';
+    metadataContent.className = 'gallery-metadata-content';
+    metadataContent.innerHTML = '<em class="gallery-metadata-empty">Select an image to view details...</em>';
 
     metadataSection.appendChild(metadataHeader);
     metadataSection.appendChild(metadataContent);
@@ -660,12 +462,10 @@ export function assembleGalleryTabLayout(container, components) {
 
     // Create main gallery container
     const galleryContainer = document.createElement('div');
-    galleryContainer.style.cssText = `
-        padding: 15px;
-    `;
+    galleryContainer.className = 'gallery-main-container';
 
     // Add header with reduced padding
-    header.style.padding = '10px 15px'; // Make header more compact
+    header.classList.add('gallery-header-compact');
     container.appendChild(header);
 
     // Add all sections to gallery container

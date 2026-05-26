@@ -26,11 +26,7 @@ export function createThumbnailGrid() {
     });
     
     const imageCountSpan = document.createElement('span');
-    imageCountSpan.style.cssText = `
-        color: #888;
-        font-size: 11px;
-        font-style: italic;
-    `;
+    imageCountSpan.className = 'gallery-image-count';
     
     /**
      * Update the grid layout based on thumbnail size
@@ -82,49 +78,18 @@ export function createThumbnailItem(image, onSelect) {
     
     const thumbnailItem = document.createElement('div');
     thumbnailItem.className = 'thumbnail-item';
-    thumbnailItem.style.cssText = `
-        background: #333;
-        border-radius: 6px;
-        overflow: hidden;
-        cursor: pointer;
-        transition: all 0.2s ease;
-        border: 2px solid transparent;
-        position: relative;
-    `;
     
-    // Hover effects
-    thumbnailItem.addEventListener('mouseenter', () => {
-        thumbnailItem.style.transform = 'scale(1.02)';
-        thumbnailItem.style.borderColor = '#4CAF50';
-        thumbnailItem.style.boxShadow = '0 4px 12px rgba(76, 175, 80, 0.3)';
-    });
-    
-    thumbnailItem.addEventListener('mouseleave', () => {
-        thumbnailItem.style.transform = 'scale(1)';
-        thumbnailItem.style.borderColor = 'transparent';
-        thumbnailItem.style.boxShadow = 'none';
-    });
+    // Hover effects handled by CSS classes
     
     // Thumbnail container
     const thumbnailContainer = document.createElement('div');
-    thumbnailContainer.style.cssText = `
-        width: ${sizeConfig.width}px;
-        height: ${sizeConfig.height}px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        background: #444;
-        position: relative;
-        overflow: hidden;
-    `;
+    thumbnailContainer.className = 'thumbnail-container';
+    thumbnailContainer.style.width = `${sizeConfig.width}px`;
+    thumbnailContainer.style.height = `${sizeConfig.height}px`;
     
     // Create placeholder
     const placeholder = document.createElement('div');
-    placeholder.style.cssText = `
-        color: #888;
-        font-size: 12px;
-        text-align: center;
-    `;
+    placeholder.className = 'thumbnail-placeholder';
     placeholder.textContent = 'Loading...';
     thumbnailContainer.appendChild(placeholder);
     
@@ -133,12 +98,7 @@ export function createThumbnailItem(image, onSelect) {
         if (thumbnailUrl) {
             const img = document.createElement('img');
             img.src = thumbnailUrl;
-            img.style.cssText = `
-                width: 100%;
-                height: 100%;
-                object-fit: cover;
-                display: block;
-            `;
+            img.className = 'thumbnail-img';
             
             img.onload = () => {
                 thumbnailContainer.removeChild(placeholder);
@@ -147,40 +107,26 @@ export function createThumbnailItem(image, onSelect) {
             
             img.onerror = () => {
                 placeholder.textContent = 'Error';
-                placeholder.style.color = '#f44336';
+                placeholder.classList.add('thumbnail-placeholder-error');
             };
         } else {
             placeholder.textContent = 'Failed';
-            placeholder.style.color = '#f44336';
+            placeholder.classList.add('thumbnail-placeholder-error');
         }
     });
     
     // Image info
     const infoDiv = document.createElement('div');
-    infoDiv.style.cssText = `
-        padding: 6px;
-        background: #2a2a2a;
-        border-top: 1px solid #444;
-    `;
+    infoDiv.className = 'thumbnail-info';
     
     const filename = document.createElement('div');
     filename.textContent = image.filename || 'Unknown';
     filename.title = image.filename || 'Unknown';
-    filename.style.cssText = `
-        color: #fff;
-        font-size: 11px;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        margin-bottom: 2px;
-    `;
+    filename.className = 'thumbnail-filename';
     
     const filesize = document.createElement('div');
     filesize.textContent = image.size_display || '';
-    filesize.style.cssText = `
-        color: #888;
-        font-size: 10px;
-    `;
+    filesize.className = 'thumbnail-filesize';
     
     infoDiv.appendChild(filename);
     infoDiv.appendChild(filesize);
@@ -213,52 +159,18 @@ export function createThumbnailItem(image, onSelect) {
  */
 export function createFolderItem(folder, onNavigate) {
     const folderItem = document.createElement('div');
-    folderItem.style.cssText = `
-        background: #444;
-        border-radius: 6px;
-        padding: 15px;
-        cursor: pointer;
-        transition: all 0.2s ease;
-        border: 2px solid transparent;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        min-height: 80px;
-    `;
-    
-    // Hover effects
-    folderItem.addEventListener('mouseenter', () => {
-        folderItem.style.transform = 'scale(1.02)';
-        folderItem.style.borderColor = '#2196F3';
-        folderItem.style.boxShadow = '0 4px 12px rgba(33, 150, 243, 0.3)';
-    });
-    
-    folderItem.addEventListener('mouseleave', () => {
-        folderItem.style.transform = 'scale(1)';
-        folderItem.style.borderColor = 'transparent';
-        folderItem.style.boxShadow = 'none';
-    });
+    folderItem.className = 'gallery-folder-item';
     
     // Folder icon
     const icon = document.createElement('div');
     icon.textContent = folder.isBackNav ? '⬅️' : '📁';
-    icon.style.cssText = `
-        font-size: 24px;
-        margin-bottom: 8px;
-    `;
+    icon.className = 'gallery-folder-icon';
     
     // Folder name
     const name = document.createElement('div');
     name.textContent = folder.name;
     name.title = folder.name;
-    name.style.cssText = `
-        color: #fff;
-        font-size: 12px;
-        text-align: center;
-        word-break: break-word;
-        max-width: 100%;
-    `;
+    name.className = 'gallery-folder-name';
     
     folderItem.appendChild(icon);
     folderItem.appendChild(name);
@@ -280,31 +192,14 @@ export function createFolderItem(folder, onNavigate) {
  */
 export function createSortControl(onSortChange) {
     const container = document.createElement('div');
-    container.style.cssText = `
-        display: flex;
-        gap: 5px;
-        align-items: center;
-    `;
+    container.className = 'gallery-control-row';
     
     const label = document.createElement('span');
     label.textContent = 'Sort:';
-    label.style.cssText = `
-        color: #ccc;
-        font-size: 11px;
-        white-space: nowrap;
-    `;
+    label.className = 'gallery-control-label';
     
     const sortSelect = document.createElement('select');
-    sortSelect.style.cssText = `
-        background: #333;
-        color: #fff;
-        border: 1px solid #555;
-        border-radius: 4px;
-        padding: 3px 6px;
-        font-size: 11px;
-        cursor: pointer;
-        outline: none;
-    `;
+    sortSelect.className = 'gallery-control-select';
     
     // Sort options
     const sortOptions = [
@@ -353,31 +248,14 @@ export function createSortControl(onSortChange) {
  */
 export function createThumbnailSizeControl(onSizeChange) {
     const container = document.createElement('div');
-    container.style.cssText = `
-        display: flex;
-        gap: 5px;
-        align-items: center;
-    `;
+    container.className = 'gallery-control-row';
     
     const label = document.createElement('span');
     label.textContent = 'Size:';
-    label.style.cssText = `
-        color: #ccc;
-        font-size: 11px;
-        white-space: nowrap;
-    `;
+    label.className = 'gallery-control-label';
     
     const sizeSelect = document.createElement('select');
-    sizeSelect.style.cssText = `
-        background: #333;
-        color: #fff;
-        border: 1px solid #555;
-        border-radius: 4px;
-        padding: 3px 6px;
-        font-size: 11px;
-        cursor: pointer;
-        outline: none;
-    `;
+    sizeSelect.className = 'gallery-control-select';
     
     // Size options
     const sizeOptions = [
@@ -438,16 +316,6 @@ export function showImageContextMenu(event, image) {
     
     const menu = document.createElement('div');
     menu.className = 'image-context-menu';
-    menu.style.cssText = `
-        position: fixed;
-        background: #2a2a2a;
-        border: 1px solid #555;
-        border-radius: 4px;
-        padding: 5px;
-        z-index: 9999;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-        min-width: 150px;
-    `;
     
     const menuItems = [
         { text: '👁️ View Full Size', action: () => showFullImageModal(image) },
@@ -459,22 +327,9 @@ export function showImageContextMenu(event, image) {
     menuItems.forEach(item => {
         const menuItem = document.createElement('div');
         menuItem.textContent = item.text;
-        menuItem.style.cssText = `
-            padding: 8px 12px;
-            cursor: pointer;
-            font-size: 12px;
-            color: #fff;
-            border-radius: 3px;
-            transition: background 0.2s ease;
-        `;
+        menuItem.className = 'image-context-menu-item';
         
-        menuItem.addEventListener('mouseenter', () => {
-            menuItem.style.background = '#4CAF50';
-        });
-        
-        menuItem.addEventListener('mouseleave', () => {
-            menuItem.style.background = 'transparent';
-        });
+        // Hover handled by CSS
         
         menuItem.addEventListener('click', () => {
             item.action();
@@ -514,27 +369,12 @@ export function showImageContextMenu(event, image) {
 export async function showFullImageModal(image) {
     // Create modal overlay
     const overlay = document.createElement('div');
-    overlay.style.cssText = `
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(0, 0, 0, 0.9);
-        z-index: 9999;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        cursor: pointer;
-    `;
+    overlay.className = 'gallery-simple-overlay';
     
     // Loading indicator
     const loading = document.createElement('div');
     loading.textContent = 'Loading...';
-    loading.style.cssText = `
-        color: #fff;
-        font-size: 18px;
-    `;
+    loading.className = 'gallery-loading-text';
     overlay.appendChild(loading);
     
     // Add to document
@@ -550,22 +390,17 @@ export async function showFullImageModal(image) {
             // Create image
             const img = document.createElement('img');
             img.src = imageUrl;
-            img.style.cssText = `
-                max-width: 95%;
-                max-height: 95%;
-                object-fit: contain;
-                cursor: default;
-            `;
+            img.className = 'gallery-simple-image';
             
             img.addEventListener('click', (e) => e.stopPropagation());
             overlay.appendChild(img);
         } else {
             loading.textContent = 'Failed to load image';
-            loading.style.color = '#f44336';
+            loading.classList.add('gallery-loading-error');
         }
     } catch (error) {
         loading.textContent = 'Error loading image';
-        loading.style.color = '#f44336';
+        loading.classList.add('gallery-loading-error');
     }
     
     // Close on overlay click or escape key
@@ -589,48 +424,18 @@ export async function showFullImageModal(image) {
 export async function showImageMetadata(image) {
     // Create modal overlay
     const overlay = document.createElement('div');
-    overlay.style.cssText = `
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(0, 0, 0, 0.7);
-        z-index: 9999;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    `;
+    overlay.className = 'gallery-metadata-overlay';
     
     // Create modal content
     const modal = document.createElement('div');
-    modal.style.cssText = `
-        background: #2a2a2a;
-        border-radius: 8px;
-        padding: 20px;
-        max-width: 80%;
-        max-height: 80%;
-        overflow-y: auto;
-        border: 1px solid #555;
-    `;
+    modal.className = 'gallery-metadata-modal';
     
     const title = document.createElement('h3');
     title.textContent = `Metadata: ${image.filename || 'Unknown'}`;
-    title.style.cssText = `
-        color: #fff;
-        margin: 0 0 15px 0;
-        font-size: 16px;
-        border-bottom: 1px solid #555;
-        padding-bottom: 10px;
-    `;
+    title.className = 'gallery-metadata-title';
     
     const content = document.createElement('div');
-    content.style.cssText = `
-        color: #ccc;
-        font-family: monospace;
-        font-size: 12px;
-        white-space: pre-wrap;
-    `;
+    content.className = 'gallery-metadata-text';
     content.textContent = 'Loading metadata...';
     
     modal.appendChild(title);
