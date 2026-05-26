@@ -363,6 +363,7 @@ function createProviderGroup(providerName, settings, providerKey, urlKeyPrefix) 
 function createOpenAIProviderGroup(settings) {
   const group = document.createElement('div');
   group.className = 'settings-group';
+  const enableKey = 'enable_openai';
   const enableSetting = settings[enableKey];
   const { container: enableContainer, checkbox: enableCheckbox } = createCheckbox(
     'Enable OpenAI',

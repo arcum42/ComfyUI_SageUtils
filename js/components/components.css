@@ -2229,6 +2229,10 @@
   box-sizing: border-box;
 }
 
+.settings-input--small {
+  width: 100px;
+}
+
 .settings-radio-group {
   gap: 20px;
   margin-left: 10px;

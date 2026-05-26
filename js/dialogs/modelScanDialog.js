@@ -216,10 +216,7 @@ class ModelScanDialog {
           min: '100',
           max: '5000',
           step: '100',
-          className: 'settings-input',
-          style: {
-            width: '100px'
-          }
+          className: 'settings-input settings-input--small'
         });
 
         const help = document.createElement('small');

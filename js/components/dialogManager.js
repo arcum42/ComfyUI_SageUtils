@@ -152,11 +152,12 @@ export function createDialog(options = {}) {
             button.className = 'dialog-footer-button';
             button.textContent = text;
 
-            const background = style.background;
-            const color = style.color;
-            const isSecondary = background === '#666' || style.variant === 'secondary';
-            const isDanger = background === '#d32f2f' || style.variant === 'danger';
-            const isSuccess = background === '#4CAF50' || style.variant === 'success';
+            const buttonStyle = typeof style === 'string' ? { variant: style } : style || {};
+            const background = buttonStyle.background;
+            const color = buttonStyle.color;
+            const isSecondary = background === '#666' || buttonStyle.variant === 'secondary';
+            const isDanger = background === '#d32f2f' || buttonStyle.variant === 'danger';
+            const isSuccess = background === '#4CAF50' || buttonStyle.variant === 'success';
 
             if (isSecondary) {
                 button.classList.add('dialog-footer-button--secondary');
@@ -174,11 +175,13 @@ export function createDialog(options = {}) {
                 button.style.setProperty('--dialog-footer-button-color', color);
             }
 
-            Object.entries(style).forEach(([key, value]) => {
-                if (key !== 'background' && key !== 'color' && key !== 'variant') {
-                    button.style[key] = value;
-                }
-            });
+            if (typeof buttonStyle === 'object' && !Array.isArray(buttonStyle)) {
+                Object.entries(buttonStyle).forEach(([key, value]) => {
+                    if (key !== 'background' && key !== 'color' && key !== 'variant') {
+                        button.style[key] = value;
+                    }
+                });
+            }
             button.addEventListener('click', onClick);
             footer.appendChild(button);
             return button;

@@ -322,18 +322,18 @@ export function createCheckbox(labelText, options = {}) {
   if (name) checkbox.name = name;
   if (value !== undefined) checkbox.value = value;
   if (disabled) checkbox.disabled = disabled;
-  
+
+  const label = document.createElement('label');
+  label.textContent = labelText;
   label.className = `sage-checkbox-label ${labelClass}`.trim();
   if (disabled) {
     label.classList.add('sage-disabled');
   }
   if (onChange) checkbox.addEventListener('change', onChange);
-  
-  if (onChange) checkbox.addEventListener('change', onChange);
-  
+
   container.appendChild(checkbox);
   container.appendChild(label);
-  
+
   return { container, checkbox, label };
 }
 
