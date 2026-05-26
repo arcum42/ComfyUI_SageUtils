@@ -16,8 +16,7 @@ import {
     DEFAULT_THUMBNAIL_WIDTH,
     DEFAULT_THUMBNAIL_HEIGHT,
     DEFAULT_BATCH_SIZE,
-    REPORT_COLUMN_CONFIG,
-    getThumbnailStyle
+    REPORT_COLUMN_CONFIG
 } from '../shared/constants.js';
 
 import {
@@ -39,7 +38,6 @@ import {
 import {
     generateHtmlDocumentStart,
     generateHtmlDocumentEnd,
-    generateCssStyles,
     generateClientSideJs,
     generateModelStatsSection,
     generateTableSection
@@ -92,17 +90,75 @@ function getFolderDisplayName(folderType) {
     return folderNames[folderType] || 'Unknown';
 }
 
-/**
- * Get file size from backend
- * @param {string} filePath - Path to the file
- * @returns {Promise<number|null>} File size in bytes or null if failed
-    <h2>Generated: ${currentDateTime}</h2>
-    <div class="info">
-        Filters Applied: ${filterDescription}${searchDescription}${lastUsedDescription}${sortDescription}<br>
-        Total Models: ${allModels.length} (${checkpointModels.length} Checkpoints, ${loraModels.length} LoRAs)<br>
-        <span style="color: #28a745; font-weight: bold;">📷 Auto Images</span> - Cached images shown immediately, others load automatically<br>
-        <small style="color: #999; font-style: italic;">Click column headers to sort • Images load automatically from Civitai • Report format based on original design by tecknight</small>
-    </div>`;
+function shouldAttemptCivitaiLoad(info) {
+    if (!info) return true;
+    const civitaiStatus = info.civitai;
+    let shouldAttempt = true;
+
+    if (civitaiStatus !== undefined && civitaiStatus !== null) {
+        if (typeof civitaiStatus === 'string') {
+            shouldAttempt = civitaiStatus.toLowerCase() === 'true';
+        } else if (typeof civitaiStatus === 'boolean') {
+            shouldAttempt = civitaiStatus;
+        }
+    }
+
+    const failedCount = info.civitai_failed_count || info.civitaiFailedCount || 0;
+    if (failedCount > 0) {
+        shouldAttempt = false;
+    }
+
+    return shouldAttempt;
+}
+
+function getCivitaiStatusReason(info) {
+    let noImageReason = 'No image available';
+    if (!info) return noImageReason;
+
+    const failedCount = info.civitai_failed_count || info.civitaiFailedCount || 0;
+    const civitaiStatus = info.civitai;
+
+    if (failedCount > 0) {
+        noImageReason = 'Not available on Civitai';
+    } else if (civitaiStatus === false || (typeof civitaiStatus === 'string' && civitaiStatus.toLowerCase() === 'false')) {
+        noImageReason = 'Not available on Civitai';
+    }
+
+    return noImageReason;
+}
+
+function buildExampleImageContent(info, hash) {
+    if (info && info.images && Array.isArray(info.images) && info.images.length > 0) {
+        const firstImage = info.images[0];
+        if (firstImage && firstImage.url) {
+            return `<div class="thumbnail-container">
+                        <img src="${escapeHtml(firstImage.url)}"
+                             class="thumbnail-image"
+                             alt="Example image"
+                             loading="lazy"
+                             title="Click to expand/collapse"
+                             onclick="toggleImageExpand(this)"
+                             onerror="this.style.display='none'">
+                    </div>`;
+        }
+    }
+
+    if (!hash) {
+        return `<div class="thumbnail-placeholder"><span class="thumbnail-placeholder-text">No image</span></div>`;
+    }
+
+    if (shouldAttemptCivitaiLoad(info)) {
+        const civitaiImageUrl = `https://civitai.com/api/v1/model-versions/by-hash/${encodeURIComponent(hash)}`;
+        return `<div class="auto-load-image thumbnail-loading"
+                    data-civitai-hash="${escapeHtml(hash)}"
+                    data-civitai-url="${escapeHtml(civitaiImageUrl)}">
+                    <span class="thumbnail-placeholder-text">Loading...</span>
+                </div>`;
+    }
+
+    const noImageReason = getCivitaiStatusReason(info);
+    return `<div class="thumbnail-placeholder"><span class="thumbnail-placeholder-text">${escapeHtml(noImageReason)}</span></div>`;
+}
 
 /**
  * Generate HTML table rows for models
@@ -183,9 +239,7 @@ export async function generateTableRows(models, options = {}) {
         // Determine whether to show "Update available" message
         // If this model is part of a group that already has the latest version, don't show the message
         const shouldShowUpdateMessage = updateAvailable && !(groupData.isGroupMember && groupData.groupHasLatestVersion);
-        
-        // Apply update styling only if we're showing the update message
-        const civitaiStyle = shouldShowUpdateMessage ? getUpdateStyle(info) : '';
+        const civitaiClass = shouldShowUpdateMessage ? getUpdateStyle(info) : '';
         
         // Format trigger words with copy functionality
         const triggerCellContent = formatTriggerWords(triggerWords);
@@ -195,74 +249,7 @@ export async function generateTableRows(models, options = {}) {
         const lastUsedTimestamp = (lastUsed !== 'Never' && lastUsed !== 'Unknown') ? 
             new Date(lastUsed).getTime() : 0;
 
-        // Get example image - use cached data or generate direct Civitai URL
-        let exampleImageContent = '<i>No image</i>';
-        
-        // First check if we have cached images in the model info
-        if (info && info.images && Array.isArray(info.images) && info.images.length > 0) {
-            const firstImage = info.images[0];
-            if (firstImage && firstImage.url) {
-                exampleImageContent = `<div style="display:flex;align-items:center;justify-content:center;width:100%;height:100%;">
-                                           <img src="${escapeHtml(firstImage.url)}" 
-                                                style="${getThumbnailStyle()}" 
-                                                alt="Example image" 
-                                                loading="lazy" 
-                                                title="Click to expand/collapse"
-                                                onclick="toggleImageExpand(this)"
-                                                onerror="this.style.display='none'">
-                                       </div>`;
-            }
-        } else if (hash) {
-            // Check if we should attempt to load from Civitai based on previous attempts
-            let shouldAttemptCivitai = true;
-            
-            if (info) {
-                // Check civitai status - could be string or boolean, any case
-                const civitaiStatus = info.civitai;
-                if (civitaiStatus !== undefined && civitaiStatus !== null) {
-                    if (typeof civitaiStatus === 'string') {
-                        shouldAttemptCivitai = civitaiStatus.toLowerCase() === 'true';
-                    } else if (typeof civitaiStatus === 'boolean') {
-                        shouldAttemptCivitai = civitaiStatus;
-                    }
-                }
-                
-                // Also check failed count - if there have been multiple failures, don't try
-                const failedCount = info.civitai_failed_count || info.civitaiFailedCount || 0;
-                if (failedCount > 0) {
-                    shouldAttemptCivitai = false;
-                }
-            }
-            
-            // Determine the reason for not attempting Civitai for better messaging
-            let noImageReason = "No image available";
-            if (info) {
-                const failedCount = info.civitai_failed_count || info.civitaiFailedCount || 0;
-                const civitaiStatus = info.civitai;
-                
-                if (failedCount > 0) {
-                    noImageReason = "Not available on Civitai";
-                } else if (civitaiStatus === false || (typeof civitaiStatus === 'string' && civitaiStatus.toLowerCase() === 'false')) {
-                    noImageReason = "Not available on Civitai";
-                }
-            }
-            
-            if (shouldAttemptCivitai) {
-                // Auto-load Civitai images with proper sizing
-                const civitaiImageUrl = `https://civitai.com/api/v1/model-versions/by-hash/${encodeURIComponent(hash)}`;
-                exampleImageContent = `<div style="width:100%;height:${DEFAULT_THUMBNAIL_HEIGHT}px;background:#f5f5f5;display:flex;align-items:center;justify-content:center;border-radius:4px;font-size:11px;color:#999;transition:all 0.3s ease;" 
-                                            data-civitai-hash="${escapeHtml(hash)}" 
-                                            data-civitai-url="${escapeHtml(civitaiImageUrl)}"
-                                            class="auto-load-image">
-                                            <span style="text-align:center;">Loading...</span>
-                                        </div>`;
-            } else {
-                // Don't attempt Civitai load, create compact container immediately
-                exampleImageContent = `<div style="width:auto;height:auto;min-width:60px;min-height:20px;padding:8px;display:flex;align-items:center;justify-content:center;border-radius:4px;font-size:11px;color:#999;background:#f9f9f9;">
-                                           <span style="text-align:center;">${noImageReason}</span>
-                                       </div>`;
-            }
-        }
+        const exampleImageContent = buildExampleImageContent(info, hash);
 
         // Determine grouping CSS classes
         const groupClasses = [];
@@ -279,33 +266,8 @@ export async function generateTableRows(models, options = {}) {
         
         const groupClassAttribute = groupClasses.length > 0 ? ` class="${groupClasses.join(' ')}"` : '';
 
-        // Determine if image cell should be compact
-        let imageCellClass = "image-cell";
-        let shouldAttemptCivitai = true;
-        
-        if (info && hash) {
-            // Check civitai status - could be string or boolean, any case
-            const civitaiStatus = info.civitai;
-            if (civitaiStatus !== undefined && civitaiStatus !== null) {
-                if (typeof civitaiStatus === 'string') {
-                    shouldAttemptCivitai = civitaiStatus.toLowerCase() === 'true';
-                } else if (typeof civitaiStatus === 'boolean') {
-                    shouldAttemptCivitai = civitaiStatus;
-                }
-            }
-            
-            // Also check failed count - if there have been multiple failures, don't try
-            const failedCount = info.civitai_failed_count || info.civitaiFailedCount || 0;
-            if (failedCount > 0) {
-                shouldAttemptCivitai = false;
-            }
-        }
-        
-        // If no cached image and not attempting Civitai, make cell compact
         const hasExistingImage = info && info.images && Array.isArray(info.images) && info.images.length > 0;
-        if (!hasExistingImage && !shouldAttemptCivitai) {
-            imageCellClass += " compact";
-        }
+        const imageCellClass = hasExistingImage || shouldAttemptCivitaiLoad(info) ? 'image-cell' : 'image-cell compact';
 
         // Generate table cells based on visible columns
         const tableCells = [];
@@ -320,52 +282,53 @@ export async function generateTableRows(models, options = {}) {
         columnsToRender.forEach(column => {
             switch (column.key) {
                 case 'name':
-                    tableCells.push(`<td style="text-align:center;${nameStyle}">${escapeHtml(modelName)}</td>`);
+                    tableCells.push(`<td class="cell-center ${nameStyle}">${escapeHtml(modelName)}</td>`);
                     break;
                 case 'basemodel':
-                    tableCells.push(`<td style="text-align:center;">${escapeHtml(baseModel)}</td>`);
+                    tableCells.push(`<td class="cell-center">${escapeHtml(baseModel)}</td>`);
                     break;
                 case 'type':
-                    tableCells.push(`<td style="text-align:center;">${escapeHtml(modelType)}</td>`);
+                    tableCells.push(`<td class="cell-center">${escapeHtml(modelType)}</td>`);
                     break;
-                case 'folder':
+                case 'folder': {
                     const folderType = getFolderTypeFromPath(filePath);
                     const folderDisplayName = getFolderDisplayName(folderType);
-                    tableCells.push(`<td style="text-align:center;">${escapeHtml(folderDisplayName)}</td>`);
+                    tableCells.push(`<td class="cell-center">${escapeHtml(folderDisplayName)}</td>`);
                     break;
+                }
                 case 'triggers':
-                    tableCells.push(`<td style="text-align:center;">${triggerCellContent}</td>`);
+                    tableCells.push(`<td class="cell-center">${triggerCellContent}</td>`);
                     break;
                 case 'image':
                     tableCells.push(`<td class="${imageCellClass}">${exampleImageContent}</td>`);
                     break;
                 case 'civitai':
-                    tableCells.push(`<td style="text-align:center;${civitaiStyle}">
-                        <a href="${civitaiUrl}" target="_blank">${modelId}</a>
+                    tableCells.push(`<td class="cell-center ${civitaiClass}">
+                        <a href="${escapeHtml(civitaiUrl)}" target="_blank">${escapeHtml(modelId)}</a>
                         ${shouldShowUpdateMessage ? '<br><br><i>Update available</i>' : ''}
                     </td>`);
                     break;
-                case 'versionid':
+                case 'versionid': {
                     const versionId = (info && info.id) || 'Unknown';
-                    
                     if (versionId !== 'Unknown' && versionId !== '' && versionId != null && modelId !== 'Unknown' && modelId !== '' && modelId != null) {
                         const versionUrl = getModelUrl(modelId, versionId);
-                        tableCells.push(`<td style="text-align:center;${civitaiStyle}"><a href="${versionUrl}" target="_blank">${escapeHtml(String(versionId))}</a></td>`);
+                        tableCells.push(`<td class="cell-center ${civitaiClass}"><a href="${escapeHtml(versionUrl)}" target="_blank">${escapeHtml(String(versionId))}</a></td>`);
                     } else {
-                        tableCells.push(`<td style="text-align:center;${civitaiStyle}">${escapeHtml(String(versionId))}</td>`);
+                        tableCells.push(`<td class="cell-center ${civitaiClass}">${escapeHtml(String(versionId))}</td>`);
                     }
                     break;
+                }
                 case 'hash':
-                    tableCells.push(`<td style="text-align:center;">${escapeHtml(modelHash.substring(0, 12))}...</td>`);
+                    tableCells.push(`<td class="cell-center">${escapeHtml(modelHash.substring(0, 12))}...</td>`);
                     break;
                 case 'size':
-                    tableCells.push(`<td style="text-align:center;" sorttable_customkey="${fileSizeBytes}">${escapeHtml(fileSize)}</td>`);
+                    tableCells.push(`<td class="cell-center" sorttable_customkey="${fileSizeBytes}">${escapeHtml(fileSize)}</td>`);
                     break;
                 case 'lastused':
-                    tableCells.push(`<td style="text-align:center;" sorttable_customkey="${lastUsedTimestamp}">${formattedLastUsed}</td>`);
+                    tableCells.push(`<td class="cell-center" sorttable_customkey="${lastUsedTimestamp}">${formattedLastUsed}</td>`);
                     break;
                 case 'path':
-                    tableCells.push(`<td style="text-align:left;">${escapeHtml(filePath)}</td>`);
+                    tableCells.push(`<td class="cell-left">${escapeHtml(filePath)}</td>`);
                     break;
             }
         });
@@ -468,9 +431,7 @@ export async function generateTableRowsWithProgress(models, options = {}) {
             // Determine whether to show "Update available" message
             // If this model is part of a group that already has the latest version, don't show the message
             const shouldShowUpdateMessage = updateAvailable && !(groupData.isGroupMember && groupData.groupHasLatestVersion);
-            
-            // Apply update styling only if we're showing the update message
-            const civitaiStyle = shouldShowUpdateMessage ? getUpdateStyle(info) : '';
+            const civitaiClass = shouldShowUpdateMessage ? getUpdateStyle(info) : '';
             
             // Format trigger words with copy functionality
             const triggerCellContent = formatTriggerWords(triggerWords);
@@ -480,74 +441,7 @@ export async function generateTableRowsWithProgress(models, options = {}) {
             const lastUsedTimestamp = (lastUsed !== 'Never' && lastUsed !== 'Unknown') ? 
                 new Date(lastUsed).getTime() : 0;
 
-            // Get example image - use cached data or generate direct Civitai URL
-            let exampleImageContent = '<i>No image</i>';
-            
-            // First check if we have cached images in the model info
-            if (info && info.images && Array.isArray(info.images) && info.images.length > 0) {
-                const firstImage = info.images[0];
-                if (firstImage && firstImage.url) {
-                    exampleImageContent = `<div style="display:flex;align-items:center;justify-content:center;width:100%;height:100%;">
-                                               <img src="${escapeHtml(firstImage.url)}" 
-                                                    style="width:150px;height:100px;object-fit:cover;border-radius:4px;cursor:pointer;transition:all 0.3s ease;" 
-                                                    alt="Example image" 
-                                                    loading="lazy" 
-                                                    title="Click to expand/collapse"
-                                                    onclick="toggleImageExpand(this)"
-                                                    onerror="this.style.display='none'">
-                                           </div>`;
-                }
-            } else if (hash) {
-                // Check if we should attempt to load from Civitai based on previous attempts
-                let shouldAttemptCivitai = true;
-                
-                if (info) {
-                    // Check civitai status - could be string or boolean, any case
-                    const civitaiStatus = info.civitai;
-                    if (civitaiStatus !== undefined && civitaiStatus !== null) {
-                        if (typeof civitaiStatus === 'string') {
-                            shouldAttemptCivitai = civitaiStatus.toLowerCase() === 'true';
-                        } else if (typeof civitaiStatus === 'boolean') {
-                            shouldAttemptCivitai = civitaiStatus;
-                        }
-                    }
-                    
-                    // Also check failed count - if there have been multiple failures, don't try
-                    const failedCount = info.civitai_failed_count || info.civitaiFailedCount || 0;
-                    if (failedCount > 0) {
-                        shouldAttemptCivitai = false;
-                    }
-                }
-                
-                // Determine the reason for not attempting Civitai for better messaging
-                let noImageReason = "No image available";
-                if (info) {
-                    const failedCount = info.civitai_failed_count || info.civitaiFailedCount || 0;
-                    const civitaiStatus = info.civitai;
-                    
-                    if (failedCount > 0) {
-                        noImageReason = "Not available on Civitai";
-                    } else if (civitaiStatus === false || (typeof civitaiStatus === 'string' && civitaiStatus.toLowerCase() === 'false')) {
-                        noImageReason = "Not available on Civitai";
-                    }
-                }
-                
-                if (shouldAttemptCivitai) {
-                    // Auto-load Civitai images with proper sizing
-                    const civitaiImageUrl = `https://civitai.com/api/v1/model-versions/by-hash/${encodeURIComponent(hash)}`;
-                    exampleImageContent = `<div style="width:100%;height:100px;background:#f5f5f5;display:flex;align-items:center;justify-content:center;border-radius:4px;font-size:11px;color:#999;transition:all 0.3s ease;" 
-                                                data-civitai-hash="${escapeHtml(hash)}" 
-                                                data-civitai-url="${escapeHtml(civitaiImageUrl)}"
-                                                class="auto-load-image">
-                                                <span style="text-align:center;">Loading...</span>
-                                            </div>`;
-                } else {
-                    // Don't attempt Civitai load, create compact container immediately
-                    exampleImageContent = `<div style="width:auto;height:auto;min-width:60px;min-height:20px;padding:8px;display:flex;align-items:center;justify-content:center;border-radius:4px;font-size:11px;color:#999;background:#f9f9f9;">
-                                               <span style="text-align:center;">${noImageReason}</span>
-                                           </div>`;
-                }
-            }
+            const exampleImageContent = buildExampleImageContent(info, hash);
 
             // Determine grouping CSS classes
             const groupClasses = [];
@@ -564,33 +458,8 @@ export async function generateTableRowsWithProgress(models, options = {}) {
             
             const groupClassAttribute = groupClasses.length > 0 ? ` class="${groupClasses.join(' ')}"` : '';
 
-            // Determine if image cell should be compact
-            let imageCellClass = "image-cell";
-            let shouldAttemptCivitai = true;
-            
-            if (info && hash) {
-                // Check civitai status - could be string or boolean, any case
-                const civitaiStatus = info.civitai;
-                if (civitaiStatus !== undefined && civitaiStatus !== null) {
-                    if (typeof civitaiStatus === 'string') {
-                        shouldAttemptCivitai = civitaiStatus.toLowerCase() === 'true';
-                    } else if (typeof civitaiStatus === 'boolean') {
-                        shouldAttemptCivitai = civitaiStatus;
-                    }
-                }
-                
-                // Also check failed count - if there have been multiple failures, don't try
-                const failedCount = info.civitai_failed_count || info.civitaiFailedCount || 0;
-                if (failedCount > 0) {
-                    shouldAttemptCivitai = false;
-                }
-            }
-            
-            // If no cached image and not attempting Civitai, make cell compact
             const hasExistingImage = info && info.images && Array.isArray(info.images) && info.images.length > 0;
-            if (!hasExistingImage && !shouldAttemptCivitai) {
-                imageCellClass += " compact";
-            }
+            const imageCellClass = hasExistingImage || shouldAttemptCivitaiLoad(info) ? 'image-cell' : 'image-cell compact';
 
             // Generate table cells based on visible columns
             const tableCells = [];
@@ -605,52 +474,53 @@ export async function generateTableRowsWithProgress(models, options = {}) {
             columnsToRender.forEach(column => {
                 switch (column.key) {
                     case 'name':
-                        tableCells.push(`<td style="text-align:center;${nameStyle}">${escapeHtml(modelName)}</td>`);
+                        tableCells.push(`<td class="cell-center ${nameStyle}">${escapeHtml(modelName)}</td>`);
                         break;
                     case 'basemodel':
-                        tableCells.push(`<td style="text-align:center;">${escapeHtml(baseModel)}</td>`);
+                        tableCells.push(`<td class="cell-center">${escapeHtml(baseModel)}</td>`);
                         break;
                     case 'type':
-                        tableCells.push(`<td style="text-align:center;">${escapeHtml(modelType)}</td>`);
+                        tableCells.push(`<td class="cell-center">${escapeHtml(modelType)}</td>`);
                         break;
-                    case 'folder':
+                    case 'folder': {
                         const folderType = getFolderTypeFromPath(filePath);
                         const folderDisplayName = getFolderDisplayName(folderType);
-                        tableCells.push(`<td style="text-align:center;">${escapeHtml(folderDisplayName)}</td>`);
+                        tableCells.push(`<td class="cell-center">${escapeHtml(folderDisplayName)}</td>`);
                         break;
+                    }
                     case 'triggers':
-                        tableCells.push(`<td style="text-align:center;">${triggerCellContent}</td>`);
+                        tableCells.push(`<td class="cell-center">${triggerCellContent}</td>`);
                         break;
                     case 'image':
                         tableCells.push(`<td class="${imageCellClass}">${exampleImageContent}</td>`);
                         break;
                     case 'civitai':
-                        tableCells.push(`<td style="text-align:center;${civitaiStyle}">
-                            <a href="${civitaiUrl}" target="_blank">${modelId}</a>
+                        tableCells.push(`<td class="cell-center ${civitaiClass}">
+                            <a href="${escapeHtml(civitaiUrl)}" target="_blank">${escapeHtml(modelId)}</a>
                             ${shouldShowUpdateMessage ? '<br><br><i>Update available</i>' : ''}
                         </td>`);
                         break;
-                    case 'versionid':
+                    case 'versionid': {
                         const versionId = (info && info.id) || 'Unknown';
-                        
                         if (versionId !== 'Unknown' && versionId !== '' && versionId != null && modelId !== 'Unknown' && modelId !== '' && modelId != null) {
                             const versionUrl = getModelUrl(modelId, versionId);
-                            tableCells.push(`<td style="text-align:center;${civitaiStyle}"><a href="${versionUrl}" target="_blank">${escapeHtml(String(versionId))}</a></td>`);
+                            tableCells.push(`<td class="cell-center ${civitaiClass}"><a href="${escapeHtml(versionUrl)}" target="_blank">${escapeHtml(String(versionId))}</a></td>`);
                         } else {
-                            tableCells.push(`<td style="text-align:center;${civitaiStyle}">${escapeHtml(String(versionId))}</td>`);
+                            tableCells.push(`<td class="cell-center ${civitaiClass}">${escapeHtml(String(versionId))}</td>`);
                         }
                         break;
+                    }
                     case 'hash':
-                        tableCells.push(`<td style="text-align:center;">${escapeHtml(modelHash.substring(0, 12))}...</td>`);
+                        tableCells.push(`<td class="cell-center">${escapeHtml(modelHash.substring(0, 12))}...</td>`);
                         break;
                     case 'size':
-                        tableCells.push(`<td style="text-align:center;" sorttable_customkey="${fileSizeBytes}">${escapeHtml(fileSize)}</td>`);
+                        tableCells.push(`<td class="cell-center" sorttable_customkey="${fileSizeBytes}">${escapeHtml(fileSize)}</td>`);
                         break;
                     case 'lastused':
-                        tableCells.push(`<td style="text-align:center;" sorttable_customkey="${lastUsedTimestamp}">${formattedLastUsed}</td>`);
+                        tableCells.push(`<td class="cell-center" sorttable_customkey="${lastUsedTimestamp}">${formattedLastUsed}</td>`);
                         break;
                     case 'path':
-                        tableCells.push(`<td style="text-align:left;">${escapeHtml(filePath)}</td>`);
+                        tableCells.push(`<td class="cell-left">${escapeHtml(filePath)}</td>`);
                         break;
                 }
             });
@@ -806,9 +676,9 @@ export async function generateHtmlContentWithProgress(options) {
         progressCallback(15, 'Building HTML structure...');
     }
 
-    const cssStyles = generateCssStyles();
+    const cssHref = `${window.location.origin}/extensions/comfyui_sageutils/reports/reportStyles.css`;
     const clientJs = generateClientSideJs(sortBy);
-    const htmlStart = generateHtmlDocumentStart(currentDateTime, cssStyles, clientJs);
+    const htmlStart = generateHtmlDocumentStart(currentDateTime, clientJs, cssHref);
     
     let htmlContent = htmlStart + generateModelStatsSection(currentDateTime, filterDescription, searchDescription, lastUsedDescription, sortDescription, allModels, checkpointModels, loraModels, folderFilter);
 

@@ -135,12 +135,12 @@ export function hasUpdateAvailable(modelInfo) {
 }
 
 /**
- * Get styled CSS for model based on update availability
+ * Get CSS class for model based on update availability
  * @param {Object} modelInfo - Model information object
- * @returns {string} - CSS style string
+ * @returns {string} - CSS class name or empty string
  */
 export function getUpdateStyle(modelInfo) {
-    return hasUpdateAvailable(modelInfo) ? 'background-color:orange;' : '';
+    return hasUpdateAvailable(modelInfo) ? 'update-available' : '';
 }
 
 /**

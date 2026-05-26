@@ -54,22 +54,22 @@ export function formatFileSize(bytes) {
 }
 
 /**
- * Get CSS styling based on base model type
+ * Get CSS class based on base model type
  * @param {string} baseModel - Base model name
- * @returns {string} - CSS style string
+ * @returns {string} - CSS class name
  */
 export function getBaseModelStyle(baseModel) {
-    if (!baseModel) return 'color:green;background-color:orange;';
-    
+    if (!baseModel) return 'base-model-default';
+
     if (baseModel.startsWith("Flux")) {
-        return 'color:yellow;background-color:maroon;';
+        return 'base-model-flux';
     } else if (baseModel.startsWith("Pony")) {
-        return 'color:white;background-color:green;';
+        return 'base-model-pony';
     } else if (baseModel.startsWith("SDXL")) {
-        return 'color:yellow;background-color:green;';
+        return 'base-model-sdxl';
     } else if (baseModel.startsWith("SD ")) {
-        return 'color:white;background-color:blue;';
+        return 'base-model-sd';
     } else {
-        return 'color:black;background-color:lightgray;';
+        return 'base-model-default';
     }
 }
