@@ -1,0 +1,200 @@
+.sage-button {
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: opacity 0.2s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35em;
+  margin-top: var(--sage-button-margin-top, 8px);
+}
+
+.sage-button--no-margin {
+  margin-top: 0;
+}
+
+.sage-button--custom {
+  background: var(--sage-button-bg, #2196F3);
+}
+
+.sage-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.sage-button:not(.sage-button--no-hover):not(:disabled):hover {
+  opacity: 0.8;
+}
+
+.sage-button--small {
+  padding: 4px 8px;
+  font-size: 11px;
+}
+
+.sage-button--medium {
+  padding: 6px 12px;
+  font-size: 12px;
+}
+
+.sage-button--large {
+  padding: 8px 16px;
+  font-size: 14px;
+}
+
+.sage-button--primary {
+  background: #2196F3;
+}
+
+.sage-button--secondary {
+  background: #757575;
+}
+
+.sage-button--success {
+  background: #4CAF50;
+}
+
+.sage-button--warning {
+  background: #FF9800;
+}
+
+.sage-button--danger {
+  background: #f44336;
+}
+
+.sage-button--info {
+  background: #00BCD4;
+}
+
+.sage-button--icon {
+  min-width: 32px;
+  padding: 6px;
+}
+
+.sage-button-group {
+  display: flex;
+  gap: var(--sage-button-group-gap, 4px);
+  margin-top: var(--sage-button-group-margin-top, 8px);
+  flex-wrap: wrap;
+}
+
+.sage-button-group--nowrap {
+  flex-wrap: nowrap;
+}
+
+.sage-nav-container {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.sage-nav-button {
+  padding: 8px 12px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  min-width: 40px;
+  border-radius: 6px;
+}
+
+.sage-nav-button--gradient {
+  background: linear-gradient(145deg, #404040, #303030);
+  border: 1px solid #555;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+  color: #fff;
+}
+
+.sage-nav-button--flat {
+  background: #555;
+  border: none;
+  box-shadow: none;
+  color: #fff;
+}
+
+.sage-nav-button:hover:not(:disabled) {
+  background: linear-gradient(145deg, #505050, #404040);
+  border-color: #666;
+}
+
+.sage-nav-button--flat:hover:not(:disabled) {
+  background: #666;
+  border-color: transparent;
+}
+
+.sage-nav-button:disabled {
+  background: #333;
+  color: #666;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.sage-nav-button--small {
+  padding: 4px 8px;
+  font-size: 12px;
+  border-radius: 3px;
+  min-width: 30px;
+}
+
+.sage-nav-button--medium {
+  padding: 8px 12px;
+  font-size: 13px;
+  border-radius: 6px;
+  min-width: 40px;
+}
+
+.sage-nav-button--large {
+  padding: 10px 16px;
+  font-size: 14px;
+  border-radius: 8px;
+  min-width: 50px;
+}
+
+.sage-nav-counter {
+  color: #ccc;
+  margin: 0 10px;
+  min-width: 50px;
+  text-align: center;
+}
+
+.sage-nav-counter--small {
+  font-size: 11px;
+}
+
+.sage-nav-counter--medium,
+.sage-nav-counter--large {
+  font-size: 12px;
+}
+
+.sage-collapsible-panel {
+  display: block;
+}
+
+.sage-collapsible-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.sage-collapsible-caret {
+  display: inline-block;
+  width: 14px;
+  color: #fff;
+}
+
+.sage-collapsible-title {
+  color: #fff;
+  margin: 0;
+  font-size: 14px;
+  flex: 1;
+}
+
+.sage-collapsible-content {
+  margin-top: 10px;
+}
+
+.sage-collapsible-content--collapsed {
+  display: none;
+}
+

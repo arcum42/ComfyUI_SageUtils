@@ -1,5 +1,11 @@
 const STYLE_LINK_SELECTOR = 'link[data-sage-component-styles]';
-const STYLE_HREF = 'extensions/comfyui_sageutils/components/components.css';
+const STYLE_HREFS = [
+    'extensions/comfyui_sageutils/components/buttons.css',
+    'extensions/comfyui_sageutils/components/forms.css',
+    'extensions/comfyui_sageutils/components/layout.css',
+    'extensions/comfyui_sageutils/components/dialogs.css',
+    'extensions/comfyui_sageutils/components/gallery.css',
+];
 
 export function loadComponentStyles(moduleName = 'unknown') {
     const debugPrefix = `[SageUtils] ${moduleName} loadComponentStyles`;
@@ -12,17 +18,20 @@ export function loadComponentStyles(moduleName = 'unknown') {
             return;
         }
 
-        const link = document.createElement('link');
-        link.rel = 'stylesheet';
-        link.type = 'text/css';
-        link.href = STYLE_HREF;
-        link.dataset.sageComponentStyles = 'true';
         if (!document.head) {
             console.warn(`${debugPrefix}: document.head is not ready`);
+            return;
         }
-        document.head.appendChild(link);
 
-        console.log(`${debugPrefix}: injected stylesheet`);
+        STYLE_HREFS.forEach((href) => {
+            const link = document.createElement('link');
+            link.rel = 'stylesheet';
+            link.type = 'text/css';
+            link.href = href;
+            link.dataset.sageComponentStyles = 'true';
+            document.head.appendChild(link);
+            console.log(`${debugPrefix}: injected stylesheet ${href}`);
+        });
     } catch (err) {
         console.error(`${debugPrefix} failed`, err);
         throw err;

@@ -1,0 +1,209 @@
+.sage-labeled-container {
+  margin-bottom: var(--sage-label-margin-bottom, 10px);
+}
+
+.sage-label {
+  display: block;
+  margin-bottom: 5px;
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: bold;
+}
+
+.sage-select,
+.sage-input,
+.sage-textarea {
+  width: 100%;
+  padding: 8px;
+  min-height: 32px;
+  line-height: 1.4;
+  background: #333;
+  color: #fff;
+  border: 1px solid #555;
+  border-radius: 4px;
+  font-size: 12px;
+  margin-bottom: 10px;
+  box-sizing: border-box;
+}
+
+.sage-textarea {
+  min-height: 150px;
+}
+
+.sage-textarea--monospace {
+  font-family: monospace;
+}
+
+.sage-textarea--inherit {
+  font-family: inherit;
+}
+
+.sage-textarea--resize-vertical {
+  resize: vertical;
+}
+
+.sage-textarea--resize-horizontal {
+  resize: horizontal;
+}
+
+.sage-textarea--resize-both {
+  resize: both;
+}
+
+.sage-textarea--resize-none {
+  resize: none;
+}
+
+.sage-hidden-copy-textarea {
+  position: fixed;
+  left: -9999px;
+  top: 0;
+  opacity: 0 !important;
+  pointer-events: none;
+}
+
+.sage-text-output-widget {
+  opacity: 0.6;
+  font-size: 9pt;
+}
+
+.sage-hidden-input {
+  opacity: 0 !important;
+}
+
+.sage-checkbox-row {
+  display: flex;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.sage-checkbox-input {
+  margin-right: 8px;
+  cursor: pointer;
+}
+
+.sage-radio-label,
+.sage-checkbox-label {
+  cursor: pointer;
+  color: #fff;
+  font-size: 12px;
+  user-select: none;
+}
+
+.sage-checkbox-label.sage-disabled,
+.sage-radio-label.sage-disabled {
+  color: #888;
+}
+
+.sage-slider-row {
+  margin-bottom: 12px;
+}
+
+.sage-slider-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.sage-slider-label {
+  font-size: 12px;
+  color: #fff;
+}
+
+.sage-slider-value {
+  color: #fff;
+  font-size: 12px;
+  font-weight: 500;
+  min-width: 40px;
+  text-align: right;
+}
+
+.sage-slider {
+  width: 100%;
+  margin: 5px 0;
+}
+
+.sage-radio-group {
+  display: flex;
+  gap: 8px;
+}
+
+.sage-radio-group--vertical {
+  flex-direction: column;
+}
+
+.sage-radio-group--horizontal {
+  flex-direction: row;
+}
+
+.sage-radio-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.sage-radio-input {
+  margin-right: 6px;
+  cursor: pointer;
+}
+
+.sage-form-row {
+  margin-bottom: 16px;
+}
+
+.sage-form-row--horizontal {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.sage-form-row--horizontal .sage-form-label {
+  min-width: 120px;
+  margin-bottom: 0;
+}
+
+.sage-form-row-element {
+  flex: 1;
+}
+
+.sage-form-label {
+  display: block;
+  margin-bottom: 4px;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.sage-form-help-text {
+  font-size: 11px;
+  color: #999;
+  margin-top: 4px;
+  font-style: italic;
+}
+
+.sage-form-group {
+  margin-bottom: 24px;
+}
+
+.sage-form-group-title {
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 12px;
+  margin-top: 0;
+}
+
+.sage-toggle-row {
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sage-checkbox {
+  margin: 0;
+  transform: scale(1.2);
+}
+
+.sage-toggle-label {

@@ -1,0 +1,1022 @@
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: bold;
+  cursor: pointer;
+  user-select: none;
+}
+
+.sage-dropdown-container {
+  position: relative;
+  width: 100%;
+}
+
+.sage-dropdown-button {
+  width: 100%;
+  padding: 8px;
+  background: #333;
+  color: #fff;
+  border: 1px solid #555;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  user-select: none;
+}
+
+.sage-dropdown-menu,
+.cache-dropdown-submenu {
+  position: fixed;
+  left: var(--cache-dropdown-left, 0);
+  top: var(--cache-dropdown-top, 0);
+  width: var(--cache-dropdown-width, auto);
+  min-width: 240px;
+  max-width: calc(100vw - 20px);
+  background: #333;
+  border: 1px solid #555;
+  border-top: none;
+  border-radius: 0 0 4px 4px;
+  max-height: 600px;
+  overflow-y: auto;
+  z-index: 1000;
+  display: none;
+  box-shadow: 2px 2px 8px rgba(0,0,0,0.3);
+  box-sizing: border-box;
+}
+
+.sage-dropdown-menu.open,
+.cache-dropdown-submenu.open {
+  display: block;
+}
+
+.sage-file-selector-container {
+  margin-bottom: 15px;
+}
+
+.cache-dropdown-item.uncached {
+  font-style: italic;
+  color: #999;
+}
+
+.cache-dropdown-item.cache-dropdown-empty {
+  color: #888;
+  cursor: default;
+}
+
+.cache-dropdown-item.cache-dropdown-error {
+  color: #f44336;
+}
+
+.sage-info-message {
+  text-align: center;
+  padding: 20px;
+  color: #888;
+  font-style: italic;
+}
+
+.sage-info-box {
+  padding: 15px;
+  margin: 10px 0;
+  border-radius: 8px;
+  background: #2a2a2a;
+}
+
+.sage-info-box.sage-info-success {
+  background: #2d4a2d;
+  border: 1px solid #4CAF50;
+}
+
+.sage-info-box.sage-info-error {
+  background: #4a2d2d;
+  border: 1px solid #F44336;
+}
+
+.sage-info-box.sage-info-warning {
+  background: #2a2a2a;
+  border: 1px solid #569cd6;
+}
+
+.sage-info-heading {
+  margin: 0 0 10px 0;
+  color: #fff;
+}
+
+.sage-info-box.sage-info-success .sage-info-heading {
+  color: #4CAF50;
+}
+
+.sage-info-box.sage-info-error .sage-info-heading {
+  color: #F44336;
+}
+
+.sage-info-box.sage-info-warning .sage-info-heading {
+  color: #569cd6;
+}
+
+.sage-info-message.sage-info-success {
+  color: #4CAF50;
+}
+
+.sage-info-message.sage-info-error {
+  color: #F44336;
+}
+
+.sage-info-message.sage-info-warning {
+  color: #569cd6;
+}
+
+.sage-info-text {
+  margin: 0 0 8px 0;
+}
+
+.sage-info-panel {
+  padding: 15px;
+  background: #2a2a2a;
+  border-radius: 8px;
+  margin-top: 10px;
+  font-family: monospace;
+  font-size: 12px;
+  line-height: 1.4;
+  color: #e0e0e0;
+}
+
+.sage-info-empty {
+  color: #888;
+  text-align: center;
+  padding: 20px;
+}
+
+.sage-info-header {
+  margin-bottom: 15px;
+  padding-bottom: 10px;
+  border-bottom: 2px solid #444;
+}
+
+.sage-info-title {
+  margin: 0 0 5px 0;
+  color: #569cd6;
+  font-size: 16px;
+}
+
+.sage-info-version {
+  color: #4CAF50;
+  font-size: 14px;
+  margin-bottom: 5px;
+}
+
+.sage-info-chip-row {
+  color: #FF9800;
+  font-size: 12px;
+}
+
+.sage-info-chip {
+  display: inline-block;
+  background: #333;
+  padding: 2px 6px;
+  border-radius: 3px;
+}
+
+.sage-info-chip + .sage-info-chip {
+  margin-left: 5px;
+}
+
+.sage-description-text {
+  color: #B0BEC5;
+  font-style: italic;
+  padding: 8px;
+  background: #1a1a1a;
+  border-radius: 4px;
+  margin-top: 5px;
+}
+
+.sage-info-block {
+  margin-bottom: 12px;
+}
+
+.sage-info-label {
+  font-weight: bold;
+}
+
+.sage-info-label--blue {
+  color: #2196F3;
+}
+
+.sage-info-label--magenta {
+  color: #E91E63;
+}
+
+.sage-info-label--purple {
+  color: #9C27B0;
+}
+
+.sage-info-label--green {
+  color: #4CAF50;
+}
+
+.sage-info-label--orange {
+  color: #FF9800;
+}
+
+.sage-info-label--gray {
+  color: #607D8B;
+}
+
+.sage-info-label--teal {
+  color: #00BCD4;
+}
+
+.sage-info-label--brown {
+  color: #795548;
+}
+
+.sage-info-key {
+  color: #64B5F6;
+}
+
+.sage-info-value {
+  color: #e0e0e0;
+}
+
+.sage-info-value--break {
+  word-break: break-all;
+}
+
+.sage-info-value--success {
+  color: #81C784;
+}
+
+.sage-info-value--small {
+  font-size: 11px;
+  color: #B0BEC5;
+}
+
+.sage-info-link {
+  color: #CE93D8;
+  text-decoration: none;
+}
+
+.sage-info-link:hover {
+  text-decoration: underline;
+}
+
+.sage-info-link--warning {
+  color: #FFB74D;
+}
+
+.sage-trigger-words-block {
+  margin-bottom: 12px;
+}
+
+.sage-trigger-words-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.sage-trigger-words-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.sage-trigger-btn {
+  padding: 2px 6px;
+  font-size: 11px;
+  border: 1px solid #555;
+  background: #2a2a2a;
+  color: #ddd;
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.sage-trigger-words-text {
+  color: #F8BBD9;
+  background: #2a1a2a;
+  padding: 6px;
+  border-radius: 4px;
+  margin-top: 5px;
+  font-family: monospace;
+}
+
+.sage-stats-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 5px;
+}
+
+.sage-version-card {
+  margin: 4px 0;
+  padding: 6px;
+  background: #1a1a1a;
+  border-left: 3px solid transparent;
+  border-radius: 3px;
+}
+
+.sage-version-card--current {
+  background: #333;
+  border-left-color: #00BCD4;
+}
+
+.sage-version-card--downloaded {
+  background: #1a2a1a;
+  border-left-color: #4CAF50;
+}
+
+.sage-version-card--available {
+  background: #2a1a1a;
+  border-left-color: #FF9800;
+}
+
+.sage-version-card-status {
+  display: inline-block;
+  margin-top: 4px;
+  font-size: 10px;
+  font-weight: bold;
+}
+
+.sage-version-card-status--current {
+  color: #00E676;
+}
+
+.sage-version-card-status--downloaded {
+  color: #4CAF50;
+}
+
+.sage-version-card-status--available {
+  color: #FF9800;
+}
+
+.sage-gallery-container {
+  margin-top: 15px;
+  padding-top: 15px;
+  border-top: 1px solid #444;
+}
+
+.sage-gallery-header {
+  margin-bottom: 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.sage-gallery-title {
+  color: #E91E63;
+}
+
+.sage-gallery-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 10px;
+  max-height: 500px;
+  overflow-y: auto;
+}
+
+.sage-gallery-item {
+  position: relative;
+  border-radius: 4px;
+  overflow: hidden;
+  background: #1a1a1a;
+  width: 150px;
+  height: 100px;
+}
+
+.sage-gallery-image {
+  width: 150px;
+  height: 100px;
+  object-fit: cover;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.sage-gallery-no-image {
+  color: #999;
+  font-size: 11px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100px;
+}
+
+.sage-nsfw-indicator {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  background: #F44336;
+  color: white;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 10px;
+  font-weight: bold;
+}
+
+.sage-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0,0,0,0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  cursor: pointer;
+}
+
+.sage-backdrop-image {
+  max-width: 90%;
+  max-height: 90%;
+  object-fit: contain;
+  border-radius: 8px;
+}
+
+.sage-main-container {
+  padding: 10px;
+  height: 100%;
+  overflow-y: auto;
+  background: #1e1e1e;
+  color: #ffffff;
+}
+
+.sage-header {
+  margin-bottom: 15px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #444;
+}
+
+.sage-header-title {
+  margin: 0;
+  color: #ffffff;
+  font-size: 16px;
+}
+
+.sage-header-subtitle {
+  margin: 5px 0 0 0;
+  color: #aaa;
+  font-size: 12px;
+}
+
+.sage-loading-indicator {
+  text-align: center;
+  padding: 20px;
+  color: #888;
+  font-style: italic;
+}
+
+.cache-dropdown-item {
+  padding: 6px 10px;
+  cursor: pointer;
+  position: relative;
+  border-bottom: 1px solid #444;
+  font-size: 11px;
+}
+
+.cache-dropdown-item:hover {
+  background: #444;
+}
+
+.cache-dropdown-item.folder {
+  background: #383838;
+  font-weight: bold;
+}
+
+.cache-dropdown-item.folder:hover {
+  background: #484848;
+}
+
+.cache-dropdown-item.folder::after {
+  content: "▶";
+  float: right;
+}
+
+.cache-dropdown-item.file {
+  color: #e0e0e0;
+}
+
+.cache-dropdown-item.selected {
+  background: #4CAF50;
+}
+
+.sage-progress-container {
+  margin-top: 10px;
+  display: none;
+}
+
+.sage-progress-container.open {
+  display: block;
+}
+
+.sage-inline-progress-message {
+  color: #fff;
+  font-size: 12px;
+}
+
+.sage-progress-label {
+  color: #fff;
+  font-size: 12px;
+  margin-bottom: 5px;
+}
+
+.sage-progress-bar-outer {
+  width: 100%;
+  height: 20px;
+  border-radius: 4px;
+  overflow: hidden;
+  border: 1px solid #555;
+  background: #333;
+}
+
+.sage-progress-dialog-bar,
+.sage-inline-progress-bar {
+  width: 100%;
+  height: 16px;
+  border-radius: 4px;
+  overflow: hidden;
+  background: #444;
+  margin-bottom: 15px;
+  position: relative;
+}
+
+.sage-progress-bar-inner {
+  height: 100%;
+  width: var(--sage-progress-width, 0%);
+  transition: width 0.3s ease;
+  border-radius: 4px;
+  position: relative;
+  background: linear-gradient(90deg, #9C27B0, #E91E63);
+}
+
+.sage-progress-dialog-fill,
+.sage-inline-progress-fill {
+  height: 100%;
+  width: var(--sage-progress-width, 0%);
+  transition: width 0.3s ease;
+  border-radius: 4px;
+  position: relative;
+  background: linear-gradient(90deg, #4CAF50, #66BB6A);
+}
+
+.sage-progress-text,
+.sage-progress-dialog-text {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: #fff;
+  font-weight: bold;
+  text-shadow: 1px 1px 2px rgba(0,0,0,0.7);
+  pointer-events: none;
+  font-size: 12px;
+}
+
+.sage-inline-progress-text {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: #fff;
+  font-weight: bold;
+  text-shadow: 1px 1px 2px rgba(0,0,0,0.7);
+  pointer-events: none;
+  font-size: 10px;
+}
+
+.sage-inline-progress-container {
+  background: #2a2a2a;
+  border: 1px solid #555;
+  border-radius: 8px;
+  padding: 15px;
+  margin: 10px 0;
+  display: none;
+  transition: all 0.3s ease;
+}
+
+.sage-inline-progress-container.open {
+  display: block;
+}
+
+.sage-inline-progress-title {
+  color: #fff;
+  font-weight: bold;
+  margin-bottom: 8px;
+  font-size: 13px;
+}
+
+.sage-inline-progress-message {
+  color: #ccc;
+  font-size: 12px;
+  margin-bottom: 12px;
+  min-height: 16px;
+}
+
+.sage-progress-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.8);
+  z-index: 10001;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sage-progress-dialog {
+  background: #2d2d2d;
+  border-radius: 8px;
+  padding: 20px;
+  min-width: 500px;
+  max-width: 700px;
+  border: 1px solid #555;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+}
+
+.sage-progress-title {
+  color: #fff;
+  margin: 0 0 15px 0;
+  font-size: 16px;
+}
+
+.sage-progress-dialog-msg {
+  margin-bottom: 20px;
+  min-height: 20px;
+}
+
+.sage-progress-dialog-msg--success {
+  color: #4CAF50;
+}
+
+.sage-progress-dialog-body {
+  padding: 30px;
+  min-width: 400px;
+  text-align: center;
+}
+
+.sage-progress-status-text {
+  color: #aaa;
+  font-size: 12px;
+  margin-bottom: 15px;
+  font-family: monospace;
+}
+
+.sage-preview-container {
+  background: #1a1a1a;
+  border-radius: 4px;
+  padding: 10px;
+  margin-bottom: 15px;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.sage-preview-label {
+  color: #888;
+  font-size: 11px;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+}
+
+.sage-image-preview {
+  max-width: 100%;
+  max-height: 150px;
+  object-fit: contain;
+  display: block;
+  margin-bottom: 10px;
+  border-radius: 4px;
+}
+
+.sage-text-preview {
+  color: #ccc;
+  font-size: 12px;
+  line-height: 1.5;
+  word-wrap: break-word;
+}
+
+.sage-progress-cancel-btn {
+  background: #f44336;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  width: 100%;
+}
+
+.sage-inline-progress-html-title {
+  font-size: 24px;
+  margin-bottom: 15px;
+}
+
+.sage-inline-progress-html-message {
+  margin-bottom: 10px;
+}
+
+.sage-inline-progress-html-summary {
+  color: #ccc;
+  font-size: 13px;
+  margin-bottom: 15px;
+}
+
+.sage-inline-progress-html-bar {
+  width: 100%;
+  max-width: 400px;
+  height: 24px;
+  background: #333;
+  border-radius: 12px;
+  overflow: hidden;
+  margin: 0 auto;
+  border: 1px solid #555;
+}
+
+.sage-inline-progress-html-fill {
+  width: var(--sage-inline-progress-width, 0%);
+  height: 100%;
+  background: linear-gradient(90deg, #4CAF50, #66BB6A);
+  transition: width 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: bold;
+  font-size: 12px;
+}
+
+.sage-batch-progress-fill {
+  width: var(--sage-batch-progress-width, 0%);
+  height: 100%;
+  background: linear-gradient(90deg, #4CAF50, #66BB6A);
+  transition: width 0.3s ease;
+}
+
+.sage-batch-progress-container {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 20px;
+  background: #2a2a2a;
+  border-radius: 6px;
+  margin-bottom: 15px;
+}
+
+.sage-batch-progress-summary {
+  color: #4CAF50;
+  margin-bottom: 10px;
+}
+
+.sage-batch-progress-track {
+  width: 100%;
+  height: 8px;
+  background: #333;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+
+.sage-flex-container {
+  display: flex;
+  flex-direction: var(--sage-flex-direction, row);
+  justify-content: var(--sage-flex-justify, flex-start);
+  align-items: var(--sage-flex-align, stretch);
+  gap: var(--sage-flex-gap, 0);
+  flex-wrap: var(--sage-flex-wrap, nowrap);
+  padding: var(--sage-flex-padding, 0);
+  background: var(--sage-flex-background, transparent);
+}
+
+.sage-grid-container {
+  display: grid;
+  grid-template-columns: var(--sage-grid-columns, repeat(1, 1fr));
+  grid-template-rows: var(--sage-grid-rows, none);
+  gap: var(--sage-grid-gap, 16px);
+  column-gap: var(--sage-grid-column-gap, unset);
+  row-gap: var(--sage-grid-row-gap, unset);
+  padding: var(--sage-grid-padding, 0);
+  background: var(--sage-grid-background, transparent);
+}
+
+.sage-card {
+  overflow: hidden;
+  background: var(--sage-card-background, #2a2a2a);
+  border: var(--sage-card-border, 1px solid #444);
+  border-radius: var(--sage-card-border-radius, 8px);
+}
+
+.sage-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(0, 0, 0, 0.2);
+  padding: var(--sage-card-header-padding, 12px 16px);
+  border-bottom: 1px solid var(--sage-card-header-border-color, #444);
+}
+
+.sage-card-title {
+  margin: 0;
+  color: #ccc;
+  font-size: 14px;
+  font-weight: bold;
+}
+
+.sage-card-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.sage-card-actions .sage-button,
+.sage-card-actions .sage-button-group {
+  margin-top: 0;
+}
+
+.sage-card-content {
+  padding: var(--sage-card-content-padding, 16px);
+}
+
+.sage-section {
+  margin-top: var(--sage-section-margin-top, 16px);
+  background: var(--sage-section-background, transparent);
+}
+
+.sage-section-title {
+  font-weight: bold;
+  padding-bottom: 8px;
+  border-bottom: 2px solid var(--sage-section-border-color, #4CAF50);
+  margin-bottom: 12px;
+  font-size: var(--sage-section-title-size, 16px);
+  color: var(--sage-section-title-color, #569cd6);
+}
+
+.sage-section-title--collapsible {
+  cursor: pointer;
+  user-select: none;
+}
+
+.sage-section-title-arrow {
+  display: inline-block;
+  transition: transform 0.2s;
+}
+
+.sage-section-content {
+  padding: var(--sage-section-content-padding, 16px);
+}
+
+.sage-section-content--collapsed {
+  display: none;
+}
+
+.sage-scroll-container {
+  max-height: var(--sage-scroll-max-height, 400px);
+  max-width: var(--sage-scroll-max-width, 100%);
+  padding: var(--sage-scroll-padding, 0);
+  background: var(--sage-scroll-background, transparent);
+  overflow-y: auto;
+  overflow-x: auto;
+}
+
+.sage-scroll-container--hidden-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.sage-scroll-container--hidden-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.sage-split-pane {
+  display: flex;
+  width: 100%;
+  gap: var(--sage-split-gap, 8px);
+}
+
+.sage-split-pane-left {
+  overflow: auto;
+  flex: var(--sage-split-left-flex, 0 0 50%);
+  min-width: var(--sage-split-left-min-width, 200px);
+}
+
+.sage-split-pane-right {
+  overflow: auto;
+  flex: var(--sage-split-right-flex, 0 0 50%);
+  min-width: var(--sage-split-right-min-width, 200px);
+}
+
+.sage-split-pane-handle {
+  width: 4px;
+  background: #444;
+  cursor: col-resize;
+  flex-shrink: 0;
+  transition: background 0.2s;
+}
+
+.sage-split-pane-handle-active {
+  background: #4CAF50;
+}
+
+.sage-resizing {
+  cursor: col-resize !important;
+}
+
+.sage-centered-container {
+  margin-left: auto;
+  margin-right: auto;
+  max-width: var(--sage-centered-max-width, 800px);
+  margin: var(--sage-centered-margin, 0 auto 0 auto);
+  padding: var(--sage-centered-padding, 16px);
+  background: var(--sage-centered-background, transparent);
+}
+
+.sage-tabs-header {
+  display: flex;
+  background: #1e1e1e;
+  border-bottom: 2px solid #333;
+  padding: 0 10px;
+  gap: 2px;
+  overflow-x: auto;
+  min-height: 50px;
+  position: relative;
+}
+
+.sage-tabs-content-area {
+  flex: 1;
+  overflow: auto;
+}
+
+.sage-tab-button {
+  padding: 10px 20px;
+  border: none;
+  background: #2a2a2a;
+  color: #ccc;
+  cursor: pointer;
+  border-radius: 6px 6px 0 0;
+  font-size: 13px;
+  font-weight: normal;
+  transition: all 0.2s ease;
+  border-bottom: 2px solid transparent;
+  position: relative;
+  top: 2px;
+  flex-shrink: 0;
+  transform: translateY(0);
+}
+
+.sage-tab-button:hover:not(.active) {
+  background: #3a3a3a;
+  color: white;
+  transform: translateY(-1px);
+}
+
+.sage-tab-button.active {
+  background: #4CAF50;
+  color: white;
+  font-weight: bold;
+  border-bottom: 2px solid #4CAF50;
+  transform: translateY(-1px);
+}
+
+.sage-tab-container {
+  display: none;
+  height: 100%;
+  overflow: auto;
+}
+
+.sage-tab-container.active {
+  display: block;
+}
+
+.sage-tab-hidden {
+  display: none !important;
+}
+
+.sage-tab-loading {
+  text-align: center;
+  padding: 40px;
+  color: #888;
+}
+
+.sage-tab-loading-heading {
+  font-size: 16px;
+  margin-bottom: 10px;
+}
+
+.sage-tab-loading-message {
+  font-size: 12px;
+}
+
+.sage-tab-error {
+  color: #f44336;
+  padding: 20px;
+  text-align: center;
+}
+
+.sage-tab-error-heading {
+  font-size: 16px;
+  margin-bottom: 10px;
+}
+
+.sage-tab-error-text {
+  font-size: 14px;
+  opacity: 0.8;
+}
+
