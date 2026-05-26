@@ -5,6 +5,7 @@
 
 import { api } from "../../../../scripts/api.js";
 import { generateWildcardPrompt } from "../shared/api/wildcardApi.js";
+import { ensurePromptBuilderStyles } from './promptBuilderStyles.js';
 
 /**
  * Prompt Builder API class for managing server communication
@@ -184,10 +185,10 @@ export class PromptBuilderApi {
                 return true;
             } else {
                 // Fallback for older browsers
+                ensurePromptBuilderStyles();
                 const textArea = document.createElement('textarea');
                 textArea.value = text;
-                textArea.style.position = 'fixed';
-                textArea.style.left = '-9999px';
+                textArea.className = 'prompt-builder-hidden-textarea';
                 document.body.appendChild(textArea);
                 textArea.select();
                 const success = document.execCommand('copy');

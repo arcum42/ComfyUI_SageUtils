@@ -3,6 +3,8 @@
  * Handles prompt storage, retrieval, and management
  */
 
+import { ensurePromptBuilderStyles } from './promptBuilderStyles.js';
+
 /**
  * Saved Prompts API wrapper
  */
@@ -100,6 +102,7 @@ export const savedPromptsComponent = {
      * Create the saved prompts component
      */
     create() {
+        ensurePromptBuilderStyles();
         this.elements.container = document.createElement('div');
         this.elements.container.className = 'saved-prompts-component';
 
@@ -619,15 +622,10 @@ ${prompt.tags && prompt.tags.length ? 'Tags: ' + prompt.tags.join(', ') : ''}
     },
 
     showSuccess(message) {
-        // Simple toast notification
+        ensurePromptBuilderStyles();
         const toast = document.createElement('div');
         toast.className = 'success-toast';
         toast.textContent = message;
-        toast.style.cssText = `
-            position: fixed; top: 20px; right: 20px; z-index: 10000;
-            background: #4caf50; color: white; padding: 12px 16px;
-            border-radius: 4px; box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-        `;
         document.body.appendChild(toast);
         setTimeout(() => document.body.removeChild(toast), 3000);
     }
