@@ -5,6 +5,7 @@
 
 import { GenericFileManager } from "../file/fileManager.js";
 import { createSelect } from "../components/formElements.js";
+import { loadSidebarStyle } from './sidebarStyles.js';
 
 /**
  * Creates a folder selector for the Files tab
@@ -14,22 +15,9 @@ import { createSelect } from "../components/formElements.js";
 function createFolderSelector(onFolderChange) {
     const selectorContainer = document.createElement('div');
     selectorContainer.className = 'folder-selector';
-    selectorContainer.style.cssText = `
-        padding: 15px;
-        background: #2d2d2d;
-        border: 1px solid #3e3e42;
-        border-radius: 8px;
-        margin-bottom: 15px;
-    `;
 
     const label = document.createElement('label');
-    label.style.cssText = `
-        display: block;
-        color: #4CAF50;
-        font-size: 14px;
-        font-weight: bold;
-        margin-bottom: 8px;
-    `;
+    label.className = 'folder-selector-label';
     label.textContent = 'Folder:';
 
     // Add folder options
@@ -41,20 +29,11 @@ function createFolderSelector(onFolderChange) {
     const folderDropdown = createSelect({
         items: folders,
         value: 'notes',
+        className: 'folder-selector-dropdown',
         onChange: (e) => {
             if (onFolderChange) {
                 onFolderChange(e.target.value);
             }
-        },
-        styles: {
-            width: '100%',
-            padding: '8px 12px',
-            background: '#333',
-            color: '#fff',
-            border: '1px solid #555',
-            borderRadius: '4px',
-            fontSize: '13px',
-            cursor: 'pointer'
         }
     });
 
@@ -77,28 +56,13 @@ function createFolderSelector(onFolderChange) {
 function createNotesHeader() {
     const header = document.createElement('div');
     header.className = 'notes-header';
-    header.style.cssText = `
-        padding: 15px;
-        background: #2d2d2d;
-        border: 1px solid #3e3e42;
-        border-radius: 8px;
-        margin-bottom: 15px;
-    `;
 
     const title = document.createElement('h3');
-    title.style.cssText = `
-        margin: 0 0 5px 0;
-        color: #569cd6;
-        font-size: 16px;
-    `;
+    title.className = 'notes-title';
     title.textContent = 'File Manager';
 
     const description = document.createElement('p');
-    description.style.cssText = `
-        margin: 0;
-        color: #888;
-        font-size: 13px;
-    `;
+    description.className = 'notes-description';
     description.textContent = 'View, edit, and create files across different folders';
 
     header.appendChild(title);
@@ -114,24 +78,13 @@ function createNotesHeader() {
 function createStatusDisplay() {
     const statusContainer = document.createElement('div');
     statusContainer.className = 'notes-status';
-    statusContainer.style.cssText = `
-        margin-bottom: 15px;
-        padding: 8px 12px;
-        background: #2a2a2a;
-        border: 1px solid #444;
-        border-radius: 4px;
-        color: #4CAF50;
-        font-size: 12px;
-        min-height: 20px;
-        transition: all 0.3s ease;
-    `;
 
     let statusTimeout;
 
     function setStatus(message, isError = false) {
         statusContainer.textContent = message;
-        statusContainer.style.color = isError ? '#f44336' : '#4CAF50';
-        statusContainer.style.opacity = '1';
+        statusContainer.classList.toggle('notes-status--error', isError);
+        statusContainer.classList.remove('notes-status--faded');
         
         // Clear previous timeout
         if (statusTimeout) {
@@ -141,11 +94,11 @@ function createStatusDisplay() {
         // Auto-clear status after 3 seconds unless it's an error
         if (!isError && message) {
             statusTimeout = setTimeout(() => {
-                statusContainer.style.opacity = '0.5';
+                statusContainer.classList.add('notes-status--faded');
                 setTimeout(() => {
                     if (statusContainer.textContent === message) {
                         statusContainer.textContent = 'Ready';
-                        statusContainer.style.opacity = '1';
+                        statusContainer.classList.remove('notes-status--faded');
                     }
                 }, 300);
             }, 3000);
@@ -168,6 +121,7 @@ function createStatusDisplay() {
 export function createFilesTab(container) {
     // Clear container
     container.innerHTML = '';
+    loadSidebarStyle('files-tab-styles', 'extensions/comfyui_sageutils/sidebar/filesTab.css');
 
     // Create header
     const header = createNotesHeader();

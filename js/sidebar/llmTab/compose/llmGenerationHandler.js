@@ -99,7 +99,7 @@ export async function handleSend(state, textarea, responseSection, sendBtn, stop
         const emptyMessage = historySection.querySelector('.llm-history-empty');
         if (emptyMessage) {
             emptyMessage.textContent = 'History saving disabled for this generation';
-            emptyMessage.style.display = 'block';
+            emptyMessage.classList.remove('llm-hidden');
         }
     }
     
@@ -119,14 +119,18 @@ export async function handleSend(state, textarea, responseSection, sendBtn, stop
     // Update UI for generation
     state.generating = true;
     sendBtn.disabled = true;
-    stopBtn.style.display = 'inline-block';
-    responseSection.querySelector('.llm-copy-btn').style.display = 'none';
-    responseSection.querySelector('.llm-copy-to-node-btn').style.display = 'none';
+    stopBtn.classList.remove('llm-hidden');
+    const copyBtn = responseSection.querySelector('.llm-copy-btn');
+    const copyToNodeBtn = responseSection.querySelector('.llm-copy-to-node-btn');
     const sendToPromptBtn = responseSection.querySelector('.llm-send-to-prompt-btn');
-    if (sendToPromptBtn) sendToPromptBtn.style.display = 'none';
+    if (copyBtn) copyBtn.classList.add('llm-hidden');
+    if (copyToNodeBtn) copyToNodeBtn.classList.add('llm-hidden');
+    if (sendToPromptBtn) sendToPromptBtn.classList.add('llm-hidden');
     
     const responseDisplay = responseSection.querySelector('.llm-response-display');
-    responseDisplay.classList.add('generating');
+    if (responseDisplay) {
+        responseDisplay.classList.add('generating');
+    }
 
     // Phase 1: show loading spinner
     showLoadingOverlay(responseDisplay, state.model);
@@ -439,7 +443,7 @@ function updatePhaseBadge(responseSection, phase, label) {
     const phaseKey = String(phase || 'idle').toLowerCase().replace(/[^a-z0-9-]/g, '-');
     badge.classList.add(`llm-phase-${phaseKey}`);
     badge.textContent = label || 'Idle';
-    badge.style.display = 'inline-flex';
+    badge.classList.remove('llm-hidden');
 }
 
 /**
@@ -457,10 +461,12 @@ export function handleStop(state, responseSection, sendBtn, stopBtn) {
     
     state.generating = false;
     sendBtn.disabled = false;
-    stopBtn.style.display = 'none';
+    stopBtn.classList.add('llm-hidden');
     
     const responseDisplay = responseSection.querySelector('.llm-response-display');
-    responseDisplay.classList.remove('generating');
+    if (responseDisplay) {
+        responseDisplay.classList.remove('generating');
+    }
     
     showStatus(responseSection, 'Generation stopped', 'warning');
     updatePhaseBadge(responseSection, 'stopped', 'Stopped');
@@ -783,11 +789,7 @@ async function onGenerationComplete(state, fullResponse, responseSection, sendBt
     // Show/hide Save to History button based on skipSave state
     const saveToHistoryBtn = responseSection?.querySelector('.llm-save-to-history-btn');
     if (saveToHistoryBtn) {
-        if (skipSave) {
-            saveToHistoryBtn.style.display = 'inline-block';
-        } else {
-            saveToHistoryBtn.style.display = 'none';
-        }
+        saveToHistoryBtn.classList.toggle('llm-hidden', !skipSave);
     }
     
     // Reset empty message text back to default
@@ -803,15 +805,19 @@ async function onGenerationComplete(state, fullResponse, responseSection, sendBt
     state.generating = false;
     state.streamController = null;
     sendBtn.disabled = false;
-    stopBtn.style.display = 'none';
+    stopBtn.classList.add('llm-hidden');
     
     const responseDisplay = responseSection.querySelector('.llm-response-display');
-    responseDisplay.classList.remove('generating');
+    if (responseDisplay) {
+        responseDisplay.classList.remove('generating');
+    }
     
-    responseSection.querySelector('.llm-copy-btn').style.display = 'inline-block';
-    responseSection.querySelector('.llm-copy-to-node-btn').style.display = 'inline-block';
+    const copyBtn = responseSection.querySelector('.llm-copy-btn');
+    const copyToNodeBtn = responseSection.querySelector('.llm-copy-to-node-btn');
     const sendToPromptBtn = responseSection.querySelector('.llm-send-to-prompt-btn');
-    if (sendToPromptBtn) sendToPromptBtn.style.display = 'inline-block';
+    if (copyBtn) copyBtn.classList.remove('llm-hidden');
+    if (copyToNodeBtn) copyToNodeBtn.classList.remove('llm-hidden');
+    if (sendToPromptBtn) sendToPromptBtn.classList.remove('llm-hidden');
     
     showStatus(responseSection, 'Generation complete', 'success');
     updatePhaseBadge(responseSection, 'complete', 'Complete');
@@ -826,10 +832,12 @@ function onGenerationError(state, error, responseSection, sendBtn, stopBtn) {
     state.generating = false;
     state.streamController = null;
     sendBtn.disabled = false;
-    stopBtn.style.display = 'none';
+    stopBtn.classList.add('llm-hidden');
     
     const responseDisplay = responseSection.querySelector('.llm-response-display');
-    responseDisplay.classList.remove('generating');
+    if (responseDisplay) {
+        responseDisplay.classList.remove('generating');
+    }
 
     const errorMessage = error?.message || 'An unknown error occurred during generation';
     showStatus(responseSection, `Error: ${errorMessage}`, 'error');
@@ -879,16 +887,21 @@ function showStatus(responseSection, message, type, options = {}) {
     
     statusMessage.textContent = message;
     statusMessage.className = `llm-status-message llm-status-${type}`;
-    statusMessage.style.display = message ? 'block' : 'none';
+    statusMessage.classList.toggle('llm-hidden', !message);
     
     const progressBar = responseSection.querySelector('.llm-progress-bar-container');
     if (progressBar) {
+        const fill = progressBar.querySelector('.llm-progress-bar-fill');
         if (progress !== null && progress >= 0 && progress <= 1) {
-            progressBar.style.display = 'block';
-            const fill = progressBar.querySelector('.llm-progress-bar-fill');
-            fill.style.width = `${Math.round(progress * 100)}%`;
+            progressBar.classList.remove('llm-hidden');
+            if (fill) {
+                fill.style.width = `${Math.round(progress * 100)}%`;
+            }
         } else {
-            progressBar.style.display = 'none';
+            progressBar.classList.add('llm-hidden');
+            if (fill) {
+                fill.style.width = '0%';
+            }
         }
     }
     
@@ -896,7 +909,7 @@ function showStatus(responseSection, message, type, options = {}) {
     if (message && autoHide && type !== 'error') {
         setTimeout(() => {
             if (statusMessage.textContent === message) {
-                statusMessage.style.display = 'none';
+                statusMessage.classList.add('llm-hidden');
             }
         }, 5000);
     }

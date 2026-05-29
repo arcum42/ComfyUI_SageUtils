@@ -312,11 +312,11 @@ export function setupEventHandlers(
                 
                 // Visual feedback - show success
                 sendToPromptBtn.textContent = '✓ Sent!';
-                sendToPromptBtn.style.background = 'var(--success-color, #4caf50)';
+                sendToPromptBtn.classList.add('llm-btn-success-flash');
                 
                 setTimeout(() => {
                     sendToPromptBtn.textContent = originalText;
-                    sendToPromptBtn.style.background = '';
+                    sendToPromptBtn.classList.remove('llm-btn-success-flash');
                     sendToPromptBtn.disabled = false;
                 }, 1500);
             }).catch(err => {
@@ -375,7 +375,7 @@ export function setupEventHandlers(
     // Clipboard paste handler (on document for global paste)
     const pasteHandler = async (e) => {
         // Only handle paste when LLM tab is active and vision section is visible
-        if (!visionSection || visionSection.style.display === 'none') return;
+        if (!visionSection || visionSection.classList.contains('llm-hidden')) return;
         
         const items = Array.from(e.clipboardData.items);
         const imageItems = items.filter(item => item.type.startsWith('image/'));
@@ -447,7 +447,7 @@ export function setupEventHandlers(
     if (skipSaveCheckbox) {
         skipSaveCheckbox.addEventListener('change', () => {
             const emptyMessage = historySection.querySelector('.llm-history-empty');
-            if (emptyMessage && emptyMessage.style.display !== 'none') {
+            if (emptyMessage && !emptyMessage.classList.contains('llm-hidden')) {
                 if (skipSaveCheckbox.checked) {
                     emptyMessage.textContent = 'History saving disabled (uncheck to save)';
                 } else {
@@ -505,15 +505,7 @@ export function setupEventHandlers(
             }
             
             // Hide the button
-            saveToHistoryBtn.style.display = 'none';
-            
-            // Clear unsaved state
-            delete state._unsavedPrompt;
-            delete state._unsavedProvider;
-            delete state._unsavedModel;
-            delete state._unsavedResponse;
-            
-            // Show success feedback
+        saveToHistoryBtn.classList.add('llm-hidden');
             console.log('Conversation saved to history');
         });
     }
@@ -589,80 +581,28 @@ function setupComposeTemplateHandlers(state, inputSection, textarea) {
  */
 function showTemplateActionDialog(templateKey, templateContent, textarea, templateState, state, templateSelect) {
     const dialog = document.createElement('div');
-    dialog.style.cssText = `
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: rgba(0, 0, 0, 0.7);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        z-index: 10000;
-    `;
+    dialog.className = 'llm-dialog-overlay';
 
     const content = document.createElement('div');
-    content.style.cssText = `
-        background: #2a2a2a;
-        border: 1px solid #4a9eff;
-        border-radius: 8px;
-        padding: 24px;
-        max-width: 500px;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
-        color: #ffffff;
-        font-family: 'Segoe UI', sans-serif;
-    `;
+    content.className = 'llm-dialog-content';
 
     const title = document.createElement('h3');
     title.textContent = 'Apply Template';
-    title.style.cssText = `
-        margin: 0 0 12px 0;
-        font-size: 18px;
-        color: #4a9eff;
-    `;
+    title.className = 'llm-dialog-title';
     content.appendChild(title);
 
     const message = document.createElement('p');
     message.textContent = 'Your current prompt has been modified. How would you like to apply this template?';
-    message.style.cssText = `
-        margin: 0 0 20px 0;
-        font-size: 14px;
-        line-height: 1.5;
-        color: #cccccc;
-    `;
+    message.className = 'llm-dialog-message';
     content.appendChild(message);
 
     const buttonContainer = document.createElement('div');
-    buttonContainer.style.cssText = `
-        display: flex;
-        gap: 12px;
-        justify-content: flex-end;
-        flex-wrap: wrap;
-    `;
+    buttonContainer.className = 'llm-dialog-button-container';
 
     const createButton = (label, action, isPrimary) => {
         const btn = document.createElement('button');
         btn.textContent = label;
-        btn.style.cssText = `
-            padding: 10px 16px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 14px;
-            font-weight: 500;
-            transition: background-color 0.2s;
-            ${isPrimary
-                ? 'background: #4a9eff; color: #000;'
-                : 'background: #444; color: #fff;'
-            }
-        `;
-        btn.addEventListener('mouseover', () => {
-            btn.style.opacity = '0.9';
-        });
-        btn.addEventListener('mouseout', () => {
-            btn.style.opacity = '1';
-        });
+        btn.className = `llm-dialog-button${isPrimary ? ' llm-dialog-button--primary' : ''}`;
         btn.addEventListener('click', () => {
             dialog.remove();
             if (action === 'replace') {
@@ -882,7 +822,7 @@ function updateCapabilityControlledOptions(state, advancedOptions) {
     const toggleRow = (selector, visible) => {
         const row = advancedOptions.querySelector(selector);
         if (row) {
-            row.style.display = visible ? '' : 'none';
+            row.classList.toggle('llm-hidden', !visible);
         }
     };
 
@@ -1199,13 +1139,13 @@ export function showProviderOptions(advancedOptions, provider) {
     const hasProviderSection = provider === 'ollama_rest' || provider === 'lmstudio_rest';
 
     if (ollamaSection) {
-        ollamaSection.style.display = provider === 'ollama_rest' ? 'block' : 'none';
+        ollamaSection.classList.toggle('llm-hidden', provider !== 'ollama_rest');
     }
     if (lmstudioSection) {
-        lmstudioSection.style.display = provider === 'lmstudio_rest' ? 'block' : 'none';
+        lmstudioSection.classList.toggle('llm-hidden', provider !== 'lmstudio_rest');
     }
     if (noOptionsMsg) {
-        noOptionsMsg.style.display = hasProviderSection ? 'none' : 'block';
+        noOptionsMsg.classList.toggle('llm-hidden', hasProviderSection);
     }
 }
 
@@ -1226,14 +1166,14 @@ function updateVisionSectionVisibility(state, visionSection) {
         state.reasoningModels
     ) : null;
     const hasVisionModel = Boolean(flags?.vision);
-    visionSection.style.display = hasVisionModel ? 'block' : 'none';
+    visionSection.classList.toggle('llm-hidden', !hasVisionModel);
     
     console.log('[LLM] Vision section visibility:', {
         model: state.model,
         provider: state.provider,
         hasVisionModel,
         visionModels: state.visionModels,
-        display: visionSection.style.display
+        hidden: visionSection.classList.contains('llm-hidden')
     });
     
     // Clear images if switching to non-vision model

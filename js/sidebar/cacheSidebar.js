@@ -46,6 +46,7 @@ import {
 import {
     createMainContainer
 } from "../components/cacheUI.js";
+import { loadSidebarStyle } from './sidebarStyles.js';
 
 // Import TabManager
 import { TabManager } from "../components/tabs.js";
@@ -108,53 +109,7 @@ function logSidebarInfo(...args) {
 }
 
 function ensureSidebarShellStyles() {
-    if (document.getElementById(SIDEBAR_SHELL_STYLE_ID)) {
-        return;
-    }
-
-    const style = document.createElement('style');
-    style.id = SIDEBAR_SHELL_STYLE_ID;
-    style.textContent = `
-        .sidebar-settings-button {
-            position: absolute;
-            right: 10px;
-            top: 50%;
-            transform: translateY(-50%);
-            background: #2a2a2a;
-            border: 1px solid #444;
-            border-radius: 4px;
-            color: #ccc;
-            padding: 6px 10px;
-            cursor: pointer;
-            font-size: 18px;
-            transition: all 0.2s ease;
-            z-index: 10;
-            flex-shrink: 0;
-        }
-
-        .sidebar-settings-button:hover {
-            background: #4CAF50;
-            border-color: #4CAF50;
-            transform: translateY(-50%) scale(1.1);
-        }
-
-        .sidebar-settings-indicator {
-            position: absolute;
-            right: 60px;
-            top: 50%;
-            transform: translateY(-50%);
-            background: #2a2a2a;
-            border: 1px solid #444;
-            border-radius: 4px;
-            color: #ddd;
-            padding: 4px 8px;
-            font-size: 12px;
-            opacity: 0.9;
-            z-index: 9;
-        }
-    `;
-
-    document.head.appendChild(style);
+    loadSidebarStyle(SIDEBAR_SHELL_STYLE_ID, 'extensions/comfyui_sageutils/sidebar.css');
 }
 
 function acquireGlobalErrorHandlers() {
@@ -377,9 +332,9 @@ function createTabManager(container, tabVisibility = {}, tabContentFactories = {
         
         // Hide button if there's not enough space
         if (header.offsetWidth < requiredWidth) {
-            settingsButton.style.display = 'none';
+            settingsButton.classList.add('sidebar-settings-button--hidden');
         } else {
-            settingsButton.style.display = 'block';
+            settingsButton.classList.remove('sidebar-settings-button--hidden');
         }
     };
 

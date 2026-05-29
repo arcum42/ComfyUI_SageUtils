@@ -26,38 +26,33 @@ export function createResponseSection() {
     responseActions.className = 'llm-response-actions';
     
     const copyBtn = document.createElement('button');
-    copyBtn.className = 'llm-btn llm-btn-secondary llm-btn-small llm-copy-btn';
+    copyBtn.className = 'llm-btn llm-btn-secondary llm-btn-small llm-copy-btn llm-hidden';
     copyBtn.innerHTML = '📋 Copy';
     copyBtn.title = 'Copy response to clipboard';
-    copyBtn.style.display = 'none'; // Hide until response generated
     copyBtn.setAttribute('aria-label', 'Copy response to clipboard');
     
     const copyToNodeBtn = document.createElement('button');
-    copyToNodeBtn.className = 'llm-btn llm-btn-secondary llm-btn-small llm-copy-to-node-btn';
+    copyToNodeBtn.className = 'llm-btn llm-btn-secondary llm-btn-small llm-copy-to-node-btn llm-hidden';
     copyToNodeBtn.innerHTML = '📤 To Node';
     copyToNodeBtn.title = 'Copy response to selected node';
-    copyToNodeBtn.style.display = 'none'; // Hide until response generated
     copyToNodeBtn.setAttribute('aria-label', 'Copy response to selected node');
     
     const sendToPromptBtn = document.createElement('button');
-    sendToPromptBtn.className = 'llm-btn llm-btn-secondary llm-btn-small llm-send-to-prompt-btn';
+    sendToPromptBtn.className = 'llm-btn llm-btn-secondary llm-btn-small llm-send-to-prompt-btn llm-hidden';
     sendToPromptBtn.innerHTML = '📝 Send to Prompt Builder';
     sendToPromptBtn.title = 'Send response to Prompt Builder tab';
-    sendToPromptBtn.style.display = 'none'; // Hide until response generated
     sendToPromptBtn.setAttribute('aria-label', 'Send response to Prompt Builder tab');
     
     const saveToHistoryBtn = document.createElement('button');
-    saveToHistoryBtn.className = 'llm-btn llm-btn-primary llm-btn-small llm-save-to-history-btn';
+    saveToHistoryBtn.className = 'llm-btn llm-btn-primary llm-btn-small llm-save-to-history-btn llm-hidden';
     saveToHistoryBtn.innerHTML = '💾 Save to History';
     saveToHistoryBtn.title = 'Save this conversation to history';
-    saveToHistoryBtn.style.display = 'none'; // Only shown when skip save was checked
     saveToHistoryBtn.setAttribute('aria-label', 'Save conversation to history');
     
     const stopBtn = document.createElement('button');
-    stopBtn.className = 'llm-btn llm-btn-danger llm-btn-small llm-stop-btn';
+    stopBtn.className = 'llm-btn llm-btn-danger llm-btn-small llm-stop-btn llm-hidden';
     stopBtn.innerHTML = '⏹ Stop';
     stopBtn.title = 'Stop generation';
-    stopBtn.style.display = 'none'; // Hide until generating
     stopBtn.setAttribute('aria-label', 'Stop generation');
     
     responseActions.appendChild(copyBtn);
@@ -70,8 +65,7 @@ export function createResponseSection() {
     responseHeader.appendChild(responseActions);
 
     const phaseBadge = document.createElement('div');
-    phaseBadge.className = 'llm-phase-badge llm-phase-idle';
-    phaseBadge.style.display = 'none';
+    phaseBadge.className = 'llm-phase-badge llm-phase-idle llm-hidden';
     phaseBadge.textContent = 'Idle';
     phaseBadge.setAttribute('role', 'status');
     phaseBadge.setAttribute('aria-live', 'polite');
@@ -100,16 +94,14 @@ export function createResponseSection() {
     
     // Status message
     const statusMessage = document.createElement('div');
-    statusMessage.className = 'llm-status-message';
-    statusMessage.style.display = 'none';
+    statusMessage.className = 'llm-status-message llm-hidden';
     statusMessage.setAttribute('role', 'status');
     statusMessage.setAttribute('aria-live', 'polite');
     statusMessage.setAttribute('aria-atomic', 'true');
 
     // Progress bar (shown during streaming)
     const progressBar = document.createElement('div');
-    progressBar.className = 'llm-progress-bar-container';
-    progressBar.style.display = 'none';
+    progressBar.className = 'llm-progress-bar-container llm-hidden';
     const progressFill = document.createElement('div');
     progressFill.className = 'llm-progress-bar-fill';
     progressBar.appendChild(progressFill);
@@ -140,16 +132,21 @@ export function showStatus(responseSection, message, type, options = {}) {
     
     statusMessage.textContent = message;
     statusMessage.className = `llm-status-message llm-status-${type}`;
-    statusMessage.style.display = message ? 'block' : 'none';
+    statusMessage.classList.toggle('llm-hidden', !message);
     
     const progressBar = responseSection.querySelector('.llm-progress-bar-container');
     if (progressBar) {
-        if (progress !== null && progress >= 0 && progress <= 1) {
-            progressBar.style.display = 'block';
-            const fill = progressBar.querySelector('.llm-progress-bar-fill');
-            fill.style.width = `${Math.round(progress * 100)}%`;
+        const fill = progressBar.querySelector('.llm-progress-bar-fill');
+        if (progressBar && progress !== null && progress >= 0 && progress <= 1) {
+            progressBar.classList.remove('llm-hidden');
+            if (fill) {
+                fill.style.width = `${Math.round(progress * 100)}%`;
+            }
         } else {
-            progressBar.style.display = 'none';
+            progressBar.classList.add('llm-hidden');
+            if (fill) {
+                fill.style.width = '0%';
+            }
         }
     }
     
@@ -157,7 +154,7 @@ export function showStatus(responseSection, message, type, options = {}) {
     if (message && autoHide && type !== 'error') {
         setTimeout(() => {
             if (statusMessage.textContent === message) {
-                statusMessage.style.display = 'none';
+                statusMessage.classList.add('llm-hidden');
             }
         }, 5000);
     }
@@ -174,7 +171,7 @@ export function setResponseText(responseSection, text) {
         const placeholder = responseDisplay.querySelector('.llm-response-placeholder');
         const answer = responseDisplay.querySelector('.llm-response-answer');
         if (placeholder) {
-            placeholder.style.display = text ? 'none' : 'block';
+            placeholder.classList.toggle('llm-hidden', Boolean(text));
         }
         if (answer) {
             answer.textContent = text || '';
@@ -317,11 +314,16 @@ export function showActionButtons(responseSection, show) {
     const copyBtn = responseSection.querySelector('.llm-copy-btn');
     const copyToNodeBtn = responseSection.querySelector('.llm-copy-to-node-btn');
     const sendToPromptBtn = responseSection.querySelector('.llm-send-to-prompt-btn');
-    
-    const display = show ? 'inline-block' : 'none';
-    if (copyBtn) copyBtn.style.display = display;
-    if (copyToNodeBtn) copyToNodeBtn.style.display = display;
-    if (sendToPromptBtn) sendToPromptBtn.style.display = display;
+
+    if (copyBtn) {
+        copyBtn.classList.toggle('llm-hidden', !show);
+    }
+    if (copyToNodeBtn) {
+        copyToNodeBtn.classList.toggle('llm-hidden', !show);
+    }
+    if (sendToPromptBtn) {
+        sendToPromptBtn.classList.toggle('llm-hidden', !show);
+    }
 }
 
 /**
@@ -332,7 +334,7 @@ export function showActionButtons(responseSection, show) {
 export function showStopButton(responseSection, show) {
     const stopBtn = responseSection.querySelector('.llm-stop-btn');
     if (stopBtn) {
-        stopBtn.style.display = show ? 'inline-block' : 'none';
+        stopBtn.classList.toggle('llm-hidden', !show);
     }
 }
 

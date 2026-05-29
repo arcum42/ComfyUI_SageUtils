@@ -11,8 +11,7 @@ import { createResponsiveGrid } from '../../../components/layout.js';
  */
 export function createVisionSection() {
     const section = document.createElement('div');
-    section.className = 'llm-vision-section';
-    section.style.display = 'none'; // Hidden by default
+    section.className = 'llm-vision-section llm-hidden';
     
     // Section header
     const header = document.createElement('div');
@@ -27,9 +26,8 @@ export function createVisionSection() {
     imageCount.textContent = '0 images';
     
     const clearAllBtn = document.createElement('button');
-    clearAllBtn.className = 'llm-btn llm-btn-secondary llm-clear-all-images-btn';
+    clearAllBtn.className = 'llm-btn llm-btn-secondary llm-clear-all-images-btn llm-hidden';
     clearAllBtn.textContent = 'Clear All';
-    clearAllBtn.style.display = 'none';
     
     header.appendChild(title);
     header.appendChild(imageCount);
@@ -54,8 +52,7 @@ export function createVisionSection() {
     fileInput.type = 'file';
     fileInput.accept = 'image/*';
     fileInput.multiple = true;
-    fileInput.className = 'llm-file-input';
-    fileInput.style.display = 'none';
+    fileInput.className = 'llm-file-input llm-hidden';
     
     uploadZone.appendChild(uploadIcon);
     uploadZone.appendChild(uploadText);
@@ -65,11 +62,7 @@ export function createVisionSection() {
     const previewGrid = createResponsiveGrid({
         minItemWidth: 100,
         gap: '12px',
-        className: 'llm-image-preview-grid',
-        style: {
-            marginTop: '16px',
-            display: 'none'
-        }
+        className: 'llm-image-preview-grid llm-hidden'
     });
     
     section.appendChild(header);
@@ -243,11 +236,11 @@ export function updateImageUI(state, visionSection) {
     }
     
     if (previewGrid) {
-        previewGrid.style.display = count > 0 ? 'grid' : 'none';
+        previewGrid.classList.toggle('llm-hidden', count === 0);
     }
     
     if (clearAllBtn) {
-        clearAllBtn.style.display = count > 0 ? 'inline-block' : 'none';
+        clearAllBtn.classList.toggle('llm-hidden', count === 0);
     }
 }
 
@@ -310,14 +303,14 @@ export async function handleFileUpload(state, visionSection, files) {
  */
 export function updateVisionSectionVisibility(state, visionSection) {
     if (!state.model) {
-        visionSection.style.display = 'none';
+        visionSection.classList.add('llm-hidden');
         return;
     }
     
     const visionModels = state.visionModels[state.provider] || [];
     const isVisionModel = visionModels.includes(state.model);
     
-    visionSection.style.display = isVisionModel ? 'block' : 'none';
+    visionSection.classList.toggle('llm-hidden', !isVisionModel);
 }
 
 /**
@@ -409,7 +402,7 @@ export function setupVisionEventHandlers(state, visionSection) {
 export function setupClipboardPasteHandler(state, visionSection) {
     document.addEventListener('paste', async (e) => {
         // Only handle paste when LLM tab is active and vision section is visible
-        if (visionSection.style.display === 'none') return;
+        if (visionSection.classList.contains('llm-hidden')) return;
         
         const items = Array.from(e.clipboardData.items);
         const imageItems = items.filter(item => item.type.startsWith('image/'));

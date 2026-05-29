@@ -214,6 +214,75 @@
             background: #666;
         }
 
+        .llm-hidden {
+            display: none !important;
+        }
+
+        .llm-dialog-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+        }
+
+        .llm-dialog-content {
+            background: #2a2a2a;
+            border: 1px solid #4a9eff;
+            border-radius: 8px;
+            padding: 24px;
+            max-width: 500px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+            color: #ffffff;
+            font-family: 'Segoe UI', sans-serif;
+        }
+
+        .llm-dialog-title {
+            margin: 0 0 12px 0;
+            font-size: 18px;
+            color: #4a9eff;
+        }
+
+        .llm-dialog-message {
+            margin: 0 0 20px 0;
+            font-size: 14px;
+            line-height: 1.5;
+            color: #cccccc;
+        }
+
+        .llm-dialog-button-container {
+            display: flex;
+            gap: 12px;
+            justify-content: flex-end;
+            flex-wrap: wrap;
+        }
+
+        .llm-dialog-button {
+            padding: 10px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: background-color 0.2s, opacity 0.2s;
+            background: #444;
+            color: #fff;
+        }
+
+        .llm-dialog-button:hover {
+            opacity: 0.9;
+        }
+
+        .llm-dialog-button--primary {
+            background: #4a9eff;
+            color: #000;
+        }
+
         @keyframes pulse {
             0%, 100% { opacity: 1; }
             50% { opacity: 0.5; }
@@ -294,6 +363,7 @@
         /* Image preview grid */
         .llm-image-preview-grid {
             /* Grid layout now handled by createResponsiveGrid() component */
+            margin-top: 16px;
         }
 
         .llm-image-preview-item {
@@ -355,6 +425,14 @@
             color: var(--fg-color, #ffffff);
         }
 
+        .llm-input-readonly {
+            opacity: 0.6;
+        }
+
+        .llm-modal-section-title {
+            margin-top: 1rem;
+        }
+
         .llm-char-counter {
             font-size: 11px;
             color: var(--text-secondary, #888);
@@ -388,6 +466,19 @@
             display: flex;
             gap: 8px;
             margin: 12px 0;
+            flex-wrap: wrap;
+        }
+
+        .llm-skip-save-container {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            cursor: pointer;
+        }
+
+        .llm-skip-save-label {
+            font-size: 11px;
+            color: var(--text-secondary, #999);
         }
 
         /* Compose template section */
@@ -830,6 +921,36 @@
             color: var(--primary-color, #4a9eff);
             border-bottom: 1px solid var(--border-color, #444);
             padding-bottom: 4px !important;
+        }
+
+        .llm-prompt-modifiers-title {
+            margin-top: 16px;
+            margin-bottom: 8px;
+        }
+
+        .llm-form-row--disabled {
+            opacity: 0.5;
+            pointer-events: none;
+        }
+
+        .llm-form-row--no-margin {
+            margin-bottom: 0 !important;
+        }
+
+        .llm-form-row--top-spacing {
+            margin-top: 8px !important;
+        }
+
+        .llm-bottom-inputs-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-top: 8px;
+        }
+
+        .llm-btn-success-flash {
+            background: var(--success-color, #4caf50) !important;
+            color: #ffffff !important;
         }
 
         .llm-ollama-settings {
@@ -1459,6 +1580,10 @@
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
             z-index: 1000;
             min-width: 150px;
+        }
+
+        .llm-export-menu--fixed {
+            position: fixed;
         }
 
         .llm-export-menu-item {

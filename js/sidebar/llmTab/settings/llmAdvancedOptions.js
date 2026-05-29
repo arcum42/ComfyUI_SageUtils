@@ -139,9 +139,7 @@ export function createTemplateSection() {
     // Prompt Modifiers section
     const modifiersTitle = document.createElement('h4');
     modifiersTitle.textContent = 'Prompt Modifiers';
-    modifiersTitle.className = 'llm-subsection-title';
-    modifiersTitle.style.marginTop = '16px';
-    modifiersTitle.style.marginBottom = '8px';
+    modifiersTitle.className = 'llm-subsection-title llm-prompt-modifiers-title';
     content.appendChild(modifiersTitle);
     
     // Extras grid - will be populated when prompts are loaded
@@ -534,10 +532,6 @@ function createOllamaOptions() {
     // Keep Alive and Seed on same row
     const bottomRow = document.createElement('div');
     bottomRow.className = 'llm-bottom-inputs-row';
-    bottomRow.style.display = 'grid';
-    bottomRow.style.gridTemplateColumns = '1fr 1fr';
-    bottomRow.style.gap = '12px';
-    bottomRow.style.marginTop = '8px';
     
     const keepAliveInput = createInput({
         type: 'text',
@@ -548,16 +542,16 @@ function createOllamaOptions() {
     const keepAliveRow = createFormRow('Keep Alive', keepAliveInput, {
         helpText: 'e.g., 5m, 1h, -1'
     });
-    keepAliveRow.style.marginBottom = '0';
-    
+    keepAliveRow.classList.add('llm-form-row--no-margin');
+
     const seedInput = createInput({
         type: 'number',
         placeholder: 'Random',
         className: 'llm-seed-input'
     });
     const seedRow = createFormRow('Seed', seedInput);
-    seedRow.style.marginBottom = '0';
-    
+    seedRow.classList.add('llm-form-row--no-margin');
+
     bottomRow.appendChild(wrapProviderOptionControl('ollama', 'keep_alive', keepAliveRow));
     bottomRow.appendChild(wrapProviderOptionControl('ollama', 'seed', seedRow));
     content.appendChild(bottomRow);
@@ -680,7 +674,7 @@ function createLMStudioOptions() {
         className: 'llm-seed-input'
     });
     const seedRow = createFormRow('Seed', seedInput);
-    seedRow.style.marginTop = '8px';
+    seedRow.classList.add('llm-form-row--top-spacing');
     content.appendChild(wrapProviderOptionControl('lmstudio', 'seed', seedRow));
     
     return createSection('⚙️ LM Studio Options', content, {

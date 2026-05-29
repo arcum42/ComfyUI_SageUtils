@@ -204,7 +204,7 @@ export async function showManagePresetsDialog(state, modelSelection, advancedOpt
     const presetsPanel = createPresetsPanel(state, modelSelection, advancedOptions, inputSection, loadPresets, applyPresetToUI, showNotification, dialog);
     const systemPromptsPanel = createSystemPromptsPanel(state, modelSelection, advancedOptions, inputSection, showNotification, dialog);
     
-    systemPromptsPanel.style.display = 'none';
+    systemPromptsPanel.classList.add('llm-hidden');
     
     tabContent.appendChild(presetsPanel);
     tabContent.appendChild(systemPromptsPanel);
@@ -213,15 +213,15 @@ export async function showManagePresetsDialog(state, modelSelection, advancedOpt
     presetsTab.addEventListener('click', () => {
         presetsTab.classList.add('active');
         systemPromptsTab.classList.remove('active');
-        presetsPanel.style.display = 'block';
-        systemPromptsPanel.style.display = 'none';
+        presetsPanel.classList.remove('llm-hidden');
+        systemPromptsPanel.classList.add('llm-hidden');
     });
     
     systemPromptsTab.addEventListener('click', () => {
         systemPromptsTab.classList.add('active');
         presetsTab.classList.remove('active');
-        systemPromptsPanel.style.display = 'block';
-        presetsPanel.style.display = 'none';
+        systemPromptsPanel.classList.remove('llm-hidden');
+        presetsPanel.classList.add('llm-hidden');
     });
     
     // Close button
@@ -411,7 +411,7 @@ async function showPresetEditor(state, modelSelection, advancedOptions, inputSec
             input.value = existingPreset ? existingPreset.name : '';
             if (isEditingBuiltin || isEditingUserOverride) {
                 input.readOnly = true;
-                input.style.opacity = '0.6';
+                input.classList.add('llm-input-readonly');
             }
             input.required = true;
             return input;
@@ -577,7 +577,7 @@ async function showPresetEditor(state, modelSelection, advancedOptions, inputSec
     // Settings section
     const settingsTitle = document.createElement('h4');
     settingsTitle.textContent = 'Settings';
-    settingsTitle.style.marginTop = '1rem';
+    settingsTitle.className = 'llm-modal-section-title';
     
     const temperatureGroup = createFormGroup(
         'Temperature',

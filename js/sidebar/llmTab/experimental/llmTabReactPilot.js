@@ -118,7 +118,7 @@ export async function createLLMTabReactPilot(container, context = {}) {
     // the legacy tab remains embedded for behavior parity.
     const embeddedHeader = vanillaMountEl.querySelector('.llm-header');
     if (embeddedHeader) {
-        embeddedHeader.style.display = 'none';
+        embeddedHeader.classList.add('llm-hidden');
     }
 
     let unmounted = false;

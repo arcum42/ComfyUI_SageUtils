@@ -74,6 +74,8 @@ import {
     batchWithPriority
 } from "../shared/viewportPriority.js";
 
+import { loadSidebarStyle } from './sidebarStyles.js';
+
 // Debug toggle helper for gallery logs
 function isDebugGalleryEnabled() {
     try {
@@ -81,6 +83,51 @@ function isDebugGalleryEnabled() {
     } catch (_) {
         return false;
     }
+}
+
+function createGalleryPlaceholderHtml(icon, message, subtext = '') {
+    return `
+        <div class="gallery-placeholder">
+            <div class="gallery-placeholder-icon">${icon}</div>
+            <div class="gallery-placeholder-message">${message}</div>
+            ${subtext ? `<div class="gallery-placeholder-subtext">${subtext}</div>` : ''}
+        </div>
+    `;
+}
+
+function createGalleryProgressHtml(percentage, message, current, total) {
+    return `
+        <div class="gallery-loading-progress__icon">🔍</div>
+        <div class="gallery-loading-progress__message">${message}</div>
+        <div class="gallery-loading-progress__details">
+            ${current} / ${total} images loaded
+        </div>
+        <div class="gallery-progress-bar">
+            <div class="gallery-progress-bar__fill"></div>
+            <div class="gallery-progress-bar__label ${percentage > 50 ? 'gallery-progress-bar__label--light' : ''}">${percentage}%</div>
+        </div>
+    `;
+}
+
+function createThumbnailProgressHtml(processedCount, totalImages, skeletonCount) {
+    const percentage = Math.round((processedCount / totalImages) * 100);
+    return `
+        <div class="gallery-thumbnail-progress__status">
+            Loading thumbnails... ${processedCount}/${totalImages} (${percentage}%)${skeletonCount > 0 ? ` - ${skeletonCount} pending` : ''}
+        </div>
+        <div class="gallery-thumbnail-progress__bar">
+            <div class="gallery-thumbnail-progress__fill"></div>
+        </div>
+    `;
+}
+
+function createGalleryErrorHtml(message) {
+    return `
+        <div class="gallery-error-panel">
+            ❌ Error loading images
+            <br><small class="gallery-error-panel__details">${message}</small>
+        </div>
+    `;
 }
 
 /**
@@ -118,7 +165,7 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
         // Update status in header if available
         if (header && header.statusDiv) {
             header.statusDiv.textContent = message;
-            header.statusDiv.style.color = isError ? '#f44336' : '#4CAF50';
+            header.statusDiv.classList.toggle('gallery-status--error', isError);
             
             // Clear status after 3 seconds unless it's an error
             if (!isError) {
@@ -180,15 +227,11 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
                 if (cached.images && cached.images.length > 0) {
                     showImageMetadata(cached.images[0]);
                 } else {
-                    metadata.metadataContent.innerHTML = `
-                        <div style="color: #888; text-align: center; padding: 20px;">
-                            <div style="font-size: 24px; margin-bottom: 10px;">📁</div>
-                            <div>No images in this folder</div>
-                            <div style="font-size: 12px; margin-top: 5px;">
-                                Select a folder with images to view details
-                            </div>
-                        </div>
-                    `;
+                    metadata.metadataContent.innerHTML = createGalleryPlaceholderHtml(
+                        '📁',
+                        'No images in this folder',
+                        'Select a folder with images to view details'
+                    );
                 }
                 
                 setStatus('Loaded from global cache', false);
@@ -218,15 +261,11 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
                 if (cached.images && cached.images.length > 0) {
                     showImageMetadata(cached.images[0]);
                 } else {
-                    metadata.metadataContent.innerHTML = `
-                        <div style="color: #888; text-align: center; padding: 20px;">
-                            <div style="font-size: 24px; margin-bottom: 10px;">📁</div>
-                            <div>No images in this folder</div>
-                            <div style="font-size: 12px; margin-top: 5px;">
-                                Select a folder with images to view details
-                            </div>
-                        </div>
-                    `;
+                    metadata.metadataContent.innerHTML = createGalleryPlaceholderHtml(
+                        '📁',
+                        'No images in this folder',
+                        'Select a folder with images to view details'
+                    );
                 }
                 
                 setStatus('Loaded from local cache', false);
@@ -252,59 +291,22 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
                 if (!progressContainer) {
                     grid.gridContainer.innerHTML = '';
                     progressContainer = document.createElement('div');
-                    progressContainer.style.cssText = `
-                        grid-column: 1 / -1;
-                        text-align: center;
-                        color: #4CAF50;
-                        padding: 60px 20px;
-                        font-size: 14px;
-                    `;
+                    progressContainer.className = 'gallery-loading-progress';
                     grid.gridContainer.appendChild(progressContainer);
                 }
                 
                 const percentage = total > 0 ? Math.round((current / total) * 100) : 0;
                 
-                progressContainer.innerHTML = `
-                    <div style="font-size: 24px; margin-bottom: 15px;">🔍</div>
-                    <div style="margin-bottom: 10px;">${message || `Loading from ${folderType} folder...`}</div>
-                    <div style="color: #ccc; font-size: 13px; margin-bottom: 15px;">
-                        ${current} / ${total} images loaded
-                    </div>
-                    <div style="
-                        width: 100%;
-                        max-width: 400px;
-                        height: 24px;
-                        background: #333;
-                        border-radius: 12px;
-                        overflow: visible;
-                        margin: 0 auto;
-                        border: 1px solid #555;
-                        position: relative;
-                    ">
-                        <div style="
-                            width: ${percentage}%;
-                            height: 100%;
-                            background: linear-gradient(90deg, #4CAF50, #66BB6A);
-                            transition: width 0.3s ease;
-                            border-radius: 12px;
-                        "></div>
-                        <div style="
-                            position: absolute;
-                            top: 0;
-                            left: 0;
-                            right: 0;
-                            bottom: 0;
-                            display: flex;
-                            align-items: center;
-                            justify-content: center;
-                            color: ${percentage > 50 ? 'white' : '#4CAF50'};
-                            font-weight: bold;
-                            font-size: 12px;
-                            text-shadow: ${percentage > 50 ? '0 1px 2px rgba(0,0,0,0.5)' : '0 1px 2px rgba(0,0,0,0.8)'};
-                            pointer-events: none;
-                        ">${percentage}%</div>
-                    </div>
-                `;
+                progressContainer.innerHTML = createGalleryProgressHtml(
+                    percentage,
+                    message || `Loading from ${folderType} folder...`,
+                    current,
+                    total
+                );
+                        const fill = progressContainer.querySelector('.gallery-progress-bar__fill');
+                if (fill) {
+                    fill.style.setProperty('--fill-width', `${percentage}%`);
+                }
             };
             
             // Initial progress display
@@ -402,15 +404,11 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
                 showImageMetadata(images[0]);
             } else {
                 // No images available, show placeholder message
-                metadata.metadataContent.innerHTML = `
-                    <div style="color: #888; text-align: center; padding: 20px;">
-                        <div style="font-size: 24px; margin-bottom: 10px;">📁</div>
-                        <div>No images in this folder</div>
-                        <div style="font-size: 12px; margin-top: 5px;">
-                            Select a folder with images to view details
-                        </div>
-                    </div>
-                `;
+                metadata.metadataContent.innerHTML = createGalleryPlaceholderHtml(
+                    '📁',
+                    'No images in this folder',
+                    'Select a folder with images to view details'
+                );
             }
             
             // Special case: if we're in a custom path with no images/folders, ensure back navigation is available
@@ -443,20 +441,7 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
             // Clear abort controller on error
             currentAbortController = null;
             
-            grid.gridContainer.innerHTML = `
-                <div style="
-                    grid-column: 1 / -1;
-                    text-align: center;
-                    color: #f44336;
-                    padding: 40px;
-                    font-style: italic;
-                ">
-                    ❌ Error loading images
-                    <br><small style="color: #888; margin-top: 10px; display: block;">
-                        ${error.message}
-                    </small>
-                </div>
-            `;
+            grid.gridContainer.innerHTML = createGalleryErrorHtml(error.message);
             
             grid.imageCountSpan.textContent = '(Error)';
         }
@@ -474,13 +459,7 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
         
         if (!images || (images.length === 0 && folders.length === 0)) {
             grid.gridContainer.innerHTML = `
-                <div style="
-                    grid-column: 1 / -1;
-                    text-align: center;
-                    color: #888;
-                    padding: 40px;
-                    font-style: italic;
-                ">
+                <div class="gallery-empty-state">
                     No images or folders found in this location
                 </div>
             `;
@@ -611,14 +590,6 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
         if (!progressContainer) {
             progressContainer = document.createElement('div');
             progressContainer.className = 'gallery-progress-container';
-            progressContainer.style.cssText = `
-                grid-column: 1 / -1;
-                text-align: center;
-                padding: 20px;
-                background: #2a2a2a;
-                border-radius: 6px;
-                margin-bottom: 15px;
-            `;
             
             // Insert after folders/nav items or at the beginning
             if (incremental) {
@@ -637,25 +608,11 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
         const updateProgress = () => {
             const percentage = Math.round((processedCount / totalImages) * 100);
             const skeletonCount = getSkeletonCount(grid.gridContainer);
-            progressContainer.innerHTML = `
-                <div style="color: #4CAF50; margin-bottom: 10px;">
-                    Loading thumbnails... ${processedCount}/${totalImages} (${percentage}%)${skeletonCount > 0 ? ` - ${skeletonCount} pending` : ''}
-                </div>
-                <div style="
-                    width: 100%;
-                    height: 8px;
-                    background: #333;
-                    border-radius: 4px;
-                    overflow: hidden;
-                ">
-                    <div style="
-                        width: ${percentage}%;
-                        height: 100%;
-                        background: linear-gradient(90deg, #4CAF50, #66BB6A);
-                        transition: width 0.3s ease;
-                    "></div>
-                </div>
-            `;
+            progressContainer.innerHTML = createThumbnailProgressHtml(processedCount, totalImages, skeletonCount);
+            const fill = progressContainer.querySelector('.gallery-thumbnail-progress__fill');
+            if (fill) {
+                fill.style.setProperty('--fill-width', `${percentage}%`);
+            }
         };
         
         updateProgress();
@@ -811,7 +768,7 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
     // Show full image viewer
     async function showImageMetadata(image, autoScroll = false) {
         try {
-            metadata.metadataSection.style.display = 'block';
+            metadata.metadataSection.classList.remove('gallery-metadata-section--hidden');
             
             // Call the imported API function
             const result = await loadImageMetadata(image, setStatus);
@@ -854,7 +811,7 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
     // Show metadata panel
     function showMetadata(imagePath) {
         actions.toggleMetadata(true);
-        metadata.metadataSection.style.display = 'block';
+        metadata.metadataSection.classList.remove('gallery-metadata-section--hidden');
         
         // Load actual metadata using the real function
         const images = selectors.galleryImages();
@@ -868,11 +825,11 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
         
         // Fallback display if image not found
         metadata.metadataContent.innerHTML = `
-            <div style="color: #4CAF50; margin-bottom: 10px;">📄 File Information</div>
+            <div class="gallery-file-info-title">📄 File Information</div>
             <div>Path: ${imagePath}</div>
             <div>Status: Metadata loading not yet implemented</div>
             <br>
-            <div style="color: #2196F3;">🔄 Implementation Status</div>
+            <div class="gallery-info-status">🔄 Implementation Status</div>
             <div>• Basic UI structure: ✅ Complete</div>
             <div>• Image loading: ⏳ Phase 2</div>
             <div>• Metadata extraction: ⏳ Phase 2</div>
@@ -882,19 +839,13 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
 
     // Hide metadata panel
     function hideMetadata() {
-        // Instead of hiding the panel, show a "no image selected" message
         actions.toggleMetadata(false);
-        metadata.metadataContent.innerHTML = `
-            <div style="color: #888; text-align: center; padding: 20px;">
-                <div style="font-size: 24px; margin-bottom: 10px;">👁️</div>
-                <div>No image selected</div>
-                <div style="font-size: 12px; margin-top: 5px;">
-                    Click on an image to view its details
-                </div>
-            </div>
-        `;
-        // Keep the panel visible
-        // metadata.metadataSection.style.display = 'none';
+        metadata.metadataContent.innerHTML = createGalleryPlaceholderHtml(
+            '👁️',
+            'No image selected',
+            'Click on an image to view its details'
+        );
+        metadata.metadataSection.classList.add('gallery-metadata-section--hidden');
     }
 
     // Set up event listeners
@@ -1025,14 +976,15 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
     // Function to update grid layout based on current settings
     function updateGridLayout() {
         const currentMode = selectors.galleryViewMode();
-        if (currentMode === 'list') {
-            grid.gridContainer.style.gridTemplateColumns = '1fr';
-            grid.gridContainer.style.gap = '5px';
-        } else {
-            const thumbnailSizeConfig = getThumbnailSize(selectors.thumbnailSize());
-            grid.gridContainer.style.gridTemplateColumns = `repeat(auto-fill, minmax(${thumbnailSizeConfig.width}px, 1fr))`;
-            grid.gridContainer.style.gap = '10px';
-        }
+        const thumbnailSize = selectors.thumbnailSize();
+        const thumbnailSizeConfig = getThumbnailSize(thumbnailSize);
+
+        grid.gridContainer.classList.toggle('gallery-list-view', currentMode === 'list');
+        grid.gridContainer.classList.toggle('gallery-grid-view', currentMode !== 'list');
+        grid.gridContainer.style.setProperty('--gallery-thumbnail-min-width', `${thumbnailSizeConfig.width}px`);
+
+        // Keep thumbnail sizing in sync with the selected size
+        grid.updateGridLayout(thumbnailSize);
     }
 
     // Function to update UI based on current sort state
@@ -1064,7 +1016,7 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
 
     // Demo: Show metadata panel when grid header is clicked
     grid.gridHeader.addEventListener('click', () => {
-        if (metadata.metadataSection.style.display === 'none') {
+        if (metadata.metadataSection.classList.contains('gallery-metadata-section--hidden')) {
             showMetadata('demo/image/path.jpg');
         } else {
             hideMetadata();
@@ -1146,6 +1098,7 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
 
 export function createImageGalleryTab(container) {
     const debugGallery = isDebugGalleryEnabled();
+    loadSidebarStyle('image-gallery-tab-styles', 'extensions/comfyui_sageutils/sidebar/imageGalleryTab.css');
     // Create all components
     const header = createGalleryHeader();
     const folderAndControls = createFolderSelectorAndControls(); // Combined section

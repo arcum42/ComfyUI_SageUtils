@@ -233,9 +233,9 @@ function renderActiveSubtab(state, contentHost, sections) {
     ) : null;
     const canShowVision = (activeSubtab === 'compose' || activeSubtab === 'chat') && Boolean(flags?.vision);
 
-    sections.visionSection.style.display = canShowVision ? 'block' : 'none';
-    sections.historySection.style.display = activeSubtab === 'chat' ? '' : 'none';
-    sections.advancedOptions.style.display = activeSubtab === 'settings' ? '' : 'none';
+    sections.visionSection.classList.toggle('llm-hidden', !canShowVision);
+    sections.historySection.classList.toggle('llm-hidden', activeSubtab !== 'chat');
+    sections.advancedOptions.classList.toggle('llm-hidden', activeSubtab !== 'settings');
 
     if (intro) {
         panel.appendChild(intro);
@@ -719,12 +719,12 @@ async function createLLMTabVanilla(container) {
             state.reasoningModels
         ) : null;
         const hasVisionModel = Boolean(flags?.vision);
-        visionSection.style.display = hasVisionModel ? 'block' : 'none';
+        visionSection.classList.toggle('llm-hidden', !hasVisionModel);
         logLlmDebug('[LLM Tab] Initial vision section state:', {
             model: state.model,
             provider: state.provider,
             hasVisionModel,
-            display: visionSection.style.display
+            display: visionSection.classList.contains('llm-hidden') ? 'none' : 'block'
         });
     }
 
@@ -797,7 +797,7 @@ async function createLLMTabVanilla(container) {
         });
         
         // Only process if vision section is visible
-        if (visionSection.style.display === 'none') {
+        if (visionSection.classList.contains('llm-hidden')) {
             showNotification('Please select a vision model first', 'warning');
             return;
         }

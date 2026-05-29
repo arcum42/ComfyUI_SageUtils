@@ -29,6 +29,7 @@ import { pullMetadata, updateCacheInfo } from "../shared/api/cacheApi.js";
 // Import utilities
 import { escapeHtml, generateHtmlContent, openHtmlReport } from "../reports/reportGenerator.js";
 import { createComponentLogger } from "../utils/logger.js";
+import { loadSidebarStyle } from './sidebarStyles.js';
 
 console.log('[SageUtils] modelsTabV2.js imported');
 
@@ -69,17 +70,10 @@ function createHeaderAndControls(onRefresh, onScan, onReport) {
         const container = document.createElement('div');
         const label = document.createElement('label');
         label.textContent = labelText;
-        label.style.cssText = `
-            display: block;
-            color: #ccc;
-            font-size: 11px;
-            margin-bottom: 4px;
-        `;
+        label.className = 'models-v2-labeled-select-label';
         const select = createSelect({
             items: items,
-            style: {
-                width: '100%'
-            }
+            className: 'models-v2-labeled-select'
         });
         container.appendChild(label);
         container.appendChild(select);
@@ -88,12 +82,7 @@ function createHeaderAndControls(onRefresh, onScan, onReport) {
     
     // Create filter grid
     const filterGrid = document.createElement('div');
-    filterGrid.style.cssText = `
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-        gap: 10px;
-        margin-bottom: 10px;
-    `;
+    filterGrid.className = 'models-v2-filter-grid';
     
     // Folder type filter
     const { container: folderContainer, select: folderSelect } = createLabeledSelect('Folder:', FILTER_OPTIONS.folderType);
@@ -119,11 +108,7 @@ function createHeaderAndControls(onRefresh, onScan, onReport) {
     
     const sortLabel = document.createElement('label');
     sortLabel.textContent = 'Sort:';
-    sortLabel.style.cssText = `
-        color: #ccc;
-        font-size: 12px;
-        min-width: 40px;
-    `;
+    sortLabel.className = 'models-v2-sort-label';
     
     const sortSelect = createSelect({
         items: [
@@ -305,30 +290,18 @@ function createSingleModelActions(modelHash, modelPath, onPull, onEdit) {
  */
 function createNsfwToggle(initialValue, onChange) {
     const container = document.createElement('div');
-    container.style.cssText = `
-        display: flex;
-        align-items: center;
-        gap: 6px;
-    `;
+    container.className = 'models-v2-nsfw-toggle';
     
     const checkbox = document.createElement('input');
     checkbox.type = 'checkbox';
     checkbox.id = 'nsfw-toggle-v2';
     checkbox.checked = initialValue;
-    checkbox.style.cssText = `
-        margin: 0;
-        cursor: pointer;
-    `;
+    checkbox.className = 'models-v2-nsfw-checkbox';
     
     const label = document.createElement('label');
     label.htmlFor = 'nsfw-toggle-v2';
     label.textContent = 'Show NSFW';
-    label.style.cssText = `
-        color: #ccc;
-        font-size: 11px;
-        cursor: pointer;
-        user-select: none;
-    `;
+    label.className = 'models-v2-nsfw-label';
     
     checkbox.addEventListener('change', () => {
         onChange(checkbox.checked);
@@ -381,25 +354,14 @@ async function createModelInfoPanel(modelHash, modelInfo, modelPath, showNsfw, c
         } else {
             // Fallback: add it at the top if no gallery was created
             const fallbackContainer = document.createElement('div');
-            fallbackContainer.style.cssText = `
-                margin-bottom: 15px;
-                padding: 10px;
-                background: #2a2a2a;
-                border-radius: 4px;
-            `;
+            fallbackContainer.className = 'models-v2-nsfw-fallback';
             fallbackContainer.appendChild(nsfwToggle);
             container.insertBefore(fallbackContainer, infoDisplay);
         }
     } catch (error) {
         console.error('Error creating info display:', error);
         const errorDiv = document.createElement('div');
-        errorDiv.style.cssText = `
-            padding: 20px;
-            background: #3a2a2a;
-            border: 1px solid #f44336;
-            border-radius: 4px;
-            color: #f44336;
-        `;
+        errorDiv.className = 'models-v2-error-block';
         errorDiv.textContent = `Error loading model information: ${error.message}`;
         container.appendChild(errorDiv);
     }
@@ -419,21 +381,14 @@ function createEmptyInfoPanel() {
             textAlign: 'center'
         }
     });
+    container.classList.add('models-v2-empty-panel');
     
     const icon = document.createElement('div');
-    icon.style.cssText = `
-        font-size: 48px;
-        margin-bottom: 15px;
-        opacity: 0.5;
-    `;
+    icon.className = 'models-v2-empty-icon';
     icon.textContent = '📦';
     
     const message = document.createElement('div');
-    message.style.cssText = `
-        color: #888;
-        font-size: 14px;
-        font-style: italic;
-    `;
+    message.className = 'models-v2-empty-message';
     message.textContent = 'Select a model to view details';
     
     container.appendChild(icon);
@@ -451,99 +406,159 @@ function createEmptyInfoPanel() {
  */
 async function openEditDialog(modelHash, modelInfo, filePath, onSave) {
     const fileName = filePath.split('/').pop();
-    
-    // Create dialog content
+
+    const getValue = (value) => typeof value === 'string' ? value : '';
+    const modelNameValue = getValue(modelInfo.model?.name || '');
+    const versionNameValue = getValue(modelInfo.name || '');
+    const modelTypeValue = getValue(modelInfo.model?.type || modelInfo.model_type || '');
+    const baseModelValue = getValue(modelInfo.baseModel || modelInfo.base_model || '');
+    const descriptionValue = getValue(modelInfo.description || '');
+    const triggersValue = (modelInfo.trainedWords || []).join(', ');
+    const notesValue = getValue(modelInfo.notes || '');
+    const nsfwValue = Boolean(modelInfo.nsfw);
+    const favoriteValue = Boolean(modelInfo.favorite || modelInfo.is_favorite);
+    const blacklistValue = Boolean(modelInfo.blacklist);
+
     const content = document.createElement('div');
-    content.innerHTML = `
-        <div style="padding: 20px; max-width: 600px;">
-            <h3 style="margin: 0 0 15px 0; color: #569cd6;">Edit Model Information</h3>
-            <p style="margin-bottom: 15px; color: #888;">File: ${escapeHtml(fileName)}</p>
-            
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
-                <div>
-                    <label style="display: block; margin-bottom: 5px; font-weight: bold;">Model Name:</label>
-                    <input type="text" id="edit-model-name" value="${escapeHtml(modelInfo.model?.name || '')}" 
-                           style="width: 100%; padding: 8px; background: #1a1a1a; border: 1px solid #444; border-radius: 4px; color: white;">
-                </div>
-                <div>
-                    <label style="display: block; margin-bottom: 5px; font-weight: bold;">Version Name:</label>
-                    <input type="text" id="edit-version-name" value="${escapeHtml(modelInfo.name || '')}" 
-                           style="width: 100%; padding: 8px; background: #1a1a1a; border: 1px solid #444; border-radius: 4px; color: white;">
-                </div>
-            </div>
-            
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
-                <div>
-                    <label style="display: block; margin-bottom: 5px; font-weight: bold;">Model Type:</label>
-                    <select id="edit-type" style="width: 100%; padding: 8px; background: #1a1a1a; border: 1px solid #444; border-radius: 4px; color: white;">
-                        <option value="">Unknown</option>
-                        <option value="Checkpoint" ${(modelInfo.model?.type || modelInfo.model_type) === 'Checkpoint' ? 'selected' : ''}>Checkpoint</option>
-                        <option value="LORA" ${(modelInfo.model?.type || modelInfo.model_type) === 'LORA' ? 'selected' : ''}>LORA</option>
-                        <option value="LyCORIS" ${(modelInfo.model?.type || modelInfo.model_type) === 'LyCORIS' ? 'selected' : ''}>LyCORIS</option>
-                        <option value="TextualInversion" ${(modelInfo.model?.type || modelInfo.model_type) === 'TextualInversion' ? 'selected' : ''}>Textual Inversion</option>
-                        <option value="VAE" ${(modelInfo.model?.type || modelInfo.model_type) === 'VAE' ? 'selected' : ''}>VAE</option>
-                        <option value="Controlnet" ${(modelInfo.model?.type || modelInfo.model_type) === 'Controlnet' ? 'selected' : ''}>ControlNet</option>
-                    </select>
-                </div>
-                <div>
-                    <label style="display: block; margin-bottom: 5px; font-weight: bold;">Base Model:</label>
-                    <select id="edit-base-model" style="width: 100%; padding: 8px; background: #1a1a1a; border: 1px solid #444; border-radius: 4px; color: white;">
-                        <option value="">Unknown</option>
-                        <option value="SD 1.5" ${(modelInfo.baseModel || modelInfo.base_model) === 'SD 1.5' ? 'selected' : ''}>SD 1.5</option>
-                        <option value="SDXL 1.0" ${(modelInfo.baseModel || modelInfo.base_model) === 'SDXL 1.0' ? 'selected' : ''}>SDXL 1.0</option>
-                        <option value="SD 2.1" ${(modelInfo.baseModel || modelInfo.base_model) === 'SD 2.1' ? 'selected' : ''}>SD 2.1</option>
-                        <option value="Pony" ${(modelInfo.baseModel || modelInfo.base_model) === 'Pony' ? 'selected' : ''}>Pony</option>
-                        <option value="Flux.1 D" ${(modelInfo.baseModel || modelInfo.base_model) === 'Flux.1 D' ? 'selected' : ''}>Flux.1 D</option>
-                        <option value="Flux.1 S" ${(modelInfo.baseModel || modelInfo.base_model) === 'Flux.1 S' ? 'selected' : ''}>Flux.1 S</option>
-                    </select>
-                </div>
-            </div>
-            
-            <div style="margin-bottom: 15px;">
-                <label style="display: block; margin-bottom: 5px; font-weight: bold;">Description:</label>
-                <textarea id="edit-description" rows="4" 
-                          style="width: 100%; padding: 8px; background: #1a1a1a; border: 1px solid #444; border-radius: 4px; color: white; resize: vertical;">${escapeHtml(modelInfo.description || '')}</textarea>
-            </div>
-            
-            <div style="margin-bottom: 15px;">
-                <label style="display: block; margin-bottom: 5px; font-weight: bold;">Trigger Words (comma-separated):</label>
-                <input type="text" id="edit-triggers" value="${escapeHtml((modelInfo.trainedWords || []).join(', '))}" 
-                       style="width: 100%; padding: 8px; background: #1a1a1a; border: 1px solid #444; border-radius: 4px; color: white;">
-            </div>
-            
-            <div style="margin-bottom: 15px;">
-                <label style="display: block; margin-bottom: 5px; font-weight: bold;">Personal Notes:</label>
-                <textarea id="edit-notes" rows="3" 
-                          style="width: 100%; padding: 8px; background: #1a1a1a; border: 1px solid #444; border-radius: 4px; color: white; resize: vertical;">${escapeHtml(modelInfo.notes || '')}</textarea>
-            </div>
-            
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-                <label style="display: flex; align-items: center; gap: 8px;">
-                    <input type="checkbox" id="edit-nsfw" ${modelInfo.nsfw ? 'checked' : ''}>
-                    <span>NSFW Content</span>
-                </label>
-                <label style="display: flex; align-items: center; gap: 8px;">
-                    <input type="checkbox" id="edit-favorite" ${modelInfo.favorite || modelInfo.is_favorite ? 'checked' : ''}>
-                    <span>Mark as Favorite</span>
-                </label>
-            </div>
-            
-            <div style="margin-top: 15px;">
-                <label style="display: flex; align-items: center; gap: 8px;">
-                    <input type="checkbox" id="edit-blacklist" ${modelInfo.blacklist ? 'checked' : ''}>
-                    <span>Blacklist (hide from model lists)</span>
-                </label>
-            </div>
-        </div>
-    `;
-    
+    content.className = 'models-v2-edit-dialog-body';
+
+    const title = document.createElement('h3');
+    title.className = 'models-v2-edit-dialog-title';
+    title.textContent = 'Edit Model Information';
+
+    const subtitle = document.createElement('p');
+    subtitle.className = 'models-v2-edit-dialog-subtitle';
+    subtitle.textContent = `File: ${escapeHtml(fileName)}`;
+
+    content.appendChild(title);
+    content.appendChild(subtitle);
+
+    const createField = (labelText, inputElement) => {
+        const wrapper = document.createElement('div');
+        const label = document.createElement('label');
+        label.className = 'models-v2-dialog-label';
+        label.textContent = labelText;
+        wrapper.appendChild(label);
+        wrapper.appendChild(inputElement);
+        return wrapper;
+    };
+
+    const createTextInput = (id, value) => {
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.id = id;
+        input.className = 'models-v2-dialog-field';
+        input.value = value;
+        return input;
+    };
+
+    const createTextarea = (id, value, rows = 3) => {
+        const textarea = document.createElement('textarea');
+        textarea.id = id;
+        textarea.rows = rows;
+        textarea.className = 'models-v2-dialog-field models-v2-dialog-textarea';
+        textarea.value = value;
+        return textarea;
+    };
+
+    const createSelectField = (id, options, selectedValue) => {
+        const select = document.createElement('select');
+        select.id = id;
+        select.className = 'models-v2-dialog-field';
+
+        options.forEach(({ value, text }) => {
+            const option = document.createElement('option');
+            option.value = value;
+            option.textContent = text;
+            if (value === selectedValue) option.selected = true;
+            select.appendChild(option);
+        });
+
+        return select;
+    };
+
+    const createCheckboxField = (id, checked, labelText) => {
+        const label = document.createElement('label');
+        label.className = 'models-v2-dialog-checkbox-label';
+
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.id = id;
+        checkbox.checked = checked;
+
+        const span = document.createElement('span');
+        span.textContent = labelText;
+
+        label.appendChild(checkbox);
+        label.appendChild(span);
+        return label;
+    };
+
+    const firstGrid = document.createElement('div');
+    firstGrid.className = 'models-v2-dialog-grid';
+    firstGrid.appendChild(createField('Model Name:', createTextInput('edit-model-name', modelNameValue)));
+    firstGrid.appendChild(createField('Version Name:', createTextInput('edit-version-name', versionNameValue)));
+
+    const typeOptions = [
+        { value: '', text: 'Unknown' },
+        { value: 'Checkpoint', text: 'Checkpoint' },
+        { value: 'LORA', text: 'LORA' },
+        { value: 'LyCORIS', text: 'LyCORIS' },
+        { value: 'TextualInversion', text: 'Textual Inversion' },
+        { value: 'VAE', text: 'VAE' },
+        { value: 'Controlnet', text: 'ControlNet' }
+    ];
+
+    const baseModelOptions = [
+        { value: '', text: 'Unknown' },
+        { value: 'SD 1.5', text: 'SD 1.5' },
+        { value: 'SDXL 1.0', text: 'SDXL 1.0' },
+        { value: 'SD 2.1', text: 'SD 2.1' },
+        { value: 'Pony', text: 'Pony' },
+        { value: 'Flux.1 D', text: 'Flux.1 D' },
+        { value: 'Flux.1 S', text: 'Flux.1 S' }
+    ];
+
+    const secondGrid = document.createElement('div');
+    secondGrid.className = 'models-v2-dialog-grid';
+    secondGrid.appendChild(createField('Model Type:', createSelectField('edit-type', typeOptions, modelTypeValue)));
+    secondGrid.appendChild(createField('Base Model:', createSelectField('edit-base-model', baseModelOptions, baseModelValue)));
+
+    const descriptionSection = document.createElement('div');
+    descriptionSection.className = 'models-v2-dialog-section';
+    descriptionSection.appendChild(createField('Description:', createTextarea('edit-description', descriptionValue, 4)));
+
+    const triggersSection = document.createElement('div');
+    triggersSection.className = 'models-v2-dialog-section';
+    triggersSection.appendChild(createField('Trigger Words (comma-separated):', createTextInput('edit-triggers', triggersValue)));
+
+    const notesSection = document.createElement('div');
+    notesSection.className = 'models-v2-dialog-section';
+    notesSection.appendChild(createField('Personal Notes:', createTextarea('edit-notes', notesValue, 3)));
+
+    const checkboxGrid = document.createElement('div');
+    checkboxGrid.className = 'models-v2-dialog-grid';
+    checkboxGrid.appendChild(createCheckboxField('edit-nsfw', nsfwValue, 'NSFW Content'));
+    checkboxGrid.appendChild(createCheckboxField('edit-favorite', favoriteValue, 'Mark as Favorite'));
+
+    const blacklistSection = document.createElement('div');
+    blacklistSection.className = 'models-v2-dialog-section';
+    blacklistSection.appendChild(createCheckboxField('edit-blacklist', blacklistValue, 'Blacklist (hide from model lists)'));
+
+    content.appendChild(firstGrid);
+    content.appendChild(secondGrid);
+    content.appendChild(descriptionSection);
+    content.appendChild(triggersSection);
+    content.appendChild(notesSection);
+    content.appendChild(checkboxGrid);
+    content.appendChild(blacklistSection);
+
     const dialog = createDialog({
         title: 'Edit Model Information',
         content: content,
         width: '700px'
     });
-    
-    // Add save button
+
     dialog.addFooterButton('Save', async () => {
         try {
             const modelName = document.getElementById('edit-model-name').value.trim();
@@ -556,38 +571,36 @@ async function openEditDialog(modelHash, modelInfo, filePath, onSave) {
             const nsfw = document.getElementById('edit-nsfw').checked;
             const favorite = document.getElementById('edit-favorite').checked;
             const blacklist = document.getElementById('edit-blacklist').checked;
-            
+
             const triggers = triggerText ? triggerText.split(',').map(t => t.trim()).filter(t => t.length > 0) : [];
-            
+
             const updatedInfo = {
                 ...modelInfo,
                 name: versionName,
-                description: description,
+                description,
                 trainedWords: triggers,
-                notes: notes,
-                nsfw: nsfw,
-                favorite: favorite,
+                notes,
+                nsfw,
+                favorite,
                 is_favorite: favorite,
-                blacklist: blacklist
+                blacklist
             };
-            
-            // Update model information
+
             if (modelName || modelType || baseModel) {
                 updatedInfo.model = {
                     ...modelInfo.model,
                     ...(modelName && { name: modelName }),
                     ...(modelType && { type: modelType })
                 };
-                
+
                 if (baseModel) {
                     updatedInfo.baseModel = baseModel;
                     updatedInfo.base_model = baseModel;
                 }
             }
-            
+
             await updateCacheInfo(modelHash, updatedInfo);
 
-            // Update sidebar state cache so subsequent edits reflect saved changes immediately
             try {
                 const currentCache = selectors.cacheData() || { hash: {}, info: {} };
                 const newInfo = { ...(currentCache.info || {}), [modelHash]: updatedInfo };
@@ -595,25 +608,24 @@ async function openEditDialog(modelHash, modelInfo, filePath, onSave) {
             } catch (e) {
                 console.warn('State cache update after save failed (non-fatal):', e);
             }
-            
+
             dialog.close();
-            
+
             if (onSave) {
                 await onSave();
             }
-            
+
             alertDialog('Model information updated successfully!', 'Success');
         } catch (error) {
             console.error('Error updating model info:', error);
             alertDialog(`Failed to update model information: ${error.message}`, 'Error');
         }
     }, { backgroundColor: '#4CAF50' });
-    
-    // Add cancel button
+
     dialog.addFooterButton('Cancel', () => {
         dialog.close();
     }, { backgroundColor: '#666' });
-    
+
     dialog.show();
 }
 
@@ -656,6 +668,7 @@ export function createModelsTabV2(container) {
     // Clear container
     container.innerHTML = '';
     container.classList.add('models-tab-v2');
+    loadSidebarStyle('models-v2-styles', 'extensions/comfyui_sageutils/sidebar/modelsTabV2.css');
     
     // Set up progress bar (initially hidden)
     const progressBar = createInlineProgressBar({
@@ -868,7 +881,7 @@ export function createModelsTabV2(container) {
                     border: '1px solid #f44336'
                 }
             });
-            errorPanel.innerHTML = `<div style="color: #f44336;">Error loading model information: ${error.message}</div>`;
+            errorPanel.innerHTML = `<div class="models-v2-error-text">Error loading model information: ${error.message}</div>`;
             infoDisplayContainer.appendChild(errorPanel);
         }
     }

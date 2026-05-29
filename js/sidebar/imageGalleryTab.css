@@ -1,0 +1,162 @@
+.gallery-placeholder {
+    color: #888;
+    text-align: center;
+    padding: 20px;
+}
+
+.gallery-placeholder-icon {
+    font-size: 24px;
+    margin-bottom: 10px;
+}
+
+.gallery-placeholder-subtext {
+    font-size: 12px;
+    margin-top: 5px;
+}
+
+.gallery-loading-progress {
+    grid-column: 1 / -1;
+    text-align: center;
+    color: #4CAF50;
+    padding: 60px 20px;
+    font-size: 14px;
+}
+
+.gallery-loading-progress__icon {
+    font-size: 24px;
+    margin-bottom: 15px;
+}
+
+.gallery-loading-progress__message {
+    margin-bottom: 10px;
+}
+
+.gallery-loading-progress__details {
+    color: #ccc;
+    font-size: 13px;
+    margin-bottom: 15px;
+}
+
+.gallery-progress-bar {
+    width: 100%;
+    max-width: 400px;
+    height: 24px;
+    background: #333;
+    border-radius: 12px;
+    overflow: visible;
+    margin: 0 auto;
+    border: 1px solid #555;
+    position: relative;
+}
+
+.gallery-progress-bar__fill {
+    width: var(--fill-width, 0%);
+    height: 100%;
+    background: linear-gradient(90deg, #4CAF50, #66BB6A);
+    transition: width 0.3s ease;
+    border-radius: 12px;
+}
+
+.gallery-thumbnail-progress__fill {
+    width: var(--fill-width, 0%);
+    height: 100%;
+    background: linear-gradient(90deg, #4CAF50, #66BB6A);
+    transition: width 0.3s ease;
+}
+
+.gallery-progress-bar__label {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 12px;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+    pointer-events: none;
+    color: white;
+}
+
+.gallery-progress-bar__label--light {
+    color: white;
+}
+
+.gallery-error-panel {
+    grid-column: 1 / -1;
+    text-align: center;
+    color: #f44336;
+    padding: 40px;
+    font-style: italic;
+}
+
+.gallery-error-panel__details {
+    color: #888;
+    margin-top: 10px;
+    display: block;
+}
+
+.gallery-metadata-section--hidden {
+    display: none;
+}
+
+.gallery-status--error {
+    color: #f44336;
+}
+
+.gallery-empty-state {
+    grid-column: 1 / -1;
+    text-align: center;
+    color: #888;
+    padding: 40px;
+    font-style: italic;
+}
+
+.gallery-file-info-title {
+    color: #4CAF50;
+    margin-bottom: 10px;
+}
+
+.gallery-info-status {
+    color: #2196F3;
+}
+
+.gallery-progress-container {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 20px;
+    background: #2a2a2a;
+    border-radius: 6px;
+    margin-bottom: 15px;
+}
+
+.gallery-thumbnail-progress__status {
+    color: #4CAF50;
+    margin-bottom: 10px;
+}
+
+.gallery-thumbnail-progress__bar {
+    width: 100%;
+    height: 8px;
+    background: #333;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.gallery-thumbnail-progress__fill {
+    height: 100%;
+    background: linear-gradient(90deg, #4CAF50, #66BB6A);
+    transition: width 0.3s ease;
+}
+
+.gallery-grid-container.list-view {
+    grid-template-columns: 1fr !important;
+    gap: 5px !important;
+}
+
+.gallery-grid-container.grid-view {
+    grid-template-columns: repeat(auto-fill, minmax(var(--gallery-thumbnail-min-width, 200px), 1fr)) !important;
+    gap: 10px !important;
+}

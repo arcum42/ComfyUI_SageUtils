@@ -64,10 +64,6 @@ export function createInputSection() {
     // Skip save checkbox
     const skipSaveContainer = document.createElement('label');
     skipSaveContainer.className = 'llm-skip-save-container';
-    skipSaveContainer.style.display = 'flex';
-    skipSaveContainer.style.alignItems = 'center';
-    skipSaveContainer.style.gap = '6px';
-    skipSaveContainer.style.cursor = 'pointer';
     
     const skipSaveCheckbox = document.createElement('input');
     skipSaveCheckbox.type = 'checkbox';
@@ -75,9 +71,8 @@ export function createInputSection() {
     skipSaveCheckbox.id = 'llm-skip-save-checkbox';
     
     const skipSaveLabel = document.createElement('span');
+    skipSaveLabel.className = 'llm-skip-save-label';
     skipSaveLabel.textContent = 'Don\'t save to history';
-    skipSaveLabel.style.fontSize = '11px';
-    skipSaveLabel.style.color = 'var(--text-secondary, #999)';
     
     skipSaveContainer.appendChild(skipSaveCheckbox);
     skipSaveContainer.appendChild(skipSaveLabel);

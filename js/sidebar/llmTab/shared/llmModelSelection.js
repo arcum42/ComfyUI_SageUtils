@@ -241,14 +241,14 @@ export async function loadModels(state, modelSelection, visionSection, force = f
                 state.reasoningModels
             ) : null;
             const hasVisionModel = Boolean(flags?.vision);
-            visionSection.style.display = hasVisionModel ? 'block' : 'none';
+            visionSection.classList.toggle('llm-hidden', !hasVisionModel);
             
             console.log('[LLM] Initial vision section setup:', {
                 model: state.model,
                 provider: state.provider,
                 hasVisionModel,
                 visionModels: state.visionModels,
-                display: visionSection.style.display
+                hidden: visionSection.classList.contains('llm-hidden')
             });
         }
         

@@ -1,0 +1,41 @@
+.sidebar-settings-button {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: #2a2a2a;
+    border: 1px solid #444;
+    border-radius: 4px;
+    color: #ccc;
+    padding: 6px 10px;
+    cursor: pointer;
+    font-size: 18px;
+    transition: all 0.2s ease;
+    z-index: 10;
+    flex-shrink: 0;
+}
+
+.sidebar-settings-button:hover {
+    background: #4CAF50;
+    border-color: #4CAF50;
+    transform: translateY(-50%) scale(1.1);
+}
+
+.sidebar-settings-button--hidden {
+    display: none !important;
+}
+
+.sidebar-settings-indicator {
+    position: absolute;
+    right: 60px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: #2a2a2a;
+    border: 1px solid #444;
+    border-radius: 4px;
+    color: #ddd;
+    padding: 4px 8px;
+    font-size: 12px;
+    opacity: 0.9;
+    z-index: 9;
+}

@@ -15,6 +15,7 @@ import {
 } from '../components/dialogManager.js';
 
 import { createButton, BUTTON_VARIANTS } from '../components/buttons.js';
+import { loadSidebarStyle } from './sidebarStyles.js';
 
 import { escapeHtml, formatFileSize } from '../reports/reportGenerator.js';
 
@@ -37,71 +38,11 @@ const SEARCH_CONFIG = {
 export function createCivitaiSearchTab(container) {
     container.innerHTML = '';
     
-    // Add CSS animations if not already added
-    if (!document.getElementById('civitai-search-styles')) {
-        const style = document.createElement('style');
-        style.id = 'civitai-search-styles';
-        style.textContent = `
-            @keyframes fadeInUp {
-                from {
-                    opacity: 0;
-                    transform: translateY(20px);
-                }
-                to {
-                    opacity: 1;
-                    transform: translateY(0);
-                }
-            }
-            
-            @keyframes pulse {
-                0%, 100% { opacity: 1; }
-                50% { opacity: 0.7; }
-            }
-            
-            .civitai-search-result {
-                animation: fadeInUp 0.3s ease-out;
-            }
-            
-            .civitai-search-loading {
-                animation: pulse 1.5s ease-in-out infinite;
-            }
-            
-            .civitai-hover-scale {
-                transition: transform 0.2s ease, box-shadow 0.2s ease;
-            }
-            
-            .civitai-hover-scale:hover {
-                transform: scale(1.02);
-                box-shadow: 0 4px 15px rgba(76, 175, 80, 0.2);
-            }
-            
-            .civitai-card-btn {
-                transition: all 0.2s ease;
-                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-            }
-            
-            .civitai-card-btn:hover {
-                transform: translateY(-1px);
-                box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
-            }
-            
-            .civitai-card-btn:active {
-                transform: translateY(0);
-                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-            }
-        `;
-        document.head.appendChild(style);
-    }
+    loadSidebarStyle('civitai-search-styles', 'extensions/comfyui_sageutils/sidebar/civitaiSearchTab.css');
     
     // Create main layout
     const searchContainer = document.createElement('div');
-    searchContainer.style.cssText = `
-        display: flex;
-        flex-direction: column;
-        height: 100%;
-        background: #1a1a1a;
-        color: white;
-    `;
+    searchContainer.className = 'civitai-search-tab';
     
     // Create search form
     const searchForm = createSearchForm();
@@ -109,17 +50,12 @@ export function createCivitaiSearchTab(container) {
     // Create results container
     const resultsContainer = document.createElement('div');
     resultsContainer.id = 'civitai-results';
-    resultsContainer.style.cssText = `
-        flex: 1;
-        overflow-y: auto;
-        padding: 15px;
-        background: #1a1a1a;
-    `;
+    resultsContainer.className = 'civitai-results-container';
     
     // Initial message
     resultsContainer.innerHTML = `
-        <div style="text-align: center; padding: 40px; color: #888; font-style: italic;">
-            <h3 style="color: #569cd6; margin-bottom: 15px;">🔍 Civitai Model Search</h3>
+        <div class="civitai-search-status-panel">
+            <h3 class="civitai-search-status-title">🔍 Civitai Model Search</h3>
             <p>Search for models on Civitai to discover and download new content.</p>
             <p>Use the search form above to find models by name, type, or creator.</p>
         </div>
@@ -140,29 +76,22 @@ export function createCivitaiSearchTab(container) {
  */
 function createSearchForm() {
     const form = document.createElement('div');
-    form.style.cssText = `
-        padding: 15px;
-        background: #2a2a2a;
-        border-bottom: 2px solid #4CAF50;
-        display: grid;
-        grid-template-columns: 1fr 150px 150px;
-        gap: 10px;
-        align-items: end;
-    `;
+    form.className = 'civitai-search-form';
     
     // Search input
     const searchGroup = document.createElement('div');
+    searchGroup.className = 'civitai-search-group';
     searchGroup.innerHTML = `
-        <label style="display: block; margin-bottom: 5px; font-weight: bold; color: #ccc;">Search Query:</label>
-        <input type="text" id="civitai-search-input" placeholder="Enter model name, creator, or keywords..." 
-               style="width: 100%; padding: 8px; background: #1a1a1a; border: 1px solid #444; border-radius: 4px; color: white;">
+        <label class="civitai-search-label" for="civitai-search-input">Search Query:</label>
+        <input type="text" id="civitai-search-input" class="civitai-search-input" placeholder="Enter model name, creator, or keywords...">
     `;
     
     // Type filter
     const typeGroup = document.createElement('div');
+    typeGroup.className = 'civitai-search-group';
     typeGroup.innerHTML = `
-        <label style="display: block; margin-bottom: 5px; font-weight: bold; color: #ccc;">Type:</label>
-        <select id="civitai-type-filter" style="width: 100%; padding: 8px; background: #1a1a1a; border: 1px solid #444; border-radius: 4px; color: white;">
+        <label class="civitai-search-label" for="civitai-type-filter">Type:</label>
+        <select id="civitai-type-filter" class="civitai-search-select">
             <option value="">All Types</option>
             ${SEARCH_CONFIG.SUPPORTED_TYPES.map(type => `<option value="${type}">${type}</option>`).join('')}
         </select>
@@ -170,58 +99,39 @@ function createSearchForm() {
     
     // Sort filter
     const sortGroup = document.createElement('div');
+    sortGroup.className = 'civitai-search-group';
     sortGroup.innerHTML = `
-        <label style="display: block; margin-bottom: 5px; font-weight: bold; color: #ccc;">Sort:</label>
-        <select id="civitai-sort-filter" style="width: 100%; padding: 8px; background: #1a1a1a; border: 1px solid #444; border-radius: 4px; color: white;">
+        <label class="civitai-search-label" for="civitai-sort-filter">Sort:</label>
+        <select id="civitai-sort-filter" class="civitai-search-select">
             ${SEARCH_CONFIG.SORT_OPTIONS.map(sort => `<option value="${sort}">${sort}</option>`).join('')}
         </select>
     `;
     
     // Search button row
     const buttonRow = document.createElement('div');
-    buttonRow.style.cssText = `
-        grid-column: 1 / -1;
-        display: flex;
-        gap: 10px;
-        align-items: center;
-        margin-top: 10px;
-    `;
+    buttonRow.className = 'civitai-search-button-row';
     
     // Search button
     const searchButton = createButton('Search', {
         id: 'civitai-search-button',
         variant: BUTTON_VARIANTS.SUCCESS,
-        style: {
-            padding: '8px 20px',
-            fontWeight: 'bold'
-        }
+        className: 'civitai-search-button'
     });
     
     // NSFW toggle
     const nsfwToggle = document.createElement('label');
-    nsfwToggle.style.cssText = `
-        display: flex;
-        align-items: center;
-        color: #ccc;
-        cursor: pointer;
-        margin-left: 20px;
-    `;
+    nsfwToggle.className = 'civitai-nsfw-toggle';
     nsfwToggle.innerHTML = `
-        <input type="checkbox" id="civitai-nsfw-toggle" style="margin-right: 8px;">
+        <input type="checkbox" id="civitai-nsfw-toggle">
         Include NSFW Results
     `;
     
     // Results per page
     const limitGroup = document.createElement('div');
-    limitGroup.style.cssText = `
-        display: flex;
-        align-items: center;
-        margin-left: auto;
-        color: #ccc;
-    `;
+    limitGroup.className = 'civitai-limit-group';
     limitGroup.innerHTML = `
-        <label style="margin-right: 8px;">Results:</label>
-        <select id="civitai-limit-select" style="padding: 4px; background: #1a1a1a; border: 1px solid #444; border-radius: 4px; color: white;">
+        <label class="civitai-search-label" for="civitai-limit-select">Results:</label>
+        <select id="civitai-limit-select" class="civitai-search-select">
             <option value="10">10</option>
             <option value="20" selected>20</option>
             <option value="50">50</option>
@@ -296,10 +206,11 @@ function setupSearchHandlers(searchForm, resultsContainer) {
         
         if (isNewSearch) {
             resultsContainer.innerHTML = `
-                <div class="civitai-search-loading" style="text-align: center; padding: 40px; color: #888; font-style: italic;">
-                    <div style="margin-bottom: 15px; font-size: 20px;">🔍</div>
-                    <div style="margin-bottom: 10px;">Searching Civitai...</div>
-                    <div style="font-size: 14px;">This may take a moment...</div>
+                <div class="civitai-search-status-panel">
+                    <div class="civitai-search-status-icon">🔍</div>
+                    <h3 class="civitai-search-status-title">Civitai Model Search</h3>
+                    <p>Search for models on Civitai to discover and download new content.</p>
+                    <p>Use the search form above to find models by name, type, or creator.</p>
                 </div>
             `;
         }
@@ -327,10 +238,10 @@ function setupSearchHandlers(searchForm, resultsContainer) {
         } catch (error) {
             console.error('Civitai search error:', error);
             resultsContainer.innerHTML = `
-                <div style="text-align: center; padding: 40px; color: #f44336;">
-                    <h3 style="color: #f44336; margin-bottom: 15px;">❌ Search Failed</h3>
+                <div class="civitai-search-status-panel civitai-search-status-error">
+                    <h3 class="civitai-search-status-title">❌ Search Failed</h3>
                     <p>Failed to search Civitai: ${escapeHtml(error.message)}</p>
-                    <p style="font-size: 12px; color: #888; margin-top: 10px;">Please check your internet connection and try again.</p>
+                    <p class="civitai-search-status-note">Please check your internet connection and try again.</p>
                 </div>
             `;
         } finally {
@@ -353,18 +264,6 @@ function setupSearchHandlers(searchForm, resultsContainer) {
         }
     });
     
-    // Button hover effects
-    searchButton.addEventListener('mouseenter', () => {
-        if (!searchButton.disabled) {
-            searchButton.style.background = '#45a049';
-        }
-    });
-    
-    searchButton.addEventListener('mouseleave', () => {
-        if (!searchButton.disabled) {
-            searchButton.style.background = '#4CAF50';
-        }
-    });
 }
 
 /**
@@ -422,166 +321,91 @@ async function searchCivitaiModels(options) {
  */
 function displaySearchResults(container, results, options = {}) {
     const { includeNsfw = false, metadata = null, onNextPage = null } = options;
-    
+
     if (!results || results.length === 0) {
         container.innerHTML = `
-            <div style="text-align: center; padding: 40px; color: #888; font-style: italic;">
-                <h3 style="color: #569cd6; margin-bottom: 15px;">No Results Found</h3>
+            <div class="civitai-search-status-panel">
+                <h3 class="civitai-search-status-title">No Results Found</h3>
                 <p>No models found matching your search criteria.</p>
                 <p>Try adjusting your search terms or filters.</p>
             </div>
         `;
         return;
     }
-    
-    // Create results header
+
     const header = document.createElement('div');
-    header.style.cssText = `
-        margin-bottom: 20px;
-        padding: 10px;
-        background: #2a2a2a;
-        border-radius: 4px;
-        border-left: 4px solid #4CAF50;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-    `;
-    
+    header.className = 'civitai-results-header';
+
     const headerText = document.createElement('div');
     headerText.innerHTML = `
-        <h3 style="margin: 0; color: #4CAF50;">Found ${results.length} models${metadata && metadata.totalItems ? ` (${metadata.totalItems} total)` : ''}</h3>
-        <p style="margin: 5px 0 0 0; color: #888; font-size: 14px;">Click on any model to view details and download options</p>
+        <h3 class="civitai-results-header-title">Found ${results.length} models${metadata && metadata.totalItems ? ` (${metadata.totalItems} total)` : ''}</h3>
+        <p class="civitai-results-subtitle">Click on any model to view details and download options</p>
     `;
-    
     header.appendChild(headerText);
-    
-    // Add pagination info if available
+
     if (metadata) {
         const paginationInfo = document.createElement('div');
-        paginationInfo.style.cssText = `
-            text-align: right;
-            color: #888;
-            font-size: 12px;
-        `;
-        
+        paginationInfo.className = 'civitai-results-pagination-info';
+
         if (metadata.currentPage) {
             paginationInfo.innerHTML = `
                 <div>Page ${metadata.currentPage}${metadata.totalPages ? ` of ${metadata.totalPages}` : ''}</div>
-                <div style="margin-top: 2px;">${metadata.pageSize || results.length} per page</div>
+                <div class="civitai-results-pagination-detail">${metadata.pageSize || results.length} per page</div>
             `;
         } else if (metadata.nextCursor) {
             paginationInfo.innerHTML = `
                 <div>Cursor-based pagination</div>
-                <div style="margin-top: 2px;">More results available</div>
+                <div class="civitai-results-pagination-detail">More results available</div>
             `;
         }
-        
+
         header.appendChild(paginationInfo);
     }
-    
-    // Create results grid
+
     const resultsGrid = document.createElement('div');
-    resultsGrid.style.cssText = `
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-        gap: 15px;
-        margin-bottom: 20px;
-    `;
-    
+    resultsGrid.className = 'civitai-results-grid';
+
     results.forEach(model => {
         const modelCard = createModelCard(model, { includeNsfw });
         resultsGrid.appendChild(modelCard);
     });
-    
-    // Create pagination controls
+
     const paginationControls = document.createElement('div');
-    paginationControls.style.cssText = `
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        gap: 15px;
-        padding: 20px;
-        background: #2a2a2a;
-        border-radius: 4px;
-        border-top: 2px solid #4CAF50;
-    `;
-    
-    // Add Next button if more pages available
+    paginationControls.className = 'civitai-pagination-controls';
+
     if (onNextPage) {
         const nextButton = createButton('📄 Load More Results', {
             id: 'next-page-btn',
             variant: BUTTON_VARIANTS.SUCCESS,
             onClick: onNextPage,
-            styles: {
-                padding: '10px 20px',
-                fontWeight: 'bold',
-                fontSize: '14px'
-            }
+            className: 'civitai-pagination-button'
         });
-        
+
         paginationControls.appendChild(nextButton);
-        
-        // Add pagination hint
+
         const paginationHint = document.createElement('span');
-        paginationHint.style.cssText = `
-            color: #888;
-            font-size: 12px;
-            font-style: italic;
-        `;
+        paginationHint.className = 'civitai-pagination-hint';
         paginationHint.textContent = 'Results will be appended below current results';
         paginationControls.appendChild(paginationHint);
     } else {
-        // No more pages available
         const endMessage = document.createElement('span');
-        endMessage.style.cssText = `
-            color: #888;
-            font-size: 14px;
-            font-style: italic;
-        `;
+        endMessage.className = 'civitai-pagination-end-message';
         endMessage.textContent = '🏁 End of results reached';
         paginationControls.appendChild(endMessage);
     }
-    
+
     container.innerHTML = '';
     container.appendChild(header);
     container.appendChild(resultsGrid);
     container.appendChild(paginationControls);
 }
 
-/**
- * Creates a model card for display in search results
- * @param {Object} model - Model data from Civitai API
- * @param {Object} options - Display options
- * @returns {HTMLElement} Model card element
- */
 function createModelCard(model, options = {}) {
     const { includeNsfw = false } = options;
-    
+
     const card = document.createElement('div');
-    card.className = 'civitai-search-result civitai-hover-scale';
-    card.style.cssText = `
-        background: #2a2a2a;
-        border-radius: 8px;
-        padding: 15px;
-        cursor: pointer;
-        transition: all 0.3s ease;
-        border: 1px solid #444;
-    `;
-    
-    // Hover effects
-    card.addEventListener('mouseenter', () => {
-        card.style.background = '#333';
-        card.style.borderColor = '#4CAF50';
-        card.style.transform = 'translateY(-2px)';
-    });
-    
-    card.addEventListener('mouseleave', () => {
-        card.style.background = '#2a2a2a';
-        card.style.borderColor = '#444';
-        card.style.transform = 'translateY(0)';
-    });
-    
-    // Get model information
+    card.className = 'civitai-model-card';
+
     const modelName = model.name || 'Unknown Model';
     const creator = model.creator ? model.creator.username : 'Unknown';
     const type = model.type || 'Unknown';
@@ -589,325 +413,233 @@ function createModelCard(model, options = {}) {
     const stats = model.stats || {};
     const latestVersion = model.modelVersions && model.modelVersions[0];
     const trainedWords = latestVersion ? latestVersion.trainedWords || [] : [];
-    
-    // Get first appropriate image
+
     let imageUrl = null;
     if (latestVersion && latestVersion.images) {
-        const appropriateImage = latestVersion.images.find(img => 
+        const appropriateImage = latestVersion.images.find(img =>
             includeNsfw || (img.nsfwLevel || 0) <= SEARCH_CONFIG.MAX_NSFW_LEVEL
         );
         if (appropriateImage) {
             imageUrl = appropriateImage.url;
         }
     }
-    
+
     card.innerHTML = `
-        <div style="display: flex; gap: 15px;">
-            <div style="flex-shrink: 0;">
+        <div class="civitai-model-card-inner">
+            <div class="civitai-model-card-image">
                 ${imageUrl ? 
-                    `<img src="${escapeHtml(imageUrl)}" 
-                         style="width: 80px; height: 80px; object-fit: cover; border-radius: 4px; background: #1a1a1a;" 
-                         alt="Model preview" loading="lazy">` :
-                    `<div style="width: 80px; height: 80px; background: #1a1a1a; border-radius: 4px; display: flex; align-items: center; justify-content: center; color: #666; font-size: 12px;">No Image</div>`
+                    `<img src="${escapeHtml(imageUrl)}" class="civitai-model-card-image-img" alt="Model preview" loading="lazy">` :
+                    `<div class="civitai-model-card-no-image">No Image</div>`
                 }
             </div>
-            <div style="flex: 1; min-width: 0;">
-                <h4 style="margin: 0 0 5px 0; color: #4CAF50; font-size: 16px; font-weight: bold;">${escapeHtml(modelName)}</h4>
-                <p style="margin: 0 0 5px 0; color: #888; font-size: 12px;">by ${escapeHtml(creator)} • ${escapeHtml(type)}</p>
-                <p style="margin: 0 0 10px 0; color: #ccc; font-size: 13px; line-height: 1.3; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;">${escapeHtml(description)}</p>
-                
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px;">
-                    <div style="display: flex; gap: 15px; font-size: 11px; color: #888;">
+            <div class="civitai-model-card-content">
+                <h4 class="civitai-model-card-title">${escapeHtml(modelName)}</h4>
+                <p class="civitai-model-card-meta">by ${escapeHtml(creator)} • ${escapeHtml(type)}</p>
+                <p class="civitai-model-card-description">${escapeHtml(description)}</p>
+
+                <div class="civitai-model-card-stats-row">
+                    <div class="civitai-model-card-stats">
                         ${stats.downloadCount ? `<span>📥 ${stats.downloadCount.toLocaleString()}</span>` : ''}
                         ${stats.favoriteCount ? `<span>❤️ ${stats.favoriteCount.toLocaleString()}</span>` : ''}
                         ${stats.rating ? `<span>⭐ ${stats.rating.toFixed(1)}</span>` : ''}
                     </div>
-                    ${trainedWords.length > 0 ? 
-                        `<div style="color: #569cd6; font-size: 11px; font-weight: bold;">🏷️ ${trainedWords.length} triggers</div>` : 
-                        ''
-                    }
+                    ${trainedWords.length > 0 ? `<div class="civitai-model-card-triggers">🏷️ ${trainedWords.length} triggers</div>` : ''}
                 </div>
-                
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 12px; padding-top: 8px; border-top: 1px solid #444;">
-                    <div style="display: flex; gap: 8px;">
-                        <button class="civitai-card-btn civitai-details-btn" 
-                                style="background: #569cd6; color: white; border: none; padding: 4px 10px; border-radius: 3px; cursor: pointer; font-size: 11px; font-weight: bold;">
-                            📖 Details
-                        </button>
-                        ${latestVersion ? `
-                            <button class="civitai-card-btn civitai-download-btn" 
-                                    data-version-id="${latestVersion.id}" 
-                                    data-version-name="${escapeHtml(latestVersion.name || 'Latest Version')}" 
-                                    data-model-id="${model.id}"
-                                    style="background: #4CAF50; color: white; border: none; padding: 4px 10px; border-radius: 3px; cursor: pointer; font-size: 11px; font-weight: bold;">
-                                📥 Download Latest
-                            </button>
-                        ` : ''}
+
+                <div class="civitai-model-card-actions">
+                    <div class="civitai-card-btn-group">
+                        <button class="civitai-card-btn civitai-details-btn">📖 Details</button>
+                        ${latestVersion ? `<button class="civitai-card-btn civitai-download-btn" data-version-id="${latestVersion.id}" data-version-name="${escapeHtml(latestVersion.name || 'Latest Version')}" data-model-id="${model.id}">📥 Download Latest</button>` : ''}
                     </div>
-                    ${latestVersion && latestVersion.files && latestVersion.files[0] ? 
-                        `<div style="color: #888; font-size: 10px;">${formatFileSize((latestVersion.files[0].sizeKB || 0) * 1024)}</div>` : 
-                        ''
-                    }
+                    ${latestVersion && latestVersion.files && latestVersion.files[0] ? `<div class="civitai-card-stats-small">${formatFileSize((latestVersion.files[0].sizeKB || 0) * 1024)}</div>` : ''}
                 </div>
             </div>
         </div>
     `;
-    
-    // Add event listeners to the buttons
+
     const detailsBtn = card.querySelector('.civitai-details-btn');
     const downloadBtn = card.querySelector('.civitai-download-btn');
-    
+    const contentArea = card.querySelector('.civitai-model-card-content');
+
     if (detailsBtn) {
         detailsBtn.addEventListener('click', (e) => {
-            e.stopPropagation(); // Prevent card click
+            e.stopPropagation();
             showModelDetails(model, { includeNsfw });
         });
-        
-        // Button hover effects
-        detailsBtn.addEventListener('mouseenter', () => {
-            detailsBtn.style.background = '#4A90C2';
-        });
-        detailsBtn.addEventListener('mouseleave', () => {
-            detailsBtn.style.background = '#569cd6';
-        });
     }
-    
+
     if (downloadBtn) {
         downloadBtn.addEventListener('click', (e) => {
-            e.stopPropagation(); // Prevent card click
+            e.stopPropagation();
             const versionId = downloadBtn.dataset.versionId;
             const versionName = downloadBtn.dataset.versionName;
             const modelId = downloadBtn.dataset.modelId;
             downloadModel(versionId, versionName, modelId);
         });
-        
-        // Button hover effects
-        downloadBtn.addEventListener('mouseenter', () => {
-            downloadBtn.style.background = '#45a049';
-        });
-        downloadBtn.addEventListener('mouseleave', () => {
-            downloadBtn.style.background = '#4CAF50';
-        });
     }
-    
-    // Remove the old click handler for the entire card since we now have specific buttons
-    // Only make the image and text areas clickable for details
-    const contentArea = card.querySelector('div > div:nth-child(2)');
+
     if (contentArea) {
-        // Add click handler only to the text content area (not buttons)
         const textElements = contentArea.querySelectorAll('h4, p');
         textElements.forEach(element => {
-            element.style.cursor = 'pointer';
             element.addEventListener('click', () => showModelDetails(model, { includeNsfw }));
         });
     }
-    
+
     return card;
 }
 
-/**
- * Shows detailed model information in a dialog
- * @param {Object} model - Model data from Civitai API
- * @param {Object} options - Display options
- */
 function showModelDetails(model, options = {}) {
     const { includeNsfw = false } = options;
-    
+
     const modelName = model.name || 'Unknown Model';
     const creator = model.creator ? model.creator.username : 'Unknown';
     const type = model.type || 'Unknown';
     const description = model.description || 'No description available';
     const stats = model.stats || {};
     const versions = model.modelVersions || [];
-    
-    // Create dialog content
+
     const content = document.createElement('div');
-    content.style.cssText = `
-        max-width: 800px;
-        max-height: 80vh;
-        overflow-y: auto;
-        padding: 20px;
-    `;
-    
-    // Model header
+    content.className = 'civitai-dialog-content';
+
     const header = document.createElement('div');
-    header.style.cssText = `
-        margin-bottom: 20px;
-        padding-bottom: 15px;
-        border-bottom: 2px solid #4CAF50;
-    `;
-    
+    header.className = 'civitai-dialog-header';
     header.innerHTML = `
-        <h2 style="margin: 0 0 10px 0; color: #4CAF50;">${escapeHtml(modelName)}</h2>
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+        <h2 class="civitai-dialog-title">${escapeHtml(modelName)}</h2>
+        <div class="civitai-dialog-meta">
             <div>
-                <span style="color: #888;">by</span> <strong style="color: #569cd6;">${escapeHtml(creator)}</strong>
-                <span style="color: #888; margin-left: 15px;">Type:</span> <strong style="color: #FFB74D;">${escapeHtml(type)}</strong>
+                <span class="civitai-dialog-meta-label">by</span> <strong class="civitai-dialog-meta-creator">${escapeHtml(creator)}</strong>
+                <span class="civitai-dialog-meta-label">Type:</span> <strong class="civitai-dialog-meta-type">${escapeHtml(type)}</strong>
             </div>
-            <a href="${getModelUrl(model.id)}" target="_blank" style="color: #4CAF50; text-decoration: none; font-size: 14px;">View on Civitai →</a>
+            <a href="${getModelUrl(model.id)}" target="_blank" class="civitai-dialog-link">View on Civitai →</a>
         </div>
-        <div style="display: flex; gap: 20px; font-size: 14px; color: #888;">
+        <div class="civitai-dialog-stats">
             ${stats.downloadCount ? `<span>📥 ${stats.downloadCount.toLocaleString()} downloads</span>` : ''}
             ${stats.favoriteCount ? `<span>❤️ ${stats.favoriteCount.toLocaleString()} favorites</span>` : ''}
             ${stats.rating ? `<span>⭐ ${stats.rating.toFixed(1)} rating</span>` : ''}
             ${stats.commentCount ? `<span>💬 ${stats.commentCount.toLocaleString()} comments</span>` : ''}
         </div>
     `;
-    
-    // Description
+
     const descriptionSection = document.createElement('div');
-    descriptionSection.style.cssText = `
-        margin-bottom: 20px;
-        padding: 15px;
-        background: #1a1a1a;
-        border-radius: 4px;
-        border-left: 4px solid #569cd6;
-    `;
+    descriptionSection.className = 'civitai-dialog-description';
     descriptionSection.innerHTML = `
-        <h3 style="margin: 0 0 10px 0; color: #569cd6;">Description</h3>
-        <div style="color: #ccc; line-height: 1.5;">${escapeHtml(stripHtml(description))}</div>
+        <h3 class="civitai-dialog-description-title">Description</h3>
+        <div class="civitai-dialog-description-text">${escapeHtml(stripHtml(description))}</div>
     `;
-    
-    // Versions section
+
     const versionsSection = document.createElement('div');
-    versionsSection.style.cssText = `
-        margin-bottom: 20px;
-    `;
-    
+    versionsSection.className = 'civitai-versions-section';
+
     if (versions.length > 0) {
         versionsSection.innerHTML = `
-            <h3 style="margin: 0 0 15px 0; color: #FF9800;">Available Versions (${versions.length})</h3>
+            <h3 class="civitai-versions-title">Available Versions (${versions.length})</h3>
         `;
-        
+
         versions.forEach((version, index) => {
             const versionCard = createVersionCard(version, model.id, { includeNsfw, isLatest: index === 0 });
             versionsSection.appendChild(versionCard);
         });
     }
-    
+
     content.appendChild(header);
     content.appendChild(descriptionSection);
     content.appendChild(versionsSection);
-    
-    // Create dialog
+
     const dialog = createDialog({
         title: `${modelName} - Civitai Model Details`,
         content: content,
         width: '900px'
     });
-    
+
     dialog.addFooterButton('Close', () => dialog.close(), { backgroundColor: '#666' });
     dialog.show();
 }
 
-/**
- * Creates a version card for the model details dialog
- * @param {Object} version - Version data from Civitai API
- * @param {number} modelId - Model ID
- * @param {Object} options - Display options
- * @returns {HTMLElement} Version card element
- */
 function createVersionCard(version, modelId, options = {}) {
     const { includeNsfw = false, isLatest = false } = options;
-    
+
     const card = document.createElement('div');
-    card.style.cssText = `
-        background: #2a2a2a;
-        border-radius: 4px;
-        padding: 15px;
-        margin-bottom: 10px;
-        border: 1px solid #444;
-        ${isLatest ? 'border-left: 4px solid #4CAF50;' : ''}
-    `;
-    
+    card.className = `civitai-version-card${isLatest ? ' latest' : ''}`;
+
     const versionName = version.name || 'Unnamed Version';
     const createdAt = version.createdAt ? new Date(version.createdAt).toLocaleDateString() : 'Unknown date';
     const trainedWords = version.trainedWords || [];
     const files = version.files || [];
     const primaryFile = files.find(f => f.primary) || files[0];
-    
-    // Get images for this version
+
     const images = version.images || [];
-    const appropriateImages = images.filter(img => 
-        includeNsfw || (img.nsfwLevel || 0) <= SEARCH_CONFIG.MAX_NSFW_LEVEL
-    ).slice(0, 3); // Show up to 3 images
-    
+    const appropriateImages = images.filter(img => includeNsfw || (img.nsfwLevel || 0) <= SEARCH_CONFIG.MAX_NSFW_LEVEL).slice(0, 3);
+
     card.innerHTML = `
-        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px;">
-            <div style="flex: 1;">
-                <h4 style="margin: 0 0 5px 0; color: #4CAF50; display: flex; align-items: center; gap: 10px;">
-                    ${escapeHtml(versionName)}
-                    ${isLatest ? '<span style="background: #4CAF50; color: white; padding: 2px 8px; border-radius: 10px; font-size: 10px; font-weight: bold;">LATEST</span>' : ''}
-                </h4>
-                <p style="margin: 0 0 10px 0; color: #888; font-size: 12px;">Released: ${createdAt}</p>
-                
-                ${version.description ? `<p style="margin: 0 0 10px 0; color: #ccc; font-size: 13px; line-height: 1.3;">${escapeHtml(version.description)}</p>` : ''}
-                
+        <div class="civitai-version-header">
+            <div class="civitai-version-info">
+                <h4 class="civitai-version-title">${escapeHtml(versionName)}${isLatest ? ' <span class="civitai-version-badge">LATEST</span>' : ''}</h4>
+                <p class="civitai-version-subtitle">Released: ${createdAt}</p>
+                ${version.description ? `<p class="civitai-version-description">${escapeHtml(version.description)}</p>` : ''}
                 ${trainedWords.length > 0 ? `
-                    <div style="margin-bottom: 10px;">
-                        <strong style="color: #569cd6; font-size: 12px;">Trigger Words:</strong>
-                        <div style="margin-top: 5px;">
-                            ${trainedWords.map(word => `<span style="background: #1a1a1a; color: #569cd6; padding: 2px 6px; border-radius: 3px; font-size: 11px; margin-right: 5px; display: inline-block; margin-bottom: 2px;">${escapeHtml(word)}</span>`).join('')}
-                        </div>
+                    <div class="civitai-trigger-words-group">
+                        <strong class="civitai-trigger-words-title">Trigger Words:</strong>
+                        <div class="civitai-trigger-words">${trainedWords.map(word => `<span class="civitai-trigger-word">${escapeHtml(word)}</span>`).join('')}</div>
                     </div>
                 ` : ''}
-                
                 ${primaryFile ? `
-                    <div style="color: #888; font-size: 12px; margin-bottom: 10px;">
-                        <span style="color: #FFB74D;">File Size:</span> ${formatFileSize(primaryFile.sizeKB * 1024)}
+                    <div class="civitai-version-file-info">
+                        <span>File Size:</span> ${formatFileSize(primaryFile.sizeKB * 1024)}
                         ${primaryFile.metadata ? `
-                            ${primaryFile.metadata.format ? `<span style="margin-left: 15px; color: #FFB74D;">Format:</span> ${primaryFile.metadata.format}` : ''}
-                            ${primaryFile.metadata.fp ? `<span style="margin-left: 15px; color: #FFB74D;">Precision:</span> ${primaryFile.metadata.fp}` : ''}
+                            ${primaryFile.metadata.format ? `<span>Format:</span> ${primaryFile.metadata.format}` : ''}
+                            ${primaryFile.metadata.fp ? `<span>Precision:</span> ${primaryFile.metadata.fp}` : ''}
                         ` : ''}
                     </div>
                 ` : ''}
             </div>
-            
-            <div style="margin-left: 15px;">
-                <button onclick="downloadModel('${version.id}', '${escapeHtml(versionName)}', '${modelId}')" 
-                        style="background: #4CAF50; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 12px;">
-                    📥 Download
-                </button>
+            <div class="civitai-version-download-container">
+                <button class="civitai-version-download-button" data-version-id="${version.id}" data-version-name="${escapeHtml(versionName)}" data-model-id="${modelId}">📥 Download</button>
             </div>
         </div>
-        
         ${appropriateImages.length > 0 ? `
-            <div style="display: flex; gap: 5px; margin-top: 10px;">
-                ${appropriateImages.map(img => `
-                    <img src="${escapeHtml(img.url)}" 
-                         style="width: 60px; height: 60px; object-fit: cover; border-radius: 3px; cursor: pointer;" 
-                         alt="Example image" 
-                         loading="lazy"
-                         onclick="showImageExpanded('${escapeHtml(img.url)}')">
-                `).join('')}
+            <div class="civitai-version-images">
+                ${appropriateImages.map(img => `<img src="${escapeHtml(img.url)}" class="civitai-version-image" data-image-url="${escapeHtml(img.url)}" alt="Example image" loading="lazy">`).join('')}
             </div>
         ` : ''}
     `;
-    
+
+    const downloadBtn = card.querySelector('.civitai-version-download-button');
+    if (downloadBtn) {
+        downloadBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const versionId = downloadBtn.dataset.versionId;
+            const versionName = downloadBtn.dataset.versionName;
+            const modelId = downloadBtn.dataset.modelId;
+            downloadModel(versionId, versionName, modelId);
+        });
+    }
+
+    const imageElements = card.querySelectorAll('.civitai-version-image');
+    imageElements.forEach(img => {
+        img.addEventListener('click', () => showImageExpanded(img.dataset.imageUrl));
+    });
+
     return card;
 }
 
-/**
- * Downloads a model from Civitai
- * @param {string} versionId - Model version ID
- * @param {string} versionName - Model version name
- * @param {string} modelId - Model ID
- */
 window.downloadModel = async function(versionId, versionName, modelId) {
     try {
         const confirmed = await confirmDialog(
-            `Download "${versionName}"?\n\nThis will open the download link in a new tab. The file will be downloaded through your browser.`,
+            `Download "${versionName}"?
+
+This will open the download link in a new tab. The file will be downloaded through your browser.`,
             'Download Model'
         );
-        
+
         if (confirmed) {
             const downloadUrl = getDownloadUrl(versionId);
             window.open(downloadUrl, '_blank');
-            
-            // Optional: Show download instructions
+
             setTimeout(() => {
                 alertDialog(
-                    'Download started! The file should begin downloading shortly.\n\nSave it to your ComfyUI models directory and refresh the cache to see it in the sidebar.',
+                    `Download started! The file should begin downloading shortly.
+
+Save it to your ComfyUI models directory and refresh the cache to see it in the sidebar.`,
                     'Download Started'
                 );
             }, 1000);
@@ -918,39 +650,17 @@ window.downloadModel = async function(versionId, versionName, modelId) {
     }
 };
 
-/**
- * Shows an expanded view of an image
- * @param {string} imageUrl - Image URL
- */
 window.showImageExpanded = function(imageUrl) {
     const overlay = document.createElement('div');
-    overlay.style.cssText = `
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(0, 0, 0, 0.9);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        z-index: 10000;
-        cursor: pointer;
-    `;
-    
+    overlay.className = 'civitai-image-overlay';
+
     const img = document.createElement('img');
     img.src = imageUrl;
-    img.style.cssText = `
-        max-width: 90%;
-        max-height: 90%;
-        object-fit: contain;
-        border-radius: 8px;
-    `;
-    
+    img.className = 'civitai-image-expanded';
+
     overlay.appendChild(img);
     overlay.addEventListener('click', () => document.body.removeChild(overlay));
-    
-    // ESC key support
+
     const handleEsc = (e) => {
         if (e.key === 'Escape') {
             document.body.removeChild(overlay);
@@ -958,15 +668,9 @@ window.showImageExpanded = function(imageUrl) {
         }
     };
     document.addEventListener('keydown', handleEsc);
-    
+
     document.body.appendChild(overlay);
 };
-
-/**
- * Strip HTML tags from text
- * @param {string} html - HTML string
- * @returns {string} - Plain text
- */
 function stripHtml(html) {
     if (typeof html !== 'string') return '';
     const div = document.createElement('div');

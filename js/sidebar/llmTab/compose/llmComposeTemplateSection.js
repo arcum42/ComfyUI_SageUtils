@@ -37,6 +37,7 @@ export function createComposeTemplateSection(textarea) {
     });
     const templateRow = createFormRow('Template', templateSelect);
     content.appendChild(templateRow);
+    templateRow.classList.add('llm-form-row--disabled');
 
     // Track textarea modifications
     textarea.addEventListener('input', () => {
@@ -52,15 +53,13 @@ export function createComposeTemplateSection(textarea) {
             // Reset when "Select Category..." is chosen
             templateSelect.innerHTML = '<option value="">Select template...</option>';
             templateSelect.disabled = true;
-            templateRow.style.opacity = '0.5';
-            templateRow.style.pointerEvents = 'none';
+            templateRow.classList.add('llm-form-row--disabled');
             return;
         }
 
         // Re-enable template select and show normal opacity
         templateSelect.disabled = false;
-        templateRow.style.opacity = '1';
-        templateRow.style.pointerEvents = 'auto';
+        templateRow.classList.remove('llm-form-row--disabled');
 
         // Repopulate template dropdown with templates from this category
         // This will be wired up in event handlers

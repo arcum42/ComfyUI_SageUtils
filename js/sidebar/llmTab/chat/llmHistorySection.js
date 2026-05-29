@@ -107,13 +107,13 @@ export function renderHistory(historySection, history, onDelete = null) {
     const emptyMessage = historyList.querySelector('.llm-history-empty');
     
     if (!history || history.length === 0) {
-        emptyMessage.style.display = 'block';
+        emptyMessage.classList.remove('llm-hidden');
         // Remove all history items
         historyList.querySelectorAll('.llm-history-item').forEach(item => item.remove());
         return;
     }
     
-    emptyMessage.style.display = 'none';
+    emptyMessage.classList.add('llm-hidden');
     
     // Clear existing items
     historyList.querySelectorAll('.llm-history-item').forEach(item => item.remove());
@@ -473,7 +473,7 @@ function showExportMenu(conversation, button) {
     
     // Position menu next to button
     const rect = button.getBoundingClientRect();
-    menu.style.position = 'fixed';
+    menu.classList.add('llm-export-menu--fixed');
     menu.style.top = `${rect.bottom + 5}px`;
     menu.style.left = `${rect.left}px`;
     
