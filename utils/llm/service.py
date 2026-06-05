@@ -1,3 +1,5 @@
+import time
+
 from ..logger import get_logger
 from .providers.settings import (
     is_lmstudio_enabled,
@@ -22,10 +24,15 @@ _lmstudio_rest_initialized = False
 _ollama_rest_initialized = False
 _openai_initialized = False
 
-# REST providers use HTTP APIs and do not require local SDK packages.
-LMSTUDIO_REST_AVAILABLE = True
-OLLAMA_REST_AVAILABLE = True
-OPENAI_AVAILABLE = True
+# Provider reachability state and retry timing.
+LMSTUDIO_REST_AVAILABLE = False
+OLLAMA_REST_AVAILABLE = False
+OPENAI_AVAILABLE = False
+
+_LLM_INITIALIZATION_RETRY_SECONDS = 60.0
+_lmstudio_rest_last_checked = None
+_ollama_rest_last_checked = None
+_openai_last_checked = None
 
 
 def _is_lmstudio_service_enabled() -> bool:
@@ -510,34 +517,37 @@ def init_lmstudio() -> bool:
 
 def init_lmstudio_rest() -> bool:
     """Initialize LM Studio REST provider state."""
-    global _lmstudio_rest_initialized
+    global _lmstudio_rest_initialized, LMSTUDIO_REST_AVAILABLE, _lmstudio_rest_last_checked
     from ..settings import get_setting
 
-    _lmstudio_rest_initialized = _init_lmstudio_rest(
-        bool(get_setting('enable_lmstudio_rest', False))
-    )
+    enabled = bool(get_setting('enable_lmstudio_rest', False))
+    _lmstudio_rest_initialized = _init_lmstudio_rest(enabled)
+    LMSTUDIO_REST_AVAILABLE = _lmstudio_rest_initialized
+    _lmstudio_rest_last_checked = time.monotonic()
     return _lmstudio_rest_initialized
 
 
 def init_ollama_rest() -> bool:
     """Initialize Ollama REST provider state."""
-    global _ollama_rest_initialized
+    global _ollama_rest_initialized, OLLAMA_REST_AVAILABLE, _ollama_rest_last_checked
     from ..settings import get_setting
 
-    _ollama_rest_initialized = _init_ollama_rest(
-        bool(get_setting('enable_ollama_rest', False))
-    )
+    enabled = bool(get_setting('enable_ollama_rest', False))
+    _ollama_rest_initialized = _init_ollama_rest(enabled)
+    OLLAMA_REST_AVAILABLE = _ollama_rest_initialized
+    _ollama_rest_last_checked = time.monotonic()
     return _ollama_rest_initialized
 
 
 def init_openai() -> bool:
     """Initialize OpenAI provider state."""
-    global _openai_initialized
+    global _openai_initialized, OPENAI_AVAILABLE, _openai_last_checked
     from ..settings import get_setting
 
-    _openai_initialized = _init_openai_provider(
-        bool(get_setting('enable_openai', False))
-    )
+    enabled = bool(get_setting('enable_openai', False))
+    _openai_initialized = _init_openai_provider(enabled)
+    OPENAI_AVAILABLE = _openai_initialized
+    _openai_last_checked = time.monotonic()
     return _openai_initialized
 
 
@@ -559,50 +569,80 @@ def ensure_lmstudio_initialized() -> bool:
     return ensure_lmstudio_rest_initialized()
 
 
-def ensure_lmstudio_rest_initialized() -> bool:
+def ensure_lmstudio_rest_initialized(force: bool = False) -> bool:
     """Ensure LM Studio REST is initialized if enabled."""
-    global _lmstudio_rest_initialized
+    global _lmstudio_rest_initialized, LMSTUDIO_REST_AVAILABLE, _lmstudio_rest_last_checked
     from ..settings import get_setting
 
-    if get_setting('enable_lmstudio_rest', False) and not _lmstudio_rest_initialized:
-        logger.info('LM Studio REST is enabled but not initialized, initializing now...')
-        return init_lmstudio_rest()
-    return _lmstudio_rest_initialized
+    if not get_setting('enable_lmstudio_rest', False):
+        return False
+
+    if _lmstudio_rest_initialized:
+        return True
+
+    if not force and _lmstudio_rest_last_checked is not None and time.monotonic() - _lmstudio_rest_last_checked < _LLM_INITIALIZATION_RETRY_SECONDS:
+        return LMSTUDIO_REST_AVAILABLE
+
+    logger.info('LM Studio REST is enabled but not initialized, initializing now...')
+    return init_lmstudio_rest()
 
 
-def ensure_ollama_rest_initialized() -> bool:
+def ensure_ollama_rest_initialized(force: bool = False) -> bool:
     """Ensure Ollama REST is initialized if enabled."""
-    global _ollama_rest_initialized
+    global _ollama_rest_initialized, OLLAMA_REST_AVAILABLE, _ollama_rest_last_checked
     from ..settings import get_setting
 
-    if get_setting('enable_ollama_rest', False) and not _ollama_rest_initialized:
-        logger.info('Ollama REST is enabled but not initialized, initializing now...')
-        return init_ollama_rest()
-    return _ollama_rest_initialized
+    if not get_setting('enable_ollama_rest', False):
+        return False
+
+    if _ollama_rest_initialized:
+        return True
+
+    if not force and _ollama_rest_last_checked is not None and time.monotonic() - _ollama_rest_last_checked < _LLM_INITIALIZATION_RETRY_SECONDS:
+        return OLLAMA_REST_AVAILABLE
+
+    logger.info('Ollama REST is enabled but not initialized, initializing now...')
+    return init_ollama_rest()
 
 
-def ensure_openai_initialized() -> bool:
+def ensure_openai_initialized(force: bool = False) -> bool:
     """Ensure OpenAI provider is initialized if enabled."""
-    global _openai_initialized
+    global _openai_initialized, OPENAI_AVAILABLE, _openai_last_checked
     from ..settings import get_setting
 
-    if get_setting('enable_openai', False) and not _openai_initialized:
-        logger.info('OpenAI provider is enabled but not initialized, initializing now...')
-        return init_openai()
-    return _openai_initialized
+    if not get_setting('enable_openai', False):
+        return False
+
+    if _openai_initialized:
+        return True
+
+    if not force and _openai_last_checked is not None and time.monotonic() - _openai_last_checked < _LLM_INITIALIZATION_RETRY_SECONDS:
+        return OPENAI_AVAILABLE
+
+    logger.info('OpenAI provider is enabled but not initialized, initializing now...')
+    return init_openai()
 
 
-def ensure_llm_initialized() -> bool:
+def ensure_llm_initialized(force: bool = False) -> bool:
     """Ensure all enabled LLM services are initialized."""
-    lmstudio_rest_ok = ensure_lmstudio_rest_initialized()
-    ollama_rest_ok = ensure_ollama_rest_initialized()
-    openai_ok = ensure_openai_initialized()
+    lmstudio_rest_ok = ensure_lmstudio_rest_initialized(force=force)
+    ollama_rest_ok = ensure_ollama_rest_initialized(force=force)
+    openai_ok = ensure_openai_initialized(force=force)
     return lmstudio_rest_ok or ollama_rest_ok or openai_ok
 
 
 def reset_llm_initialization_state() -> None:
     """Reset initialization flags."""
     global _lmstudio_rest_initialized, _ollama_rest_initialized, _openai_initialized
+    global LMSTUDIO_REST_AVAILABLE, OLLAMA_REST_AVAILABLE, OPENAI_AVAILABLE
+    global _lmstudio_rest_last_checked, _ollama_rest_last_checked, _openai_last_checked
+
     _lmstudio_rest_initialized = False
     _ollama_rest_initialized = False
     _openai_initialized = False
+    LMSTUDIO_REST_AVAILABLE = False
+    OLLAMA_REST_AVAILABLE = False
+    OPENAI_AVAILABLE = False
+    _lmstudio_rest_last_checked = None
+    _ollama_rest_last_checked = None
+    _openai_last_checked = None

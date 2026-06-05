@@ -757,8 +757,8 @@ def check_model_vision_capability(provider: str, model: str) -> tuple[bool, Opti
     
     try:
         from . import service as llm
-        # Ensure LLM services are initialized
-        llm.ensure_llm_initialized()
+        # Ensure LLM services are initialized for active model capability validation
+        llm.ensure_llm_initialized(force=True)
         
         # Get capability map for the provider
         if provider == 'lmstudio_rest':

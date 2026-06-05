@@ -661,6 +661,9 @@ def register_routes(routes_instance):
                 return _error_response_with_metadata(error_msg, status=400, error_code='LLM_VALIDATION_ERROR')
             options = routes_helpers.build_generation_payload_options(provider, data)
             
+            # Recheck the provider because the user is actively generating
+            llm.ensure_llm_initialized(force=True)
+
             # Generate response based on provider
             response_text = ""
             
@@ -808,8 +811,8 @@ def register_routes(routes_instance):
                     error_code='LLM_VALIDATION_ERROR',
                 )
             
-            # Initialize LLM services if needed
-            llm.ensure_llm_initialized()
+            # Initialize LLM services for active streaming use
+            llm.ensure_llm_initialized(force=True)
             
             # Create SSE response
             response = web.StreamResponse()
@@ -1011,8 +1014,8 @@ def register_routes(routes_instance):
                 return _error_response_with_metadata(error_msg, status=400, error_code='LLM_VALIDATION_ERROR')
             options = routes_helpers.build_generation_payload_options(provider, data)
             
-            # Initialize LLM services if needed
-            llm.ensure_llm_initialized()
+            # Initialize LLM services for active vision generation use
+            llm.ensure_llm_initialized(force=True)
             
             response_text = ""
             
@@ -1137,6 +1140,9 @@ def register_routes(routes_instance):
             if not is_valid:
                 return _error_response_with_metadata(error_msg, status=400, error_code='LLM_VALIDATION_ERROR')
             options = routes_helpers.build_generation_payload_options(provider, data)
+            
+            # Ensure the provider is rechecked before active vision streaming use
+            llm.ensure_llm_initialized(force=True)
             
             # Create SSE response
             response = web.StreamResponse()
@@ -1806,8 +1812,8 @@ def register_routes(routes_instance):
                 if 'repeat_penalty' in settings:
                     options['repeat_penalty'] = settings['repeat_penalty']
             
-            # Initialize LLM services
-            llm.ensure_llm_initialized()
+            # Initialize LLM services for active preset generation
+            llm.ensure_llm_initialized(force=True)
             
             # Generate response
             response_text = ""
@@ -1927,7 +1933,7 @@ def register_routes(routes_instance):
 
             from ..utils.llm import service as llm
 
-            llm.ensure_llm_initialized()
+            llm.ensure_llm_initialized(force=True)
 
             if provider == "lmstudio_rest":
                 if not llm.LMSTUDIO_REST_AVAILABLE:
@@ -2053,7 +2059,7 @@ def register_routes(routes_instance):
 
             from ..utils.llm import service as llm
 
-            llm.ensure_llm_initialized()
+            llm.ensure_llm_initialized(force=True)
 
             response_text = ""
 
