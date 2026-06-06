@@ -1,0 +1,59 @@
+<div class="models-v2-edit-dialog-body">
+    <h3 class="models-v2-edit-dialog-title">Edit Model Information</h3>
+    <p class="models-v2-edit-dialog-subtitle">File: {{fileName}}</p>
+
+    <div class="models-v2-dialog-grid">
+        <div class="models-v2-dialog-field-group">
+            <label class="models-v2-dialog-label" for="edit-model-name">Model Name:</label>
+            <input type="text" id="edit-model-name" class="models-v2-dialog-field" value="{{modelNameValue}}">
+        </div>
+        <div class="models-v2-dialog-field-group">
+            <label class="models-v2-dialog-label" for="edit-version-name">Version Name:</label>
+            <input type="text" id="edit-version-name" class="models-v2-dialog-field" value="{{versionNameValue}}">
+        </div>
+    </div>
+
+    <div class="models-v2-dialog-grid">
+        <div class="models-v2-dialog-field-group">
+            <label class="models-v2-dialog-label" for="edit-type">Model Type:</label>
+            <select id="edit-type" class="models-v2-dialog-field">{{{typeOptions}}}</select>
+        </div>
+        <div class="models-v2-dialog-field-group">
+            <label class="models-v2-dialog-label" for="edit-base-model">Base Model:</label>
+            <select id="edit-base-model" class="models-v2-dialog-field">{{{baseModelOptions}}}</select>
+        </div>
+    </div>
+
+    <div class="models-v2-dialog-section">
+        <label class="models-v2-dialog-label" for="edit-description">Description:</label>
+        <textarea id="edit-description" class="models-v2-dialog-field models-v2-dialog-textarea" rows="4">{{descriptionValue}}</textarea>
+    </div>
+
+    <div class="models-v2-dialog-section">
+        <label class="models-v2-dialog-label" for="edit-triggers">Trigger Words (comma-separated):</label>
+        <input type="text" id="edit-triggers" class="models-v2-dialog-field" value="{{triggersValue}}">
+    </div>
+
+    <div class="models-v2-dialog-section">
+        <label class="models-v2-dialog-label" for="edit-notes">Personal Notes:</label>
+        <textarea id="edit-notes" class="models-v2-dialog-field models-v2-dialog-textarea" rows="3">{{notesValue}}</textarea>
+    </div>
+
+    <div class="models-v2-dialog-grid models-v2-dialog-checkbox-grid">
+        <label class="models-v2-dialog-checkbox-label">
+            <input type="checkbox" id="edit-nsfw" class="models-v2-dialog-checkbox" {{{nsfwChecked}}}>
+            <span>NSFW Content</span>
+        </label>
+        <label class="models-v2-dialog-checkbox-label">
+            <input type="checkbox" id="edit-favorite" class="models-v2-dialog-checkbox" {{{favoriteChecked}}}>
+            <span>Mark as Favorite</span>
+        </label>
+    </div>
+
+    <div class="models-v2-dialog-section">
+        <label class="models-v2-dialog-checkbox-label">
+            <input type="checkbox" id="edit-blacklist" class="models-v2-dialog-checkbox" {{{blacklistChecked}}}>
+            <span>Blacklist (hide from model lists)</span>
+        </label>
+    </div>
+</div>

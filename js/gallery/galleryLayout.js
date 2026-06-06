@@ -8,6 +8,64 @@
 import { createHeader } from "../components/cacheUI.js";
 import { createThumbnailGrid } from "./gallery.js";
 import { selectors } from "../shared/stateManager.js";
+import {
+    loadHtmlTemplate,
+    createElementFromTemplate,
+    renderHtmlTemplate
+} from "../utils/htmlTemplateLoader.js";
+
+let galleryGridHeaderTemplate = null;
+let galleryEmptyStateTemplate = null;
+let galleryMetadataHeaderTemplate = null;
+let galleryMetadataEmptyTemplate = null;
+
+async function getGalleryGridHeaderTemplate() {
+    if (!galleryGridHeaderTemplate) {
+        galleryGridHeaderTemplate = await loadHtmlTemplate('extensions/comfyui_sageutils/gallery/partials/galleryGridHeaderContent.html');
+    }
+    return galleryGridHeaderTemplate;
+}
+
+async function getGalleryEmptyStateTemplate() {
+    if (!galleryEmptyStateTemplate) {
+        galleryEmptyStateTemplate = await loadHtmlTemplate('extensions/comfyui_sageutils/gallery/partials/galleryEmptyState.html');
+    }
+    return galleryEmptyStateTemplate;
+}
+
+async function getGalleryMetadataHeaderTemplate() {
+    if (!galleryMetadataHeaderTemplate) {
+        galleryMetadataHeaderTemplate = await loadHtmlTemplate('extensions/comfyui_sageutils/gallery/partials/galleryMetadataHeader.html');
+    }
+    return galleryMetadataHeaderTemplate;
+}
+
+async function getGalleryMetadataEmptyTemplate() {
+    if (!galleryMetadataEmptyTemplate) {
+        galleryMetadataEmptyTemplate = await loadHtmlTemplate('extensions/comfyui_sageutils/gallery/partials/galleryMetadataEmpty.html');
+    }
+    return galleryMetadataEmptyTemplate;
+}
+
+async function renderGalleryGridHeader() {
+    const template = await getGalleryGridHeaderTemplate();
+    return createElementFromTemplate(renderHtmlTemplate(template, {}));
+}
+
+async function renderGalleryEmptyState() {
+    const template = await getGalleryEmptyStateTemplate();
+    return createElementFromTemplate(renderHtmlTemplate(template, {}));
+}
+
+async function renderGalleryMetadataHeader() {
+    const template = await getGalleryMetadataHeaderTemplate();
+    return createElementFromTemplate(renderHtmlTemplate(template, {}));
+}
+
+async function renderGalleryMetadataEmpty() {
+    const template = await getGalleryMetadataEmptyTemplate();
+    return createElementFromTemplate(renderHtmlTemplate(template, {}));
+}
 
 /**
  * Helper function to get folder favorites from localStorage
@@ -364,7 +422,7 @@ export function createFolderSelectorAndControls() {
  * Creates a wrapped thumbnail grid with header for the Gallery tab
  * @returns {Object} Thumbnail grid components
  */
-export function createWrappedThumbnailGrid() {
+export async function createWrappedThumbnailGrid() {
     const gridSection = document.createElement('div');
     gridSection.className = 'gallery-grid-section';
     
@@ -372,8 +430,7 @@ export function createWrappedThumbnailGrid() {
     gridHeader.className = 'gallery-grid-header';
     
     // Create header content with count
-    const headerContent = document.createElement('span');
-    headerContent.innerHTML = 'Images <span id="image-count" class="gallery-image-count"></span>';
+    const headerContent = await renderGalleryGridHeader();
     
     // Create reload button (small icon)
     const refreshButton = document.createElement('button');
@@ -389,12 +446,8 @@ export function createWrappedThumbnailGrid() {
     grid.gridContainer.classList.add('gallery-grid-container');
     
     // Add placeholder content initially
-    grid.gridContainer.innerHTML = `
-        <div class="gallery-empty-state">
-            <div class="gallery-empty-state-icon">🖼️</div>
-            <div>Select a folder to view images</div>
-        </div>
-    `;
+    const emptyState = await renderGalleryEmptyState();
+    grid.gridContainer.appendChild(emptyState);
 
     gridSection.appendChild(gridHeader);
     gridSection.appendChild(grid.gridContainer);
@@ -417,21 +470,20 @@ export function createWrappedThumbnailGrid() {
  * Creates the metadata panel section for the Gallery tab
  * @returns {Object} Metadata panel components
  */
-export function createMetadataPanel() {
+export async function createMetadataPanel() {
     const metadataSection = document.createElement('div');
     metadataSection.className = 'gallery-metadata-section';
     
     const metadataHeader = document.createElement('h4');
     metadataHeader.className = 'gallery-metadata-header';
-    metadataHeader.innerHTML = `
-        <span>Image Details</span>
-        <button id="close-metadata" class="gallery-button gallery-button-danger metadata-close-button">Clear</button>
-    `;
+    const metadataHeaderContent = await renderGalleryMetadataHeader();
+    metadataHeader.appendChild(metadataHeaderContent);
     
     const metadataContent = document.createElement('div');
     metadataContent.id = 'metadata-content';
     metadataContent.className = 'gallery-metadata-content';
-    metadataContent.innerHTML = '<em class="gallery-metadata-empty">Select an image to view details...</em>';
+    const metadataEmpty = await renderGalleryMetadataEmpty();
+    metadataContent.appendChild(metadataEmpty);
 
     metadataSection.appendChild(metadataHeader);
     metadataSection.appendChild(metadataContent);

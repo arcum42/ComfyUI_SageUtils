@@ -4,6 +4,105 @@
  */
 
 import { ensurePromptBuilderStyles } from './promptBuilderStyles.js';
+import {
+    createElementFromTemplate,
+    loadHtmlTemplate,
+    renderHtmlTemplate
+} from '../utils/htmlTemplateLoader.js';
+
+let promptCardTemplate = null;
+let addCategoryDialogTemplate = null;
+let savePromptDialogTemplate = null;
+let promptsEmptyStateTemplate = null;
+let promptsLoadingStateTemplate = null;
+let promptsErrorStateTemplate = null;
+
+async function getPromptCardTemplate() {
+    if (!promptCardTemplate) {
+        promptCardTemplate = await loadHtmlTemplate('extensions/comfyui_sageutils/promptBuilder/partials/promptCard.html');
+    }
+    return promptCardTemplate;
+}
+
+async function getAddCategoryDialogTemplate() {
+    if (!addCategoryDialogTemplate) {
+        addCategoryDialogTemplate = await loadHtmlTemplate('extensions/comfyui_sageutils/promptBuilder/partials/addCategoryDialog.html');
+    }
+    return addCategoryDialogTemplate;
+}
+
+async function getSavePromptDialogTemplate() {
+    if (!savePromptDialogTemplate) {
+        savePromptDialogTemplate = await loadHtmlTemplate('extensions/comfyui_sageutils/promptBuilder/partials/savePromptDialog.html');
+    }
+    return savePromptDialogTemplate;
+}
+
+async function getPromptsEmptyStateTemplate() {
+    if (!promptsEmptyStateTemplate) {
+        promptsEmptyStateTemplate = await loadHtmlTemplate('extensions/comfyui_sageutils/promptBuilder/partials/promptsEmptyState.html');
+    }
+    return promptsEmptyStateTemplate;
+}
+
+async function getPromptsLoadingStateTemplate() {
+    if (!promptsLoadingStateTemplate) {
+        promptsLoadingStateTemplate = await loadHtmlTemplate('extensions/comfyui_sageutils/promptBuilder/partials/promptsLoadingState.html');
+    }
+    return promptsLoadingStateTemplate;
+}
+
+async function getPromptsErrorStateTemplate() {
+    if (!promptsErrorStateTemplate) {
+        promptsErrorStateTemplate = await loadHtmlTemplate('extensions/comfyui_sageutils/promptBuilder/partials/promptsErrorState.html');
+    }
+    return promptsErrorStateTemplate;
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+async function renderPromptCard(prompt) {
+    const template = await getPromptCardTemplate();
+    return createElementFromTemplate(template, {
+        name: escapeHtml(prompt.name),
+        preview: escapeHtml(prompt.positive.length > 100 ? prompt.positive.substring(0, 97) + '...' : prompt.positive),
+        category: escapeHtml(prompt.category),
+        usageCount: prompt.used_count || 0
+    });
+}
+
+async function renderAddCategoryDialog() {
+    const template = await getAddCategoryDialogTemplate();
+    return createElementFromTemplate(template, {});
+}
+
+function buildCategoryOptions(categories) {
+    return categories.map(cat => `<option value="${cat}">${cat.charAt(0).toUpperCase() + cat.slice(1)}</option>`).join('');
+}
+
+async function renderSavePromptDialog(categoryOptions) {
+    const template = await getSavePromptDialogTemplate();
+    return createElementFromTemplate(template, { categoryOptions });
+}
+
+async function renderPromptsEmptyState() {
+    const template = await getPromptsEmptyStateTemplate();
+    return createElementFromTemplate(template, {});
+}
+
+async function renderPromptsLoadingState() {
+    const template = await getPromptsLoadingStateTemplate();
+    return createElementFromTemplate(template, {});
+}
+
+async function renderPromptsErrorState(message) {
+    const template = await getPromptsErrorStateTemplate();
+    return createElementFromTemplate(template, { message });
+}
 
 /**
  * Saved Prompts API wrapper
@@ -178,7 +277,7 @@ export const savedPromptsComponent = {
      */
     async loadPrompts() {
         this.state.isLoading = true;
-        this.showLoading();
+        await this.showLoading();
 
         try {
             const result = await savedPromptsApi.listPrompts();
@@ -219,14 +318,14 @@ export const savedPromptsComponent = {
     /**
      * Filter and render prompts
      */
-    filterPrompts() {
-        this.renderPrompts();
+    async filterPrompts() {
+        await this.renderPrompts();
     },
 
     /**
      * Render prompts list
      */
-    renderPrompts() {
+    async renderPrompts() {
         let filteredPrompts = this.state.prompts;
 
         // Filter by category
@@ -247,50 +346,21 @@ export const savedPromptsComponent = {
         this.elements.promptsList.innerHTML = '';
 
         if (filteredPrompts.length === 0) {
-            const emptyState = document.createElement('div');
-            emptyState.className = 'empty-state';
-            emptyState.innerHTML = `
-                <div class="empty-content">
-                    <h4>No prompts found</h4>
-                    <p>Save your first prompt to get started!</p>
-                </div>
-            `;
+            const emptyState = await renderPromptsEmptyState();
             this.elements.promptsList.appendChild(emptyState);
             return;
         }
 
-        filteredPrompts.forEach(prompt => {
-            const promptCard = this.createPromptCard(prompt);
-            this.elements.promptsList.appendChild(promptCard);
-        });
+        const promptCards = await Promise.all(filteredPrompts.map(prompt => this.createPromptCard(prompt)));
+        promptCards.forEach(card => this.elements.promptsList.appendChild(card));
     },
 
     /**
      * Create prompt card element
      */
-    createPromptCard(prompt) {
-        const card = document.createElement('div');
-        card.className = 'prompt-card';
+    async createPromptCard(prompt) {
+        const card = await renderPromptCard(prompt);
 
-        const preview = prompt.positive.length > 100 ? 
-            prompt.positive.substring(0, 97) + '...' : prompt.positive;
-
-        card.innerHTML = `
-            <div class="prompt-header">
-                <h4 class="prompt-name">${this.escapeHtml(prompt.name)}</h4>
-                <div class="prompt-actions">
-                    <button class="load-btn" title="Load Prompt">Load</button>
-                    <button class="delete-btn" title="Delete Prompt">×</button>
-                </div>
-            </div>
-            <div class="prompt-preview">${this.escapeHtml(preview)}</div>
-            <div class="prompt-meta">
-                <span class="category">${prompt.category}</span>
-                <span class="usage">Used ${prompt.used_count || 0} times</span>
-            </div>
-        `;
-
-        // Add event listeners
         card.querySelector('.load-btn').addEventListener('click', (e) => {
             e.stopPropagation();
             this.loadPrompt(prompt);
@@ -309,40 +379,17 @@ export const savedPromptsComponent = {
     /**
      * Show add category dialog
      */
-    showAddCategoryDialog() {
-        const dialog = this.createAddCategoryDialog();
+    async showAddCategoryDialog() {
+        const dialog = await this.createAddCategoryDialog();
         document.body.appendChild(dialog);
     },
 
     /**
      * Create add category dialog
      */
-    createAddCategoryDialog() {
-        const overlay = document.createElement('div');
-        overlay.className = 'dialog-overlay';
-
-        const dialog = document.createElement('div');
-        dialog.className = 'add-category-dialog';
-
-        dialog.innerHTML = `
-            <div class="dialog-header">
-                <h3>Add New Category</h3>
-                <button class="close-btn">×</button>
-            </div>
-            <div class="dialog-content">
-                <div class="form-group">
-                    <label>Category Name:</label>
-                    <input type="text" class="category-name-input" placeholder="Enter category name..." required>
-                    <small class="help-text">Use lowercase letters, numbers, and underscores only.</small>
-                </div>
-            </div>
-            <div class="dialog-actions">
-                <button class="cancel-btn">Cancel</button>
-                <button class="add-btn primary-btn">Add Category</button>
-            </div>
-        `;
-
-        overlay.appendChild(dialog);
+    async createAddCategoryDialog() {
+        const overlay = await renderAddCategoryDialog();
+        const dialog = overlay.querySelector('.add-category-dialog');
 
         // Event listeners
         const closeDialog = () => document.body.removeChild(overlay);
@@ -415,7 +462,7 @@ export const savedPromptsComponent = {
     /**
      * Show save prompt dialog
      */
-    showSaveDialog() {
+    async showSaveDialog() {
         // Get current prompt values from generation component
         const positiveInput = document.querySelector('.prompt-generation-component .positive-prompt');
         const negativeInput = document.querySelector('.prompt-generation-component .negative-prompt');
@@ -434,58 +481,20 @@ export const savedPromptsComponent = {
             return;
         }
 
-        const dialog = this.createSaveDialog(currentPositive, currentNegative);
+        const dialog = await this.createSaveDialog(currentPositive, currentNegative);
         document.body.appendChild(dialog);
     },
 
     /**
      * Create save dialog
      */
-    createSaveDialog(positive, negative) {
-        const overlay = document.createElement('div');
-        overlay.className = 'dialog-overlay';
+    async createSaveDialog(positive, negative) {
+        const categoryOptions = buildCategoryOptions(this.state.categories);
+        const overlay = await renderSavePromptDialog(categoryOptions);
+        const dialog = overlay.querySelector('.save-prompt-dialog');
 
-        const dialog = document.createElement('div');
-        dialog.className = 'save-prompt-dialog';
-
-        dialog.innerHTML = `
-            <div class="dialog-header">
-                <h3>Save Prompt</h3>
-                <button class="close-btn">×</button>
-            </div>
-            <div class="dialog-content">
-                <div class="form-group">
-                    <label>Name:</label>
-                    <input type="text" class="prompt-name-input" placeholder="Enter prompt name..." required>
-                </div>
-                <div class="form-group">
-                    <label>Category:</label>
-                    <select class="prompt-category-input">
-                        ${this.state.categories.map(cat => 
-                            `<option value="${cat}">${cat.charAt(0).toUpperCase() + cat.slice(1)}</option>`
-                        ).join('')}
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>Description (optional):</label>
-                    <textarea class="prompt-description-input" placeholder="Brief description..."></textarea>
-                </div>
-                <div class="form-group">
-                    <label>Tags (comma-separated):</label>
-                    <input type="text" class="prompt-tags-input" placeholder="tag1, tag2, tag3">
-                </div>
-            </div>
-            <div class="dialog-actions">
-                <button class="cancel-btn">Cancel</button>
-                <button class="save-btn primary-btn">Save Prompt</button>
-            </div>
-        `;
-
-        overlay.appendChild(dialog);
-
-        // Event listeners
         const closeDialog = () => document.body.removeChild(overlay);
-        
+
         dialog.querySelector('.close-btn').addEventListener('click', closeDialog);
         dialog.querySelector('.cancel-btn').addEventListener('click', closeDialog);
         overlay.addEventListener('click', (e) => {
@@ -613,12 +622,16 @@ ${prompt.tags && prompt.tags.length ? 'Tags: ' + prompt.tags.join(', ') : ''}
         return div.innerHTML;
     },
 
-    showLoading() {
-        this.elements.promptsList.innerHTML = '<div class="loading-state">Loading prompts...</div>';
+    async showLoading() {
+        this.elements.promptsList.innerHTML = '';
+        const loadingState = await renderPromptsLoadingState();
+        this.elements.promptsList.appendChild(loadingState);
     },
 
-    showError(message) {
-        this.elements.promptsList.innerHTML = `<div class="error-state">Error: ${message}</div>`;
+    async showError(message) {
+        this.elements.promptsList.innerHTML = '';
+        const errorState = await renderPromptsErrorState(message);
+        this.elements.promptsList.appendChild(errorState);
     },
 
     showSuccess(message) {

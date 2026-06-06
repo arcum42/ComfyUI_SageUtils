@@ -1,0 +1,32 @@
+<div class="models-v2-header-controls">
+    <div class="models-v2-filter-grid">
+        <div class="models-v2-labeled-select">
+            <label class="models-v2-labeled-select-label" for="models-v2-folder-select">Folder:</label>
+            <select id="models-v2-folder-select" class="models-v2-labeled-select">{{{folderOptions}}}</select>
+        </div>
+        <div class="models-v2-labeled-select">
+            <label class="models-v2-labeled-select-label" for="models-v2-last-used-select">Last Used:</label>
+            <select id="models-v2-last-used-select" class="models-v2-labeled-select">{{{lastUsedOptions}}}</select>
+        </div>
+        <div class="models-v2-labeled-select">
+            <label class="models-v2-labeled-select-label" for="models-v2-updates-select">Updates:</label>
+            <select id="models-v2-updates-select" class="models-v2-labeled-select">{{{updatesOptions}}}</select>
+        </div>
+    </div>
+
+    <div class="models-v2-sort-row">
+        <label class="models-v2-sort-label" for="models-v2-sort-select">Sort:</label>
+        <select id="models-v2-sort-select" class="models-v2-sort-select">{{{sortOptions}}}</select>
+        <button id="models-v2-sort-order-btn" class="models-v2-button models-v2-button-secondary" title="Toggle sort direction">↑</button>
+    </div>
+
+    <div class="models-v2-search-row">
+        <input id="models-v2-search-input" class="models-v2-search-input" type="text" placeholder="Search models by name or path...">
+    </div>
+
+    <div class="models-v2-button-row">
+        <button id="models-v2-refresh-btn" class="models-v2-button models-v2-button-secondary">Refresh</button>
+        <button id="models-v2-scan-btn" class="models-v2-button models-v2-button-secondary">Scan</button>
+        <button id="models-v2-report-btn" class="models-v2-button models-v2-button-primary">Report</button>
+    </div>
+</div>

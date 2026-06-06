@@ -1,3 +1,10 @@
+.models-v2-header-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    width: 100%;
+}
+
 .models-v2-filter-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
@@ -5,11 +12,67 @@
     margin-bottom: 10px;
 }
 
+.models-v2-sort-row,
+.models-v2-search-row,
+.models-v2-button-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+}
+
+.models-v2-sort-row {
+    gap: 8px;
+}
+
 .models-v2-labeled-select-label {
     display: block;
     color: #ccc;
     font-size: 11px;
     margin-bottom: 4px;
+}
+
+.models-v2-labeled-select,
+.models-v2-sort-select,
+.models-v2-search-input {
+    width: 100%;
+    min-width: 0;
+}
+
+.models-v2-search-input {
+    padding: 8px 10px;
+    border-radius: 4px;
+    border: 1px solid #444;
+    background: #1a1a1a;
+    color: #fff;
+}
+
+.models-v2-button-row {
+    justify-content: flex-start;
+}
+
+.models-v2-button {
+    padding: 8px 12px;
+    border-radius: 4px;
+    border: 1px solid #444;
+    background: #333;
+    color: #fff;
+    cursor: pointer;
+    transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.models-v2-button-primary {
+    background: #4CAF50;
+    border-color: #4CAF50;
+}
+
+.models-v2-button-secondary {
+    background: #2a2a2a;
+    border-color: #444;
+}
+
+.models-v2-button:hover {
+    background: #505050;
 }
 
 .models-v2-sort-label {

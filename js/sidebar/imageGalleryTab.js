@@ -75,6 +75,84 @@ import {
 } from "../shared/viewportPriority.js";
 
 import { loadSidebarStyle } from './sidebarStyles.js';
+import {
+    loadHtmlTemplate,
+    renderHtmlTemplate
+} from '../utils/htmlTemplateLoader.js';
+
+let galleryPlaceholderTemplate = null;
+let galleryProgressTemplate = null;
+let galleryThumbnailProgressTemplate = null;
+let galleryErrorTemplate = null;
+let galleryEmptyStateTemplate = null;
+
+async function getGalleryPlaceholderTemplate() {
+    if (!galleryPlaceholderTemplate) {
+        galleryPlaceholderTemplate = await loadHtmlTemplate('extensions/comfyui_sageutils/sidebar/partials/galleryPlaceholder.html');
+    }
+    return galleryPlaceholderTemplate;
+}
+
+async function getGalleryProgressTemplate() {
+    if (!galleryProgressTemplate) {
+        galleryProgressTemplate = await loadHtmlTemplate('extensions/comfyui_sageutils/sidebar/partials/galleryProgress.html');
+    }
+    return galleryProgressTemplate;
+}
+
+async function getGalleryThumbnailProgressTemplate() {
+    if (!galleryThumbnailProgressTemplate) {
+        galleryThumbnailProgressTemplate = await loadHtmlTemplate('extensions/comfyui_sageutils/sidebar/partials/galleryThumbnailProgress.html');
+    }
+    return galleryThumbnailProgressTemplate;
+}
+
+async function getGalleryErrorTemplate() {
+    if (!galleryErrorTemplate) {
+        galleryErrorTemplate = await loadHtmlTemplate('extensions/comfyui_sageutils/sidebar/partials/galleryError.html');
+    }
+    return galleryErrorTemplate;
+}
+
+async function getGalleryEmptyStateTemplate() {
+    if (!galleryEmptyStateTemplate) {
+        galleryEmptyStateTemplate = await loadHtmlTemplate('extensions/comfyui_sageutils/sidebar/partials/galleryEmptyState.html');
+    }
+    return galleryEmptyStateTemplate;
+}
+
+async function renderGalleryPlaceholder(icon, message, subtext = '') {
+    const template = await getGalleryPlaceholderTemplate();
+    return renderHtmlTemplate(template, { icon, message, subtext });
+}
+
+async function renderGalleryProgress(percentage, message, current, total) {
+    const template = await getGalleryProgressTemplate();
+    const labelClass = percentage > 50 ? 'gallery-progress-bar__label--light' : '';
+    return renderHtmlTemplate(template, { percentage, message, current, total, labelClass });
+}
+
+async function renderThumbnailProgress(processedCount, totalImages, skeletonCount) {
+    const template = await getGalleryThumbnailProgressTemplate();
+    const percentage = Math.round((processedCount / totalImages) * 100);
+    const pendingText = skeletonCount > 0 ? ` - ${skeletonCount} pending` : '';
+    return renderHtmlTemplate(template, { processedCount, totalImages, percentage, pendingText });
+}
+
+async function renderGalleryError(message) {
+    const template = await getGalleryErrorTemplate();
+    return renderHtmlTemplate(template, { message });
+}
+
+async function renderGalleryEmptyState() {
+    const template = await getGalleryEmptyStateTemplate();
+    return renderHtmlTemplate(template, {});
+}
+
+async function renderGalleryMetadataFallback(imagePath) {
+    const template = await loadHtmlTemplate('extensions/comfyui_sageutils/sidebar/partials/galleryMetadataFallback.html');
+    return renderHtmlTemplate(template, { imagePath });
+}
 
 // Debug toggle helper for gallery logs
 function isDebugGalleryEnabled() {
@@ -85,50 +163,6 @@ function isDebugGalleryEnabled() {
     }
 }
 
-function createGalleryPlaceholderHtml(icon, message, subtext = '') {
-    return `
-        <div class="gallery-placeholder">
-            <div class="gallery-placeholder-icon">${icon}</div>
-            <div class="gallery-placeholder-message">${message}</div>
-            ${subtext ? `<div class="gallery-placeholder-subtext">${subtext}</div>` : ''}
-        </div>
-    `;
-}
-
-function createGalleryProgressHtml(percentage, message, current, total) {
-    return `
-        <div class="gallery-loading-progress__icon">🔍</div>
-        <div class="gallery-loading-progress__message">${message}</div>
-        <div class="gallery-loading-progress__details">
-            ${current} / ${total} images loaded
-        </div>
-        <div class="gallery-progress-bar">
-            <div class="gallery-progress-bar__fill"></div>
-            <div class="gallery-progress-bar__label ${percentage > 50 ? 'gallery-progress-bar__label--light' : ''}">${percentage}%</div>
-        </div>
-    `;
-}
-
-function createThumbnailProgressHtml(processedCount, totalImages, skeletonCount) {
-    const percentage = Math.round((processedCount / totalImages) * 100);
-    return `
-        <div class="gallery-thumbnail-progress__status">
-            Loading thumbnails... ${processedCount}/${totalImages} (${percentage}%)${skeletonCount > 0 ? ` - ${skeletonCount} pending` : ''}
-        </div>
-        <div class="gallery-thumbnail-progress__bar">
-            <div class="gallery-thumbnail-progress__fill"></div>
-        </div>
-    `;
-}
-
-function createGalleryErrorHtml(message) {
-    return `
-        <div class="gallery-error-panel">
-            ❌ Error loading images
-            <br><small class="gallery-error-panel__details">${message}</small>
-        </div>
-    `;
-}
 
 /**
  * Sets up event handlers for Gallery tab interactions
@@ -227,7 +261,7 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
                 if (cached.images && cached.images.length > 0) {
                     showImageMetadata(cached.images[0]);
                 } else {
-                    metadata.metadataContent.innerHTML = createGalleryPlaceholderHtml(
+                    metadata.metadataContent.innerHTML = await renderGalleryPlaceholder(
                         '📁',
                         'No images in this folder',
                         'Select a folder with images to view details'
@@ -261,7 +295,7 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
                 if (cached.images && cached.images.length > 0) {
                     showImageMetadata(cached.images[0]);
                 } else {
-                    metadata.metadataContent.innerHTML = createGalleryPlaceholderHtml(
+                    metadata.metadataContent.innerHTML = await renderGalleryPlaceholder(
                         '📁',
                         'No images in this folder',
                         'Select a folder with images to view details'
@@ -282,7 +316,7 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
             grid.imageCountSpan.textContent = '(Loading...)';
             
             // Create a progress update function
-            const updateProgress = (current, total, message = '') => {
+            const updateProgress = async (current, total, message = '') => {
                 // Don't update if aborted
                 if (signal.aborted) {
                     return;
@@ -297,20 +331,20 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
                 
                 const percentage = total > 0 ? Math.round((current / total) * 100) : 0;
                 
-                progressContainer.innerHTML = createGalleryProgressHtml(
+                progressContainer.innerHTML = await renderGalleryProgress(
                     percentage,
                     message || `Loading from ${folderType} folder...`,
                     current,
                     total
                 );
-                        const fill = progressContainer.querySelector('.gallery-progress-bar__fill');
+                const fill = progressContainer.querySelector('.gallery-progress-bar__fill');
                 if (fill) {
                     fill.style.setProperty('--fill-width', `${percentage}%`);
                 }
             };
             
             // Initial progress display
-            updateProgress(0, 0, `Loading from ${folderType} folder...`);
+            await updateProgress(0, 0, `Loading from ${folderType} folder...`);
             
             // Create a custom setStatus that also updates the progress bar
             const customSetStatus = (message) => {
@@ -404,7 +438,7 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
                 showImageMetadata(images[0]);
             } else {
                 // No images available, show placeholder message
-                metadata.metadataContent.innerHTML = createGalleryPlaceholderHtml(
+                metadata.metadataContent.innerHTML = await renderGalleryPlaceholder(
                     '📁',
                     'No images in this folder',
                     'Select a folder with images to view details'
@@ -441,7 +475,7 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
             // Clear abort controller on error
             currentAbortController = null;
             
-            grid.gridContainer.innerHTML = createGalleryErrorHtml(error.message);
+            grid.gridContainer.innerHTML = await renderGalleryError(error.message);
             
             grid.imageCountSpan.textContent = '(Error)';
         }
@@ -458,11 +492,8 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
         }
         
         if (!images || (images.length === 0 && folders.length === 0)) {
-            grid.gridContainer.innerHTML = `
-                <div class="gallery-empty-state">
-                    No images or folders found in this location
-                </div>
-            `;
+            const emptyState = await renderGalleryEmptyState();
+            grid.gridContainer.appendChild(emptyState);
             return;
         }
         
@@ -605,17 +636,17 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
             }
         }
         
-        const updateProgress = () => {
+        const updateProgress = async () => {
             const percentage = Math.round((processedCount / totalImages) * 100);
             const skeletonCount = getSkeletonCount(grid.gridContainer);
-            progressContainer.innerHTML = createThumbnailProgressHtml(processedCount, totalImages, skeletonCount);
+            progressContainer.innerHTML = await renderThumbnailProgress(processedCount, totalImages, skeletonCount);
             const fill = progressContainer.querySelector('.gallery-thumbnail-progress__fill');
             if (fill) {
                 fill.style.setProperty('--fill-width', `${percentage}%`);
             }
         };
         
-        updateProgress();
+        await updateProgress();
 
         // Track which images have been rendered (by index)
         let renderedCount = incremental ? grid.gridContainer.querySelectorAll('.gallery-image-item').length : 0;
@@ -809,7 +840,7 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
     // Toggle view mode
 
     // Show metadata panel
-    function showMetadata(imagePath) {
+    async function showMetadata(imagePath) {
         actions.toggleMetadata(true);
         metadata.metadataSection.classList.remove('gallery-metadata-section--hidden');
         
@@ -824,27 +855,19 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
         }
         
         // Fallback display if image not found
-        metadata.metadataContent.innerHTML = `
-            <div class="gallery-file-info-title">📄 File Information</div>
-            <div>Path: ${imagePath}</div>
-            <div>Status: Metadata loading not yet implemented</div>
-            <br>
-            <div class="gallery-info-status">🔄 Implementation Status</div>
-            <div>• Basic UI structure: ✅ Complete</div>
-            <div>• Image loading: ⏳ Phase 2</div>
-            <div>• Metadata extraction: ⏳ Phase 2</div>
-            <div>• Thumbnail generation: ⏳ Phase 2</div>
-        `;
+        metadata.metadataContent.innerHTML = await renderGalleryMetadataFallback(imagePath);
     }
 
     // Hide metadata panel
     function hideMetadata() {
         actions.toggleMetadata(false);
-        metadata.metadataContent.innerHTML = createGalleryPlaceholderHtml(
+        renderGalleryPlaceholder(
             '👁️',
             'No image selected',
             'Click on an image to view its details'
-        );
+        ).then(html => {
+            metadata.metadataContent.innerHTML = html;
+        });
         metadata.metadataSection.classList.add('gallery-metadata-section--hidden');
     }
 
@@ -1096,14 +1119,14 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
     };
 }
 
-export function createImageGalleryTab(container) {
+export async function createImageGalleryTab(container) {
     const debugGallery = isDebugGalleryEnabled();
     loadSidebarStyle('image-gallery-tab-styles', 'extensions/comfyui_sageutils/sidebar/imageGalleryTab.css');
     // Create all components
     const header = createGalleryHeader();
     const folderAndControls = createFolderSelectorAndControls(); // Combined section
-    const grid = createWrappedThumbnailGrid();
-    const metadata = createMetadataPanel();
+    const grid = await createWrappedThumbnailGrid();
+    const metadata = await createMetadataPanel();
 
     // Set up event handlers and provide necessary functions via parameters
     const galleryFunctions = {

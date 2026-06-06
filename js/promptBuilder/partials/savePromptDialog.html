@@ -1,0 +1,32 @@
+<div class="dialog-overlay">
+    <div class="save-prompt-dialog">
+        <div class="dialog-header">
+            <h3>Save Prompt</h3>
+            <button class="close-btn">×</button>
+        </div>
+        <div class="dialog-content">
+            <div class="form-group">
+                <label>Name:</label>
+                <input type="text" class="prompt-name-input" placeholder="Enter prompt name..." required>
+            </div>
+            <div class="form-group">
+                <label>Category:</label>
+                <select class="prompt-category-input">
+                    {{{categoryOptions}}}
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Description (optional):</label>
+                <textarea class="prompt-description-input" placeholder="Brief description..."></textarea>
+            </div>
+            <div class="form-group">
+                <label>Tags (comma-separated):</label>
+                <input type="text" class="prompt-tags-input" placeholder="tag1, tag2, tag3">
+            </div>
+        </div>
+        <div class="dialog-actions">
+            <button class="cancel-btn">Cancel</button>
+            <button class="save-btn primary-btn">Save Prompt</button>
+        </div>
+    </div>
+</div>

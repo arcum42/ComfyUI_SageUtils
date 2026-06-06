@@ -7,6 +7,75 @@ import { selectors } from '../shared/stateManager.js';
 import { extractCivitaiInfo } from '../shared/civitai.js';
 import { copyToClipboard } from './clipboard.js';
 import { sendTextToPromptBuilder, showNotification } from '../shared/crossTabMessaging.js';
+import { loadHtmlTemplate, renderHtmlTemplate, createElementFromTemplate } from '../utils/htmlTemplateLoader.js';
+
+let infoDisplayEmptyTemplate = null;
+let infoDisplayHeaderTemplate = null;
+
+async function getInfoDisplayEmptyTemplate() {
+    if (!infoDisplayEmptyTemplate) {
+        infoDisplayEmptyTemplate = await loadHtmlTemplate('extensions/comfyui_sageutils/components/partials/infoDisplayEmpty.html');
+    }
+    return infoDisplayEmptyTemplate;
+}
+
+async function renderInfoDisplayEmpty() {
+    const template = await getInfoDisplayEmptyTemplate();
+    return createElementFromTemplate(renderHtmlTemplate(template, {}));
+}
+
+async function getInfoDisplayHeaderTemplate() {
+    if (!infoDisplayHeaderTemplate) {
+        infoDisplayHeaderTemplate = await loadHtmlTemplate('extensions/comfyui_sageutils/components/partials/infoDisplayHeader.html');
+    }
+    return infoDisplayHeaderTemplate;
+}
+
+async function renderInfoDisplayHeader(data) {
+    const template = await getInfoDisplayHeaderTemplate();
+    return createElementFromTemplate(renderHtmlTemplate(template, data));
+}
+
+let infoDisplayDescriptionTemplate = null;
+
+async function getInfoDisplayDescriptionTemplate() {
+    if (!infoDisplayDescriptionTemplate) {
+        infoDisplayDescriptionTemplate = await loadHtmlTemplate('extensions/comfyui_sageutils/components/partials/infoDisplayDescription.html');
+    }
+    return infoDisplayDescriptionTemplate;
+}
+
+async function renderInfoDisplayDescription(data) {
+    const template = await getInfoDisplayDescriptionTemplate();
+    return createElementFromTemplate(renderHtmlTemplate(template, data));
+}
+
+let infoDisplaySectionTemplate = null;
+let infoDisplayTriggerWordsTemplate = null;
+
+async function getInfoDisplaySectionTemplate() {
+    if (!infoDisplaySectionTemplate) {
+        infoDisplaySectionTemplate = await loadHtmlTemplate('extensions/comfyui_sageutils/components/partials/infoDisplaySectionBlock.html');
+    }
+    return infoDisplaySectionTemplate;
+}
+
+async function renderInfoDisplaySection(data) {
+    const template = await getInfoDisplaySectionTemplate();
+    return createElementFromTemplate(renderHtmlTemplate(template, data));
+}
+
+async function getInfoDisplayTriggerWordsTemplate() {
+    if (!infoDisplayTriggerWordsTemplate) {
+        infoDisplayTriggerWordsTemplate = await loadHtmlTemplate('extensions/comfyui_sageutils/components/partials/infoDisplayTriggerWords.html');
+    }
+    return infoDisplayTriggerWordsTemplate;
+}
+
+async function renderInfoDisplayTriggerWords(triggerText) {
+    const template = await getInfoDisplayTriggerWordsTemplate();
+    return createElementFromTemplate(renderHtmlTemplate(template, { triggerText }));
+}
 
 /**
  * Find all versions of the same model (including current version and undownloaded versions from Civitai)
@@ -241,11 +310,8 @@ export async function createDetailedInfoDisplay(hash, info, showNsfw = false) {
     container.className = 'sage-info-panel';
 
     if (!info) {
-        container.innerHTML = `
-            <div class="sage-info-empty">
-                No information available for this file
-            </div>
-        `;
+        const emptyPanel = await renderInfoDisplayEmpty();
+        container.appendChild(emptyPanel);
         return container;
     }
 
@@ -284,147 +350,126 @@ export async function createDetailedInfoDisplay(hash, info, showNsfw = false) {
     const modelName = enhancedInfo.model?.name || enhancedInfo.model_name || 'Unknown Model';
     const versionName = enhancedInfo.name || 'Unknown Version';
     const modelType = enhancedInfo.model?.type || enhancedInfo.model_type || 'Unknown';
-    
-    sections.push(`
-        <div class="sage-info-header">
-            <h2 class="sage-info-title">${escapeHtml(modelName)}</h2>
-            <div class="sage-info-version">${escapeHtml(versionName)}</div>
-            <div class="sage-info-chip-row">
-                <span class="sage-info-chip">${escapeHtml(modelType)}</span>
-                ${enhancedInfo.baseModel ? `<span class="sage-info-chip">${escapeHtml(enhancedInfo.baseModel)}</span>` : ''}
-            </div>
-        </div>
-    `);
+    const baseModelBadge = enhancedInfo.baseModel ? `<span class="sage-info-chip">${escapeHtml(enhancedInfo.baseModel)}</span>` : '';
+
+    sections.push(await renderInfoDisplayHeader({
+        modelName: escapeHtml(modelName),
+        versionName: escapeHtml(versionName),
+        modelType: escapeHtml(modelType),
+        baseModelBadge
+    }));
 
     // Model description
     if (enhancedInfo.description) {
         // Clean up HTML description
         const cleanDescription = enhancedInfo.description.replace(/<[^>]*>/g, '').substring(0, 500);
-        sections.push(`
-            <div class="sage-info-block">
-                <strong class="sage-info-label sage-info-label--blue">Description:</strong><br>
-                <div class="sage-description-text">
-                    ${escapeHtml(cleanDescription)}${enhancedInfo.description.length > 500 ? '...' : ''}
-                </div>
-            </div>
-        `);
+        sections.push(await renderInfoDisplayDescription({
+            descriptionText: escapeHtml(cleanDescription),
+            truncated: enhancedInfo.description.length > 500 ? '...' : ''
+        }));
     }
 
     // Trigger words (keywords)
     if (enhancedInfo.trainedWords && enhancedInfo.trainedWords.length > 0) {
         const triggers = enhancedInfo.trainedWords.join(', ');
-        sections.push(`
-            <div class="sage-trigger-words-block">
-                <div class="sage-trigger-words-row">
-                    <strong class="sage-info-label sage-info-label--magenta">Trigger Words:</strong>
-                    <div class="sage-trigger-words-actions">
-                        <button type="button" class="sage-trigger-btn trigger-copy-btn">Copy</button>
-                        <button type="button" class="sage-trigger-btn trigger-append-btn">Append to Prompt</button>
-                    </div>
-                </div>
-                <div class="sage-trigger-words-text">
-                    ${escapeHtml(triggers)}
-                </div>
-            </div>
-        `);
+        sections.push(await renderInfoDisplayTriggerWords(escapeHtml(triggers)));
     }
 
     // Statistics from Civitai
     if (enhancedInfo.stats) {
         const stats = enhancedInfo.stats;
-        sections.push(`
-            <div class="sage-info-block">
-                <strong class="sage-info-label sage-info-label--purple">Community Stats:</strong><br>
-                <div class="sage-stats-grid">
-                    ${stats.downloadCount !== undefined ? `<span class="sage-info-key">Downloads:</span> <span class="sage-info-value">${stats.downloadCount.toLocaleString()}</span>` : ''}
-                    ${stats.thumbsUpCount !== undefined ? `<span class="sage-info-key">👍 Likes:</span> <span class="sage-info-value">${stats.thumbsUpCount.toLocaleString()}</span>` : ''}
-                    ${stats.thumbsDownCount !== undefined ? `<span class="sage-info-key">👎 Dislikes:</span> <span class="sage-info-value">${stats.thumbsDownCount.toLocaleString()}</span>` : ''}
-                    ${stats.commentCount !== undefined ? `<span class="sage-info-key">Comments:</span> <span class="sage-info-value">${stats.commentCount.toLocaleString()}</span>` : ''}
-                </div>
-            </div>
-        `);
+        const statsContent = `
+            ${stats.downloadCount !== undefined ? `<span class="sage-info-key">Downloads:</span> <span class="sage-info-value">${stats.downloadCount.toLocaleString()}</span>` : ''}
+            ${stats.thumbsUpCount !== undefined ? `<span class="sage-info-key">👍 Likes:</span> <span class="sage-info-value">${stats.thumbsUpCount.toLocaleString()}</span>` : ''}
+            ${stats.thumbsDownCount !== undefined ? `<span class="sage-info-key">👎 Dislikes:</span> <span class="sage-info-value">${stats.thumbsDownCount.toLocaleString()}</span>` : ''}
+            ${stats.commentCount !== undefined ? `<span class="sage-info-key">Comments:</span> <span class="sage-info-value">${stats.commentCount.toLocaleString()}</span>` : ''}
+        `;
+        sections.push(await renderInfoDisplaySection({
+            title: 'Community Stats:',
+            color: 'purple',
+            content: statsContent
+        }));
     }
 
     // Basic file information
     if (hash) {
-        sections.push(`
-            <div class="sage-info-block">
-                <strong class="sage-info-label sage-info-label--green">Hash:</strong><br>
-                <span class="sage-info-value sage-info-value--break">${hash}</span>
-            </div>
-        `);
+        sections.push(await renderInfoDisplaySection({
+            title: 'Hash:',
+            color: 'green',
+            content: `<span class="sage-info-value sage-info-value--break">${hash}</span>`
+        }));
     }
 
     // Model information
     if (enhancedInfo.model_name || enhancedInfo.base_model || enhancedInfo.model_type || (enhancedInfo.model && (enhancedInfo.model.name || enhancedInfo.model.type))) {
-        let modelInfo = '<div class="sage-info-block"><strong class="sage-info-label sage-info-label--blue">Model Information:</strong><br>';
+        let modelInfoContent = '';
         
-        // Check both old and new data structure
         const modelName = enhancedInfo.model_name || (enhancedInfo.model && enhancedInfo.model.name) || enhancedInfo.name;
         const baseModel = enhancedInfo.base_model || enhancedInfo.baseModel;
         const modelType = enhancedInfo.model_type || (enhancedInfo.model && enhancedInfo.model.type);
         
-        if (modelName) modelInfo += `<span class="sage-info-key">Name:</span> ${escapeHtml(modelName)}<br>`;
-        if (baseModel) modelInfo += `<span class="sage-info-key">Base Model:</span> ${escapeHtml(baseModel)}<br>`;
-        if (modelType) modelInfo += `<span class="sage-info-key">Type:</span> ${escapeHtml(modelType)}<br>`;
-        modelInfo += '</div>';
-        sections.push(modelInfo);
+        if (modelName) modelInfoContent += `<span class="sage-info-key">Name:</span> ${escapeHtml(modelName)}<br>`;
+        if (baseModel) modelInfoContent += `<span class="sage-info-key">Base Model:</span> ${escapeHtml(baseModel)}<br>`;
+        if (modelType) modelInfoContent += `<span class="sage-info-key">Type:</span> ${escapeHtml(modelType)}<br>`;
+        sections.push(await renderInfoDisplaySection({
+            title: 'Model Information:',
+            color: 'blue',
+            content: modelInfoContent
+        }));
     }
 
     // File details
     if (enhancedInfo.file_size || enhancedInfo.file_path || enhancedInfo.files) {
-        let fileInfo = '<div class="sage-info-block"><strong class="sage-info-label sage-info-label--orange">File Details:</strong><br>';
+        let fileInfoContent = '';
         
         if (enhancedInfo.file_path) {
-            fileInfo += `<span class="sage-info-key">Path:</span> ${escapeHtml(enhancedInfo.file_path)}<br>`;
+            fileInfoContent += `<span class="sage-info-key">Path:</span> ${escapeHtml(enhancedInfo.file_path)}<br>`;
         }
         
-        // File size from local cache or Civitai
         let fileSize = enhancedInfo.file_size;
         if (!fileSize && enhancedInfo.files && enhancedInfo.files[0]) {
-            fileSize = enhancedInfo.files[0].sizeKB * 1024; // Convert KB to bytes
+            fileSize = enhancedInfo.files[0].sizeKB * 1024;
         }
         
         if (fileSize) {
             const sizeInMB = (fileSize / (1024 * 1024)).toFixed(2);
-            fileInfo += `<span class="sage-info-key">Size:</span> ${sizeInMB} MB<br>`;
+            fileInfoContent += `<span class="sage-info-key">Size:</span> ${sizeInMB} MB<br>`;
         }
         
-        // File format and other metadata from Civitai
         if (enhancedInfo.files && enhancedInfo.files[0]) {
             const file = enhancedInfo.files[0];
             if (file.metadata) {
-                if (file.metadata.format) fileInfo += `<span class="sage-info-key">Format:</span> ${file.metadata.format}<br>`;
-                if (file.metadata.fp) fileInfo += `<span class="sage-info-key">Precision:</span> ${file.metadata.fp}<br>`;
-                if (file.metadata.size) fileInfo += `<span class="sage-info-key">Model Size:</span> ${file.metadata.size}<br>`;
+                if (file.metadata.format) fileInfoContent += `<span class="sage-info-key">Format:</span> ${file.metadata.format}<br>`;
+                if (file.metadata.fp) fileInfoContent += `<span class="sage-info-key">Precision:</span> ${file.metadata.fp}<br>`;
+                if (file.metadata.size) fileInfoContent += `<span class="sage-info-key">Model Size:</span> ${file.metadata.size}<br>`;
             }
-            if (file.pickleScanResult) fileInfo += `<span class="sage-info-key">Safety Scan:</span> ${file.pickleScanResult}<br>`;
+            if (file.pickleScanResult) fileInfoContent += `<span class="sage-info-key">Safety Scan:</span> ${file.pickleScanResult}<br>`;
         }
         
-        fileInfo += '</div>';
-        sections.push(fileInfo);
+        sections.push(await renderInfoDisplaySection({
+            title: 'File Details:',
+            color: 'orange',
+            content: fileInfoContent
+        }));
     }
 
     // Civitai information
     const civitaiData = extractCivitaiInfo(enhancedInfo);
     if (civitaiData.hasInfo) {
-        let civitaiInfo = '<div class="sage-info-block"><strong class="sage-info-label sage-info-label--purple">Civitai Information:</strong><br>';
+        let civitaiContent = '';
         
         if (civitaiData.versionId) {
-            civitaiInfo += `<span class="sage-info-key">Version ID:</span> ${civitaiData.versionId}<br>`;
+            civitaiContent += `<span class="sage-info-key">Version ID:</span> ${civitaiData.versionId}<br>`;
         }
         if (civitaiData.modelId) {
-            civitaiInfo += `<span class="sage-info-key">Model ID:</span> ${civitaiData.modelId}<br>`;
+            civitaiContent += `<span class="sage-info-key">Model ID:</span> ${civitaiData.modelId}<br>`;
         }
         
-        // Show current version link
         if (civitaiData.modelUrl !== '#') {
-            civitaiInfo += `<span class="sage-info-key">Current Version:</span> <a class="sage-info-link" href="${civitaiData.modelUrl}" target="_blank">View on Civitai</a><br>`;
+            civitaiContent += `<span class="sage-info-key">Current Version:</span> <a class="sage-info-link" href="${civitaiData.modelUrl}" target="_blank">View on Civitai</a><br>`;
         }
         
-        // Show updated version link only if we don't already have it locally
         if (civitaiData.hasUpdate && civitaiData.updateUrl !== '#') {
-            // Check if we already have the updated version locally
             const updateVersionId = enhancedInfo.update_version_id;
             let alreadyHaveUpdate = false;
             
@@ -437,29 +482,35 @@ export async function createDetailedInfoDisplay(hash, info, showNsfw = false) {
             }
             
             if (!alreadyHaveUpdate) {
-                civitaiInfo += `<span class="sage-info-key">Updated Version:</span> <a class="sage-info-link sage-info-link--warning" href="${civitaiData.updateUrl}" target="_blank">🔗 New Version Available</a><br>`;
+                civitaiContent += `<span class="sage-info-key">Updated Version:</span> <a class="sage-info-link sage-info-link--warning" href="${civitaiData.updateUrl}" target="_blank">🔗 New Version Available</a><br>`;
             } else {
-                civitaiInfo += `<span class="sage-info-key">Updated Version:</span> <span class="sage-info-value sage-info-value--success">✓ Already downloaded locally</span><br>`;
+                civitaiContent += `<span class="sage-info-key">Updated Version:</span> <span class="sage-info-value sage-info-value--success">✓ Already downloaded locally</span><br>`;
             }
         }
         
         if (civitaiData.downloadUrl !== '#') {
-            civitaiInfo += `<span class="sage-info-key">Download URL:</span> <a class="sage-info-link" href="${civitaiData.downloadUrl}" target="_blank">Link</a><br>`;
+            civitaiContent += `<span class="sage-info-key">Download URL:</span> <a class="sage-info-link" href="${civitaiData.downloadUrl}" target="_blank">Link</a><br>`;
         }
         
-        civitaiInfo += '</div>';
-        sections.push(civitaiInfo);
+        sections.push(await renderInfoDisplaySection({
+            title: 'Civitai Information:',
+            color: 'purple',
+            content: civitaiContent
+        }));
     }
 
     // Timestamps
     if (enhancedInfo.created_at || enhancedInfo.updated_at || enhancedInfo.last_accessed || enhancedInfo.lastUsed) {
-        let timeInfo = '<div class="sage-info-block"><strong class="sage-info-label sage-info-label--gray">Timestamps:</strong><br>';
-        if (enhancedInfo.created_at) timeInfo += `<span class="sage-info-key">Created:</span> ${new Date(enhancedInfo.created_at).toLocaleString()}<br>`;
-        if (enhancedInfo.updated_at) timeInfo += `<span class="sage-info-key">Updated:</span> ${new Date(enhancedInfo.updated_at).toLocaleString()}<br>`;
-        if (enhancedInfo.last_accessed) timeInfo += `<span class="sage-info-key">Last Accessed:</span> ${new Date(enhancedInfo.last_accessed).toLocaleString()}<br>`;
-        if (enhancedInfo.lastUsed) timeInfo += `<span class="sage-info-key">Last Used:</span> ${new Date(enhancedInfo.lastUsed).toLocaleString()}<br>`;
-        timeInfo += '</div>';
-        sections.push(timeInfo);
+        let timeContent = '';
+        if (enhancedInfo.created_at) timeContent += `<span class="sage-info-key">Created:</span> ${new Date(enhancedInfo.created_at).toLocaleString()}<br>`;
+        if (enhancedInfo.updated_at) timeContent += `<span class="sage-info-key">Updated:</span> ${new Date(enhancedInfo.updated_at).toLocaleString()}<br>`;
+        if (enhancedInfo.last_accessed) timeContent += `<span class="sage-info-key">Last Accessed:</span> ${new Date(enhancedInfo.last_accessed).toLocaleString()}<br>`;
+        if (enhancedInfo.lastUsed) timeContent += `<span class="sage-info-key">Last Used:</span> ${new Date(enhancedInfo.lastUsed).toLocaleString()}<br>`;
+        sections.push(await renderInfoDisplaySection({
+            title: 'Timestamps:',
+            color: 'gray',
+            content: timeContent
+        }));
     }
 
     // All versions of this model (including current and undownloaded from Civitai)
@@ -467,7 +518,7 @@ export async function createDetailedInfoDisplay(hash, info, showNsfw = false) {
         try {
             const allVersions = await findAllModelVersions(enhancedInfo.modelId, hash);
             if (allVersions.length > 1) {
-                let versionsInfo = '<div class="sage-info-block"><strong class="sage-info-label sage-info-label--teal">All Versions:</strong><br>';
+                let versionsContent = '';
                 allVersions.forEach(version => {
                     const fileName = version.filePath ? getFileNameFromPath(version.filePath) : 'Not downloaded';
                     const isCurrentVersion = version.isCurrent;
@@ -479,23 +530,26 @@ export async function createDetailedInfoDisplay(hash, info, showNsfw = false) {
                     const cardClass = isCurrentVersion ? 'sage-version-card sage-version-card--current' : isDownloaded ? 'sage-version-card sage-version-card--downloaded' : 'sage-version-card sage-version-card--available';
                     let statusIndicator = isCurrentVersion ? '<span class="sage-version-card-status sage-version-card-status--current">◄ CURRENT</span>' : isDownloaded ? '<span class="sage-version-card-status sage-version-card-status--downloaded">● DOWNLOADED</span>' : '<span class="sage-version-card-status sage-version-card-status--available">○ AVAILABLE</span>';
                     
-                    versionsInfo += `<div class="${cardClass}">`;
-                    versionsInfo += `<span class="sage-info-key">Version:</span> ${versionName}<br>`;
-                    versionsInfo += `<span class="sage-info-key">ID:</span> ${versionId}<br>`;
-                    versionsInfo += `<span class="sage-info-key">Created:</span> ${createdAt}<br>`;
+                    versionsContent += `<div class="${cardClass}">`;
+                    versionsContent += `<span class="sage-info-key">Version:</span> ${versionName}<br>`;
+                    versionsContent += `<span class="sage-info-key">ID:</span> ${versionId}<br>`;
+                    versionsContent += `<span class="sage-info-key">Created:</span> ${createdAt}<br>`;
                     
                     if (isDownloaded) {
-                        versionsInfo += `<span class="sage-info-key">File:</span> <span class="sage-info-value sage-info-value--small">${fileName}</span>`;
+                        versionsContent += `<span class="sage-info-key">File:</span> <span class="sage-info-value sage-info-value--small">${fileName}</span>`;
                     } else {
                         const downloadUrl = version.info.downloadUrl || `https://civitai.com/api/download/models/${versionId}`;
-                        versionsInfo += `<span class="sage-info-key">Download:</span> <a class="sage-info-link sage-info-link--warning" href="${downloadUrl}" target="_blank" title="Download this version">Download Link</a>`;
+                        versionsContent += `<span class="sage-info-key">Download:</span> <a class="sage-info-link sage-info-link--warning" href="${downloadUrl}" target="_blank" title="Download this version">Download Link</a>`;
                     }
                     
-                    versionsInfo += statusIndicator;
-                    versionsInfo += '</div>';
+                    versionsContent += statusIndicator;
+                    versionsContent += '</div>';
                 });
-                versionsInfo += '</div>';
-                sections.push(versionsInfo);
+                sections.push(await renderInfoDisplaySection({
+                    title: 'All Versions:',
+                    color: 'teal',
+                    content: versionsContent
+                }));
             }
         } catch (error) {
             console.error('Error fetching model versions:', error);
@@ -515,7 +569,7 @@ export async function createDetailedInfoDisplay(hash, info, showNsfw = false) {
             });
             
             if (localVersions.length > 1) {
-                let versionsInfo = '<div class="sage-info-block"><strong class="sage-info-label sage-info-label--teal">Local Versions:</strong><br>';
+                let versionsContent = '';
                 localVersions.forEach(version => {
                     const fileName = getFileNameFromPath(version.filePath);
                     const isCurrentVersion = version.isCurrent;
@@ -523,17 +577,20 @@ export async function createDetailedInfoDisplay(hash, info, showNsfw = false) {
                     const versionId = version.info.id || 'N/A';
                     const cardClass = isCurrentVersion ? 'sage-version-card sage-version-card--current' : 'sage-version-card';
                     
-                    versionsInfo += `<div class="${cardClass}">`;
-                    versionsInfo += `<span class="sage-info-key">Version:</span> ${versionName}<br>`;
-                    versionsInfo += `<span class="sage-info-key">ID:</span> ${versionId}<br>`;
-                    versionsInfo += `<span class="sage-info-key">File:</span> <span class="sage-info-value sage-info-value--small">${fileName}</span>`;
+                    versionsContent += `<div class="${cardClass}">`;
+                    versionsContent += `<span class="sage-info-key">Version:</span> ${versionName}<br>`;
+                    versionsContent += `<span class="sage-info-key">ID:</span> ${versionId}<br>`;
+                    versionsContent += `<span class="sage-info-key">File:</span> <span class="sage-info-value sage-info-value--small">${fileName}</span>`;
                     if (isCurrentVersion) {
-                        versionsInfo += '<br><span class="sage-version-card-status sage-version-card-status--current">◄ CURRENT</span>';
+                        versionsContent += '<br><span class="sage-version-card-status sage-version-card-status--current">◄ CURRENT</span>';
                     }
-                    versionsInfo += '</div>';
+                    versionsContent += '</div>';
                 });
-                versionsInfo += '</div>';
-                sections.push(versionsInfo);
+                sections.push(await renderInfoDisplaySection({
+                    title: 'Local Versions:',
+                    color: 'teal',
+                    content: versionsContent
+                }));
             }
         }
     }
@@ -544,19 +601,28 @@ export async function createDetailedInfoDisplay(hash, info, showNsfw = false) {
     );
 
     if (metadataKeys.length > 0) {
-        let metadataInfo = '<div class="sage-info-block"><strong class="sage-info-label sage-info-label--brown">Additional Metadata:</strong><br>';
+        let metadataContent = '';
         metadataKeys.forEach(key => {
             const value = enhancedInfo[key];
             if (value !== null && value !== undefined && value !== '') {
-                metadataInfo += `<span class="sage-info-meta-key">${escapeHtml(key)}:</span> ${escapeHtml(JSON.stringify(value))}<br>`;
+                metadataContent += `<span class="sage-info-meta-key">${escapeHtml(key)}:</span> ${escapeHtml(JSON.stringify(value))}<br>`;
             }
         });
-        metadataInfo += '</div>';
-        sections.push(metadataInfo);
+        sections.push(await renderInfoDisplaySection({
+            title: 'Additional Metadata:',
+            color: 'brown',
+            content: metadataContent
+        }));
     }
 
     // Add sections to container first
-    container.innerHTML = sections.join('');
+    for (const section of sections) {
+        if (typeof section === 'string') {
+            container.insertAdjacentHTML('beforeend', section);
+        } else if (section instanceof Node) {
+            container.appendChild(section);
+        }
+    }
 
     // Add image gallery using direct Civitai API like report generator
     if (hash) {

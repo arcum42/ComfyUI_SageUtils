@@ -7,7 +7,6 @@
 
 // Import component libraries
 import { createButton, createConfigButton, BUTTON_VARIANTS } from "../components/buttons.js";
-import { createSelect, createInput } from "../components/formElements.js";
 import { createSection, createCard, createFlexContainer } from "../components/layout.js";
 import { createInlineProgressBar } from "../components/progressBar.js";
 import { confirmDialog, alertDialog, createDialog } from "../components/dialogManager.js";
@@ -28,6 +27,7 @@ import { pullMetadata, updateCacheInfo } from "../shared/api/cacheApi.js";
 
 // Import utilities
 import { escapeHtml, generateHtmlContent, openHtmlReport } from "../reports/reportGenerator.js";
+import { loadHtmlTemplate, renderHtmlTemplate, createElementFromTemplate } from "../utils/htmlTemplateLoader.js";
 import { createComponentLogger } from "../utils/logger.js";
 import { loadSidebarStyle } from './sidebarStyles.js';
 
@@ -36,6 +36,93 @@ console.log('[SageUtils] modelsTabV2.js imported');
 // Component logger
 const log = createComponentLogger('ModelsTabV2');
 
+let modelsTabV2EmptyInfoPanelTemplate = null;
+let modelsTabV2ErrorPanelTemplate = null;
+let modelsTabV2EditDialogTemplate = null;
+let modelsTabV2HeaderControlsTemplate = null;
+let modelsTabV2NsfwToggleTemplate = null;
+
+function buildSelectOptions(options, selectedValue) {
+    return options.map(({ value, text }) => {
+        const selectedAttribute = value === selectedValue ? ' selected' : '';
+        return `<option value="${escapeHtml(value)}"${selectedAttribute}>${escapeHtml(text)}</option>`;
+    }).join('');
+}
+
+async function getModelsTabV2HeaderControlsTemplate() {
+    if (!modelsTabV2HeaderControlsTemplate) {
+        modelsTabV2HeaderControlsTemplate = await loadHtmlTemplate('extensions/comfyui_sageutils/sidebar/partials/modelsTabV2HeaderControls.html');
+    }
+    return modelsTabV2HeaderControlsTemplate;
+}
+
+async function renderModelsTabV2HeaderControls(data) {
+    const template = await getModelsTabV2HeaderControlsTemplate();
+    return createElementFromTemplate(renderHtmlTemplate(template, data));
+}
+
+async function getModelsTabV2NsfwToggleTemplate() {
+    if (!modelsTabV2NsfwToggleTemplate) {
+        modelsTabV2NsfwToggleTemplate = await loadHtmlTemplate('extensions/comfyui_sageutils/sidebar/partials/modelsTabV2NsfwToggle.html');
+    }
+    return modelsTabV2NsfwToggleTemplate;
+}
+
+async function renderModelsTabV2NsfwToggle(data) {
+    const template = await getModelsTabV2NsfwToggleTemplate();
+    return createElementFromTemplate(renderHtmlTemplate(template, data));
+}
+
+async function getModelsTabV2EmptyInfoPanelTemplate() {
+    if (!modelsTabV2EmptyInfoPanelTemplate) {
+        modelsTabV2EmptyInfoPanelTemplate = await loadHtmlTemplate('extensions/comfyui_sageutils/sidebar/partials/modelsTabV2EmptyInfoPanel.html');
+    }
+    return modelsTabV2EmptyInfoPanelTemplate;
+}
+
+async function renderModelsTabV2EmptyInfoPanel() {
+    const template = await getModelsTabV2EmptyInfoPanelTemplate();
+    return createElementFromTemplate(renderHtmlTemplate(template, {}));
+}
+
+async function getModelsTabV2ErrorPanelTemplate() {
+    if (!modelsTabV2ErrorPanelTemplate) {
+        modelsTabV2ErrorPanelTemplate = await loadHtmlTemplate('extensions/comfyui_sageutils/sidebar/partials/modelsTabV2ErrorPanel.html');
+    }
+    return modelsTabV2ErrorPanelTemplate;
+}
+
+async function renderModelsTabV2ErrorPanel(message) {
+    const template = await getModelsTabV2ErrorPanelTemplate();
+    return createElementFromTemplate(renderHtmlTemplate(template, { message }));
+}
+
+async function getModelsTabV2EditDialogTemplate() {
+    if (!modelsTabV2EditDialogTemplate) {
+        modelsTabV2EditDialogTemplate = await loadHtmlTemplate('extensions/comfyui_sageutils/sidebar/partials/modelsTabV2EditDialog.html');
+    }
+    return modelsTabV2EditDialogTemplate;
+}
+
+async function renderModelsTabV2EditDialog(data) {
+    const template = await getModelsTabV2EditDialogTemplate();
+    return createElementFromTemplate(renderHtmlTemplate(template, data));
+}
+
+let modelsTabV2SingleModelActionsTemplate = null;
+
+async function getModelsTabV2SingleModelActionsTemplate() {
+    if (!modelsTabV2SingleModelActionsTemplate) {
+        modelsTabV2SingleModelActionsTemplate = await loadHtmlTemplate('extensions/comfyui_sageutils/sidebar/partials/modelsTabV2SingleModelActions.html');
+    }
+    return modelsTabV2SingleModelActionsTemplate;
+}
+
+async function renderModelsTabV2SingleModelActions() {
+    const template = await getModelsTabV2SingleModelActionsTemplate();
+    return createElementFromTemplate(renderHtmlTemplate(template, {}));
+}
+
 /**
  * Creates the unified header section with filters and actions
  * @param {Function} onRefresh - Refresh button callback
@@ -43,7 +130,7 @@ const log = createComponentLogger('ModelsTabV2');
  * @param {Function} onReport - Report button callback
  * @returns {Object} Header section and all control references
  */
-function createHeaderAndControls(onRefresh, onScan, onReport) {
+async function createHeaderAndControls(onRefresh, onScan, onReport) {
     const section = createSection('Model Browser', null, {
         collapsible: false,
         padding: '12px',  // Control the content padding
@@ -64,135 +151,44 @@ function createHeaderAndControls(onRefresh, onScan, onReport) {
         }
     });
     const searchControlsContent = searchControlsSection.querySelector('div:last-child');
-    
-    // Helper to create labeled select
-    const createLabeledSelect = (labelText, items) => {
-        const container = document.createElement('div');
-        const label = document.createElement('label');
-        label.textContent = labelText;
-        label.className = 'models-v2-labeled-select-label';
-        const select = createSelect({
-            items: items,
-            className: 'models-v2-labeled-select'
-        });
-        container.appendChild(label);
-        container.appendChild(select);
-        return { container, select };
-    };
-    
-    // Create filter grid
-    const filterGrid = document.createElement('div');
-    filterGrid.className = 'models-v2-filter-grid';
-    
-    // Folder type filter
-    const { container: folderContainer, select: folderSelect } = createLabeledSelect('Folder:', FILTER_OPTIONS.folderType);
-    
-    // Last used filter
-    const { container: lastUsedContainer, select: lastUsedSelect } = createLabeledSelect('Last Used:', FILTER_OPTIONS.lastUsed);
-    
-    // Updates filter
-    const { container: updatesContainer, select: updatesSelect } = createLabeledSelect('Updates:', FILTER_OPTIONS.updates);
-    
-    filterGrid.appendChild(folderContainer);
-    filterGrid.appendChild(lastUsedContainer);
-    filterGrid.appendChild(updatesContainer);
-    
-    // Create sort controls
-    const sortContainer = createFlexContainer({
-        gap: '8px',
-        align: 'center',
-        styles: {
-            marginBottom: '8px'  // Space before search input
-        }
-    });
-    
-    const sortLabel = document.createElement('label');
-    sortLabel.textContent = 'Sort:';
-    sortLabel.className = 'models-v2-sort-label';
-    
-    const sortSelect = createSelect({
-        items: [
+
+    const headerTemplate = await renderModelsTabV2HeaderControls({
+        folderOptions: buildSelectOptions(FILTER_OPTIONS.folderType, ''),
+        lastUsedOptions: buildSelectOptions(FILTER_OPTIONS.lastUsed, ''),
+        updatesOptions: buildSelectOptions(FILTER_OPTIONS.updates, ''),
+        sortOptions: buildSelectOptions([
             { value: 'name', text: 'Name' },
             { value: 'lastused', text: 'Last Used' },
             { value: 'size', text: 'File Size' },
             { value: 'type', text: 'Folder Type' }
-        ],
-        style: {
-            flex: '1',
-            minHeight: '36px',
-            marginBottom: '0'
-        }
+        ], '')
     });
-    
-    const sortOrderButton = createButton('↑', () => {
+
+    searchControlsContent.appendChild(headerTemplate);
+    contentArea.appendChild(searchControlsSection);
+
+    const folderSelect = section.querySelector('#models-v2-folder-select');
+    const lastUsedSelect = section.querySelector('#models-v2-last-used-select');
+    const updatesSelect = section.querySelector('#models-v2-updates-select');
+    const sortSelect = section.querySelector('#models-v2-sort-select');
+    const sortOrderButton = section.querySelector('#models-v2-sort-order-btn');
+    const searchInput = section.querySelector('#models-v2-search-input');
+    const refreshButton = section.querySelector('#models-v2-refresh-btn');
+    const scanButton = section.querySelector('#models-v2-scan-btn');
+    const reportButton = section.querySelector('#models-v2-report-btn');
+
+    sortOrderButton.addEventListener('click', () => {
         const isDescending = sortOrderButton.textContent === '↓';
         sortOrderButton.textContent = isDescending ? '↑' : '↓';
-        sortOrderButton.title = isDescending ? 
-            'Ascending (click to change)' : 
+        sortOrderButton.title = isDescending ?
+            'Ascending (click to change)' :
             'Descending (click to change)';
-    }, {
-        variant: BUTTON_VARIANTS.SECONDARY,
-        title: 'Toggle sort direction',
-        styles: {
-            minWidth: '40px',
-            minHeight: '36px',
-            padding: '0 10px',
-            marginBottom: '0',
-            display: 'inline-flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            alignSelf: 'center'
-        }
     });
-    
-    sortContainer.appendChild(sortLabel);
-    sortContainer.appendChild(sortSelect);
-    sortContainer.appendChild(sortOrderButton);
-    
-    // Create search input
-    const searchInput = createInput({
-        type: 'text',
-        placeholder: 'Search models by name or path...',
-        style: {
-            width: '100%',
-            marginTop: '8px',     // Space from sort controls
-            marginBottom: '8px'   // Space before buttons
-        }
-    });
-    
-    // Create action buttons (below search)
-    const buttonContainer = createFlexContainer({
-        gap: '8px',
-        wrap: true,
-        styles: {
-            marginTop: '0',
-            marginBottom: '0'
-        }
-    });
-    
-    const refreshButton = createConfigButton('refresh');
-    refreshButton.setAttribute('data-test', 'refresh-btn');
+
     refreshButton.addEventListener('click', onRefresh);
-    
-    const scanButton = createConfigButton('scan');
-    scanButton.setAttribute('data-test', 'scan-btn');
     scanButton.addEventListener('click', onScan);
-    
-    const reportButton = createConfigButton('report');
-    reportButton.setAttribute('data-test', 'report-btn');
     reportButton.addEventListener('click', onReport);
-    
-    buttonContainer.appendChild(refreshButton);
-    buttonContainer.appendChild(scanButton);
-    buttonContainer.appendChild(reportButton);
-    
-    // Assemble search controls inside collapsible section
-    searchControlsContent.appendChild(filterGrid);
-    searchControlsContent.appendChild(sortContainer);
-    searchControlsContent.appendChild(searchInput);
-    searchControlsContent.appendChild(buttonContainer);
-    contentArea.appendChild(searchControlsSection);
-    
+
     // Restore persisted filter values from state
     const savedFilters = selectors.modelFilters();
     if (savedFilters) {
@@ -211,12 +207,12 @@ function createHeaderAndControls(onRefresh, onScan, onReport) {
         if (savedFilters.sort) {
             const sortValue = savedFilters.sort.replace(/-desc$/, '');
             const isDescending = savedFilters.sort.endsWith('-desc');
-            
+
             sortSelect.value = sortValue;
             sortOrderButton.textContent = isDescending ? '↓' : '↑';
         }
     }
-    
+
     return {
         section,
         folderSelect,
@@ -240,45 +236,31 @@ function createHeaderAndControls(onRefresh, onScan, onReport) {
  * @param {Function} onEdit - Edit info callback
  * @returns {HTMLElement} Action buttons container
  */
-function createSingleModelActions(modelHash, modelPath, onPull, onEdit) {
-    const container = createFlexContainer({
-        gap: '8px',
-        wrap: true,
-        styles: {
-            marginBottom: '15px'
-        }
-    });
+async function createSingleModelActions(modelHash, modelPath, onPull, onEdit) {
+    const container = await renderModelsTabV2SingleModelActions();
     
-    // Pull metadata button
-    const pullButton = createConfigButton('pull');
-    pullButton.setAttribute('data-test', 'pull-btn');
-    pullButton.addEventListener('click', onPull);
-    container.appendChild(pullButton);
-    
-    // Edit info button
-    const editButton = createConfigButton('edit');
-    editButton.setAttribute('data-test', 'edit-btn');
-    editButton.addEventListener('click', onEdit);
-    container.appendChild(editButton);
-    
-    // Copy hash button
-    const copyHashButton = createButton('Copy Hash', () => {
-        copyToClipboard(modelHash, 'Model hash copied to clipboard!');
-    }, {
-        variant: BUTTON_VARIANTS.SECONDARY
-    });
-    copyHashButton.setAttribute('data-test', 'copy-hash-btn');
-    container.appendChild(copyHashButton);
-    
-    // Copy path button
-    const copyPathButton = createButton('Copy Path', () => {
-        copyToClipboard(modelPath, 'Model path copied to clipboard!');
-    }, {
-        variant: BUTTON_VARIANTS.SECONDARY
-    });
-    copyPathButton.setAttribute('data-test', 'copy-path-btn');
-    container.appendChild(copyPathButton);
-    
+    const pullButton = container.querySelector('#models-v2-pull-btn');
+    const editButton = container.querySelector('#models-v2-edit-btn');
+    const copyHashButton = container.querySelector('#models-v2-copy-hash-btn');
+    const copyPathButton = container.querySelector('#models-v2-copy-path-btn');
+
+    if (pullButton) {
+        pullButton.addEventListener('click', onPull);
+    }
+    if (editButton) {
+        editButton.addEventListener('click', onEdit);
+    }
+    if (copyHashButton) {
+        copyHashButton.addEventListener('click', () => {
+            copyToClipboard(modelHash, 'Model hash copied to clipboard!');
+        });
+    }
+    if (copyPathButton) {
+        copyPathButton.addEventListener('click', () => {
+            copyToClipboard(modelPath, 'Model path copied to clipboard!');
+        });
+    }
+
     return container;
 }
 
@@ -288,29 +270,19 @@ function createSingleModelActions(modelHash, modelPath, onPull, onEdit) {
  * @param {Function} onChange - Change callback
  * @returns {HTMLElement} NSFW toggle container
  */
-function createNsfwToggle(initialValue, onChange) {
-    const container = document.createElement('div');
-    container.className = 'models-v2-nsfw-toggle';
-    
-    const checkbox = document.createElement('input');
-    checkbox.type = 'checkbox';
-    checkbox.id = 'nsfw-toggle-v2';
-    checkbox.checked = initialValue;
-    checkbox.className = 'models-v2-nsfw-checkbox';
-    
-    const label = document.createElement('label');
-    label.htmlFor = 'nsfw-toggle-v2';
-    label.textContent = 'Show NSFW';
-    label.className = 'models-v2-nsfw-label';
-    
-    checkbox.addEventListener('change', () => {
-        onChange(checkbox.checked);
+async function createNsfwToggle(initialValue, onChange) {
+    const toggleElement = await renderModelsTabV2NsfwToggle({
+        nsfwChecked: initialValue ? 'checked' : ''
     });
-    
-    container.appendChild(checkbox);
-    container.appendChild(label);
-    
-    return container;
+
+    const checkbox = toggleElement.querySelector('#nsfw-toggle-v2');
+    if (checkbox) {
+        checkbox.addEventListener('change', () => {
+            onChange(checkbox.checked);
+        });
+    }
+
+    return toggleElement;
 }
 
 /**
@@ -331,7 +303,7 @@ async function createModelInfoPanel(modelHash, modelInfo, modelPath, showNsfw, c
     });
     
     // Add model-specific actions at the top
-    const actionsSection = createSingleModelActions(
+    const actionsSection = await createSingleModelActions(
         modelHash,
         modelPath,
         callbacks.onPull,
@@ -340,7 +312,7 @@ async function createModelInfoPanel(modelHash, modelInfo, modelPath, showNsfw, c
     container.appendChild(actionsSection);
     
     // Create NSFW toggle
-    const nsfwToggle = createNsfwToggle(showNsfw, callbacks.onNsfwToggle);
+    const nsfwToggle = await createNsfwToggle(showNsfw, callbacks.onNsfwToggle);
     
     // Add detailed info display
     try {
@@ -360,10 +332,8 @@ async function createModelInfoPanel(modelHash, modelInfo, modelPath, showNsfw, c
         }
     } catch (error) {
         console.error('Error creating info display:', error);
-        const errorDiv = document.createElement('div');
-        errorDiv.className = 'models-v2-error-block';
-        errorDiv.textContent = `Error loading model information: ${error.message}`;
-        container.appendChild(errorDiv);
+        const errorPanel = await renderModelsTabV2ErrorPanel(error.message);
+        container.appendChild(errorPanel);
     }
     
     return container;
@@ -371,30 +341,10 @@ async function createModelInfoPanel(modelHash, modelInfo, modelPath, showNsfw, c
 
 /**
  * Creates empty state display when no model is selected
- * @returns {HTMLElement} Empty state element
+ * @returns {Promise<HTMLElement>} Empty state element
  */
-function createEmptyInfoPanel() {
-    const container = createCard({
-        padding: '40px 20px',
-        styles: {
-            marginTop: '15px',
-            textAlign: 'center'
-        }
-    });
-    container.classList.add('models-v2-empty-panel');
-    
-    const icon = document.createElement('div');
-    icon.className = 'models-v2-empty-icon';
-    icon.textContent = '📦';
-    
-    const message = document.createElement('div');
-    message.className = 'models-v2-empty-message';
-    message.textContent = 'Select a model to view details';
-    
-    container.appendChild(icon);
-    container.appendChild(message);
-    
-    return container;
+async function createEmptyInfoPanel() {
+    return await renderModelsTabV2EmptyInfoPanel();
 }
 
 /**
@@ -419,86 +369,6 @@ async function openEditDialog(modelHash, modelInfo, filePath, onSave) {
     const favoriteValue = Boolean(modelInfo.favorite || modelInfo.is_favorite);
     const blacklistValue = Boolean(modelInfo.blacklist);
 
-    const content = document.createElement('div');
-    content.className = 'models-v2-edit-dialog-body';
-
-    const title = document.createElement('h3');
-    title.className = 'models-v2-edit-dialog-title';
-    title.textContent = 'Edit Model Information';
-
-    const subtitle = document.createElement('p');
-    subtitle.className = 'models-v2-edit-dialog-subtitle';
-    subtitle.textContent = `File: ${escapeHtml(fileName)}`;
-
-    content.appendChild(title);
-    content.appendChild(subtitle);
-
-    const createField = (labelText, inputElement) => {
-        const wrapper = document.createElement('div');
-        const label = document.createElement('label');
-        label.className = 'models-v2-dialog-label';
-        label.textContent = labelText;
-        wrapper.appendChild(label);
-        wrapper.appendChild(inputElement);
-        return wrapper;
-    };
-
-    const createTextInput = (id, value) => {
-        const input = document.createElement('input');
-        input.type = 'text';
-        input.id = id;
-        input.className = 'models-v2-dialog-field';
-        input.value = value;
-        return input;
-    };
-
-    const createTextarea = (id, value, rows = 3) => {
-        const textarea = document.createElement('textarea');
-        textarea.id = id;
-        textarea.rows = rows;
-        textarea.className = 'models-v2-dialog-field models-v2-dialog-textarea';
-        textarea.value = value;
-        return textarea;
-    };
-
-    const createSelectField = (id, options, selectedValue) => {
-        const select = document.createElement('select');
-        select.id = id;
-        select.className = 'models-v2-dialog-field';
-
-        options.forEach(({ value, text }) => {
-            const option = document.createElement('option');
-            option.value = value;
-            option.textContent = text;
-            if (value === selectedValue) option.selected = true;
-            select.appendChild(option);
-        });
-
-        return select;
-    };
-
-    const createCheckboxField = (id, checked, labelText) => {
-        const label = document.createElement('label');
-        label.className = 'models-v2-dialog-checkbox-label';
-
-        const checkbox = document.createElement('input');
-        checkbox.type = 'checkbox';
-        checkbox.id = id;
-        checkbox.checked = checked;
-
-        const span = document.createElement('span');
-        span.textContent = labelText;
-
-        label.appendChild(checkbox);
-        label.appendChild(span);
-        return label;
-    };
-
-    const firstGrid = document.createElement('div');
-    firstGrid.className = 'models-v2-dialog-grid';
-    firstGrid.appendChild(createField('Model Name:', createTextInput('edit-model-name', modelNameValue)));
-    firstGrid.appendChild(createField('Version Name:', createTextInput('edit-version-name', versionNameValue)));
-
     const typeOptions = [
         { value: '', text: 'Unknown' },
         { value: 'Checkpoint', text: 'Checkpoint' },
@@ -519,39 +389,19 @@ async function openEditDialog(modelHash, modelInfo, filePath, onSave) {
         { value: 'Flux.1 S', text: 'Flux.1 S' }
     ];
 
-    const secondGrid = document.createElement('div');
-    secondGrid.className = 'models-v2-dialog-grid';
-    secondGrid.appendChild(createField('Model Type:', createSelectField('edit-type', typeOptions, modelTypeValue)));
-    secondGrid.appendChild(createField('Base Model:', createSelectField('edit-base-model', baseModelOptions, baseModelValue)));
-
-    const descriptionSection = document.createElement('div');
-    descriptionSection.className = 'models-v2-dialog-section';
-    descriptionSection.appendChild(createField('Description:', createTextarea('edit-description', descriptionValue, 4)));
-
-    const triggersSection = document.createElement('div');
-    triggersSection.className = 'models-v2-dialog-section';
-    triggersSection.appendChild(createField('Trigger Words (comma-separated):', createTextInput('edit-triggers', triggersValue)));
-
-    const notesSection = document.createElement('div');
-    notesSection.className = 'models-v2-dialog-section';
-    notesSection.appendChild(createField('Personal Notes:', createTextarea('edit-notes', notesValue, 3)));
-
-    const checkboxGrid = document.createElement('div');
-    checkboxGrid.className = 'models-v2-dialog-grid';
-    checkboxGrid.appendChild(createCheckboxField('edit-nsfw', nsfwValue, 'NSFW Content'));
-    checkboxGrid.appendChild(createCheckboxField('edit-favorite', favoriteValue, 'Mark as Favorite'));
-
-    const blacklistSection = document.createElement('div');
-    blacklistSection.className = 'models-v2-dialog-section';
-    blacklistSection.appendChild(createCheckboxField('edit-blacklist', blacklistValue, 'Blacklist (hide from model lists)'));
-
-    content.appendChild(firstGrid);
-    content.appendChild(secondGrid);
-    content.appendChild(descriptionSection);
-    content.appendChild(triggersSection);
-    content.appendChild(notesSection);
-    content.appendChild(checkboxGrid);
-    content.appendChild(blacklistSection);
+    const content = await renderModelsTabV2EditDialog({
+        fileName: escapeHtml(fileName),
+        modelNameValue: escapeHtml(modelNameValue),
+        versionNameValue: escapeHtml(versionNameValue),
+        descriptionValue: escapeHtml(descriptionValue),
+        triggersValue: escapeHtml(triggersValue),
+        notesValue: escapeHtml(notesValue),
+        typeOptions: buildSelectOptions(typeOptions, modelTypeValue),
+        baseModelOptions: buildSelectOptions(baseModelOptions, baseModelValue),
+        nsfwChecked: nsfwValue ? 'checked' : '',
+        favoriteChecked: favoriteValue ? 'checked' : '',
+        blacklistChecked: blacklistValue ? 'checked' : ''
+    });
 
     const dialog = createDialog({
         title: 'Edit Model Information',
@@ -561,16 +411,17 @@ async function openEditDialog(modelHash, modelInfo, filePath, onSave) {
 
     dialog.addFooterButton('Save', async () => {
         try {
-            const modelName = document.getElementById('edit-model-name').value.trim();
-            const versionName = document.getElementById('edit-version-name').value.trim();
-            const modelType = document.getElementById('edit-type').value;
-            const baseModel = document.getElementById('edit-base-model').value;
-            const description = document.getElementById('edit-description').value.trim();
-            const triggerText = document.getElementById('edit-triggers').value.trim();
-            const notes = document.getElementById('edit-notes').value.trim();
-            const nsfw = document.getElementById('edit-nsfw').checked;
-            const favorite = document.getElementById('edit-favorite').checked;
-            const blacklist = document.getElementById('edit-blacklist').checked;
+            const root = content;
+            const modelName = root.querySelector('#edit-model-name').value.trim();
+            const versionName = root.querySelector('#edit-version-name').value.trim();
+            const modelType = root.querySelector('#edit-type').value;
+            const baseModel = root.querySelector('#edit-base-model').value;
+            const description = root.querySelector('#edit-description').value.trim();
+            const triggerText = root.querySelector('#edit-triggers').value.trim();
+            const notes = root.querySelector('#edit-notes').value.trim();
+            const nsfw = root.querySelector('#edit-nsfw').checked;
+            const favorite = root.querySelector('#edit-favorite').checked;
+            const blacklist = root.querySelector('#edit-blacklist').checked;
 
             const triggers = triggerText ? triggerText.split(',').map(t => t.trim()).filter(t => t.length > 0) : [];
 
@@ -664,7 +515,7 @@ async function openScanDialog() {
  *     factory: (container) => createModelsTabV2(container)
  * });
  */
-export function createModelsTabV2(container) {
+export async function createModelsTabV2(container) {
     // Clear container
     container.innerHTML = '';
     container.classList.add('models-tab-v2');
@@ -682,7 +533,7 @@ export function createModelsTabV2(container) {
     let showNsfw = currentFilters.showNsfw !== undefined ? currentFilters.showNsfw : false;
     
     // Create unified header with filters and actions
-    const headerControls = createHeaderAndControls(
+    const headerControls = await createHeaderAndControls(
         // Refresh handler
         async () => {
             await loadModels();
@@ -735,7 +586,7 @@ export function createModelsTabV2(container) {
     container.appendChild(infoDisplayContainer);
     
     // Show empty state initially
-    infoDisplayContainer.appendChild(createEmptyInfoPanel());
+    infoDisplayContainer.appendChild(await createEmptyInfoPanel());
     
     // ==================== Event Handlers ====================
     
@@ -840,7 +691,7 @@ export function createModelsTabV2(container) {
         infoDisplayContainer.innerHTML = '';
         
         if (!hash || !modelData) {
-            infoDisplayContainer.appendChild(createEmptyInfoPanel());
+            infoDisplayContainer.appendChild(await createEmptyInfoPanel());
             return;
         }
         
@@ -873,15 +724,7 @@ export function createModelsTabV2(container) {
             }
         } catch (error) {
             console.error('Error updating info display:', error);
-            const errorPanel = createCard({
-                padding: '20px',
-                styles: {
-                    marginTop: '15px',
-                    background: '#3a2a2a',
-                    border: '1px solid #f44336'
-                }
-            });
-            errorPanel.innerHTML = `<div class="models-v2-error-text">Error loading model information: ${error.message}</div>`;
+            const errorPanel = await renderModelsTabV2ErrorPanel(error.message);
             infoDisplayContainer.appendChild(errorPanel);
         }
     }
