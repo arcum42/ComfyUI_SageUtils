@@ -5,22 +5,83 @@
 
 import { createSlider, createSelect, createInput, createTextarea, createFormRow } from '../../../components/formElements.js';
 import { createSection } from '../../../components/layout.js';
+import { loadHtmlTemplate, renderHtmlTemplate, createElementFromTemplate } from '../../../utils/htmlTemplateLoader.js';
+
+let llmAdvancedOptionsTemplate = null;
+let llmProviderOptionsTemplate = null;
+
+async function getLlmAdvancedOptionsTemplate() {
+    if (!llmAdvancedOptionsTemplate) {
+        llmAdvancedOptionsTemplate = await loadHtmlTemplate('extensions/comfyui_sageutils/sidebar/llmTab/partials/llmAdvancedOptions.html');
+    }
+    return llmAdvancedOptionsTemplate;
+}
+
+async function renderLlmAdvancedOptions() {
+    const template = await getLlmAdvancedOptionsTemplate();
+    return createElementFromTemplate(template);
+}
+
+async function getLlmProviderOptionsTemplate() {
+    if (!llmProviderOptionsTemplate) {
+        llmProviderOptionsTemplate = await loadHtmlTemplate('extensions/comfyui_sageutils/sidebar/llmTab/partials/llmProviderOptionsContent.html');
+    }
+    return llmProviderOptionsTemplate;
+}
+
+async function renderLlmProviderOptions(providerKey) {
+    const template = await getLlmProviderOptionsTemplate();
+    return createElementFromTemplate(renderHtmlTemplate(template, { provider: providerKey }));
+}
+
+let llmProviderOptionControlTemplate = null;
+
+async function getLlmProviderOptionControlTemplate() {
+    if (!llmProviderOptionControlTemplate) {
+        llmProviderOptionControlTemplate = await loadHtmlTemplate('extensions/comfyui_sageutils/sidebar/llmTab/partials/llmProviderOptionControl.html');
+    }
+    return llmProviderOptionControlTemplate;
+}
+
+async function renderLlmProviderOptionControl(data) {
+    const template = await getLlmProviderOptionControlTemplate();
+    return createElementFromTemplate(renderHtmlTemplate(template, data));
+}
+
+let llmProviderSectionToggleTemplate = null;
+
+async function getLlmProviderSectionToggleTemplate() {
+    if (!llmProviderSectionToggleTemplate) {
+        llmProviderSectionToggleTemplate = await loadHtmlTemplate('extensions/comfyui_sageutils/sidebar/llmTab/partials/llmProviderSectionToggle.html');
+    }
+    return llmProviderSectionToggleTemplate;
+}
+
+async function renderLlmProviderSectionToggle(labelText) {
+    const template = await getLlmProviderSectionToggleTemplate();
+    return createElementFromTemplate(renderHtmlTemplate(template, { labelText }));
+}
+
+let llmReasoningToolsMcpTemplate = null;
+
+async function getLlmReasoningToolsMcpTemplate() {
+    if (!llmReasoningToolsMcpTemplate) {
+        llmReasoningToolsMcpTemplate = await loadHtmlTemplate('extensions/comfyui_sageutils/sidebar/llmTab/partials/llmReasoningToolsMcp.html');
+    }
+    return llmReasoningToolsMcpTemplate;
+}
+
+async function renderLlmReasoningToolsMcp() {
+    const template = await getLlmReasoningToolsMcpTemplate();
+    return createElementFromTemplate(template);
+}
 
 /**
  * Creates the advanced options section
- * @returns {HTMLElement} - Advanced options section
+ * @returns {Promise<HTMLElement>} - Advanced options section
  */
-export function createAdvancedOptions() {
-    const container = document.createElement('div');
-    container.className = 'llm-advanced-options';
-
-    const overview = document.createElement('div');
-    overview.className = 'llm-settings-overview';
-    overview.innerHTML = `
-        <h3 class="llm-settings-overview-title">Settings Workspace</h3>
-        <p class="llm-settings-overview-description">Low-frequency controls live here so Compose and Chat stay focused on generation.</p>
-    `;
-    container.appendChild(overview);
+export async function createAdvancedOptions() {
+    const container = await renderLlmAdvancedOptions();
 
     const contextGroup = createSettingsGroup(
         'Context',
@@ -28,27 +89,27 @@ export function createAdvancedOptions() {
     );
     contextGroup.content.appendChild(createSystemPromptSection());
     contextGroup.content.appendChild(createHistoryContextControls());
-    container.appendChild(contextGroup.element);
+    container.querySelector('.llm-context-group-host')?.appendChild(contextGroup.element);
 
     const contextLengthGroup = createSettingsGroup(
         'Context Length',
         'Set the token budget separately from reasoning and tool controls.'
     );
     contextLengthGroup.content.appendChild(createContextLengthControl());
-    container.appendChild(contextLengthGroup.element);
+    container.querySelector('.llm-context-length-group-host')?.appendChild(contextLengthGroup.element);
 
     const generationGroup = createSettingsGroup(
         'Generation And Provider',
         'Provider-tuned generation parameters are kept in their own collapsible sections.'
     );
-    generationGroup.content.appendChild(createReasoningToolsMcpControls());
-    generationGroup.content.appendChild(createOllamaOptions());
-    generationGroup.content.appendChild(createLMStudioOptions());
+    generationGroup.content.appendChild(await createReasoningToolsMcpControls());
+    generationGroup.content.appendChild(await createOllamaOptions());
+    generationGroup.content.appendChild(await createLMStudioOptions());
     const noProviderOptions = document.createElement('p');
     noProviderOptions.className = 'llm-no-provider-options';
     noProviderOptions.textContent = 'No provider-specific parameters for the currently selected provider.';
     generationGroup.content.appendChild(noProviderOptions);
-    container.appendChild(generationGroup.element);
+    container.querySelector('.llm-generation-group-host')?.appendChild(generationGroup.element);
 
     const diagnosticsGroup = createSettingsGroup(
         'Diagnostics',
@@ -59,7 +120,7 @@ export function createAdvancedOptions() {
     resetBtn.innerHTML = '↺ Reset to Defaults';
     resetBtn.title = 'Reset all settings to default values';
     diagnosticsGroup.content.appendChild(resetBtn);
-    container.appendChild(diagnosticsGroup.element);
+    container.querySelector('.llm-diagnostics-group-host')?.appendChild(diagnosticsGroup.element);
     
     return container;
 }
@@ -236,9 +297,8 @@ function createContextLengthControl() {
     return content;
 }
 
-function createReasoningToolsMcpControls() {
-    const content = document.createElement('div');
-    content.className = 'llm-shared-advanced-options-content';
+async function createReasoningToolsMcpControls() {
+    const content = await renderLlmReasoningToolsMcp();
 
     // Reasoning controls
     const reasoningEnabledRow = document.createElement('div');
@@ -251,7 +311,7 @@ function createReasoningToolsMcpControls() {
     reasoningEnabledCheckbox.className = 'llm-reasoning-enabled';
     reasoningEnabledLabel.prepend(reasoningEnabledCheckbox);
     reasoningEnabledRow.appendChild(reasoningEnabledLabel);
-    content.appendChild(reasoningEnabledRow);
+    content.querySelector('.llm-provider-option-list-host')?.appendChild(reasoningEnabledRow);
 
     const reasoningLevelSelect = createSelect({
         items: [
@@ -267,7 +327,7 @@ function createReasoningToolsMcpControls() {
         helpText: 'Used where providers support explicit reasoning levels'
     });
     reasoningLevelRow.classList.add('llm-reasoning-level-row');
-    content.appendChild(reasoningLevelRow);
+    content.querySelector('.llm-provider-option-list-host')?.appendChild(reasoningLevelRow);
 
     const showReasoningRow = document.createElement('div');
     showReasoningRow.className = 'llm-form-row llm-checkbox-row llm-show-reasoning-row';
@@ -279,7 +339,7 @@ function createReasoningToolsMcpControls() {
     showReasoningCheckbox.className = 'llm-show-reasoning';
     showReasoningLabel.prepend(showReasoningCheckbox);
     showReasoningRow.appendChild(showReasoningLabel);
-    content.appendChild(showReasoningRow);
+    content.querySelector('.llm-provider-option-list-host')?.appendChild(showReasoningRow);
 
     // Tools and MCP
     const toolsEnabledRow = document.createElement('div');
@@ -292,7 +352,7 @@ function createReasoningToolsMcpControls() {
     toolsEnabledCheckbox.className = 'llm-tools-enabled';
     toolsEnabledLabel.prepend(toolsEnabledCheckbox);
     toolsEnabledRow.appendChild(toolsEnabledLabel);
-    content.appendChild(toolsEnabledRow);
+    content.querySelector('.llm-provider-option-list-host')?.appendChild(toolsEnabledRow);
 
     const toolProfileSelect = createSelect({
         items: [
@@ -303,7 +363,7 @@ function createReasoningToolsMcpControls() {
     });
     const toolProfileRow = createFormRow('Tool Profile', toolProfileSelect);
     toolProfileRow.classList.add('llm-tool-profile-row');
-    content.appendChild(toolProfileRow);
+    content.querySelector('.llm-provider-option-list-host')?.appendChild(toolProfileRow);
 
     const mcpEnabledRow = document.createElement('div');
     mcpEnabledRow.className = 'llm-form-row llm-checkbox-row llm-mcp-enabled-row';
@@ -315,7 +375,7 @@ function createReasoningToolsMcpControls() {
     mcpEnabledCheckbox.className = 'llm-mcp-enabled';
     mcpEnabledLabel.prepend(mcpEnabledCheckbox);
     mcpEnabledRow.appendChild(mcpEnabledLabel);
-    content.appendChild(mcpEnabledRow);
+    content.querySelector('.llm-provider-option-list-host')?.appendChild(mcpEnabledRow);
 
     const mcpProfileSelect = createSelect({
         items: [{ value: 'none', text: 'None' }],
@@ -323,7 +383,7 @@ function createReasoningToolsMcpControls() {
     });
     const mcpProfileRow = createFormRow('MCP Profile', mcpProfileSelect);
     mcpProfileRow.classList.add('llm-mcp-profile-row');
-    content.appendChild(mcpProfileRow);
+    content.querySelector('.llm-provider-option-list-host')?.appendChild(mcpProfileRow);
 
     const group = createSettingsGroup(
         'Reasoning, Tools, And MCP',
@@ -357,13 +417,9 @@ function updateProviderSectionUI(content, providerKey, sectionEnabled) {
     });
 }
 
-function createProviderSectionToggle(content, providerKey, labelText) {
-    const row = document.createElement('div');
-    row.className = 'llm-provider-section-toggle-row';
-
-    const label = document.createElement('label');
-    label.className = 'llm-label llm-provider-section-toggle-label';
-    label.textContent = labelText;
+async function createProviderSectionToggle(content, providerKey, labelText) {
+    const row = await renderLlmProviderSectionToggle(labelText);
+    const label = row.querySelector('label');
 
     const checkbox = document.createElement('input');
     checkbox.type = 'checkbox';
@@ -371,8 +427,9 @@ function createProviderSectionToggle(content, providerKey, labelText) {
     checkbox.dataset.provider = providerKey;
     checkbox.checked = true;
 
-    label.prepend(checkbox);
-    row.appendChild(label);
+    if (label) {
+        label.prepend(checkbox);
+    }
 
     checkbox.addEventListener('change', () => {
         updateProviderSectionUI(content, providerKey, checkbox.checked);
@@ -381,32 +438,27 @@ function createProviderSectionToggle(content, providerKey, labelText) {
     return row;
 }
 
-function wrapProviderOptionControl(providerKey, optionKey, control, includeLabel = 'Include in request') {
-    const container = document.createElement('div');
-    container.className = 'llm-provider-option-control';
-    container.dataset.provider = providerKey;
-    container.dataset.optionKey = optionKey;
-
-    const toggleLabel = document.createElement('label');
-    toggleLabel.className = 'llm-label llm-provider-option-toggle-label';
-    toggleLabel.textContent = includeLabel;
-
-    const toggle = document.createElement('input');
-    toggle.type = 'checkbox';
-    toggle.className = 'llm-provider-option-toggle';
-    toggle.dataset.provider = providerKey;
-    toggle.dataset.optionKey = optionKey;
-    toggle.checked = true;
-
-    toggleLabel.prepend(toggle);
-    container.appendChild(toggleLabel);
-    container.appendChild(control);
-
-    toggle.addEventListener('change', () => {
-        const sectionToggle = container.closest(`[class$="${providerKey}-options-content"]`)?.querySelector(`.llm-provider-section-toggle[data-provider="${providerKey}"]`);
-        const sectionEnabled = sectionToggle ? sectionToggle.checked : true;
-        setProviderOptionControlEnabled(container, sectionEnabled && toggle.checked);
+async function wrapProviderOptionControl(providerKey, optionKey, control, includeLabel = 'Include in request') {
+    const container = await renderLlmProviderOptionControl({
+        providerKey,
+        optionKey,
+        includeLabel
     });
+    const slot = container.querySelector('.llm-provider-option-control-slot');
+    if (slot) {
+        slot.appendChild(control);
+    } else {
+        container.appendChild(control);
+    }
+
+    const toggle = container.querySelector('.llm-provider-option-toggle');
+    if (toggle) {
+        toggle.addEventListener('change', () => {
+            const sectionToggle = container.closest(`[class$="${providerKey}-options-content"]`)?.querySelector(`.llm-provider-section-toggle[data-provider="${providerKey}"]`);
+            const sectionEnabled = sectionToggle ? sectionToggle.checked : true;
+            setProviderOptionControlEnabled(container, sectionEnabled && toggle.checked);
+        });
+    }
 
     setProviderOptionControlEnabled(container, true);
     return container;
@@ -415,10 +467,9 @@ function wrapProviderOptionControl(providerKey, optionKey, control, includeLabel
 /**
  * Creates Ollama-specific options
  */
-function createOllamaOptions() {
-    const content = document.createElement('div');
-    content.className = 'llm-ollama-options-content';
-    content.appendChild(createProviderSectionToggle(content, 'ollama', 'Enable Ollama option payload'));
+async function createOllamaOptions() {
+    const content = await renderLlmProviderOptions('ollama');
+    content.querySelector('.llm-provider-section-toggle-host')?.appendChild(await createProviderSectionToggle(content, 'ollama', 'Enable Ollama option payload'));
     
     // Temperature
     const { container: tempSlider } = createSlider('Temperature', {
@@ -432,7 +483,7 @@ function createOllamaOptions() {
         formatValue: (v) => parseFloat(v).toFixed(1),
         showValue: true
     });
-    content.appendChild(wrapProviderOptionControl('ollama', 'temperature', tempSlider));
+    content.querySelector('.llm-provider-option-list-host')?.appendChild(await wrapProviderOptionControl('ollama', 'temperature', tempSlider));
     
     // Top P
     const { container: topPSlider } = createSlider('Top P', {
@@ -446,7 +497,7 @@ function createOllamaOptions() {
         formatValue: (v) => parseFloat(v).toFixed(2),
         showValue: true
     });
-    content.appendChild(wrapProviderOptionControl('ollama', 'top_p', topPSlider));
+    content.querySelector('.llm-provider-option-list-host')?.appendChild(await wrapProviderOptionControl('ollama', 'top_p', topPSlider));
     
     // Top K
     const { container: topKSlider } = createSlider('Top K', {
@@ -459,7 +510,7 @@ function createOllamaOptions() {
         valueClass: 'llm-slider-value',
         showValue: true
     });
-    content.appendChild(wrapProviderOptionControl('ollama', 'top_k', topKSlider));
+    content.querySelector('.llm-provider-option-list-host')?.appendChild(await wrapProviderOptionControl('ollama', 'top_k', topKSlider));
     
     // Repeat Penalty
     const { container: repeatPenaltySlider } = createSlider('Repeat Penalty', {
@@ -473,7 +524,7 @@ function createOllamaOptions() {
         formatValue: (v) => parseFloat(v).toFixed(1),
         showValue: true
     });
-    content.appendChild(wrapProviderOptionControl('ollama', 'repeat_penalty', repeatPenaltySlider));
+    content.querySelector('.llm-provider-option-list-host')?.appendChild(await wrapProviderOptionControl('ollama', 'repeat_penalty', repeatPenaltySlider));
     
     // Presence Penalty
     const { container: presencePenaltySlider } = createSlider('Presence Penalty', {
@@ -487,7 +538,7 @@ function createOllamaOptions() {
         formatValue: (v) => parseFloat(v).toFixed(1),
         showValue: true
     });
-    content.appendChild(wrapProviderOptionControl('ollama', 'presence_penalty', presencePenaltySlider));
+    content.querySelector('.llm-provider-option-list-host')?.appendChild(await wrapProviderOptionControl('ollama', 'presence_penalty', presencePenaltySlider));
     
     // Frequency Penalty
     const { container: frequencyPenaltySlider } = createSlider('Frequency Penalty', {
@@ -501,7 +552,7 @@ function createOllamaOptions() {
         formatValue: (v) => parseFloat(v).toFixed(1),
         showValue: true
     });
-    content.appendChild(wrapProviderOptionControl('ollama', 'frequency_penalty', frequencyPenaltySlider));
+    content.querySelector('.llm-provider-option-list-host')?.appendChild(await wrapProviderOptionControl('ollama', 'frequency_penalty', frequencyPenaltySlider));
     
     // Max Tokens
     const { container: maxTokensSlider } = createSlider('Max Tokens', {
@@ -514,7 +565,7 @@ function createOllamaOptions() {
         valueClass: 'llm-slider-value',
         showValue: true
     });
-    content.appendChild(wrapProviderOptionControl('ollama', 'max_tokens', maxTokensSlider));
+    content.querySelector('.llm-provider-option-list-host')?.appendChild(await wrapProviderOptionControl('ollama', 'max_tokens', maxTokensSlider));
     
     // Context Window
     const { container: contextWindowSlider } = createSlider('Context Window', {
@@ -527,7 +578,7 @@ function createOllamaOptions() {
         valueClass: 'llm-slider-value',
         showValue: true
     });
-    content.appendChild(wrapProviderOptionControl('ollama', 'num_ctx', contextWindowSlider));
+    content.querySelector('.llm-provider-option-list-host')?.appendChild(await wrapProviderOptionControl('ollama', 'num_ctx', contextWindowSlider));
     
     // Keep Alive and Seed on same row
     const bottomRow = document.createElement('div');
@@ -552,9 +603,9 @@ function createOllamaOptions() {
     const seedRow = createFormRow('Seed', seedInput);
     seedRow.classList.add('llm-form-row--no-margin');
 
-    bottomRow.appendChild(wrapProviderOptionControl('ollama', 'keep_alive', keepAliveRow));
-    bottomRow.appendChild(wrapProviderOptionControl('ollama', 'seed', seedRow));
-    content.appendChild(bottomRow);
+    bottomRow.appendChild(await wrapProviderOptionControl('ollama', 'keep_alive', keepAliveRow));
+    bottomRow.appendChild(await wrapProviderOptionControl('ollama', 'seed', seedRow));
+    content.querySelector('.llm-bottom-inputs-host')?.appendChild(bottomRow);
     
     return createSection('⚙️ Ollama Options', content, {
         collapsible: true,
@@ -566,10 +617,9 @@ function createOllamaOptions() {
 /**
  * Creates LM Studio-specific options
  */
-function createLMStudioOptions() {
-    const content = document.createElement('div');
-    content.className = 'llm-lmstudio-options-content';
-    content.appendChild(createProviderSectionToggle(content, 'lmstudio', 'Enable LM Studio option payload'));
+async function createLMStudioOptions() {
+    const content = await renderLlmProviderOptions('lmstudio');
+    content.querySelector('.llm-provider-section-toggle-host')?.appendChild(await createProviderSectionToggle(content, 'lmstudio', 'Enable LM Studio option payload'));
     
     // Temperature
     const { container: tempSlider } = createSlider('Temperature', {
@@ -583,7 +633,7 @@ function createLMStudioOptions() {
         formatValue: (v) => parseFloat(v).toFixed(1),
         showValue: true
     });
-    content.appendChild(wrapProviderOptionControl('lmstudio', 'temperature', tempSlider));
+    content.querySelector('.llm-provider-option-list-host')?.appendChild(await wrapProviderOptionControl('lmstudio', 'temperature', tempSlider));
     
     // Top P
     const { container: topPSlider } = createSlider('Top P', {
@@ -597,7 +647,7 @@ function createLMStudioOptions() {
         formatValue: (v) => parseFloat(v).toFixed(2),
         showValue: true
     });
-    content.appendChild(wrapProviderOptionControl('lmstudio', 'top_p', topPSlider));
+    content.querySelector('.llm-provider-option-list-host')?.appendChild(await wrapProviderOptionControl('lmstudio', 'top_p', topPSlider));
     
     // Max Tokens
     const { container: maxTokensSlider } = createSlider('Max Tokens', {
@@ -610,7 +660,7 @@ function createLMStudioOptions() {
         valueClass: 'llm-slider-value',
         showValue: true
     });
-    content.appendChild(wrapProviderOptionControl('lmstudio', 'max_tokens', maxTokensSlider));
+    content.querySelector('.llm-provider-option-list-host')?.appendChild(await wrapProviderOptionControl('lmstudio', 'max_tokens', maxTokensSlider));
     
     // Presence Penalty
     const { container: presencePenaltySlider } = createSlider('Presence Penalty', {
@@ -624,7 +674,7 @@ function createLMStudioOptions() {
         formatValue: (v) => parseFloat(v).toFixed(1),
         showValue: true
     });
-    content.appendChild(wrapProviderOptionControl('lmstudio', 'presence_penalty', presencePenaltySlider));
+    content.querySelector('.llm-provider-option-list-host')?.appendChild(await wrapProviderOptionControl('lmstudio', 'presence_penalty', presencePenaltySlider));
     
     // Frequency Penalty
     const { container: frequencyPenaltySlider } = createSlider('Frequency Penalty', {
@@ -638,7 +688,7 @@ function createLMStudioOptions() {
         formatValue: (v) => parseFloat(v).toFixed(1),
         showValue: true
     });
-    content.appendChild(wrapProviderOptionControl('lmstudio', 'frequency_penalty', frequencyPenaltySlider));
+    content.querySelector('.llm-provider-option-list-host')?.appendChild(await wrapProviderOptionControl('lmstudio', 'frequency_penalty', frequencyPenaltySlider));
     
     // Repeat Penalty
     const { container: repeatPenaltySlider } = createSlider('Repeat Penalty', {
@@ -652,7 +702,7 @@ function createLMStudioOptions() {
         formatValue: (v) => parseFloat(v).toFixed(1),
         showValue: true
     });
-    content.appendChild(wrapProviderOptionControl('lmstudio', 'repeat_penalty', repeatPenaltySlider));
+    content.querySelector('.llm-provider-option-list-host')?.appendChild(await wrapProviderOptionControl('lmstudio', 'repeat_penalty', repeatPenaltySlider));
     
     // Top K
     const { container: topKSlider } = createSlider('Top K', {
@@ -665,7 +715,7 @@ function createLMStudioOptions() {
         valueClass: 'llm-slider-value',
         showValue: true
     });
-    content.appendChild(wrapProviderOptionControl('lmstudio', 'top_k', topKSlider));
+    content.querySelector('.llm-provider-option-list-host')?.appendChild(await wrapProviderOptionControl('lmstudio', 'top_k', topKSlider));
     
     // Seed (at bottom with some spacing)
     const seedInput = createInput({
@@ -675,7 +725,7 @@ function createLMStudioOptions() {
     });
     const seedRow = createFormRow('Seed', seedInput);
     seedRow.classList.add('llm-form-row--top-spacing');
-    content.appendChild(wrapProviderOptionControl('lmstudio', 'seed', seedRow));
+    content.querySelector('.llm-bottom-inputs-host')?.appendChild(await wrapProviderOptionControl('lmstudio', 'seed', seedRow));
     
     return createSection('⚙️ LM Studio Options', content, {
         collapsible: true,

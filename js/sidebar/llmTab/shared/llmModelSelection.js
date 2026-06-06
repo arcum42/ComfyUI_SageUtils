@@ -13,6 +13,7 @@ import {
     formatModelNameWithCapabilities,
     getModelCapabilityFlags
 } from '../../../llm/llmProviders.js';
+import { loadHtmlTemplate, createElementFromTemplate } from '../../../utils/htmlTemplateLoader.js';
 
 const LLM_LAST_MODELS_KEY = 'llm_last_models_by_provider';
 
@@ -65,20 +66,11 @@ function showModelLoadErrorDialog(message) {
 
 /**
  * Creates the model selection section
- * @returns {HTMLElement} - Model selection element
+ * @returns {Promise<HTMLElement>} - Model selection element
  */
-export function createModelSelection() {
-    const section = document.createElement('div');
-    section.className = 'llm-model-selection';
-    
-    // Provider selection
-    const providerGroup = document.createElement('div');
-    providerGroup.className = 'llm-form-group';
-    
-    const providerLabel = document.createElement('label');
-    providerLabel.textContent = 'Provider';
-    providerLabel.className = 'llm-label';
-    
+export async function createModelSelection() {
+    const section = await renderLlmModelSelection();
+
     const providerSelect = createSelect({
         items: [
             { value: 'lmstudio_rest', text: 'LM Studio' },
@@ -88,95 +80,37 @@ export function createModelSelection() {
         ],
         className: 'llm-select llm-provider-select'
     });
-    
-    providerGroup.appendChild(providerLabel);
-    providerGroup.appendChild(providerSelect);
-    
-    // Model selection
-    const modelGroup = document.createElement('div');
-    modelGroup.className = 'llm-form-group';
-    
-    const modelLabel = document.createElement('label');
-    modelLabel.textContent = 'Model';
-    modelLabel.className = 'llm-label';
-    
+
     const modelSelect = createSelect({
         items: [{ value: '', text: 'Loading models...' }],
         className: 'llm-select llm-model-select',
         ariaLabel: 'Select LLM model'
     });
-    
-    modelGroup.appendChild(modelLabel);
-    modelGroup.appendChild(modelSelect);
-    
-    // Status indicator
-    const statusIndicator = document.createElement('div');
-    statusIndicator.className = 'llm-status-indicator';
-    statusIndicator.innerHTML = `
-        <span class="status-dot"></span>
-        <span class="status-text">Checking status...</span>
-    `;
-    
-    // Refresh button
-    const refreshBtn = document.createElement('button');
-    refreshBtn.className = 'llm-btn llm-btn-secondary llm-refresh-btn';
-    refreshBtn.innerHTML = '🔄 Refresh Models';
-    refreshBtn.title = 'Reload model list';
-    
-    // Preset selection
-    const presetGroup = document.createElement('div');
-    presetGroup.className = 'llm-form-group';
-    
-    const presetLabel = document.createElement('label');
-    presetLabel.textContent = 'Preset';
-    presetLabel.className = 'llm-label';
-    
+
     const presetSelect = createSelect({
         items: [{ value: '', text: 'Loading presets...' }],
         className: 'llm-select llm-preset-select'
     });
-    
-    presetGroup.appendChild(presetLabel);
-    presetGroup.appendChild(presetSelect);
-    
-    // Preset action buttons
-    const presetActions = document.createElement('div');
-    presetActions.className = 'llm-preset-actions';
-    
-    const savePresetBtn = document.createElement('button');
-    savePresetBtn.className = 'llm-btn llm-btn-secondary llm-btn-small llm-save-preset-btn';
-    savePresetBtn.innerHTML = '💾 Save';
-    savePresetBtn.title = 'Save current settings as preset';
-    
-    const managePresetsBtn = document.createElement('button');
-    managePresetsBtn.className = 'llm-btn llm-btn-secondary llm-btn-small llm-manage-presets-btn';
-    managePresetsBtn.innerHTML = '⚙️ Manage';
-    managePresetsBtn.title = 'Manage presets and system prompts';
-    
-    presetActions.appendChild(savePresetBtn);
-    presetActions.appendChild(managePresetsBtn);
-    
-    // Layout
-    const topRow = document.createElement('div');
-    topRow.className = 'llm-selection-row';
-    topRow.appendChild(providerGroup);
-    topRow.appendChild(modelGroup);
-    
-    const presetRow = document.createElement('div');
-    presetRow.className = 'llm-selection-row';
-    presetRow.appendChild(presetGroup);
-    presetRow.appendChild(presetActions);
-    
-    const bottomRow = document.createElement('div');
-    bottomRow.className = 'llm-selection-row';
-    bottomRow.appendChild(statusIndicator);
-    bottomRow.appendChild(refreshBtn);
-    
-    section.appendChild(topRow);
-    section.appendChild(presetRow);
-    section.appendChild(bottomRow);
-    
+
+    section.querySelector('.llm-provider-host')?.appendChild(providerSelect);
+    section.querySelector('.llm-model-host')?.appendChild(modelSelect);
+    section.querySelector('.llm-preset-host')?.appendChild(presetSelect);
+
     return section;
+}
+
+let llmModelSelectionTemplate = null;
+
+async function getLlmModelSelectionTemplate() {
+    if (!llmModelSelectionTemplate) {
+        llmModelSelectionTemplate = await loadHtmlTemplate('extensions/comfyui_sageutils/sidebar/llmTab/partials/llmModelSelection.html');
+    }
+    return llmModelSelectionTemplate;
+}
+
+async function renderLlmModelSelection() {
+    const template = await getLlmModelSelectionTemplate();
+    return createElementFromTemplate(template);
 }
 
 /**

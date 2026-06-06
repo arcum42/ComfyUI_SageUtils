@@ -1,0 +1,30 @@
+<div class="llm-response-section" role="region" aria-labelledby="llm-response-title">
+    <div class="llm-response-header">
+        <h3 id="llm-response-title" class="llm-section-title">Response</h3>
+        <div class="llm-response-actions">
+            <button type="button" class="llm-btn llm-btn-secondary llm-btn-small llm-copy-btn llm-hidden" aria-label="Copy response to clipboard" title="Copy response to clipboard">📋 Copy</button>
+            <button type="button" class="llm-btn llm-btn-secondary llm-btn-small llm-copy-to-node-btn llm-hidden" aria-label="Copy response to selected node" title="Copy response to selected node">📤 To Node</button>
+            <button type="button" class="llm-btn llm-btn-secondary llm-btn-small llm-send-to-prompt-btn llm-hidden" aria-label="Send response to Prompt Builder tab" title="Send response to Prompt Builder tab">📝 Send to Prompt Builder</button>
+            <button type="button" class="llm-btn llm-btn-primary llm-btn-small llm-save-to-history-btn llm-hidden" aria-label="Save conversation to history" title="Save this conversation to history">💾 Save to History</button>
+            <button type="button" class="llm-btn llm-btn-danger llm-btn-small llm-stop-btn llm-hidden" aria-label="Stop generation" title="Stop generation">⏹ Stop</button>
+        </div>
+    </div>
+    <div class="llm-phase-badge llm-phase-idle llm-hidden" role="status" aria-live="polite" aria-atomic="true">Idle</div>
+    <div class="llm-response-display" role="log" aria-live="polite" aria-atomic="false" aria-label="LLM response output">
+        <div class="llm-reasoning-panel" hidden>
+            <div class="llm-reasoning-header">
+                <span class="llm-reasoning-title">Reasoning</span>
+                <span class="llm-reasoning-badge">Hidden</span>
+            </div>
+            <div class="llm-reasoning-content"></div>
+        </div>
+        <div class="llm-response-answer-panel">
+            <p class="llm-placeholder llm-response-placeholder">Response will appear here...</p>
+            <div class="llm-response-answer"></div>
+        </div>
+    </div>
+    <div class="llm-status-message llm-hidden" role="status" aria-live="polite" aria-atomic="true"></div>
+    <div class="llm-progress-bar-container llm-hidden">
+        <div class="llm-progress-bar-fill"></div>
+    </div>
+</div>

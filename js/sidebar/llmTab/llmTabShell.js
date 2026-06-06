@@ -608,8 +608,8 @@ async function createLLMTabVanilla(container) {
     wrapper.className = 'llm-tab llm-wrapper';
     
     // Create all UI sections
-    const header = createHeader();
-    const modelSelection = createModelSelection();
+    const header = await createHeader();
+    const modelSelection = await createModelSelection();
     const activeSubtab = loadActiveSubtab();
     const { nav: subtabNav, buttons: subtabButtons } = createSubtabNavigation(activeSubtab, (nextSubtab) => {
         setActiveSubtab(state, nextSubtab, subtabButtons, subtabContentHost, sections);
@@ -618,8 +618,8 @@ async function createLLMTabVanilla(container) {
     subtabContentHost.className = 'llm-subtab-content-host';
     const visionSection = createVisionSection();
     const inputSection = createInputSection();
-    const advancedOptions = createAdvancedOptions();
-    const responseSection = createResponseSection();
+    const advancedOptions = await createAdvancedOptions();
+    const responseSection = await createResponseSection();
     const historySection = createHistorySection();
     
     // Create send button (positioned after advanced options)

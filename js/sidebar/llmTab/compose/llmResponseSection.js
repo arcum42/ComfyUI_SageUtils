@@ -3,116 +3,24 @@
  * Creates the response display area with copy/export buttons
  */
 
+import { loadHtmlTemplate, createElementFromTemplate } from '../../../utils/htmlTemplateLoader.js';
+
+let llmResponseSectionTemplate = null;
+
+async function getLlmResponseSectionTemplate() {
+    if (!llmResponseSectionTemplate) {
+        llmResponseSectionTemplate = await loadHtmlTemplate('extensions/comfyui_sageutils/sidebar/llmTab/partials/llmResponseSection.html');
+    }
+    return llmResponseSectionTemplate;
+}
+
 /**
  * Creates the response section
- * @returns {HTMLElement} - Response section element
+ * @returns {Promise<HTMLElement>} - Response section element
  */
-export function createResponseSection() {
-    const section = document.createElement('div');
-    section.className = 'llm-response-section';
-    section.setAttribute('role', 'region');
-    section.setAttribute('aria-labelledby', 'llm-response-title');
-    
-    // Response header
-    const responseHeader = document.createElement('div');
-    responseHeader.className = 'llm-response-header';
-    
-    const responseTitle = document.createElement('h3');
-    responseTitle.textContent = 'Response';
-    responseTitle.className = 'llm-section-title';
-    responseTitle.id = 'llm-response-title';
-    
-    const responseActions = document.createElement('div');
-    responseActions.className = 'llm-response-actions';
-    
-    const copyBtn = document.createElement('button');
-    copyBtn.className = 'llm-btn llm-btn-secondary llm-btn-small llm-copy-btn llm-hidden';
-    copyBtn.innerHTML = '📋 Copy';
-    copyBtn.title = 'Copy response to clipboard';
-    copyBtn.setAttribute('aria-label', 'Copy response to clipboard');
-    
-    const copyToNodeBtn = document.createElement('button');
-    copyToNodeBtn.className = 'llm-btn llm-btn-secondary llm-btn-small llm-copy-to-node-btn llm-hidden';
-    copyToNodeBtn.innerHTML = '📤 To Node';
-    copyToNodeBtn.title = 'Copy response to selected node';
-    copyToNodeBtn.setAttribute('aria-label', 'Copy response to selected node');
-    
-    const sendToPromptBtn = document.createElement('button');
-    sendToPromptBtn.className = 'llm-btn llm-btn-secondary llm-btn-small llm-send-to-prompt-btn llm-hidden';
-    sendToPromptBtn.innerHTML = '📝 Send to Prompt Builder';
-    sendToPromptBtn.title = 'Send response to Prompt Builder tab';
-    sendToPromptBtn.setAttribute('aria-label', 'Send response to Prompt Builder tab');
-    
-    const saveToHistoryBtn = document.createElement('button');
-    saveToHistoryBtn.className = 'llm-btn llm-btn-primary llm-btn-small llm-save-to-history-btn llm-hidden';
-    saveToHistoryBtn.innerHTML = '💾 Save to History';
-    saveToHistoryBtn.title = 'Save this conversation to history';
-    saveToHistoryBtn.setAttribute('aria-label', 'Save conversation to history');
-    
-    const stopBtn = document.createElement('button');
-    stopBtn.className = 'llm-btn llm-btn-danger llm-btn-small llm-stop-btn llm-hidden';
-    stopBtn.innerHTML = '⏹ Stop';
-    stopBtn.title = 'Stop generation';
-    stopBtn.setAttribute('aria-label', 'Stop generation');
-    
-    responseActions.appendChild(copyBtn);
-    responseActions.appendChild(copyToNodeBtn);
-    responseActions.appendChild(sendToPromptBtn);
-    responseActions.appendChild(saveToHistoryBtn);
-    responseActions.appendChild(stopBtn);
-    
-    responseHeader.appendChild(responseTitle);
-    responseHeader.appendChild(responseActions);
-
-    const phaseBadge = document.createElement('div');
-    phaseBadge.className = 'llm-phase-badge llm-phase-idle llm-hidden';
-    phaseBadge.textContent = 'Idle';
-    phaseBadge.setAttribute('role', 'status');
-    phaseBadge.setAttribute('aria-live', 'polite');
-    phaseBadge.setAttribute('aria-atomic', 'true');
-    
-    // Response display area
-    const responseDisplay = document.createElement('div');
-    responseDisplay.className = 'llm-response-display';
-    responseDisplay.innerHTML = `
-        <div class="llm-reasoning-panel" hidden>
-            <div class="llm-reasoning-header">
-                <span class="llm-reasoning-title">Reasoning</span>
-                <span class="llm-reasoning-badge">Hidden</span>
-            </div>
-            <div class="llm-reasoning-content"></div>
-        </div>
-        <div class="llm-response-answer-panel">
-            <p class="llm-placeholder llm-response-placeholder">Response will appear here...</p>
-            <div class="llm-response-answer"></div>
-        </div>
-    `;
-    responseDisplay.setAttribute('role', 'log');
-    responseDisplay.setAttribute('aria-live', 'polite');
-    responseDisplay.setAttribute('aria-atomic', 'false');
-    responseDisplay.setAttribute('aria-label', 'LLM response output');
-    
-    // Status message
-    const statusMessage = document.createElement('div');
-    statusMessage.className = 'llm-status-message llm-hidden';
-    statusMessage.setAttribute('role', 'status');
-    statusMessage.setAttribute('aria-live', 'polite');
-    statusMessage.setAttribute('aria-atomic', 'true');
-
-    // Progress bar (shown during streaming)
-    const progressBar = document.createElement('div');
-    progressBar.className = 'llm-progress-bar-container llm-hidden';
-    const progressFill = document.createElement('div');
-    progressFill.className = 'llm-progress-bar-fill';
-    progressBar.appendChild(progressFill);
-    
-    section.appendChild(responseHeader);
-    section.appendChild(phaseBadge);
-    section.appendChild(responseDisplay);
-    section.appendChild(statusMessage);
-    section.appendChild(progressBar);
-    
-    return section;
+export async function createResponseSection() {
+    const template = await getLlmResponseSectionTemplate();
+    return createElementFromTemplate(template);
 }
 
 /**

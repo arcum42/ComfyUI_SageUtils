@@ -52,6 +52,19 @@ async function renderInfoDisplayDescription(data) {
 
 let infoDisplaySectionTemplate = null;
 let infoDisplayTriggerWordsTemplate = null;
+let infoDisplayVersionCardTemplate = null;
+
+async function getInfoDisplayVersionCardTemplate() {
+    if (!infoDisplayVersionCardTemplate) {
+        infoDisplayVersionCardTemplate = await loadHtmlTemplate('extensions/comfyui_sageutils/components/partials/infoDisplayVersionCard.html');
+    }
+    return infoDisplayVersionCardTemplate;
+}
+
+async function renderInfoDisplayVersionCard(data) {
+    const template = await getInfoDisplayVersionCardTemplate();
+    return renderHtmlTemplate(template, data);
+}
 
 async function getInfoDisplaySectionTemplate() {
     if (!infoDisplaySectionTemplate) {
@@ -519,32 +532,27 @@ export async function createDetailedInfoDisplay(hash, info, showNsfw = false) {
             const allVersions = await findAllModelVersions(enhancedInfo.modelId, hash);
             if (allVersions.length > 1) {
                 let versionsContent = '';
-                allVersions.forEach(version => {
+                for (const version of allVersions) {
                     const fileName = version.filePath ? getFileNameFromPath(version.filePath) : 'Not downloaded';
                     const isCurrentVersion = version.isCurrent;
                     const isDownloaded = version.isDownloaded;
                     const versionName = version.info.name || version.info.id || 'Unknown';
                     const versionId = version.info.id || 'N/A';
                     const createdAt = version.info.createdAt ? new Date(version.info.createdAt).toLocaleDateString() : 'Unknown';
-                    
                     const cardClass = isCurrentVersion ? 'sage-version-card sage-version-card--current' : isDownloaded ? 'sage-version-card sage-version-card--downloaded' : 'sage-version-card sage-version-card--available';
-                    let statusIndicator = isCurrentVersion ? '<span class="sage-version-card-status sage-version-card-status--current">◄ CURRENT</span>' : isDownloaded ? '<span class="sage-version-card-status sage-version-card-status--downloaded">● DOWNLOADED</span>' : '<span class="sage-version-card-status sage-version-card-status--available">○ AVAILABLE</span>';
-                    
-                    versionsContent += `<div class="${cardClass}">`;
-                    versionsContent += `<span class="sage-info-key">Version:</span> ${versionName}<br>`;
-                    versionsContent += `<span class="sage-info-key">ID:</span> ${versionId}<br>`;
-                    versionsContent += `<span class="sage-info-key">Created:</span> ${createdAt}<br>`;
-                    
-                    if (isDownloaded) {
-                        versionsContent += `<span class="sage-info-key">File:</span> <span class="sage-info-value sage-info-value--small">${fileName}</span>`;
-                    } else {
-                        const downloadUrl = version.info.downloadUrl || `https://civitai.com/api/download/models/${versionId}`;
-                        versionsContent += `<span class="sage-info-key">Download:</span> <a class="sage-info-link sage-info-link--warning" href="${downloadUrl}" target="_blank" title="Download this version">Download Link</a>`;
-                    }
-                    
-                    versionsContent += statusIndicator;
-                    versionsContent += '</div>';
-                });
+                    const statusIndicator = isCurrentVersion ? '<span class="sage-version-card-status sage-version-card-status--current">◄ CURRENT</span>' : isDownloaded ? '<span class="sage-version-card-status sage-version-card-status--downloaded">● DOWNLOADED</span>' : '<span class="sage-version-card-status sage-version-card-status--available">○ AVAILABLE</span>';
+                    const fileLine = isDownloaded
+                        ? `<span class="sage-info-key">File:</span> <span class="sage-info-value sage-info-value--small">${fileName}</span>`
+                        : `<span class="sage-info-key">Download:</span> <a class="sage-info-link sage-info-link--warning" href="${version.info.downloadUrl || `https://civitai.com/api/download/models/${versionId}`}" target="_blank" title="Download this version">Download Link</a>`;
+                    versionsContent += await renderInfoDisplayVersionCard({
+                        cardClass,
+                        versionName: escapeHtml(versionName),
+                        versionId: escapeHtml(versionId),
+                        createdAt: escapeHtml(createdAt),
+                        fileLine,
+                        statusIndicator
+                    });
+                }
                 sections.push(await renderInfoDisplaySection({
                     title: 'All Versions:',
                     color: 'teal',
@@ -570,22 +578,23 @@ export async function createDetailedInfoDisplay(hash, info, showNsfw = false) {
             
             if (localVersions.length > 1) {
                 let versionsContent = '';
-                localVersions.forEach(version => {
+                for (const version of localVersions) {
                     const fileName = getFileNameFromPath(version.filePath);
                     const isCurrentVersion = version.isCurrent;
                     const versionName = version.info.name || version.info.id || 'Unknown';
                     const versionId = version.info.id || 'N/A';
                     const cardClass = isCurrentVersion ? 'sage-version-card sage-version-card--current' : 'sage-version-card';
-                    
-                    versionsContent += `<div class="${cardClass}">`;
-                    versionsContent += `<span class="sage-info-key">Version:</span> ${versionName}<br>`;
-                    versionsContent += `<span class="sage-info-key">ID:</span> ${versionId}<br>`;
-                    versionsContent += `<span class="sage-info-key">File:</span> <span class="sage-info-value sage-info-value--small">${fileName}</span>`;
-                    if (isCurrentVersion) {
-                        versionsContent += '<br><span class="sage-version-card-status sage-version-card-status--current">◄ CURRENT</span>';
-                    }
-                    versionsContent += '</div>';
-                });
+                    const statusIndicator = isCurrentVersion ? '<span class="sage-version-card-status sage-version-card-status--current">◄ CURRENT</span>' : '';
+                    const fileLine = `<span class="sage-info-key">File:</span> <span class="sage-info-value sage-info-value--small">${fileName}</span>`;
+                    versionsContent += await renderInfoDisplayVersionCard({
+                        cardClass,
+                        versionName: escapeHtml(versionName),
+                        versionId: escapeHtml(versionId),
+                        createdAt: 'Unknown',
+                        fileLine,
+                        statusIndicator
+                    });
+                }
                 sections.push(await renderInfoDisplaySection({
                     title: 'Local Versions:',
                     color: 'teal',
