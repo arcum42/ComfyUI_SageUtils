@@ -3,6 +3,68 @@
  * Contains HTML document templates and client-side JavaScript
  */
 
+import {
+    loadHtmlTemplate,
+    renderHtmlTemplate
+} from '../utils/htmlTemplateLoader.js';
+
+let reportDocumentStartTemplate = null;
+let reportDocumentEndTemplate = null;
+let reportSummarySectionTemplate = null;
+let reportTableSectionTemplate = null;
+let reportSectionHeaderTemplate = null;
+let reportTableWrapperTemplate = null;
+let reportTableHeaderCellTemplate = null;
+
+async function getReportDocumentStartTemplate() {
+    if (!reportDocumentStartTemplate) {
+        reportDocumentStartTemplate = await loadHtmlTemplate('extensions/comfyui_sageutils/reports/partials/reportDocumentStart.html');
+    }
+    return reportDocumentStartTemplate;
+}
+
+async function getReportDocumentEndTemplate() {
+    if (!reportDocumentEndTemplate) {
+        reportDocumentEndTemplate = await loadHtmlTemplate('extensions/comfyui_sageutils/reports/partials/reportDocumentEnd.html');
+    }
+    return reportDocumentEndTemplate;
+}
+
+async function getReportSummarySectionTemplate() {
+    if (!reportSummarySectionTemplate) {
+        reportSummarySectionTemplate = await loadHtmlTemplate('extensions/comfyui_sageutils/reports/partials/reportSummarySection.html');
+    }
+    return reportSummarySectionTemplate;
+}
+
+async function getReportTableSectionTemplate() {
+    if (!reportTableSectionTemplate) {
+        reportTableSectionTemplate = await loadHtmlTemplate('extensions/comfyui_sageutils/reports/partials/reportTableSection.html');
+    }
+    return reportTableSectionTemplate;
+}
+
+async function getReportSectionHeaderTemplate() {
+    if (!reportSectionHeaderTemplate) {
+        reportSectionHeaderTemplate = await loadHtmlTemplate('extensions/comfyui_sageutils/reports/partials/reportSectionHeader.html');
+    }
+    return reportSectionHeaderTemplate;
+}
+
+async function getReportTableWrapperTemplate() {
+    if (!reportTableWrapperTemplate) {
+        reportTableWrapperTemplate = await loadHtmlTemplate('extensions/comfyui_sageutils/reports/partials/reportTableWrapper.html');
+    }
+    return reportTableWrapperTemplate;
+}
+
+async function getReportTableHeaderCellTemplate() {
+    if (!reportTableHeaderCellTemplate) {
+        reportTableHeaderCellTemplate = await loadHtmlTemplate('extensions/comfyui_sageutils/reports/partials/reportTableHeaderCell.html');
+    }
+    return reportTableHeaderCellTemplate;
+}
+
 /**
  * Generate client-side JavaScript for the HTML report
  * @param {string} sortBy - Current sort selection from model tab
@@ -272,71 +334,61 @@ export function generateClientSideJs(sortBy = 'name') {
  * @param {string} cssHref - CSS href for the report stylesheet
  * @returns {string} - HTML document start
  */
-export function generateHtmlDocumentStart(currentDateTime, clientJs, cssHref) {
-    return `<!DOCTYPE html>
-<html>
-<head>
-    <meta charset='utf-8'>
-    <title>SageUtils Model Report - ${currentDateTime}</title>
-    <link rel="stylesheet" href="${cssHref}">
-    <script>
-${clientJs}
-    </script>
-</head>
-<body>
-`;
+export async function generateHtmlDocumentStart(currentDateTime, clientJs, cssHref) {
+    const template = await getReportDocumentStartTemplate();
+    return renderHtmlTemplate(template, { currentDateTime, clientJs, cssHref });
 }
 
-export function generateHtmlDocumentEnd() {
-    return `
-</body>
-</html>
-`;
+export async function generateHtmlDocumentEnd() {
+    const template = await getReportDocumentEndTemplate();
+    return renderHtmlTemplate(template, {});
 }
 
-export function generateTableHeaders(visibleColumns) {
-    return visibleColumns.map(col => {
+export async function generateTableHeaders(visibleColumns) {
+    const template = await getReportTableHeaderCellTemplate();
+    const headers = await Promise.all(visibleColumns.map(async col => {
         const sortClass = col.sortable ? '' : ' sorttable_nosort';
-        return `            <th class="report-col-${col.key}${sortClass}"><b>${col.name}</b></th>`;
-    }).join('\n');
+        return renderHtmlTemplate(template, {
+            key: col.key,
+            sortClass,
+            name: col.name
+        });
+    }));
+    return headers.join('\n');
 }
 
-export function generateSectionHeader(sectionTitle, modelCount) {
-    return `
-    <div class="section-header">${sectionTitle} (${modelCount})</div>`;
+export async function generateSectionHeader(sectionTitle, modelCount) {
+    const template = await getReportSectionHeaderTemplate();
+    return renderHtmlTemplate(template, { sectionTitle, modelCount });
 }
 
-export function generateTableWrapper(visibleColumns, tableRows) {
-    return `
-    <table class="sortable">
-        <tr>
-${generateTableHeaders(visibleColumns)}
-        </tr>
-        ${tableRows}
-    </table>
-`;
+export async function generateTableWrapper(visibleColumns, tableRows) {
+    const headers = await generateTableHeaders(visibleColumns);
+    const template = await getReportTableWrapperTemplate();
+    return renderHtmlTemplate(template, { tableHeaders: headers, tableRows });
 }
 
-export function generateModelStatsSection(currentDateTime, filterDescription, searchDescription, lastUsedDescription, sortDescription, allModels, checkpointModels, loraModels, folderFilter) {
-    return `
-    <h1>SageUtils Model Report</h1>
-    <h2>Generated: ${currentDateTime}</h2>
-    <div class="info report-summary">
-        Filters Applied: ${filterDescription}${searchDescription}${lastUsedDescription}${sortDescription}<br>
-        Total Models: ${allModels.length}${folderFilter === 'all' ? ` (${checkpointModels.length} Checkpoints, ${loraModels.length} LoRAs)` : ''}<br>
-        <span class="report-summary-notice">📷 Auto Images</span> - Cached images shown immediately, others load automatically<br>
-        <small class="report-summary-muted">Click column headers to sort • Images load automatically from Civitai</small>
-    </div>`;
+export async function generateModelStatsSection(currentDateTime, filterDescription, searchDescription, lastUsedDescription, sortDescription, allModels, checkpointModels, loraModels, folderFilter) {
+    const template = await getReportSummarySectionTemplate();
+    const folderBreakdown = folderFilter === 'all' ? ` (${checkpointModels.length} Checkpoints, ${loraModels.length} LoRAs)` : '';
+    return renderHtmlTemplate(template, {
+        currentDateTime,
+        filterDescription,
+        searchDescription,
+        lastUsedDescription,
+        sortDescription,
+        allCount: allModels.length,
+        folderBreakdown
+    });
 }
 
-export function generateTableSection(sectionTitle, modelCount, tableRows, visibleColumns) {
-    return `
-    <div class="section-header">${sectionTitle} (${modelCount})</div>
-    <table class="sortable">
-        <tr>
-${generateTableHeaders(visibleColumns)}
-        </tr>
-        ${tableRows}
-    </table>
-`;
+export async function generateTableSection(sectionTitle, modelCount, tableRows, visibleColumns) {
+    const headers = await generateTableHeaders(visibleColumns);
+    const template = await getReportTableSectionTemplate();
+    return renderHtmlTemplate(template, {
+        sectionTitle,
+        modelCount,
+        tableHeaders: headers,
+        tableRows
+    });
 }

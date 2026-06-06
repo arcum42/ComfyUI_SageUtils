@@ -43,6 +43,117 @@ import {
     generateTableSection
 } from './htmlTemplates.js';
 
+import {
+    loadHtmlTemplate,
+    renderHtmlTemplate
+} from '../utils/htmlTemplateLoader.js';
+
+let reportTableCellTemplate = null;
+let reportTableRowTemplate = null;
+
+async function getReportTableCellTemplate() {
+    if (!reportTableCellTemplate) {
+        reportTableCellTemplate = await loadHtmlTemplate('extensions/comfyui_sageutils/reports/partials/reportTableCell.html');
+    }
+    return reportTableCellTemplate;
+}
+
+async function getReportTableRowTemplate() {
+    if (!reportTableRowTemplate) {
+        reportTableRowTemplate = await loadHtmlTemplate('extensions/comfyui_sageutils/reports/partials/reportTableRow.html');
+    }
+    return reportTableRowTemplate;
+}
+
+async function renderReportTableCell(cellClass, content, sortKey = '') {
+    const template = await getReportTableCellTemplate();
+    return renderHtmlTemplate(template, { cellClass, content, sortKey });
+}
+
+async function renderReportTableRow(cells, rowClass = '') {
+    const template = await getReportTableRowTemplate();
+    return renderHtmlTemplate(template, { rowClass, cells: cells.join('\n') });
+}
+
+let reportThumbnailImageTemplate = null;
+let reportThumbnailPlaceholderTemplate = null;
+let reportThumbnailAutoLoadTemplate = null;
+let reportCivitaiContentTemplate = null;
+let reportVersionLinkContentTemplate = null;
+let reportVersionTextContentTemplate = null;
+
+async function getReportThumbnailImageTemplate() {
+    if (!reportThumbnailImageTemplate) {
+        reportThumbnailImageTemplate = await loadHtmlTemplate('extensions/comfyui_sageutils/reports/partials/reportThumbnailImage.html');
+    }
+    return reportThumbnailImageTemplate;
+}
+
+async function getReportThumbnailPlaceholderTemplate() {
+    if (!reportThumbnailPlaceholderTemplate) {
+        reportThumbnailPlaceholderTemplate = await loadHtmlTemplate('extensions/comfyui_sageutils/reports/partials/reportThumbnailPlaceholder.html');
+    }
+    return reportThumbnailPlaceholderTemplate;
+}
+
+async function getReportThumbnailAutoLoadTemplate() {
+    if (!reportThumbnailAutoLoadTemplate) {
+        reportThumbnailAutoLoadTemplate = await loadHtmlTemplate('extensions/comfyui_sageutils/reports/partials/reportThumbnailAutoLoad.html');
+    }
+    return reportThumbnailAutoLoadTemplate;
+}
+
+async function getReportCivitaiContentTemplate() {
+    if (!reportCivitaiContentTemplate) {
+        reportCivitaiContentTemplate = await loadHtmlTemplate('extensions/comfyui_sageutils/reports/partials/reportCivitaiContent.html');
+    }
+    return reportCivitaiContentTemplate;
+}
+
+async function getReportVersionLinkContentTemplate() {
+    if (!reportVersionLinkContentTemplate) {
+        reportVersionLinkContentTemplate = await loadHtmlTemplate('extensions/comfyui_sageutils/reports/partials/reportVersionLinkContent.html');
+    }
+    return reportVersionLinkContentTemplate;
+}
+
+async function getReportVersionTextContentTemplate() {
+    if (!reportVersionTextContentTemplate) {
+        reportVersionTextContentTemplate = await loadHtmlTemplate('extensions/comfyui_sageutils/reports/partials/reportVersionTextContent.html');
+    }
+    return reportVersionTextContentTemplate;
+}
+
+async function renderReportThumbnailImage(imageUrl) {
+    const template = await getReportThumbnailImageTemplate();
+    return renderHtmlTemplate(template, { imageUrl });
+}
+
+async function renderReportThumbnailPlaceholder(placeholderText) {
+    const template = await getReportThumbnailPlaceholderTemplate();
+    return renderHtmlTemplate(template, { placeholderText });
+}
+
+async function renderReportThumbnailAutoLoad(hash, civitaiUrl) {
+    const template = await getReportThumbnailAutoLoadTemplate();
+    return renderHtmlTemplate(template, { hash, civitaiUrl });
+}
+
+async function renderReportCivitaiContent(civitaiUrl, modelId, updateMessage) {
+    const template = await getReportCivitaiContentTemplate();
+    return renderHtmlTemplate(template, { civitaiUrl, modelId, updateMessage });
+}
+
+async function renderReportVersionLinkContent(versionUrl, versionId) {
+    const template = await getReportVersionLinkContentTemplate();
+    return renderHtmlTemplate(template, { versionUrl, versionId });
+}
+
+async function renderReportVersionTextContent(versionId) {
+    const template = await getReportVersionTextContentTemplate();
+    return renderHtmlTemplate(template, { versionId });
+}
+
 /**
  * Extract folder type from file path
  * @param {string} filePath - The file path to analyze
@@ -127,37 +238,25 @@ function getCivitaiStatusReason(info) {
     return noImageReason;
 }
 
-function buildExampleImageContent(info, hash) {
+async function buildExampleImageContent(info, hash) {
     if (info && info.images && Array.isArray(info.images) && info.images.length > 0) {
         const firstImage = info.images[0];
         if (firstImage && firstImage.url) {
-            return `<div class="thumbnail-container">
-                        <img src="${escapeHtml(firstImage.url)}"
-                             class="thumbnail-image"
-                             alt="Example image"
-                             loading="lazy"
-                             title="Click to expand/collapse"
-                             onclick="toggleImageExpand(this)"
-                             onerror="this.style.display='none'">
-                    </div>`;
+            return renderReportThumbnailImage(escapeHtml(firstImage.url));
         }
     }
 
     if (!hash) {
-        return `<div class="thumbnail-placeholder"><span class="thumbnail-placeholder-text">No image</span></div>`;
+        return renderReportThumbnailPlaceholder('No image');
     }
 
     if (shouldAttemptCivitaiLoad(info)) {
         const civitaiImageUrl = `https://civitai.com/api/v1/model-versions/by-hash/${encodeURIComponent(hash)}`;
-        return `<div class="auto-load-image thumbnail-loading"
-                    data-civitai-hash="${escapeHtml(hash)}"
-                    data-civitai-url="${escapeHtml(civitaiImageUrl)}">
-                    <span class="thumbnail-placeholder-text">Loading...</span>
-                </div>`;
+        return renderReportThumbnailAutoLoad(escapeHtml(hash), escapeHtml(civitaiImageUrl));
     }
 
     const noImageReason = getCivitaiStatusReason(info);
-    return `<div class="thumbnail-placeholder"><span class="thumbnail-placeholder-text">${escapeHtml(noImageReason)}</span></div>`;
+    return renderReportThumbnailPlaceholder(escapeHtml(noImageReason));
 }
 
 /**
@@ -249,7 +348,7 @@ export async function generateTableRows(models, options = {}) {
         const lastUsedTimestamp = (lastUsed !== 'Never' && lastUsed !== 'Unknown') ? 
             new Date(lastUsed).getTime() : 0;
 
-        const exampleImageContent = buildExampleImageContent(info, hash);
+        const exampleImageContent = await buildExampleImageContent(info, hash);
 
         // Determine grouping CSS classes
         const groupClasses = [];
@@ -279,65 +378,59 @@ export async function generateTableRows(models, options = {}) {
             { key: 'size' }, { key: 'lastused' }, { key: 'path' }
         ];
         
-        columnsToRender.forEach(column => {
+        for (const column of columnsToRender) {
             switch (column.key) {
                 case 'name':
-                    tableCells.push(`<td class="cell-center ${nameStyle}">${escapeHtml(modelName)}</td>`);
+                    tableCells.push(await renderReportTableCell(`cell-center ${nameStyle}`, escapeHtml(modelName)));
                     break;
                 case 'basemodel':
-                    tableCells.push(`<td class="cell-center">${escapeHtml(baseModel)}</td>`);
+                    tableCells.push(await renderReportTableCell('cell-center', escapeHtml(baseModel)));
                     break;
                 case 'type':
-                    tableCells.push(`<td class="cell-center">${escapeHtml(modelType)}</td>`);
+                    tableCells.push(await renderReportTableCell('cell-center', escapeHtml(modelType)));
                     break;
                 case 'folder': {
                     const folderType = getFolderTypeFromPath(filePath);
                     const folderDisplayName = getFolderDisplayName(folderType);
-                    tableCells.push(`<td class="cell-center">${escapeHtml(folderDisplayName)}</td>`);
+                    tableCells.push(await renderReportTableCell('cell-center', escapeHtml(folderDisplayName)));
                     break;
                 }
                 case 'triggers':
-                    tableCells.push(`<td class="cell-center">${triggerCellContent}</td>`);
+                    tableCells.push(await renderReportTableCell('cell-center', triggerCellContent));
                     break;
                 case 'image':
-                    tableCells.push(`<td class="${imageCellClass}">${exampleImageContent}</td>`);
+                    tableCells.push(await renderReportTableCell(imageCellClass, exampleImageContent));
                     break;
-                case 'civitai':
-                    tableCells.push(`<td class="cell-center ${civitaiClass}">
-                        <a href="${escapeHtml(civitaiUrl)}" target="_blank">${escapeHtml(modelId)}</a>
-                        ${shouldShowUpdateMessage ? '<br><br><i>Update available</i>' : ''}
-                    </td>`);
+                case 'civitai': {
+                    const updateMessage = shouldShowUpdateMessage ? '<br><br><i>Update available</i>' : '';
+                    const civitaiContent = await renderReportCivitaiContent(escapeHtml(civitaiUrl), escapeHtml(modelId), updateMessage);
+                    tableCells.push(await renderReportTableCell(`cell-center ${civitaiClass}`, civitaiContent));
                     break;
+                }
                 case 'versionid': {
                     const versionId = (info && info.id) || 'Unknown';
-                    if (versionId !== 'Unknown' && versionId !== '' && versionId != null && modelId !== 'Unknown' && modelId !== '' && modelId != null) {
-                        const versionUrl = getModelUrl(modelId, versionId);
-                        tableCells.push(`<td class="cell-center ${civitaiClass}"><a href="${escapeHtml(versionUrl)}" target="_blank">${escapeHtml(String(versionId))}</a></td>`);
-                    } else {
-                        tableCells.push(`<td class="cell-center ${civitaiClass}">${escapeHtml(String(versionId))}</td>`);
-                    }
+                    const versionContent = (versionId !== 'Unknown' && versionId !== '' && versionId != null && modelId !== 'Unknown' && modelId !== '' && modelId != null)
+                        ? await renderReportVersionLinkContent(escapeHtml(getModelUrl(modelId, versionId)), escapeHtml(String(versionId)))
+                        : await renderReportVersionTextContent(escapeHtml(String(versionId)));
+                    tableCells.push(await renderReportTableCell(`cell-center ${civitaiClass}`, versionContent));
                     break;
                 }
                 case 'hash':
-                    tableCells.push(`<td class="cell-center">${escapeHtml(modelHash.substring(0, 12))}...</td>`);
+                    tableCells.push(await renderReportTableCell('cell-center', `${escapeHtml(modelHash.substring(0, 12))}...`));
                     break;
                 case 'size':
-                    tableCells.push(`<td class="cell-center" sorttable_customkey="${fileSizeBytes}">${escapeHtml(fileSize)}</td>`);
+                    tableCells.push(await renderReportTableCell('cell-center', escapeHtml(fileSize), ` sorttable_customkey="${fileSizeBytes}"`));
                     break;
                 case 'lastused':
-                    tableCells.push(`<td class="cell-center" sorttable_customkey="${lastUsedTimestamp}">${formattedLastUsed}</td>`);
+                    tableCells.push(await renderReportTableCell('cell-center', escapeHtml(formattedLastUsed), ` sorttable_customkey="${lastUsedTimestamp}"`));
                     break;
                 case 'path':
-                    tableCells.push(`<td class="cell-left">${escapeHtml(filePath)}</td>`);
+                    tableCells.push(await renderReportTableCell('cell-left', escapeHtml(filePath)));
                     break;
             }
-        });
+        }
 
-        return `
-            <tr${groupClassAttribute}>
-                ${tableCells.join('\n                ')}
-            </tr>
-        `;
+        return renderReportTableRow(tableCells, groupClassAttribute);
     }));
     
     return rows.join('');
@@ -441,7 +534,7 @@ export async function generateTableRowsWithProgress(models, options = {}) {
             const lastUsedTimestamp = (lastUsed !== 'Never' && lastUsed !== 'Unknown') ? 
                 new Date(lastUsed).getTime() : 0;
 
-            const exampleImageContent = buildExampleImageContent(info, hash);
+            const exampleImageContent = await buildExampleImageContent(info, hash);
 
             // Determine grouping CSS classes
             const groupClasses = [];
@@ -471,65 +564,59 @@ export async function generateTableRowsWithProgress(models, options = {}) {
                 { key: 'size' }, { key: 'lastused' }, { key: 'path' }
             ];
             
-            columnsToRender.forEach(column => {
+            for (const column of columnsToRender) {
                 switch (column.key) {
                     case 'name':
-                        tableCells.push(`<td class="cell-center ${nameStyle}">${escapeHtml(modelName)}</td>`);
+                        tableCells.push(await renderReportTableCell(`cell-center ${nameStyle}`, escapeHtml(modelName)));
                         break;
                     case 'basemodel':
-                        tableCells.push(`<td class="cell-center">${escapeHtml(baseModel)}</td>`);
+                        tableCells.push(await renderReportTableCell('cell-center', escapeHtml(baseModel)));
                         break;
                     case 'type':
-                        tableCells.push(`<td class="cell-center">${escapeHtml(modelType)}</td>`);
+                        tableCells.push(await renderReportTableCell('cell-center', escapeHtml(modelType)));
                         break;
                     case 'folder': {
                         const folderType = getFolderTypeFromPath(filePath);
                         const folderDisplayName = getFolderDisplayName(folderType);
-                        tableCells.push(`<td class="cell-center">${escapeHtml(folderDisplayName)}</td>`);
+                        tableCells.push(await renderReportTableCell('cell-center', escapeHtml(folderDisplayName)));
                         break;
                     }
                     case 'triggers':
-                        tableCells.push(`<td class="cell-center">${triggerCellContent}</td>`);
+                        tableCells.push(await renderReportTableCell('cell-center', triggerCellContent));
                         break;
                     case 'image':
-                        tableCells.push(`<td class="${imageCellClass}">${exampleImageContent}</td>`);
+                        tableCells.push(await renderReportTableCell(imageCellClass, exampleImageContent));
                         break;
-                    case 'civitai':
-                        tableCells.push(`<td class="cell-center ${civitaiClass}">
-                            <a href="${escapeHtml(civitaiUrl)}" target="_blank">${escapeHtml(modelId)}</a>
-                            ${shouldShowUpdateMessage ? '<br><br><i>Update available</i>' : ''}
-                        </td>`);
+                    case 'civitai': {
+                        const updateMessage = shouldShowUpdateMessage ? '<br><br><i>Update available</i>' : '';
+                        const civitaiContent = await renderReportCivitaiContent(escapeHtml(civitaiUrl), escapeHtml(modelId), updateMessage);
+                        tableCells.push(await renderReportTableCell(`cell-center ${civitaiClass}`, civitaiContent));
                         break;
+                    }
                     case 'versionid': {
                         const versionId = (info && info.id) || 'Unknown';
-                        if (versionId !== 'Unknown' && versionId !== '' && versionId != null && modelId !== 'Unknown' && modelId !== '' && modelId != null) {
-                            const versionUrl = getModelUrl(modelId, versionId);
-                            tableCells.push(`<td class="cell-center ${civitaiClass}"><a href="${escapeHtml(versionUrl)}" target="_blank">${escapeHtml(String(versionId))}</a></td>`);
-                        } else {
-                            tableCells.push(`<td class="cell-center ${civitaiClass}">${escapeHtml(String(versionId))}</td>`);
-                        }
+                        const versionContent = (versionId !== 'Unknown' && versionId !== '' && versionId != null && modelId !== 'Unknown' && modelId !== '' && modelId != null)
+                            ? await renderReportVersionLinkContent(escapeHtml(getModelUrl(modelId, versionId)), escapeHtml(String(versionId)))
+                            : await renderReportVersionTextContent(escapeHtml(String(versionId)));
+                        tableCells.push(await renderReportTableCell(`cell-center ${civitaiClass}`, versionContent));
                         break;
                     }
                     case 'hash':
-                        tableCells.push(`<td class="cell-center">${escapeHtml(modelHash.substring(0, 12))}...</td>`);
+                        tableCells.push(await renderReportTableCell('cell-center', `${escapeHtml(modelHash.substring(0, 12))}...`));
                         break;
                     case 'size':
-                        tableCells.push(`<td class="cell-center" sorttable_customkey="${fileSizeBytes}">${escapeHtml(fileSize)}</td>`);
+                        tableCells.push(await renderReportTableCell('cell-center', escapeHtml(fileSize), ` sorttable_customkey="${fileSizeBytes}"`));
                         break;
                     case 'lastused':
-                        tableCells.push(`<td class="cell-center" sorttable_customkey="${lastUsedTimestamp}">${formattedLastUsed}</td>`);
+                        tableCells.push(await renderReportTableCell('cell-center', escapeHtml(formattedLastUsed), ` sorttable_customkey="${lastUsedTimestamp}"`));
                         break;
                     case 'path':
-                        tableCells.push(`<td class="cell-left">${escapeHtml(filePath)}</td>`);
+                        tableCells.push(await renderReportTableCell('cell-left', escapeHtml(filePath)));
                         break;
                 }
-            });
+            }
 
-            return `
-                <tr${groupClassAttribute}>
-                    ${tableCells.join('\n                    ')}
-                </tr>
-            `;
+            return renderReportTableRow(tableCells, groupClassAttribute);
         }));
         
         rows.push(...batchRows);
@@ -678,9 +765,9 @@ export async function generateHtmlContentWithProgress(options) {
 
     const cssHref = `${window.location.origin}/extensions/comfyui_sageutils/reports/reportStyles.css`;
     const clientJs = generateClientSideJs(sortBy);
-    const htmlStart = generateHtmlDocumentStart(currentDateTime, clientJs, cssHref);
+    const htmlStart = await generateHtmlDocumentStart(currentDateTime, clientJs, cssHref);
     
-    let htmlContent = htmlStart + generateModelStatsSection(currentDateTime, filterDescription, searchDescription, lastUsedDescription, sortDescription, allModels, checkpointModels, loraModels, folderFilter);
+    let htmlContent = htmlStart + await generateModelStatsSection(currentDateTime, filterDescription, searchDescription, lastUsedDescription, sortDescription, allModels, checkpointModels, loraModels, folderFilter);
 
     // Determine which sections to show based on folder filter
     const shouldShowSection = (sectionFolderType, modelArray) => {
@@ -712,7 +799,7 @@ export async function generateHtmlContentWithProgress(options) {
             } : null
         });
         
-        htmlContent += generateTableSection('LoRA Models', loraModels.length, loraRows, visibleColumns);
+        htmlContent += await generateTableSection('LoRA Models', loraModels.length, loraRows, visibleColumns);
     }
 
     // Add Checkpoints section if it should be shown
@@ -734,7 +821,7 @@ export async function generateHtmlContentWithProgress(options) {
             } : null
         });
         
-        htmlContent += generateTableSection('Checkpoint Models', checkpointModels.length, checkpointRows, visibleColumns);
+        htmlContent += await generateTableSection('Checkpoint Models', checkpointModels.length, checkpointRows, visibleColumns);
     }
 
     // Add sections for other folder types if they should be shown
@@ -775,11 +862,11 @@ export async function generateHtmlContentWithProgress(options) {
                 } : null
             });
             
-            htmlContent += generateTableSection(folderType.displayName, folderModels.length, folderRows, visibleColumns);
+            htmlContent += await generateTableSection(folderType.displayName, folderModels.length, folderRows, visibleColumns);
         }
     }
 
-    htmlContent += generateHtmlDocumentEnd();
+    htmlContent += await generateHtmlDocumentEnd();
 
     if (progressCallback) {
         progressCallback(85, 'Finalizing HTML report...');
