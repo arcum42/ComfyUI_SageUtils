@@ -13,17 +13,20 @@ from ...common import clean_response
 from ...cache import get_llm_cache
 from ...rest import iter_json_lines, normalize_raw_image_base64
 from ...errors import llm_raise, llm_report, llm_stringify
+from ..availability import (
+    is_provider_unavailable,
+    unavailable_models_placeholder,
+    report_fetch_error,
+    raise_if_provider_unavailable,
+    raise_if_model_unavailable,
+    raise_if_missing_images,
+    stream_error_payload,
+)
 from ...tensor import tensor_to_base64_safe
 
 _PROVIDER_NAME = 'ollama_rest'
 _UNAVAILABLE_MESSAGE = '(Ollama REST not available)'
 _MAX_TOOL_ITERATIONS = 4
-
-def _unavailable_models() -> list[str]:
-    return [_UNAVAILABLE_MESSAGE]
-
-def _is_unavailable(enabled: bool) -> bool:
-    return not enabled
 
 def _get_request_timeout() -> float:
     """Return request timeout seconds for generation calls.
@@ -111,6 +114,34 @@ def _build_ollama_payload(model: str, messages: list[dict[str, Any]], options=No
 
     return payload
 
+
+def _build_ollama_vision_payload(
+    model: str,
+    prompt: str,
+    images,
+    *,
+    options=None,
+    system_prompt: str = '',
+    keep_alive: str = '5m',
+    include_stream_field: bool = False,
+) -> dict[str, Any]:
+    payload: dict[str, Any] = {
+        'model': model,
+        'messages': _build_messages(prompt, system_prompt, raw_images=_normalize_raw_images(images)),
+    }
+    if include_stream_field:
+        payload['stream'] = False
+    if keep_alive:
+        payload['keep_alive'] = keep_alive
+
+    _apply_top_level_controls(payload, options)
+
+    built_options = _build_options(options)
+    if built_options:
+        payload['options'] = built_options
+
+    return payload
+
 def _chat_once(payload: dict[str, Any], operation: str) -> dict[str, Any]:
     response = ollama_request_json_chat(payload, timeout=_get_request_timeout())
 
@@ -174,7 +205,7 @@ def _stream_chat_response(payload: dict[str, Any], operation: str):
 
 def is_running(enabled: bool) -> bool:
     """Check if the Ollama REST server is reachable."""
-    if _is_unavailable(enabled):
+    if is_provider_unavailable(enabled):
         return False
 
     try:
@@ -185,8 +216,8 @@ def is_running(enabled: bool) -> bool:
 
 def get_models(enabled: bool) -> list[str]:
     """Retrieve a list of available models from Ollama REST."""
-    if _is_unavailable(enabled):
-        return _unavailable_models()
+    if is_provider_unavailable(enabled):
+        return unavailable_models_placeholder(_UNAVAILABLE_MESSAGE)
 
     def _fetch_models() -> list[str]:
         try:
@@ -199,8 +230,14 @@ def get_models(enabled: bool) -> list[str]:
                     models.append(model_name)
             return models
         except Exception as e:
-            llm_report('Error retrieving models from Ollama REST', provider=_PROVIDER_NAME, operation='get_models', cause=e)
-            return _unavailable_models()
+            return report_fetch_error(
+                llm_report,
+                'Error retrieving models from Ollama REST',
+                provider=_PROVIDER_NAME,
+                operation='get_models',
+                cause=e,
+                fallback=unavailable_models_placeholder(_UNAVAILABLE_MESSAGE),
+            )
 
     cache = get_llm_cache()
     return cache.get_model_list(
@@ -212,8 +249,8 @@ def get_models(enabled: bool) -> list[str]:
 
 def get_vision_models(enabled: bool) -> list[str]:
     """Retrieve a list of available vision models from Ollama REST."""
-    if _is_unavailable(enabled):
-        return _unavailable_models()
+    if is_provider_unavailable(enabled):
+        return unavailable_models_placeholder(_UNAVAILABLE_MESSAGE)
 
     def _fetch_vision_models(cache_instance) -> list[str]:
         try:
@@ -233,8 +270,14 @@ def get_vision_models(enabled: bool) -> list[str]:
 
             return vision_models
         except Exception as e:
-            llm_report('Error retrieving vision models from Ollama REST', provider=_PROVIDER_NAME, operation='get_vision_models', cause=e)
-            return []
+            return report_fetch_error(
+                llm_report,
+                'Error retrieving vision models from Ollama REST',
+                provider=_PROVIDER_NAME,
+                operation='get_vision_models',
+                cause=e,
+                fallback=[],
+            )
 
     cache = get_llm_cache()
     return cache.get_model_list(
@@ -246,23 +289,29 @@ def get_vision_models(enabled: bool) -> list[str]:
     )
 
 def get_tool_models(enabled: bool) -> list[str]:
-    if _is_unavailable(enabled):
-        return _unavailable_models()
+    if is_provider_unavailable(enabled):
+        return unavailable_models_placeholder(_UNAVAILABLE_MESSAGE)
 
     capabilities_map = get_model_capabilities_map(enabled, model_names=get_models(enabled))
     return sorted([name for name, capabilities in capabilities_map.items() if capabilities.tool_use])
 
 def get_reasoning_models(enabled: bool) -> list[str]:
-    if _is_unavailable(enabled):
-        return _unavailable_models()
+    if is_provider_unavailable(enabled):
+        return unavailable_models_placeholder(_UNAVAILABLE_MESSAGE)
 
     capabilities_map = get_model_capabilities_map(enabled, model_names=get_models(enabled))
     return sorted([name for name, capabilities in capabilities_map.items() if capabilities.reasoning])
 
 def load_model(enabled: bool, model: str, keep_alive: int = 60) -> bool:
     """Warm-load an Ollama model via /api/generate with an empty prompt."""
-    if _is_unavailable(enabled):
-        llm_raise(ImportError, 'Ollama REST is not enabled.', provider=_PROVIDER_NAME, operation='load_model')
+    raise_if_provider_unavailable(
+        enabled,
+        llm_raise,
+        error_type=ImportError,
+        message='Ollama REST is not enabled.',
+        provider=_PROVIDER_NAME,
+        operation='load_model',
+    )
 
     try:
         keep_alive_seconds = max(0, int(keep_alive))
@@ -287,8 +336,14 @@ def load_model(enabled: bool, model: str, keep_alive: int = 60) -> bool:
 
 def generate(enabled: bool, model: str, prompt: str, options=None, system_prompt: str = '', keep_alive: str = '5m') -> str:
     """Generate a response from Ollama REST using /api/chat."""
-    if _is_unavailable(enabled):
-        llm_raise(ImportError, 'Ollama REST is not enabled.', provider=_PROVIDER_NAME, operation='generate')
+    raise_if_provider_unavailable(
+        enabled,
+        llm_raise,
+        error_type=ImportError,
+        message='Ollama REST is not enabled.',
+        provider=_PROVIDER_NAME,
+        operation='generate',
+    )
 
     messages = _build_messages(prompt, system_prompt)
 
@@ -320,27 +375,31 @@ def generate(enabled: bool, model: str, prompt: str, options=None, system_prompt
 
 def generate_vision(enabled: bool, model: str, prompt: str, images=None, options=None, system_prompt: str = '', keep_alive: str = '5m') -> str:
     """Generate a vision response from Ollama REST using /api/chat with inline images."""
-    if _is_unavailable(enabled):
-        llm_raise(ImportError, 'Ollama REST is not enabled.', provider=_PROVIDER_NAME, operation='generate_vision')
+    raise_if_provider_unavailable(
+        enabled,
+        llm_raise,
+        error_type=ImportError,
+        message='Ollama REST is not enabled.',
+        provider=_PROVIDER_NAME,
+        operation='generate_vision',
+    )
 
-    if images is None:
-        llm_raise(ValueError, 'No images provided for vision model.', provider=_PROVIDER_NAME, operation='generate_vision')
+    raise_if_missing_images(
+        images,
+        llm_raise,
+        provider=_PROVIDER_NAME,
+        operation='generate_vision',
+    )
 
-    raw_images = _normalize_raw_images(images)
-
-    payload: dict[str, Any] = {
-        'model': model,
-        'messages': _build_messages(prompt, system_prompt, raw_images=raw_images),
-        'stream': False,
-    }
-    if keep_alive:
-        payload['keep_alive'] = keep_alive
-
-    _apply_top_level_controls(payload, options)
-
-    built_options = _build_options(options)
-    if built_options:
-        payload['options'] = built_options
+    payload = _build_ollama_vision_payload(
+        model,
+        prompt,
+        images,
+        options=options,
+        system_prompt=system_prompt,
+        keep_alive=keep_alive,
+        include_stream_field=True,
+    )
 
     try:
         response = ollama_request_json_chat(payload, timeout=_get_request_timeout())
@@ -355,12 +414,23 @@ def generate_vision(enabled: bool, model: str, prompt: str, images=None, options
 def generate_stream(enabled: bool, model: str, prompt: str, options=None, system_prompt: str = '', keep_alive: str = '5m'):
     """Generate a real streaming response from Ollama REST."""
     try:
-        if _is_unavailable(enabled):
-            llm_raise(ImportError, 'Ollama REST is not enabled.', provider=_PROVIDER_NAME, operation='generate_stream')
+        raise_if_provider_unavailable(
+            enabled,
+            llm_raise,
+            error_type=ImportError,
+            message='Ollama REST is not enabled.',
+            provider=_PROVIDER_NAME,
+            operation='generate_stream',
+        )
 
         model_list = get_models(enabled)
-        if model not in model_list:
-            llm_raise(ValueError, f"Model '{model}' is not available. Available models: {model_list}", provider=_PROVIDER_NAME, operation='generate_stream')
+        raise_if_model_unavailable(
+            model,
+            model_list,
+            llm_raise,
+            provider=_PROVIDER_NAME,
+            operation='generate_stream',
+        )
 
         messages = _build_messages(prompt, system_prompt)
 
@@ -391,39 +461,51 @@ def generate_stream(enabled: bool, model: str, prompt: str, options=None, system
             yield chunk_data
     except Exception as e:
         llm_report('Error in Ollama REST streaming', provider=_PROVIDER_NAME, operation='generate_stream', cause=e)
-        yield {'chunk': '', 'done': True, 'full_response': '', 'error': llm_stringify(e)}
+        yield stream_error_payload(llm_stringify(e), include_full_response=True)
 
 def generate_vision_stream(enabled: bool, model: str, prompt: str, images=None, options=None, system_prompt: str = '', keep_alive: str = '5m'):
     """Generate a real streaming vision response from Ollama REST."""
     try:
-        if _is_unavailable(enabled):
-            llm_raise(ImportError, 'Ollama REST is not enabled.', provider=_PROVIDER_NAME, operation='generate_vision_stream')
+        raise_if_provider_unavailable(
+            enabled,
+            llm_raise,
+            error_type=ImportError,
+            message='Ollama REST is not enabled.',
+            provider=_PROVIDER_NAME,
+            operation='generate_vision_stream',
+        )
 
-        if images is None:
-            llm_raise(ValueError, 'No images provided for vision model.', provider=_PROVIDER_NAME, operation='generate_vision_stream')
+        raise_if_missing_images(
+            images,
+            llm_raise,
+            provider=_PROVIDER_NAME,
+            operation='generate_vision_stream',
+        )
 
         model_list = get_vision_models(enabled)
-        if model not in model_list:
-            llm_raise(ValueError, f"Model '{model}' is not available. Available models: {model_list}", provider=_PROVIDER_NAME, operation='generate_vision_stream')
+        raise_if_model_unavailable(
+            model,
+            model_list,
+            llm_raise,
+            provider=_PROVIDER_NAME,
+            operation='generate_vision_stream',
+        )
 
-        payload: dict[str, Any] = {
-            'model': model,
-            'messages': _build_messages(prompt, system_prompt, raw_images=_normalize_raw_images(images)),
-        }
-        if keep_alive:
-            payload['keep_alive'] = keep_alive
-
-        _apply_top_level_controls(payload, options)
-
-        built_options = _build_options(options)
-        if built_options:
-            payload['options'] = built_options
+        payload = _build_ollama_vision_payload(
+            model,
+            prompt,
+            images,
+            options=options,
+            system_prompt=system_prompt,
+            keep_alive=keep_alive,
+            include_stream_field=False,
+        )
 
         for chunk_data in _stream_chat_response(payload, 'generate_vision_stream'):
             yield chunk_data
     except Exception as e:
         llm_report('Error in Ollama REST vision streaming', provider=_PROVIDER_NAME, operation='generate_vision_stream', cause=e)
-        yield {'chunk': '', 'done': True, 'full_response': '', 'error': llm_stringify(e)}
+        yield stream_error_payload(llm_stringify(e), include_full_response=True)
 
 def build_response_parameters(model: str, prompt: str, keep_alive: float, options: dict, system_prompt: str, images) -> dict:
     """Build the response parameters for Ollama generate call."""

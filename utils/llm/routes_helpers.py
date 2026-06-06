@@ -10,6 +10,13 @@ from typing import Any, Optional
 from ..logger import get_logger
 from ..settings import get_setting
 from . import llm_raise
+from .provider_keys import (
+    LMSTUDIO_REST_KEY,
+    NATIVE_KEY,
+    OLLAMA_REST_KEY,
+    OPENAI_KEY,
+    normalize_provider_key,
+)
 
 logger = get_logger('llm.routes_helpers')
 
@@ -237,12 +244,7 @@ def _resolve_profile_entries(
 
 def normalize_provider(provider: str) -> str:
     """Normalize provider aliases to canonical backend keys."""
-    normalized = (provider or '').strip().lower()
-    alias_map = {
-        'lmstudio': 'lmstudio_rest',
-        'ollama': 'ollama_rest',
-    }
-    return alias_map.get(normalized, normalized)
+    return normalize_provider_key(provider)
 
 
 def get_compatible_models(provider: str, model_list: list[str]) -> list[str]:
@@ -677,7 +679,7 @@ def validate_provider(provider: str) -> tuple[bool, Optional[str]]:
         Tuple of (is_valid, error_message)
     """
     provider = normalize_provider(provider)
-    if provider not in ['lmstudio_rest', 'ollama_rest', 'openai', 'native']:
+    if provider not in [LMSTUDIO_REST_KEY, OLLAMA_REST_KEY, OPENAI_KEY, NATIVE_KEY]:
         return False, f"Invalid provider: {provider}. Must be 'lmstudio', 'ollama', 'openai', or 'native'"
     return True, None
 

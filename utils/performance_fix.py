@@ -2,7 +2,7 @@
 """
 Performance fix for INPUT_TYPES methods that are causing 32+ second delays during node registration.
 
-The issue: Multiple LLM nodes call get_ollama_models() and get_lmstudio_models() in their INPUT_TYPES methods.
+The issue: Multiple LLM nodes call provider discovery methods during INPUT_TYPES evaluation.
 These functions make network calls that can timeout, causing massive startup delays.
 
 The fix: Create lightweight cached versions that don't block during node registration.
@@ -195,20 +195,12 @@ def populate_llm_cache_async():
             logger.info("Starting background LLM cache population...")
             
             # These calls will populate the cache asynchronously
-            logger.info("Fetching LLM models to populate cache (Ollama)...")
-            llm.get_ollama_models()
-            logger.info("Fetching LLM models to populate cache (LM Studio)...")
-            llm.get_lmstudio_models()
             logger.info("Fetching LLM models to populate cache (LM Studio REST)...")
             llm.get_lmstudio_rest_models()
             logger.info("Fetching LLM models to populate cache (Ollama REST)...")
             llm.get_ollama_rest_models()
             logger.info("Fetching LLM models to populate cache (OpenAI)...")
             llm.get_openai_models()
-            logger.info("Fetching LLM vision models to populate cache (Ollama)...")
-            llm.get_ollama_vision_models()
-            logger.info("Fetching LLM vision models to populate cache (LM Studio)...")
-            llm.get_lmstudio_vision_models()
             logger.info("Fetching LLM vision models to populate cache (LM Studio REST)...")
             llm.get_lmstudio_rest_vision_models()
             logger.info("Fetching LLM vision models to populate cache (Ollama REST)...")

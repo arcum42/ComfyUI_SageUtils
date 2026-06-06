@@ -17,16 +17,6 @@ def _is_provider_enabled(feature_key: str) -> bool:
             return True
 
 
-def is_ollama_enabled() -> bool:
-    """Compatibility helper for removed Ollama SDK provider."""
-    return False
-
-
-def is_lmstudio_enabled() -> bool:
-    """Compatibility helper for removed LM Studio SDK provider."""
-    return False
-
-
 def is_lmstudio_rest_enabled() -> bool:
     """Check if LM Studio REST provider is enabled in settings."""
     return _is_provider_enabled('enable_lmstudio_rest')

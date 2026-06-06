@@ -1,0 +1,40 @@
+<div class="civitai-search-form">
+    <div class="civitai-search-group">
+        <label class="civitai-search-label" for="civitai-search-input">Search Query:</label>
+        <input type="text" id="civitai-search-input" class="civitai-search-input" placeholder="Enter model name, creator, or keywords...">
+    </div>
+
+    <div class="civitai-search-group">
+        <label class="civitai-search-label" for="civitai-type-filter">Type:</label>
+        <select id="civitai-type-filter" class="civitai-search-select">
+            <option value="">All Types</option>
+            {{{typeOptions}}}
+        </select>
+    </div>
+
+    <div class="civitai-search-group">
+        <label class="civitai-search-label" for="civitai-sort-filter">Sort:</label>
+        <select id="civitai-sort-filter" class="civitai-search-select">
+            {{{sortOptions}}}
+        </select>
+    </div>
+
+    <div class="civitai-search-button-row">
+        <div id="civitai-search-button-spot"></div>
+
+        <label class="civitai-nsfw-toggle">
+            <input type="checkbox" id="civitai-nsfw-toggle">
+            Include NSFW Results
+        </label>
+
+        <div class="civitai-limit-group">
+            <label class="civitai-search-label" for="civitai-limit-select">Results:</label>
+            <select id="civitai-limit-select" class="civitai-search-select">
+                <option value="10">10</option>
+                <option value="20" selected>20</option>
+                <option value="50">50</option>
+                <option value="100">100</option>
+            </select>
+        </div>
+    </div>
+</div>

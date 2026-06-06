@@ -5,6 +5,15 @@ from ...common import clean_response
 from ...cache import get_llm_cache
 from ...rest import iter_sse_events, normalize_image_data_url
 from ...errors import llm_report, llm_raise, llm_stringify
+from ..availability import (
+    is_provider_unavailable,
+    unavailable_models_placeholder,
+    report_fetch_error,
+    raise_if_provider_unavailable,
+    raise_if_model_unavailable,
+    raise_if_missing_images,
+    stream_error_payload,
+)
 
 from .requests import (
     lmstudio_request_json_models,
@@ -31,12 +40,6 @@ from .extract import (
 _PROVIDER_NAME = 'lmstudio_rest'
 
 _UNAVAILABLE_MESSAGE = '(LM Studio REST not available)'
-
-def _unavailable_models() -> list[str]:
-    return [_UNAVAILABLE_MESSAGE]
-
-def _is_unavailable(enabled: bool) -> bool:
-    return not enabled
 
 _LMSTUDIO_OPTION_KEY_MAP = (
     ('temperature', 'temperature'),
@@ -80,6 +83,23 @@ def _build_chat_options(options: Optional[dict[str, Any]]) -> dict[str, Any]:
         payload_options['integrations'] = integrations
 
     return payload_options
+
+
+def _build_lmstudio_stream_payload(
+    model: str,
+    input_value,
+    *,
+    options: Optional[dict[str, Any]] = None,
+    system_prompt: str = '',
+) -> dict[str, Any]:
+    payload = {
+        'model': model,
+        'input': input_value,
+    }
+    if system_prompt:
+        payload['system_prompt'] = system_prompt
+    payload.update(_build_chat_options(options))
+    return payload
 
 def build_lmstudio_config(options: dict) -> dict:
     """Build LM Studio configuration from options dictionary."""
@@ -131,7 +151,7 @@ def _build_progress_event_payload(event_type: str, event_data: Any) -> dict[str,
 
 def is_running(enabled: bool) -> bool:
     """Check if LM Studio REST server is reachable."""
-    if _is_unavailable(enabled):
+    if is_provider_unavailable(enabled):
         return False
 
     try:
@@ -142,8 +162,8 @@ def is_running(enabled: bool) -> bool:
 
 def get_models(enabled: bool) -> list[str]:
     """Retrieve a list of available models from LM Studio REST."""
-    if _is_unavailable(enabled):
-        return _unavailable_models()
+    if is_provider_unavailable(enabled):
+        return unavailable_models_placeholder(_UNAVAILABLE_MESSAGE)
 
     def _fetch_models() -> list[str]:
         try:
@@ -156,8 +176,14 @@ def get_models(enabled: bool) -> list[str]:
                     models.append(model_name)
             return models
         except Exception as e:
-            llm_report('Error retrieving models from LM Studio REST', provider='lmstudio_rest', operation='get_models', cause=e)
-            return _unavailable_models()
+            return report_fetch_error(
+                llm_report,
+                'Error retrieving models from LM Studio REST',
+                provider=_PROVIDER_NAME,
+                operation='get_models',
+                cause=e,
+                fallback=unavailable_models_placeholder(_UNAVAILABLE_MESSAGE),
+            )
 
     cache = get_llm_cache()
     return cache.get_model_list(
@@ -169,8 +195,8 @@ def get_models(enabled: bool) -> list[str]:
 
 def get_vision_models(enabled: bool) -> list[str]:
     """Retrieve a list of available vision models from LM Studio REST."""
-    if _is_unavailable(enabled):
-        return _unavailable_models()
+    if is_provider_unavailable(enabled):
+        return unavailable_models_placeholder(_UNAVAILABLE_MESSAGE)
 
     def _fetch_vision_models(cache_instance) -> list[str]:
         try:
@@ -190,8 +216,14 @@ def get_vision_models(enabled: bool) -> list[str]:
 
             return vision_models
         except Exception as e:
-            llm_report('Error retrieving vision models from LM Studio REST', provider='lmstudio_rest', operation='get_vision_models', cause=e)
-            return []
+            return report_fetch_error(
+                llm_report,
+                'Error retrieving vision models from LM Studio REST',
+                provider=_PROVIDER_NAME,
+                operation='get_vision_models',
+                cause=e,
+                fallback=[],
+            )
 
     cache = get_llm_cache()
     return cache.get_model_list(
@@ -203,23 +235,29 @@ def get_vision_models(enabled: bool) -> list[str]:
     )
 
 def get_tool_models(enabled: bool) -> list[str]:
-    if _is_unavailable(enabled):
-        return _unavailable_models()
+    if is_provider_unavailable(enabled):
+        return unavailable_models_placeholder(_UNAVAILABLE_MESSAGE)
 
     capabilities_map = get_model_capabilities_map(enabled)
     return sorted([name for name, capabilities in capabilities_map.items() if capabilities.tool_use])
 
 def get_reasoning_models(enabled: bool) -> list[str]:
-    if _is_unavailable(enabled):
-        return _unavailable_models()
+    if is_provider_unavailable(enabled):
+        return unavailable_models_placeholder(_UNAVAILABLE_MESSAGE)
 
     capabilities_map = get_model_capabilities_map(enabled)
     return sorted([name for name, capabilities in capabilities_map.items() if capabilities.reasoning])
 
 def load_model(enabled: bool, model: str, keep_alive: int = 0) -> bool:
     """Ask LM Studio REST server to load a model."""
-    if _is_unavailable(enabled):
-        llm_raise(RuntimeError, 'LM Studio REST is not enabled.', provider='lmstudio_rest', operation='load_model')
+    raise_if_provider_unavailable(
+        enabled,
+        llm_raise,
+        error_type=RuntimeError,
+        message='LM Studio REST is not enabled.',
+        provider=_PROVIDER_NAME,
+        operation='load_model',
+    )
 
     # keep_alive is not currently used by LM Studio REST.
     payload: dict[str, Any] = {'model': model}
@@ -228,19 +266,19 @@ def load_model(enabled: bool, model: str, keep_alive: int = 0) -> bool:
         lmstudio_request_json_load(payload)
         return True
     except Exception as e:
-        llm_raise(RuntimeError, f"Failed to load model '{model}' via LM Studio REST", provider='lmstudio_rest', operation='load_model', cause=RuntimeError(llm_stringify(e)))
+        llm_raise(RuntimeError, f"Failed to load model '{model}' via LM Studio REST", provider=_PROVIDER_NAME, operation='load_model', cause=RuntimeError(llm_stringify(e)))
         return False
 
 def unload_model(enabled: bool, model: str) -> bool:
     """Ask LM Studio REST server to unload a model."""
-    if _is_unavailable(enabled):
+    if is_provider_unavailable(enabled):
         return False
 
     try:
         lmstudio_request_json_unload({'model': model})
         return True
     except Exception as e:
-        llm_report('Error unloading model via LM Studio REST', provider='lmstudio_rest', operation='unload_model', cause=e)
+        llm_report('Error unloading model via LM Studio REST', provider=_PROVIDER_NAME, operation='unload_model', cause=e)
         return False
 
 
@@ -320,40 +358,65 @@ def _stream_chat_response(payload: dict[str, Any], operation: str):
 def generate_stream(enabled: bool, model: str, prompt: str, options=None, system_prompt: str = ''):
     """Generate a real streaming response from LM Studio REST."""
     try:
-        if _is_unavailable(enabled):
-            llm_raise(ImportError, 'LM Studio REST is not enabled.', provider='lmstudio_rest', operation='generate_stream')
+        raise_if_provider_unavailable(
+            enabled,
+            llm_raise,
+            error_type=ImportError,
+            message='LM Studio REST is not enabled.',
+            provider=_PROVIDER_NAME,
+            operation='generate_stream',
+        )
 
         model_list = get_models(enabled)
-        if model not in model_list:
-            llm_raise(ValueError, f"Model '{model}' is not available. Available models: {model_list}", provider='lmstudio_rest', operation='generate_stream')
+        raise_if_model_unavailable(
+            model,
+            model_list,
+            llm_raise,
+            provider=_PROVIDER_NAME,
+            operation='generate_stream',
+        )
 
-        payload = {
-            'model': model,
-            'input': prompt,
-        }
-        if system_prompt:
-            payload['system_prompt'] = system_prompt
-        payload.update(_build_chat_options(options))
+        payload = _build_lmstudio_stream_payload(
+            model,
+            prompt,
+            options=options,
+            system_prompt=system_prompt,
+        )
 
         for chunk_data in _stream_chat_response(payload, 'generate_stream'):
             yield chunk_data
     except Exception as e:
-        llm_report('Error streaming response from LM Studio REST', provider='lmstudio_rest', operation='generate_stream', cause=e)
-        yield {'chunk': '', 'done': True, 'error': llm_stringify(e)}
+        llm_report('Error streaming response from LM Studio REST', provider=_PROVIDER_NAME, operation='generate_stream', cause=e)
+        yield stream_error_payload(llm_stringify(e), include_full_response=False)
 
 
 def generate_vision_stream(enabled: bool, model: str, prompt: str, images, options=None, system_prompt: str = ''):
     """Generate a real streaming vision response from LM Studio REST."""
     try:
-        if _is_unavailable(enabled):
-            llm_raise(ImportError, 'LM Studio REST is not enabled.', provider='lmstudio_rest', operation='generate_vision_stream')
+        raise_if_provider_unavailable(
+            enabled,
+            llm_raise,
+            error_type=ImportError,
+            message='LM Studio REST is not enabled.',
+            provider=_PROVIDER_NAME,
+            operation='generate_vision_stream',
+        )
 
-        if images is None:
-            llm_raise(ValueError, 'No images provided for vision model.', provider='lmstudio_rest', operation='generate_vision_stream')
+        raise_if_missing_images(
+            images,
+            llm_raise,
+            provider=_PROVIDER_NAME,
+            operation='generate_vision_stream',
+        )
 
         model_list = get_vision_models(enabled)
-        if model not in model_list:
-            llm_raise(ValueError, f"Model '{model}' is not available. Available models: {model_list}", provider='lmstudio_rest', operation='generate_vision_stream')
+        raise_if_model_unavailable(
+            model,
+            model_list,
+            llm_raise,
+            provider=_PROVIDER_NAME,
+            operation='generate_vision_stream',
+        )
 
         image_entries = images if isinstance(images, list) else [images]
         input_items = [{'type': 'text', 'content': prompt}]
@@ -365,19 +428,18 @@ def generate_vision_stream(enabled: bool, model: str, prompt: str, images, optio
                 }
             )
 
-        payload = {
-            'model': model,
-            'input': input_items,
-        }
-        if system_prompt:
-            payload['system_prompt'] = system_prompt
-        payload.update(_build_chat_options(options))
+        payload = _build_lmstudio_stream_payload(
+            model,
+            input_items,
+            options=options,
+            system_prompt=system_prompt,
+        )
 
         for chunk_data in _stream_chat_response(payload, 'generate_vision_stream'):
             yield chunk_data
     except Exception as e:
-        llm_report('Error streaming vision response from LM Studio REST', provider='lmstudio_rest', operation='generate_vision_stream', cause=e)
-        yield {'chunk': '', 'done': True, 'error': llm_stringify(e)}
+        llm_report('Error streaming vision response from LM Studio REST', provider=_PROVIDER_NAME, operation='generate_vision_stream', cause=e)
+        yield stream_error_payload(llm_stringify(e), include_full_response=False)
 
 def generate_with_stream(enabled: bool, model: str, prompt: str, options=None, system_prompt: str = '') -> str:
     """Generate a response using the streaming API and return the full result when finished or on error."""
@@ -385,7 +447,7 @@ def generate_with_stream(enabled: bool, model: str, prompt: str, options=None, s
     result = ''
     error = None
     for chunk in stream:
-        print(f"DEBUG: Received stream chunk: {chunk}")
+        #print(f"DEBUG: Received stream chunk: {chunk}")
         if chunk.get('chunk'):
             result += chunk['chunk']
         if chunk.get('error'):
@@ -394,7 +456,7 @@ def generate_with_stream(enabled: bool, model: str, prompt: str, options=None, s
         if chunk.get('done'):
             break
     if error:
-        llm_raise(RuntimeError, f"Streaming error: {error}", provider='lmstudio_rest', operation='generate_with_stream')
+        llm_raise(RuntimeError, f"Streaming error: {error}", provider=_PROVIDER_NAME, operation='generate_with_stream')
     return clean_response(result)
 
 def generate_vision_with_stream(enabled: bool, model: str, prompt: str, images, options=None, system_prompt: str = '') -> str:
@@ -403,7 +465,7 @@ def generate_vision_with_stream(enabled: bool, model: str, prompt: str, images, 
     result = ''
     error = None
     for chunk in stream:
-        print(f"DEBUG: Received stream chunk: {chunk}")
+        #print(f"DEBUG: Received stream chunk: {chunk}")
         if chunk.get('chunk'):
             result += chunk['chunk']
         if chunk.get('error'):
@@ -412,5 +474,5 @@ def generate_vision_with_stream(enabled: bool, model: str, prompt: str, images, 
         if chunk.get('done'):
             break
     if error:
-        llm_raise(RuntimeError, f"Streaming error: {error}", provider='lmstudio_rest', operation='generate_vision_with_stream')
+        llm_raise(RuntimeError, f"Streaming error: {error}", provider=_PROVIDER_NAME, operation='generate_vision_with_stream')
     return clean_response(result)

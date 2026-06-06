@@ -7,10 +7,8 @@ from comfy_api.latest import io
 from comfy.utils import ProgressBar
 
 from ..utils.llm.service import (
-    ollama_generate_vision,
-    ollama_generate_vision_refine,
-    ollama_preload_model,
-    ollama_generate_preloaded,
+    ollama_rest_generate,
+    ollama_rest_generate_vision,
 )
 from ..utils.performance_fix import (
     get_cached_ollama_models_for_input_types,
@@ -38,6 +36,15 @@ DEFAULT_TEXT_PROMPT = "Write a detailed and coherent description of an image bas
 def _should_reraise_llm_node_errors() -> bool:
     """Return whether LLM node exceptions should be re-raised after logging."""
     return bool(get_setting('llm_raise_node_exceptions', False))
+
+
+def _normalize_ollama_keep_alive(value, default: str = '5m') -> str:
+    """Normalize keep_alive values for Ollama REST generation calls."""
+    if isinstance(value, str) and value.strip():
+        return value.strip()
+    if isinstance(value, (int, float)) and value > 0:
+        return f'{int(value)}s'
+    return default
 
 
 class Sage_OllamaAdvancedOptions(io.ComfyNode):
@@ -110,14 +117,19 @@ class Sage_OllamaLLMPromptText(io.ComfyNode):
 
         options = options or {}
         options["seed"] = seed
-        pbar = ProgressBar(2)
+        keep_alive_value = _normalize_ollama_keep_alive(keep_alive)
+        pbar = ProgressBar(1)
         try:
-            ollama_preload_model(model=model, keep_alive=keep_alive)
-            pbar.update(1)
-            response = ollama_generate_preloaded(model=model, prompt=prompt, keep_alive=keep_alive, options=options, system_prompt=system_prompt)
+            response = ollama_rest_generate(
+                model=model,
+                prompt=prompt,
+                keep_alive=keep_alive_value,
+                options=options,
+                system_prompt=system_prompt,
+            )
             pbar.update(1)
         except Exception:
-            logger.exception('Ollama text node failed during preload or generation')
+            logger.exception('Ollama text node failed during generation')
             if _should_reraise_llm_node_errors():
                 raise
             response = ""
@@ -166,14 +178,20 @@ class Sage_OllamaLLMPromptVision(io.ComfyNode):
 
         options = options or {}
         options["seed"] = seed
-        pbar = ProgressBar(2)
+        keep_alive_value = _normalize_ollama_keep_alive(keep_alive)
+        pbar = ProgressBar(1)
         try:
-            ollama_preload_model(model=model, keep_alive=keep_alive)
-            pbar.update(1)
-            response = ollama_generate_vision(model=model, prompt=prompt, system_prompt=system_prompt, images=image, keep_alive=keep_alive, options=options)
+            response = ollama_rest_generate_vision(
+                model=model,
+                prompt=prompt,
+                system_prompt=system_prompt,
+                images=image,
+                keep_alive=keep_alive_value,
+                options=options,
+            )
             pbar.update(1)
         except Exception:
-            logger.exception('Ollama vision node failed during preload or generation')
+            logger.exception('Ollama vision node failed during generation')
             if _should_reraise_llm_node_errors():
                 raise
             response = ""
@@ -225,24 +243,26 @@ class Sage_OllamaLLMPromptVisionRefine(io.ComfyNode):
         if model == "(No Ollama vision models available)" or refine_model == "(Ollama not available)" or not OLLAMA_AVAILABLE:
             return io.NodeOutput("", "")
 
-        pbar = ProgressBar(2)
+        pbar = ProgressBar(1)
         try:
-            # Step 1: pre-warm the first model
-            ollama_preload_model(model=model, keep_alive=0)
-            pbar.update(1)
-            # Step 2: generate initial vision response then refine
-            initial, refined = ollama_generate_vision_refine(
+            # Step 1: generate initial vision response then refine
+            initial = ollama_rest_generate_vision(
                 model=model,
                 prompt=prompt,
                 images=image,
                 options={"seed": seed},
-                refine_model=refine_model,
-                refine_prompt=refine_prompt,
-                refine_options={"seed": refine_seed}
             )
+            if not refine_model or not refine_prompt:
+                refined = ""
+            else:
+                refined = ollama_rest_generate(
+                    model=refine_model,
+                    prompt=refine_prompt,
+                    options={"seed": refine_seed},
+                )
             pbar.update(1)
         except Exception:
-            logger.exception('Ollama vision refine node failed during preload or generation')
+            logger.exception('Ollama vision refine node failed during generation')
             if _should_reraise_llm_node_errors():
                 raise
             initial, refined = "", ""

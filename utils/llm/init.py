@@ -1,7 +1,5 @@
 """Initialization helpers for LLM provider clients."""
 
-from typing import Any
-
 from ..logger import get_logger
 from .providers.lmstudio import client as lmstudio_rest_provider
 from .providers.ollama import client as ollama_rest_provider
@@ -64,36 +62,3 @@ def init_openai_provider(enabled: bool) -> bool:
         return False
 
 
-def init_ollama_client(
-    ollama_available: bool,
-    ollama_module: Any,
-    enabled: bool,
-    custom_url: str,
-) -> tuple[Any, bool]:
-    """Compatibility alias for legacy callers.
-
-    SDK initialization was removed. This now initializes the Ollama REST provider
-    and returns a tuple compatible with the old signature.
-    """
-    _ = ollama_available
-    _ = ollama_module
-    _ = custom_url
-    initialized = init_ollama_rest(enabled)
-    return None, initialized
-
-
-def init_lmstudio_client(
-    lmstudio_available: bool,
-    lms_module: Any,
-    enabled: bool,
-    custom_url: str,
-) -> bool:
-    """Compatibility alias for legacy callers.
-
-    SDK initialization was removed. This now initializes the LM Studio REST
-    provider and keeps the old function signature for compatibility.
-    """
-    _ = lmstudio_available
-    _ = lms_module
-    _ = custom_url
-    return init_lmstudio_rest(enabled)

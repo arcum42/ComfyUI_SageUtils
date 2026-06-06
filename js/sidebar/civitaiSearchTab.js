@@ -16,6 +16,7 @@ import {
 
 import { createButton, BUTTON_VARIANTS } from '../components/buttons.js';
 import { loadSidebarStyle } from './sidebarStyles.js';
+import { loadAndCreateHtmlTemplate } from '../utils/htmlTemplateLoader.js';
 
 import { escapeHtml, formatFileSize } from '../reports/reportGenerator.js';
 
@@ -35,7 +36,7 @@ const SEARCH_CONFIG = {
  * Creates the Civitai search tab content
  * @param {HTMLElement} container - Container element for the tab content
  */
-export function createCivitaiSearchTab(container) {
+export async function createCivitaiSearchTab(container) {
     container.innerHTML = '';
     
     loadSidebarStyle('civitai-search-styles', 'extensions/comfyui_sageutils/sidebar/civitaiSearchTab.css');
@@ -45,22 +46,23 @@ export function createCivitaiSearchTab(container) {
     searchContainer.className = 'civitai-search-tab';
     
     // Create search form
-    const searchForm = createSearchForm();
+    const searchForm = await createSearchForm();
     
     // Create results container
     const resultsContainer = document.createElement('div');
     resultsContainer.id = 'civitai-results';
     resultsContainer.className = 'civitai-results-container';
-    
+
     // Initial message
-    resultsContainer.innerHTML = `
-        <div class="civitai-search-status-panel">
-            <h3 class="civitai-search-status-title">🔍 Civitai Model Search</h3>
-            <p>Search for models on Civitai to discover and download new content.</p>
-            <p>Use the search form above to find models by name, type, or creator.</p>
-        </div>
-    `;
-    
+    const initialStatus = await createSearchStatusPanel({
+        icon: '🔍',
+        title: 'Civitai Model Search',
+        messageLine1: 'Search for models on Civitai to discover and download new content.',
+        messageLine2: 'Use the search form above to find models by name, type, or creator.',
+        note: ''
+    });
+    resultsContainer.appendChild(initialStatus);
+
     searchContainer.appendChild(searchForm);
     searchContainer.appendChild(resultsContainer);
     
@@ -74,81 +76,66 @@ export function createCivitaiSearchTab(container) {
  * Creates the search form with filters
  * @returns {HTMLElement} Search form element
  */
-function createSearchForm() {
-    const form = document.createElement('div');
-    form.className = 'civitai-search-form';
-    
-    // Search input
-    const searchGroup = document.createElement('div');
-    searchGroup.className = 'civitai-search-group';
-    searchGroup.innerHTML = `
-        <label class="civitai-search-label" for="civitai-search-input">Search Query:</label>
-        <input type="text" id="civitai-search-input" class="civitai-search-input" placeholder="Enter model name, creator, or keywords...">
-    `;
-    
-    // Type filter
-    const typeGroup = document.createElement('div');
-    typeGroup.className = 'civitai-search-group';
-    typeGroup.innerHTML = `
-        <label class="civitai-search-label" for="civitai-type-filter">Type:</label>
-        <select id="civitai-type-filter" class="civitai-search-select">
-            <option value="">All Types</option>
-            ${SEARCH_CONFIG.SUPPORTED_TYPES.map(type => `<option value="${type}">${type}</option>`).join('')}
-        </select>
-    `;
-    
-    // Sort filter
-    const sortGroup = document.createElement('div');
-    sortGroup.className = 'civitai-search-group';
-    sortGroup.innerHTML = `
-        <label class="civitai-search-label" for="civitai-sort-filter">Sort:</label>
-        <select id="civitai-sort-filter" class="civitai-search-select">
-            ${SEARCH_CONFIG.SORT_OPTIONS.map(sort => `<option value="${sort}">${sort}</option>`).join('')}
-        </select>
-    `;
-    
-    // Search button row
-    const buttonRow = document.createElement('div');
-    buttonRow.className = 'civitai-search-button-row';
-    
-    // Search button
+async function createSearchForm() {
+    const form = await loadAndCreateHtmlTemplate(
+        'extensions/comfyui_sageutils/sidebar/partials/civitaiSearchForm.html'
+    );
+
+    const typeFilter = form.querySelector('#civitai-type-filter');
+    if (typeFilter) {
+        SEARCH_CONFIG.SUPPORTED_TYPES.forEach((type) => {
+            const option = document.createElement('option');
+            option.value = type;
+            option.textContent = type;
+            typeFilter.appendChild(option);
+        });
+    }
+
+    const sortFilter = form.querySelector('#civitai-sort-filter');
+    if (sortFilter) {
+        SEARCH_CONFIG.SORT_OPTIONS.forEach((sort) => {
+            const option = document.createElement('option');
+            option.value = sort;
+            option.textContent = sort;
+            sortFilter.appendChild(option);
+        });
+    }
+
     const searchButton = createButton('Search', {
         id: 'civitai-search-button',
         variant: BUTTON_VARIANTS.SUCCESS,
         className: 'civitai-search-button'
     });
-    
-    // NSFW toggle
-    const nsfwToggle = document.createElement('label');
-    nsfwToggle.className = 'civitai-nsfw-toggle';
-    nsfwToggle.innerHTML = `
-        <input type="checkbox" id="civitai-nsfw-toggle">
-        Include NSFW Results
-    `;
-    
-    // Results per page
-    const limitGroup = document.createElement('div');
-    limitGroup.className = 'civitai-limit-group';
-    limitGroup.innerHTML = `
-        <label class="civitai-search-label" for="civitai-limit-select">Results:</label>
-        <select id="civitai-limit-select" class="civitai-search-select">
-            <option value="10">10</option>
-            <option value="20" selected>20</option>
-            <option value="50">50</option>
-            <option value="100">100</option>
-        </select>
-    `;
-    
-    buttonRow.appendChild(searchButton);
-    buttonRow.appendChild(nsfwToggle);
-    buttonRow.appendChild(limitGroup);
-    
-    form.appendChild(searchGroup);
-    form.appendChild(typeGroup);
-    form.appendChild(sortGroup);
-    form.appendChild(buttonRow);
-    
+
+    const buttonSpot = form.querySelector('#civitai-search-button-spot');
+    if (buttonSpot) {
+        buttonSpot.appendChild(searchButton);
+    }
+
     return form;
+}
+
+async function createSearchStatusPanel(options = {}) {
+    const {
+        icon = '',
+        title = '',
+        messageLine1 = '',
+        messageLine2 = '',
+        note = '',
+        extraClass = ''
+    } = options;
+
+    return await loadAndCreateHtmlTemplate(
+        'extensions/comfyui_sageutils/sidebar/partials/civitaiSearchStatus.html',
+        {
+            icon,
+            title,
+            messageLine1,
+            messageLine2,
+            note,
+            extraClass
+        }
+    );
 }
 
 /**
@@ -205,14 +192,15 @@ function setupSearchHandlers(searchForm, resultsContainer) {
         loadingButton.textContent = cursor ? 'Loading...' : 'Searching...';
         
         if (isNewSearch) {
-            resultsContainer.innerHTML = `
-                <div class="civitai-search-status-panel">
-                    <div class="civitai-search-status-icon">🔍</div>
-                    <h3 class="civitai-search-status-title">Civitai Model Search</h3>
-                    <p>Search for models on Civitai to discover and download new content.</p>
-                    <p>Use the search form above to find models by name, type, or creator.</p>
-                </div>
-            `;
+            resultsContainer.innerHTML = '';
+            const searchStatus = await createSearchStatusPanel({
+                icon: '🔍',
+                title: 'Civitai Model Search',
+                messageLine1: 'Search for models on Civitai to discover and download new content.',
+                messageLine2: 'Use the search form above to find models by name, type, or creator.',
+                note: ''
+            });
+            resultsContainer.appendChild(searchStatus);
         }
         
         try {
@@ -228,7 +216,7 @@ function setupSearchHandlers(searchForm, resultsContainer) {
                 currentMetadata = response.metadata;
             }
             
-            displaySearchResults(resultsContainer, currentResults, { 
+            await displaySearchResults(resultsContainer, currentResults, { 
                 includeNsfw,
                 metadata: currentMetadata,
                 onNextPage: currentMetadata && currentMetadata.nextCursor ? 
@@ -237,13 +225,16 @@ function setupSearchHandlers(searchForm, resultsContainer) {
             
         } catch (error) {
             console.error('Civitai search error:', error);
-            resultsContainer.innerHTML = `
-                <div class="civitai-search-status-panel civitai-search-status-error">
-                    <h3 class="civitai-search-status-title">❌ Search Failed</h3>
-                    <p>Failed to search Civitai: ${escapeHtml(error.message)}</p>
-                    <p class="civitai-search-status-note">Please check your internet connection and try again.</p>
-                </div>
-            `;
+            resultsContainer.innerHTML = '';
+            const errorStatus = await createSearchStatusPanel({
+                icon: '❌',
+                title: 'Search Failed',
+                messageLine1: `Failed to search Civitai: ${escapeHtml(error.message)}`,
+                messageLine2: '',
+                note: 'Please check your internet connection and try again.',
+                extraClass: ' civitai-search-status-error'
+            });
+            resultsContainer.appendChild(errorStatus);
         } finally {
             loadingButton.disabled = false;
             loadingButton.textContent = originalText;
@@ -319,45 +310,38 @@ async function searchCivitaiModels(options) {
  * @param {Array} results - Search results from Civitai API
  * @param {Object} options - Display options
  */
-function displaySearchResults(container, results, options = {}) {
+async function displaySearchResults(container, results, options = {}) {
     const { includeNsfw = false, metadata = null, onNextPage = null } = options;
 
     if (!results || results.length === 0) {
-        container.innerHTML = `
-            <div class="civitai-search-status-panel">
-                <h3 class="civitai-search-status-title">No Results Found</h3>
-                <p>No models found matching your search criteria.</p>
-                <p>Try adjusting your search terms or filters.</p>
-            </div>
-        `;
+        container.innerHTML = '';
+        const noResultsStatus = await createSearchStatusPanel({
+            icon: '',
+            title: 'No Results Found',
+            messageLine1: 'No models found matching your search criteria.',
+            messageLine2: 'Try adjusting your search terms or filters.',
+            note: ''
+        });
+        container.appendChild(noResultsStatus);
         return;
     }
 
-    const header = document.createElement('div');
-    header.className = 'civitai-results-header';
-
-    const headerText = document.createElement('div');
-    headerText.innerHTML = `
-        <h3 class="civitai-results-header-title">Found ${results.length} models${metadata && metadata.totalItems ? ` (${metadata.totalItems} total)` : ''}</h3>
-        <p class="civitai-results-subtitle">Click on any model to view details and download options</p>
-    `;
-    header.appendChild(headerText);
+    const header = await loadAndCreateHtmlTemplate(
+        'extensions/comfyui_sageutils/sidebar/partials/civitaiResultsHeader.html',
+        {
+            resultCount: results.length,
+            totalItemsText: metadata && metadata.totalItems ? ` (${metadata.totalItems} total)` : ''
+        }
+    );
 
     if (metadata) {
-        const paginationInfo = document.createElement('div');
-        paginationInfo.className = 'civitai-results-pagination-info';
-
-        if (metadata.currentPage) {
-            paginationInfo.innerHTML = `
-                <div>Page ${metadata.currentPage}${metadata.totalPages ? ` of ${metadata.totalPages}` : ''}</div>
-                <div class="civitai-results-pagination-detail">${metadata.pageSize || results.length} per page</div>
-            `;
-        } else if (metadata.nextCursor) {
-            paginationInfo.innerHTML = `
-                <div>Cursor-based pagination</div>
-                <div class="civitai-results-pagination-detail">More results available</div>
-            `;
-        }
+        const paginationInfo = await loadAndCreateHtmlTemplate(
+            'extensions/comfyui_sageutils/sidebar/partials/civitaiPaginationInfo.html',
+            {
+                pageLine: metadata.currentPage ? `Page ${metadata.currentPage}${metadata.totalPages ? ` of ${metadata.totalPages}` : ''}` : 'Cursor-based pagination',
+                detailText: metadata.currentPage ? `${metadata.pageSize || results.length} per page` : 'More results available'
+            }
+        );
 
         header.appendChild(paginationInfo);
     }
@@ -365,10 +349,10 @@ function displaySearchResults(container, results, options = {}) {
     const resultsGrid = document.createElement('div');
     resultsGrid.className = 'civitai-results-grid';
 
-    results.forEach(model => {
-        const modelCard = createModelCard(model, { includeNsfw });
+    for (const model of results) {
+        const modelCard = await createModelCard(model, { includeNsfw });
         resultsGrid.appendChild(modelCard);
-    });
+    }
 
     const paginationControls = document.createElement('div');
     paginationControls.className = 'civitai-pagination-controls';
@@ -400,11 +384,82 @@ function displaySearchResults(container, results, options = {}) {
     container.appendChild(paginationControls);
 }
 
-function createModelCard(model, options = {}) {
-    const { includeNsfw = false } = options;
+function createTextSpan(text) {
+    const span = document.createElement('span');
+    span.textContent = text;
+    return span;
+}
 
-    const card = document.createElement('div');
-    card.className = 'civitai-model-card';
+function createTriggerGroup(trainedWords) {
+    const group = document.createElement('div');
+    group.className = 'civitai-model-card-triggers';
+    group.textContent = `🏷️ ${trainedWords.length} triggers`;
+    return group;
+}
+
+function createVersionTriggerGroup(trainedWords) {
+    const group = document.createElement('div');
+    group.className = 'civitai-trigger-words-group';
+
+    const title = document.createElement('strong');
+    title.className = 'civitai-trigger-words-title';
+    title.textContent = 'Trigger Words:';
+
+    const list = document.createElement('div');
+    list.className = 'civitai-trigger-words';
+    trainedWords.forEach((word) => {
+        const tag = document.createElement('span');
+        tag.className = 'civitai-trigger-word';
+        tag.textContent = word;
+        list.appendChild(tag);
+    });
+
+    group.appendChild(title);
+    group.appendChild(list);
+    return group;
+}
+
+function createFileInfo(primaryFile) {
+    const fileInfo = document.createElement('div');
+    fileInfo.className = 'civitai-version-file-info';
+
+    const sizeSpan = document.createElement('span');
+    sizeSpan.textContent = `File Size: ${formatFileSize((primaryFile.sizeKB || 0) * 1024)}`;
+    fileInfo.appendChild(sizeSpan);
+
+    if (primaryFile.metadata) {
+        if (primaryFile.metadata.format) {
+            const formatSpan = document.createElement('span');
+            formatSpan.textContent = `Format: ${primaryFile.metadata.format}`;
+            fileInfo.appendChild(formatSpan);
+        }
+
+        if (primaryFile.metadata.fp) {
+            const precisionSpan = document.createElement('span');
+            precisionSpan.textContent = `Precision: ${primaryFile.metadata.fp}`;
+            fileInfo.appendChild(precisionSpan);
+        }
+    }
+
+    return fileInfo;
+}
+
+function createStatsContainer(stats) {
+    const fragment = document.createDocumentFragment();
+    if (stats.downloadCount) {
+        fragment.appendChild(createTextSpan(`📥 ${stats.downloadCount.toLocaleString()}`));
+    }
+    if (stats.favoriteCount) {
+        fragment.appendChild(createTextSpan(`❤️ ${stats.favoriteCount.toLocaleString()}`));
+    }
+    if (stats.rating) {
+        fragment.appendChild(createTextSpan(`⭐ ${stats.rating.toFixed(1)}`));
+    }
+    return fragment;
+}
+
+async function createModelCard(model, options = {}) {
+    const { includeNsfw = false } = options;
 
     const modelName = model.name || 'Unknown Model';
     const creator = model.creator ? model.creator.username : 'Unknown';
@@ -424,38 +479,65 @@ function createModelCard(model, options = {}) {
         }
     }
 
-    card.innerHTML = `
-        <div class="civitai-model-card-inner">
-            <div class="civitai-model-card-image">
-                ${imageUrl ? 
-                    `<img src="${escapeHtml(imageUrl)}" class="civitai-model-card-image-img" alt="Model preview" loading="lazy">` :
-                    `<div class="civitai-model-card-no-image">No Image</div>`
-                }
-            </div>
-            <div class="civitai-model-card-content">
-                <h4 class="civitai-model-card-title">${escapeHtml(modelName)}</h4>
-                <p class="civitai-model-card-meta">by ${escapeHtml(creator)} • ${escapeHtml(type)}</p>
-                <p class="civitai-model-card-description">${escapeHtml(description)}</p>
+    const card = await loadAndCreateHtmlTemplate(
+        'extensions/comfyui_sageutils/sidebar/partials/civitaiModelCard.html',
+        {
+            modelName,
+            creator,
+            type,
+            description
+        }
+    );
 
-                <div class="civitai-model-card-stats-row">
-                    <div class="civitai-model-card-stats">
-                        ${stats.downloadCount ? `<span>📥 ${stats.downloadCount.toLocaleString()}</span>` : ''}
-                        ${stats.favoriteCount ? `<span>❤️ ${stats.favoriteCount.toLocaleString()}</span>` : ''}
-                        ${stats.rating ? `<span>⭐ ${stats.rating.toFixed(1)}</span>` : ''}
-                    </div>
-                    ${trainedWords.length > 0 ? `<div class="civitai-model-card-triggers">🏷️ ${trainedWords.length} triggers</div>` : ''}
-                </div>
+    const imageContainer = card.querySelector('.civitai-model-card-image');
+    if (imageContainer) {
+        if (imageUrl) {
+            const img = document.createElement('img');
+            img.src = imageUrl;
+            img.className = 'civitai-model-card-image-img';
+            img.alt = 'Model preview';
+            img.loading = 'lazy';
+            imageContainer.appendChild(img);
+        } else {
+            const noImage = document.createElement('div');
+            noImage.className = 'civitai-model-card-no-image';
+            noImage.textContent = 'No Image';
+            imageContainer.appendChild(noImage);
+        }
+    }
 
-                <div class="civitai-model-card-actions">
-                    <div class="civitai-card-btn-group">
-                        <button class="civitai-card-btn civitai-details-btn">📖 Details</button>
-                        ${latestVersion ? `<button class="civitai-card-btn civitai-download-btn" data-version-id="${latestVersion.id}" data-version-name="${escapeHtml(latestVersion.name || 'Latest Version')}" data-model-id="${model.id}">📥 Download Latest</button>` : ''}
-                    </div>
-                    ${latestVersion && latestVersion.files && latestVersion.files[0] ? `<div class="civitai-card-stats-small">${formatFileSize((latestVersion.files[0].sizeKB || 0) * 1024)}</div>` : ''}
-                </div>
-            </div>
-        </div>
-    `;
+    const statsContainer = card.querySelector('.civitai-model-card-stats');
+    if (statsContainer) {
+        statsContainer.appendChild(createStatsContainer(stats));
+    }
+
+    if (trainedWords.length > 0) {
+        const triggerContainer = card.querySelector('.civitai-model-card-triggers');
+        if (triggerContainer) {
+            triggerContainer.appendChild(createTriggerGroup(trainedWords));
+        }
+    }
+
+    const buttonGroup = card.querySelector('.civitai-card-btn-group');
+    if (buttonGroup && latestVersion) {
+        const downloadBtn = document.createElement('button');
+        downloadBtn.className = 'civitai-card-btn civitai-download-btn';
+        downloadBtn.dataset.versionId = latestVersion.id;
+        downloadBtn.dataset.versionName = latestVersion.name || 'Latest Version';
+        downloadBtn.dataset.modelId = model.id;
+        downloadBtn.textContent = '📥 Download Latest';
+        buttonGroup.appendChild(downloadBtn);
+    }
+
+    if (latestVersion && latestVersion.files && latestVersion.files[0]) {
+        const fileSizeElement = document.createElement('div');
+        fileSizeElement.className = 'civitai-card-stats-small';
+        fileSizeElement.textContent = formatFileSize((latestVersion.files[0].sizeKB || 0) * 1024);
+        const fileSizeContainer = card.querySelector('.civitai-card-stats-small');
+        if (fileSizeContainer) {
+            fileSizeContainer.appendChild(fileSizeElement);
+        }
+    }
 
     const detailsBtn = card.querySelector('.civitai-details-btn');
     const downloadBtn = card.querySelector('.civitai-download-btn');
@@ -488,7 +570,7 @@ function createModelCard(model, options = {}) {
     return card;
 }
 
-function showModelDetails(model, options = {}) {
+async function showModelDetails(model, options = {}) {
     const { includeNsfw = false } = options;
 
     const modelName = model.name || 'Unknown Model';
@@ -498,52 +580,42 @@ function showModelDetails(model, options = {}) {
     const stats = model.stats || {};
     const versions = model.modelVersions || [];
 
-    const content = document.createElement('div');
-    content.className = 'civitai-dialog-content';
+    const content = await loadAndCreateHtmlTemplate(
+        'extensions/comfyui_sageutils/sidebar/partials/civitaiDetailsDialog.html',
+        {
+            modelName,
+            creator,
+            type,
+            modelUrl: getModelUrl(model.id),
+            descriptionText: stripHtml(description)
+        }
+    );
 
-    const header = document.createElement('div');
-    header.className = 'civitai-dialog-header';
-    header.innerHTML = `
-        <h2 class="civitai-dialog-title">${escapeHtml(modelName)}</h2>
-        <div class="civitai-dialog-meta">
-            <div>
-                <span class="civitai-dialog-meta-label">by</span> <strong class="civitai-dialog-meta-creator">${escapeHtml(creator)}</strong>
-                <span class="civitai-dialog-meta-label">Type:</span> <strong class="civitai-dialog-meta-type">${escapeHtml(type)}</strong>
-            </div>
-            <a href="${getModelUrl(model.id)}" target="_blank" class="civitai-dialog-link">View on Civitai →</a>
-        </div>
-        <div class="civitai-dialog-stats">
-            ${stats.downloadCount ? `<span>📥 ${stats.downloadCount.toLocaleString()} downloads</span>` : ''}
-            ${stats.favoriteCount ? `<span>❤️ ${stats.favoriteCount.toLocaleString()} favorites</span>` : ''}
-            ${stats.rating ? `<span>⭐ ${stats.rating.toFixed(1)} rating</span>` : ''}
-            ${stats.commentCount ? `<span>💬 ${stats.commentCount.toLocaleString()} comments</span>` : ''}
-        </div>
-    `;
-
-    const descriptionSection = document.createElement('div');
-    descriptionSection.className = 'civitai-dialog-description';
-    descriptionSection.innerHTML = `
-        <h3 class="civitai-dialog-description-title">Description</h3>
-        <div class="civitai-dialog-description-text">${escapeHtml(stripHtml(description))}</div>
-    `;
-
-    const versionsSection = document.createElement('div');
-    versionsSection.className = 'civitai-versions-section';
-
-    if (versions.length > 0) {
-        versionsSection.innerHTML = `
-            <h3 class="civitai-versions-title">Available Versions (${versions.length})</h3>
-        `;
-
-        versions.forEach((version, index) => {
-            const versionCard = createVersionCard(version, model.id, { includeNsfw, isLatest: index === 0 });
-            versionsSection.appendChild(versionCard);
-        });
+    const statsContainer = content.querySelector('.civitai-dialog-stats');
+    if (statsContainer) {
+        statsContainer.appendChild(createStatsContainer(stats));
     }
 
-    content.appendChild(header);
-    content.appendChild(descriptionSection);
-    content.appendChild(versionsSection);
+    let versionsSection = null;
+
+    if (versions.length > 0) {
+        versionsSection = await loadAndCreateHtmlTemplate(
+            'extensions/comfyui_sageutils/sidebar/partials/civitaiVersionSection.html',
+            {
+                versionCount: versions.length
+            }
+        );
+
+        const versionList = versionsSection.querySelector('.civitai-version-list');
+        for (const [index, version] of versions.entries()) {
+            const versionCard = await createVersionCard(version, model.id, { includeNsfw, isLatest: index === 0 });
+            versionList.appendChild(versionCard);
+        }
+    }
+
+    if (versionsSection) {
+        content.appendChild(versionsSection);
+    }
 
     const dialog = createDialog({
         title: `${modelName} - Civitai Model Details`,
@@ -555,11 +627,8 @@ function showModelDetails(model, options = {}) {
     dialog.show();
 }
 
-function createVersionCard(version, modelId, options = {}) {
+async function createVersionCard(version, modelId, options = {}) {
     const { includeNsfw = false, isLatest = false } = options;
-
-    const card = document.createElement('div');
-    card.className = `civitai-version-card${isLatest ? ' latest' : ''}`;
 
     const versionName = version.name || 'Unnamed Version';
     const createdAt = version.createdAt ? new Date(version.createdAt).toLocaleDateString() : 'Unknown date';
@@ -570,41 +639,55 @@ function createVersionCard(version, modelId, options = {}) {
     const images = version.images || [];
     const appropriateImages = images.filter(img => includeNsfw || (img.nsfwLevel || 0) <= SEARCH_CONFIG.MAX_NSFW_LEVEL).slice(0, 3);
 
-    card.innerHTML = `
-        <div class="civitai-version-header">
-            <div class="civitai-version-info">
-                <h4 class="civitai-version-title">${escapeHtml(versionName)}${isLatest ? ' <span class="civitai-version-badge">LATEST</span>' : ''}</h4>
-                <p class="civitai-version-subtitle">Released: ${createdAt}</p>
-                ${version.description ? `<p class="civitai-version-description">${escapeHtml(version.description)}</p>` : ''}
-                ${trainedWords.length > 0 ? `
-                    <div class="civitai-trigger-words-group">
-                        <strong class="civitai-trigger-words-title">Trigger Words:</strong>
-                        <div class="civitai-trigger-words">${trainedWords.map(word => `<span class="civitai-trigger-word">${escapeHtml(word)}</span>`).join('')}</div>
-                    </div>
-                ` : ''}
-                ${primaryFile ? `
-                    <div class="civitai-version-file-info">
-                        <span>File Size:</span> ${formatFileSize(primaryFile.sizeKB * 1024)}
-                        ${primaryFile.metadata ? `
-                            ${primaryFile.metadata.format ? `<span>Format:</span> ${primaryFile.metadata.format}` : ''}
-                            ${primaryFile.metadata.fp ? `<span>Precision:</span> ${primaryFile.metadata.fp}` : ''}
-                        ` : ''}
-                    </div>
-                ` : ''}
-            </div>
-            <div class="civitai-version-download-container">
-                <button class="civitai-version-download-button" data-version-id="${version.id}" data-version-name="${escapeHtml(versionName)}" data-model-id="${modelId}">📥 Download</button>
-            </div>
-        </div>
-        ${appropriateImages.length > 0 ? `
-            <div class="civitai-version-images">
-                ${appropriateImages.map(img => `<img src="${escapeHtml(img.url)}" class="civitai-version-image" data-image-url="${escapeHtml(img.url)}" alt="Example image" loading="lazy">`).join('')}
-            </div>
-        ` : ''}
-    `;
+    const latestClass = isLatest ? ' latest' : '';
 
-    const downloadBtn = card.querySelector('.civitai-version-download-button');
-    if (downloadBtn) {
+    const card = await loadAndCreateHtmlTemplate(
+        'extensions/comfyui_sageutils/sidebar/partials/civitaiVersionCard.html',
+        {
+            latestClass,
+            versionName,
+            createdAt
+        }
+    );
+
+    if (isLatest) {
+        const titleEl = card.querySelector('.civitai-version-title');
+        if (titleEl) {
+            const badge = document.createElement('span');
+            badge.className = 'civitai-version-badge';
+            badge.textContent = 'LATEST';
+            titleEl.appendChild(badge);
+        }
+    }
+
+    const descriptionContainer = card.querySelector('.civitai-version-description');
+    if (descriptionContainer && version.description) {
+        const descriptionParagraph = document.createElement('p');
+        descriptionParagraph.className = 'civitai-version-description';
+        descriptionParagraph.textContent = escapeHtml(version.description);
+        descriptionContainer.appendChild(descriptionParagraph);
+    }
+
+    const triggerContainer = card.querySelector('.civitai-trigger-words-group');
+    if (triggerContainer && trainedWords.length > 0) {
+        triggerContainer.appendChild(createVersionTriggerGroup(trainedWords));
+    }
+
+    const fileInfoContainer = card.querySelector('.civitai-version-file-info');
+    if (fileInfoContainer && primaryFile) {
+        fileInfoContainer.appendChild(createFileInfo(primaryFile));
+    }
+
+    const downloadContainer = card.querySelector('.civitai-version-download-container');
+    if (downloadContainer) {
+        const downloadBtn = document.createElement('button');
+        downloadBtn.className = 'civitai-version-download-button';
+        downloadBtn.dataset.versionId = version.id;
+        downloadBtn.dataset.versionName = escapeHtml(versionName);
+        downloadBtn.dataset.modelId = modelId;
+        downloadBtn.textContent = '📥 Download';
+        downloadContainer.appendChild(downloadBtn);
+
         downloadBtn.addEventListener('click', (e) => {
             e.stopPropagation();
             const versionId = downloadBtn.dataset.versionId;
@@ -614,10 +697,19 @@ function createVersionCard(version, modelId, options = {}) {
         });
     }
 
-    const imageElements = card.querySelectorAll('.civitai-version-image');
-    imageElements.forEach(img => {
-        img.addEventListener('click', () => showImageExpanded(img.dataset.imageUrl));
-    });
+    const imagesContainer = card.querySelector('.civitai-version-images');
+    if (imagesContainer && appropriateImages.length > 0) {
+        appropriateImages.forEach(img => {
+            const imageElement = document.createElement('img');
+            imageElement.src = img.url;
+            imageElement.className = 'civitai-version-image';
+            imageElement.dataset.imageUrl = img.url;
+            imageElement.alt = 'Example image';
+            imageElement.loading = 'lazy';
+            imageElement.addEventListener('click', () => showImageExpanded(img.url));
+            imagesContainer.appendChild(imageElement);
+        });
+    }
 
     return card;
 }

@@ -21,11 +21,24 @@ from ..utils.settings import get_setting
 from ..utils.llm import clean_response, routes_helpers, set_llm_error_reporter
 from ..utils.llm import service as llm
 from ..utils.llm.routes_helpers import get_compatible_models, get_available_presets_full
+from ..utils.llm.provider_keys import (
+    LMSTUDIO_REST_KEY,
+    NATIVE_KEY,
+    OLLAMA_REST_KEY,
+    OPENAI_KEY,
+    ROUTE_PROVIDER_KEYS,
+)
 from ..utils.config_manager import llm_prompts
 
 from .base import route_error_handler, success_response, error_response, validate_json_body
 
 logger = get_logger('routes.llm')
+
+STATUS_KEY_SUFFIX = '_available'
+
+
+def _status_key(provider_key: str) -> str:
+    return f'{provider_key}{STATUS_KEY_SUFFIX}'
 
 # Route list for documentation and registration tracking
 _route_list = []
@@ -276,10 +289,10 @@ def register_routes(routes_instance):
             }
             
             return success_response(data={
-                "lmstudio_rest": lmstudio_rest_info,
-                "ollama_rest": ollama_rest_info,
-                "openai": openai_info,
-                "native": native_info,
+                LMSTUDIO_REST_KEY: lmstudio_rest_info,
+                OLLAMA_REST_KEY: ollama_rest_info,
+                OPENAI_KEY: openai_info,
+                NATIVE_KEY: native_info,
             })
             
         except Exception as e:
@@ -349,9 +362,9 @@ def register_routes(routes_instance):
             if lmstudio_rest_enabled and llm.LMSTUDIO_REST_AVAILABLE:
                 try:
                     models = llm.get_lmstudio_rest_models()
-                    lmstudio_rest_models = get_compatible_models('lmstudio_rest', models)
-                    lmstudio_rest_tool_models = get_compatible_models('lmstudio_rest', llm.get_lmstudio_rest_tool_models())
-                    lmstudio_rest_reasoning_models = get_compatible_models('lmstudio_rest', llm.get_lmstudio_rest_reasoning_models())
+                    lmstudio_rest_models = get_compatible_models(LMSTUDIO_REST_KEY, models)
+                    lmstudio_rest_tool_models = get_compatible_models(LMSTUDIO_REST_KEY, llm.get_lmstudio_rest_tool_models())
+                    lmstudio_rest_reasoning_models = get_compatible_models(LMSTUDIO_REST_KEY, llm.get_lmstudio_rest_reasoning_models())
                     lmstudio_rest_capabilities = llm.get_lmstudio_rest_model_capabilities_map()
                 except Exception as e:
                     logger.warning(f"Failed to get LM Studio REST models: {e}")
@@ -362,9 +375,9 @@ def register_routes(routes_instance):
             if ollama_rest_enabled and llm.OLLAMA_REST_AVAILABLE:
                 try:
                     models = llm.get_ollama_rest_models()
-                    ollama_rest_models = get_compatible_models('ollama_rest', models)
-                    ollama_rest_tool_models = get_compatible_models('ollama_rest', llm.get_ollama_rest_tool_models())
-                    ollama_rest_reasoning_models = get_compatible_models('ollama_rest', llm.get_ollama_rest_reasoning_models())
+                    ollama_rest_models = get_compatible_models(OLLAMA_REST_KEY, models)
+                    ollama_rest_tool_models = get_compatible_models(OLLAMA_REST_KEY, llm.get_ollama_rest_tool_models())
+                    ollama_rest_reasoning_models = get_compatible_models(OLLAMA_REST_KEY, llm.get_ollama_rest_reasoning_models())
                     ollama_rest_capabilities = llm.get_ollama_rest_model_capabilities_map()
                 except Exception as e:
                     logger.warning(f"Failed to get Ollama REST models: {e}")
@@ -372,9 +385,9 @@ def register_routes(routes_instance):
             if openai_enabled and llm.OPENAI_AVAILABLE:
                 try:
                     models = llm.get_openai_models()
-                    openai_models = get_compatible_models('openai', models)
-                    openai_tool_models = get_compatible_models('openai', llm.get_openai_tool_models())
-                    openai_reasoning_models = get_compatible_models('openai', llm.get_openai_reasoning_models())
+                    openai_models = get_compatible_models(OPENAI_KEY, models)
+                    openai_tool_models = get_compatible_models(OPENAI_KEY, llm.get_openai_tool_models())
+                    openai_reasoning_models = get_compatible_models(OPENAI_KEY, llm.get_openai_reasoning_models())
                     openai_capabilities = llm.get_openai_model_capabilities_map()
                 except Exception as e:
                     logger.warning(f"Failed to get OpenAI models: {e}")
@@ -382,7 +395,7 @@ def register_routes(routes_instance):
             native_capabilities = {
                 model_name: {
                     'name': model_name,
-                    'provider': 'native',
+                    'provider': NATIVE_KEY,
                     'vision': False,
                     'tool_use': False,
                     'reasoning': False,
@@ -395,34 +408,34 @@ def register_routes(routes_instance):
             
             return success_response(data={
                 "models": {
-                    "lmstudio_rest": lmstudio_rest_models,
-                    "ollama_rest": ollama_rest_models,
-                    "openai": openai_models,
-                    "native": native_models,
+                    LMSTUDIO_REST_KEY: lmstudio_rest_models,
+                    OLLAMA_REST_KEY: ollama_rest_models,
+                    OPENAI_KEY: openai_models,
+                    NATIVE_KEY: native_models,
                 },
                 "capabilities": {
-                    "lmstudio_rest": lmstudio_rest_capabilities,
-                    "ollama_rest": ollama_rest_capabilities,
-                    "openai": openai_capabilities,
-                    "native": native_capabilities,
+                    LMSTUDIO_REST_KEY: lmstudio_rest_capabilities,
+                    OLLAMA_REST_KEY: ollama_rest_capabilities,
+                    OPENAI_KEY: openai_capabilities,
+                    NATIVE_KEY: native_capabilities,
                 },
                 "tool_models": {
-                    "lmstudio_rest": lmstudio_rest_tool_models,
-                    "ollama_rest": ollama_rest_tool_models,
-                    "openai": openai_tool_models,
-                    "native": [],
+                    LMSTUDIO_REST_KEY: lmstudio_rest_tool_models,
+                    OLLAMA_REST_KEY: ollama_rest_tool_models,
+                    OPENAI_KEY: openai_tool_models,
+                    NATIVE_KEY: [],
                 },
                 "reasoning_models": {
-                    "lmstudio_rest": lmstudio_rest_reasoning_models,
-                    "ollama_rest": ollama_rest_reasoning_models,
-                    "openai": openai_reasoning_models,
-                    "native": [],
+                    LMSTUDIO_REST_KEY: lmstudio_rest_reasoning_models,
+                    OLLAMA_REST_KEY: ollama_rest_reasoning_models,
+                    OPENAI_KEY: openai_reasoning_models,
+                    NATIVE_KEY: [],
                 },
                 "status": {
-                    "lmstudio_rest_available": len(lmstudio_rest_models) > 0,
-                    "ollama_rest_available": len(ollama_rest_models) > 0,
-                    "openai_available": len(openai_models) > 0,
-                    "native_available": len(native_models) > 0,
+                    _status_key(LMSTUDIO_REST_KEY): len(lmstudio_rest_models) > 0,
+                    _status_key(OLLAMA_REST_KEY): len(ollama_rest_models) > 0,
+                    _status_key(OPENAI_KEY): len(openai_models) > 0,
+                    _status_key(NATIVE_KEY): len(native_models) > 0,
                 }
             })
             
@@ -493,9 +506,9 @@ def register_routes(routes_instance):
             if lmstudio_rest_enabled and llm.LMSTUDIO_REST_AVAILABLE:
                 try:
                     models = llm.get_lmstudio_rest_vision_models()
-                    lmstudio_rest_models = get_compatible_models('lmstudio_rest', models)
-                    lmstudio_rest_tool_models = get_compatible_models('lmstudio_rest', llm.get_lmstudio_rest_tool_models())
-                    lmstudio_rest_reasoning_models = get_compatible_models('lmstudio_rest', llm.get_lmstudio_rest_reasoning_models())
+                    lmstudio_rest_models = get_compatible_models(LMSTUDIO_REST_KEY, models)
+                    lmstudio_rest_tool_models = get_compatible_models(LMSTUDIO_REST_KEY, llm.get_lmstudio_rest_tool_models())
+                    lmstudio_rest_reasoning_models = get_compatible_models(LMSTUDIO_REST_KEY, llm.get_lmstudio_rest_reasoning_models())
                     lmstudio_rest_capabilities = llm.get_lmstudio_rest_model_capabilities_map()
                 except Exception as e:
                     logger.warning(f"Failed to get LM Studio REST vision models: {e}")
@@ -506,9 +519,9 @@ def register_routes(routes_instance):
             if ollama_rest_enabled and llm.OLLAMA_REST_AVAILABLE:
                 try:
                     models = llm.get_ollama_rest_vision_models()
-                    ollama_rest_models = get_compatible_models('ollama_rest', models)
-                    ollama_rest_tool_models = get_compatible_models('ollama_rest', llm.get_ollama_rest_tool_models())
-                    ollama_rest_reasoning_models = get_compatible_models('ollama_rest', llm.get_ollama_rest_reasoning_models())
+                    ollama_rest_models = get_compatible_models(OLLAMA_REST_KEY, models)
+                    ollama_rest_tool_models = get_compatible_models(OLLAMA_REST_KEY, llm.get_ollama_rest_tool_models())
+                    ollama_rest_reasoning_models = get_compatible_models(OLLAMA_REST_KEY, llm.get_ollama_rest_reasoning_models())
                     ollama_rest_capabilities = llm.get_ollama_rest_model_capabilities_map()
                 except Exception as e:
                     logger.warning(f"Failed to get Ollama REST vision models: {e}")
@@ -516,9 +529,9 @@ def register_routes(routes_instance):
             if openai_enabled and llm.OPENAI_AVAILABLE:
                 try:
                     models = llm.get_openai_vision_models()
-                    openai_vision_models = get_compatible_models('openai', models)
-                    openai_tool_models = get_compatible_models('openai', llm.get_openai_tool_models())
-                    openai_reasoning_models = get_compatible_models('openai', llm.get_openai_reasoning_models())
+                    openai_vision_models = get_compatible_models(OPENAI_KEY, models)
+                    openai_tool_models = get_compatible_models(OPENAI_KEY, llm.get_openai_tool_models())
+                    openai_reasoning_models = get_compatible_models(OPENAI_KEY, llm.get_openai_reasoning_models())
                     openai_capabilities = llm.get_openai_model_capabilities_map()
                 except Exception as e:
                     logger.warning(f"Failed to get OpenAI vision models: {e}")
@@ -527,34 +540,34 @@ def register_routes(routes_instance):
             
             return success_response(data={
                 "models": {
-                    "lmstudio_rest": lmstudio_rest_models,
-                    "ollama_rest": ollama_rest_models,
-                    "openai": openai_vision_models,
-                    "native": native_models,
+                    LMSTUDIO_REST_KEY: lmstudio_rest_models,
+                    OLLAMA_REST_KEY: ollama_rest_models,
+                    OPENAI_KEY: openai_vision_models,
+                    NATIVE_KEY: native_models,
                 },
                 "capabilities": {
-                    "lmstudio_rest": lmstudio_rest_capabilities,
-                    "ollama_rest": ollama_rest_capabilities,
-                    "openai": openai_capabilities,
-                    "native": native_capabilities,
+                    LMSTUDIO_REST_KEY: lmstudio_rest_capabilities,
+                    OLLAMA_REST_KEY: ollama_rest_capabilities,
+                    OPENAI_KEY: openai_capabilities,
+                    NATIVE_KEY: native_capabilities,
                 },
                 "tool_models": {
-                    "lmstudio_rest": lmstudio_rest_tool_models,
-                    "ollama_rest": ollama_rest_tool_models,
-                    "openai": openai_tool_models,
-                    "native": [],
+                    LMSTUDIO_REST_KEY: lmstudio_rest_tool_models,
+                    OLLAMA_REST_KEY: ollama_rest_tool_models,
+                    OPENAI_KEY: openai_tool_models,
+                    NATIVE_KEY: [],
                 },
                 "reasoning_models": {
-                    "lmstudio_rest": lmstudio_rest_reasoning_models,
-                    "ollama_rest": ollama_rest_reasoning_models,
-                    "openai": openai_reasoning_models,
-                    "native": [],
+                    LMSTUDIO_REST_KEY: lmstudio_rest_reasoning_models,
+                    OLLAMA_REST_KEY: ollama_rest_reasoning_models,
+                    OPENAI_KEY: openai_reasoning_models,
+                    NATIVE_KEY: [],
                 },
                 "status": {
-                    "lmstudio_rest_available": len(lmstudio_rest_models) > 0,
-                    "ollama_rest_available": len(ollama_rest_models) > 0,
-                    "openai_available": len(openai_vision_models) > 0,
-                    "native_available": False,
+                    _status_key(LMSTUDIO_REST_KEY): len(lmstudio_rest_models) > 0,
+                    _status_key(OLLAMA_REST_KEY): len(ollama_rest_models) > 0,
+                    _status_key(OPENAI_KEY): len(openai_vision_models) > 0,
+                    _status_key(NATIVE_KEY): False,
                 }
             })
             
@@ -667,13 +680,13 @@ def register_routes(routes_instance):
             # Generate response based on provider
             response_text = ""
             
-            if provider == "lmstudio_rest":
+            if provider == LMSTUDIO_REST_KEY:
                 if not llm.LMSTUDIO_REST_AVAILABLE:
                     return _error_response_with_metadata(
                         'LM Studio REST is not available',
                         status=503,
                         error_code='LLM_PROVIDER_UNAVAILABLE',
-                        provider='lmstudio_rest',
+                        provider=LMSTUDIO_REST_KEY,
                         operation='generate',
                     )
 
@@ -685,13 +698,13 @@ def register_routes(routes_instance):
                     system_prompt=system_prompt,
                 )
 
-            elif provider == "ollama_rest":
+            elif provider == OLLAMA_REST_KEY:
                 if not llm.OLLAMA_REST_AVAILABLE:
                     return _error_response_with_metadata(
                         'Ollama REST is not available',
                         status=503,
                         error_code='LLM_PROVIDER_UNAVAILABLE',
-                        provider='ollama_rest',
+                        provider=OLLAMA_REST_KEY,
                         operation='generate',
                     )
 
@@ -702,13 +715,13 @@ def register_routes(routes_instance):
                     system_prompt=system_prompt,
                 )
 
-            elif provider == "openai":
+            elif provider == OPENAI_KEY:
                 if not llm.OPENAI_AVAILABLE:
                     return _error_response_with_metadata(
                         'OpenAI provider is not available',
                         status=503,
                         error_code='LLM_PROVIDER_UNAVAILABLE',
-                        provider='openai',
+                        provider=OPENAI_KEY,
                         operation='generate',
                     )
 
@@ -719,14 +732,14 @@ def register_routes(routes_instance):
                     system_prompt=system_prompt,
                 )
 
-            elif provider == "native":
+            elif provider == NATIVE_KEY:
                 available_native = _get_native_clip_models()
                 if model not in available_native:
                     return _error_response_with_metadata(
                         f"Native CLIP model '{model}' is not available",
                         status=404,
                         error_code='LLM_MODEL_NOT_FOUND',
-                        provider='native',
+                        provider=NATIVE_KEY,
                         operation='generate',
                     )
 
@@ -804,7 +817,7 @@ def register_routes(routes_instance):
             options = routes_helpers.build_generation_payload_options(provider, data)
             
             # Validate provider
-            if provider not in ["lmstudio_rest", "ollama_rest", "openai", "native"]:
+            if provider not in ROUTE_PROVIDER_KEYS:
                 return _error_response_with_metadata(
                     f"Invalid provider: {provider}. Must be 'lmstudio', 'ollama', 'openai', or 'native'",
                     status=400,
@@ -823,12 +836,12 @@ def register_routes(routes_instance):
             
             try:
                 # Generate streaming response based on provider
-                if provider == "lmstudio_rest":
+                if provider == LMSTUDIO_REST_KEY:
                     if not llm.LMSTUDIO_REST_AVAILABLE:
                         error_chunk = _sse_error_chunk(
                             'LM Studio REST is not available',
                             error_code='LLM_PROVIDER_UNAVAILABLE',
-                            provider='lmstudio_rest',
+                            provider=LMSTUDIO_REST_KEY,
                             operation='generate_stream',
                         )
                         await response.write(error_chunk.encode('utf-8'))
@@ -848,12 +861,12 @@ def register_routes(routes_instance):
                         if chunk_data.get("done", False):
                             break
 
-                elif provider == "ollama_rest":
+                elif provider == OLLAMA_REST_KEY:
                     if not llm.OLLAMA_REST_AVAILABLE:
                         error_chunk = _sse_error_chunk(
                             'Ollama REST is not available',
                             error_code='LLM_PROVIDER_UNAVAILABLE',
-                            provider='ollama_rest',
+                            provider=OLLAMA_REST_KEY,
                             operation='generate_stream',
                         )
                         await response.write(error_chunk.encode('utf-8'))
@@ -872,12 +885,12 @@ def register_routes(routes_instance):
                         if chunk_data.get("done", False):
                             break
 
-                elif provider == "openai":
+                elif provider == OPENAI_KEY:
                     if not llm.OPENAI_AVAILABLE:
                         error_chunk = _sse_error_chunk(
                             'OpenAI provider is not available',
                             error_code='LLM_PROVIDER_UNAVAILABLE',
-                            provider='openai',
+                            provider=OPENAI_KEY,
                             operation='generate_stream',
                         )
                         await response.write(error_chunk.encode('utf-8'))
@@ -896,13 +909,13 @@ def register_routes(routes_instance):
                         if chunk_data.get("done", False):
                             break
 
-                elif provider == "native":
+                elif provider == NATIVE_KEY:
                     available_native = _get_native_clip_models()
                     if model not in available_native:
                         error_chunk = _sse_error_chunk(
                             f"Native CLIP model '{model}' is not available",
                             error_code='LLM_MODEL_NOT_FOUND',
-                            provider='native',
+                            provider=NATIVE_KEY,
                             operation='generate_stream',
                         )
                         await response.write(error_chunk.encode('utf-8'))
@@ -1019,13 +1032,13 @@ def register_routes(routes_instance):
             
             response_text = ""
             
-            if provider == "lmstudio_rest":
+            if provider == LMSTUDIO_REST_KEY:
                 if not llm.LMSTUDIO_REST_AVAILABLE:
                     return _error_response_with_metadata(
                         'LM Studio REST is not available',
                         status=503,
                         error_code='LLM_PROVIDER_UNAVAILABLE',
-                        provider='lmstudio_rest',
+                        provider=LMSTUDIO_REST_KEY,
                         operation='vision_generate',
                     )
 
@@ -1038,13 +1051,13 @@ def register_routes(routes_instance):
                     system_prompt=system_prompt,
                 )
 
-            elif provider == "ollama_rest":
+            elif provider == OLLAMA_REST_KEY:
                 if not llm.OLLAMA_REST_AVAILABLE:
                     return _error_response_with_metadata(
                         'Ollama REST is not available',
                         status=503,
                         error_code='LLM_PROVIDER_UNAVAILABLE',
-                        provider='ollama_rest',
+                        provider=OLLAMA_REST_KEY,
                         operation='vision_generate',
                     )
 
@@ -1056,13 +1069,13 @@ def register_routes(routes_instance):
                     system_prompt=system_prompt,
                 )
 
-            elif provider == "openai":
+            elif provider == OPENAI_KEY:
                 if not llm.OPENAI_AVAILABLE:
                     return _error_response_with_metadata(
                         'OpenAI provider is not available',
                         status=503,
                         error_code='LLM_PROVIDER_UNAVAILABLE',
-                        provider='openai',
+                        provider=OPENAI_KEY,
                         operation='vision_generate',
                     )
 
@@ -1152,12 +1165,12 @@ def register_routes(routes_instance):
             await response.prepare(request)
             
             try:
-                if provider == "lmstudio_rest":
+                if provider == LMSTUDIO_REST_KEY:
                     if not llm.LMSTUDIO_REST_AVAILABLE:
                         error_chunk = _sse_error_chunk(
                             'LM Studio REST is not available',
                             error_code='LLM_PROVIDER_UNAVAILABLE',
-                            provider='lmstudio_rest',
+                            provider=LMSTUDIO_REST_KEY,
                             operation='vision_generate_stream',
                         )
                         await response.write(error_chunk.encode('utf-8'))
@@ -1178,12 +1191,12 @@ def register_routes(routes_instance):
                         if chunk_data.get('done', False):
                             break
 
-                elif provider == "ollama_rest":
+                elif provider == OLLAMA_REST_KEY:
                     if not llm.OLLAMA_REST_AVAILABLE:
                         error_chunk = _sse_error_chunk(
                             'Ollama REST is not available',
                             error_code='LLM_PROVIDER_UNAVAILABLE',
-                            provider='ollama_rest',
+                            provider=OLLAMA_REST_KEY,
                             operation='vision_generate_stream',
                         )
                         await response.write(error_chunk.encode('utf-8'))
@@ -1203,12 +1216,12 @@ def register_routes(routes_instance):
                         if chunk_data.get('done', False):
                             break
 
-                elif provider == "openai":
+                elif provider == OPENAI_KEY:
                     if not llm.OPENAI_AVAILABLE:
                         error_chunk = _sse_error_chunk(
                             'OpenAI provider is not available',
                             error_code='LLM_PROVIDER_UNAVAILABLE',
-                            provider='openai',
+                            provider=OPENAI_KEY,
                             operation='vision_generate_stream',
                         )
                         await response.write(error_chunk.encode('utf-8'))
@@ -1690,7 +1703,7 @@ def register_routes(routes_instance):
             # Get all presets
             builtin_presets = {
                 'descriptive_prompt': {
-                    'provider': 'lmstudio_rest',
+                    'provider': LMSTUDIO_REST_KEY,
                     'model': 'gemma3:12b',
                     'promptTemplate': 'description/Descriptive Prompt',
                     'systemPrompt': 'e621_prompt_generator',
@@ -1702,7 +1715,7 @@ def register_routes(routes_instance):
                     }
                 },
                 'e621_description': {
-                    'provider': 'lmstudio_rest',
+                    'provider': LMSTUDIO_REST_KEY,
                     'model': 'gemma3:12b',
                     'promptTemplate': 'description/Descriptive Prompt',
                     'systemPrompt': 'e621_prompt_generator',
@@ -1714,7 +1727,7 @@ def register_routes(routes_instance):
                     }
                 },
                 'casual_chat': {
-                    'provider': 'lmstudio_rest',
+                    'provider': LMSTUDIO_REST_KEY,
                     'model': None,
                     'promptTemplate': '',
                     'systemPrompt': 'default',
@@ -1740,7 +1753,7 @@ def register_routes(routes_instance):
                 return error_response(f"Preset '{preset_id}' not found", status=404)
             
             # Get provider and model
-            provider = routes_helpers.normalize_provider(preset.get('provider', 'lmstudio_rest'))
+            provider = routes_helpers.normalize_provider(preset.get('provider', LMSTUDIO_REST_KEY))
             model = preset.get('model')
             
             if not model:
@@ -1804,7 +1817,7 @@ def register_routes(routes_instance):
             }
             
             # Add provider-specific options
-            if provider == 'ollama_rest':
+            if provider == OLLAMA_REST_KEY:
                 if 'top_k' in settings:
                     options['top_k'] = settings['top_k']
                 if 'top_p' in settings:
@@ -1818,7 +1831,7 @@ def register_routes(routes_instance):
             # Generate response
             response_text = ""
             
-            if provider == "lmstudio_rest":
+            if provider == LMSTUDIO_REST_KEY:
                 if not llm.LMSTUDIO_REST_AVAILABLE:
                     return error_response("LM Studio REST is not available", status=503)
 
@@ -1831,7 +1844,7 @@ def register_routes(routes_instance):
                     system_prompt=system_prompt_text,
                 )
 
-            elif provider == "ollama_rest":
+            elif provider == OLLAMA_REST_KEY:
                 if not llm.OLLAMA_REST_AVAILABLE:
                     return error_response("Ollama REST is not available", status=503)
 
@@ -1844,7 +1857,7 @@ def register_routes(routes_instance):
                     keep_alive=str(settings.get('keepAlive', '5m') or '5m'),
                 )
 
-            elif provider == "openai":
+            elif provider == OPENAI_KEY:
                 if not llm.OPENAI_AVAILABLE:
                     return error_response("OpenAI provider is not available", status=503)
 
@@ -1918,7 +1931,7 @@ def register_routes(routes_instance):
             model = str(data.get("model", ""))
             keep_alive = data.get("keep_alive", 60)
 
-            if not provider or provider not in ("lmstudio_rest", "ollama_rest", "openai", "native"):
+            if not provider or provider not in ROUTE_PROVIDER_KEYS:
                 return _error_response_with_metadata(
                     f"Invalid or missing provider: {provider!r}. Must be 'lmstudio', 'ollama', 'openai', or 'native'",
                     status=400,
@@ -1935,13 +1948,13 @@ def register_routes(routes_instance):
 
             llm.ensure_llm_initialized(force=True)
 
-            if provider == "lmstudio_rest":
+            if provider == LMSTUDIO_REST_KEY:
                 if not llm.LMSTUDIO_REST_AVAILABLE:
                     return _error_response_with_metadata(
                         'LM Studio REST is not available',
                         status=503,
                         error_code='LLM_PROVIDER_UNAVAILABLE',
-                        provider='lmstudio_rest',
+                        provider=LMSTUDIO_REST_KEY,
                         operation='load_model',
                     )
                 # LM Studio REST can return load failures even when the model is already
@@ -1953,42 +1966,42 @@ def register_routes(routes_instance):
                         f"Model '{model}' is not available in LM Studio REST",
                         status=404,
                         error_code='LLM_MODEL_NOT_FOUND',
-                        provider='lmstudio_rest',
+                        provider=LMSTUDIO_REST_KEY,
                         operation='load_model',
                     )
 
-            elif provider == "ollama_rest":
+            elif provider == OLLAMA_REST_KEY:
                 if not llm.OLLAMA_REST_AVAILABLE:
                     return _error_response_with_metadata(
                         'Ollama REST is not available',
                         status=503,
                         error_code='LLM_PROVIDER_UNAVAILABLE',
-                        provider='ollama_rest',
+                        provider=OLLAMA_REST_KEY,
                         operation='load_model',
                     )
                 # No dedicated preload endpoint in Ollama REST mode here.
                 # Keep behavior consistent with native/openai by validating selection.
 
-            elif provider == "openai":
+            elif provider == OPENAI_KEY:
                 if not llm.OPENAI_AVAILABLE:
                     return _error_response_with_metadata(
                         'OpenAI provider is not available',
                         status=503,
                         error_code='LLM_PROVIDER_UNAVAILABLE',
-                        provider='openai',
+                        provider=OPENAI_KEY,
                         operation='load_model',
                     )
                 # OpenAI-compatible providers do not expose a standard load API.
                 # Treat this as a successful readiness check.
 
-            elif provider == "native":
+            elif provider == NATIVE_KEY:
                 available_native = _get_native_clip_models()
                 if model not in available_native:
                     return _error_response_with_metadata(
                         f"Native CLIP model '{model}' is not available",
                         status=404,
                         error_code='LLM_MODEL_NOT_FOUND',
-                        provider='native',
+                        provider=NATIVE_KEY,
                         operation='load_model',
                     )
                 # Native models are loaded on demand for generation; this validates selection.
@@ -2063,13 +2076,13 @@ def register_routes(routes_instance):
 
             response_text = ""
 
-            if provider == "lmstudio_rest":
+            if provider == LMSTUDIO_REST_KEY:
                 if not llm.LMSTUDIO_REST_AVAILABLE:
                     return _error_response_with_metadata(
                         'LM Studio REST is not available',
                         status=503,
                         error_code='LLM_PROVIDER_UNAVAILABLE',
-                        provider='lmstudio_rest',
+                        provider=LMSTUDIO_REST_KEY,
                         operation='generate_only',
                     )
                 response_text = llm.lmstudio_rest_generate(
@@ -2080,14 +2093,14 @@ def register_routes(routes_instance):
                     system_prompt=system_prompt,
                 )
 
-            elif provider == "native":
+            elif provider == NATIVE_KEY:
                 available_native = _get_native_clip_models()
                 if model not in available_native:
                     return _error_response_with_metadata(
                         f"Native CLIP model '{model}' is not available",
                         status=404,
                         error_code='LLM_MODEL_NOT_FOUND',
-                        provider='native',
+                        provider=NATIVE_KEY,
                         operation='generate_only',
                     )
 
