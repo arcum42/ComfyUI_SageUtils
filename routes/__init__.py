@@ -202,21 +202,14 @@ def get_route_documentation():
 
 
 # Export commonly used utilities
+
+# Re-export commonly used utilities for backwards compatibility
 from .base import (
     route_error_handler,
     validate_json_body,
     validate_query_params,
-    validate_file_path,
-    get_secure_path,
-    format_api_response,
-    get_file_info,
-    format_file_size,
     success_response,
     error_response,
-    not_found_response,
-    bad_request_response,
-    server_error_response,
-    SecurityError
 )
 
 __all__ = [
@@ -230,15 +223,6 @@ __all__ = [
     'route_error_handler',
     'validate_json_body',
     'validate_query_params',
-    'validate_file_path',
-    'get_secure_path',
-    'format_api_response',
-    'get_file_info',
-    'format_file_size',
     'success_response',
     'error_response',
-    'not_found_response',
-    'bad_request_response',
-    'server_error_response',
-    'SecurityError'
 ]
