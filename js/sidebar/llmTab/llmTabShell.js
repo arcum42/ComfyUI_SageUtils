@@ -32,44 +32,6 @@ const LLM_TAB_PROMPT_KEY = 'llm_tab_prompt_text';
 const LLM_LAST_PROVIDER_KEY = 'llm_last_selected_provider';
 const LLM_ACTIVE_SUBTAB_KEY = 'llm_last_active_subtab';
 
-// Expansion feature flags: enable via localStorage in browser console:
-//   localStorage.setItem('sageutils_llm_context_sources', 'true')
-//   localStorage.setItem('sageutils_llm_tool_calls', 'true')
-function isExpansionEnabled(flag) {
-    try {
-        return window.localStorage?.getItem(`sageutils_llm_${flag}`) === 'true';
-    } catch {
-        return false;
-    }
-}
-
-function createExpansionScaffold(label, description) {
-    const el = document.createElement('div');
-    el.className = 'llm-expansion-scaffold';
-    el.setAttribute('aria-label', label);
-
-    const header = document.createElement('div');
-    header.className = 'llm-expansion-scaffold-header';
-
-    const title = document.createElement('span');
-    title.className = 'llm-expansion-scaffold-title';
-    title.textContent = label;
-
-    const badge = document.createElement('span');
-    badge.className = 'llm-expansion-scaffold-badge';
-    badge.textContent = 'Coming Soon';
-
-    header.appendChild(title);
-    header.appendChild(badge);
-
-    const body = document.createElement('p');
-    body.className = 'llm-expansion-scaffold-body';
-    body.textContent = description;
-
-    el.appendChild(header);
-    el.appendChild(body);
-    return el;
-}
 
 const LLM_SUBTABS = [
     {
@@ -248,22 +210,10 @@ function renderActiveSubtab(state, contentHost, sections) {
         panel.appendChild(sections.responseSection);
     } else if (activeSubtab === 'chat') {
         panel.appendChild(sections.historySection);
-        if (isExpansionEnabled('context_sources')) {
-            panel.appendChild(createExpansionScaffold(
-                '📁 Context Sources',
-                'Attach files, workflow node snippets, and RAG index references to your conversation.'
-            ));
-        }
         panel.appendChild(sections.visionSection);
         panel.appendChild(sections.inputSection);
         panel.appendChild(sections.sendBtn);
         panel.appendChild(sections.responseSection);
-        if (isExpansionEnabled('tool_calls')) {
-            panel.appendChild(createExpansionScaffold(
-                '🔧 Tool Calls',
-                'Tool execution timeline will appear here when the active model supports function calling.'
-            ));
-        }
     } else {
         panel.appendChild(sections.advancedOptions);
         // Restore provider-specific section visibility (sections are remounted on each subtab switch)
