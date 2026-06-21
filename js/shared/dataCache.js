@@ -260,23 +260,6 @@ class DataCacheClass {
     }
   }
   
-  /**
-   * Clear all cached data
-   */
-  clear() {
-    this.cache.clear();
-    this.timestamps.clear();
-    this.pending.clear();
-    
-    // Reset all statuses to pending
-    Object.values(CacheKeys).forEach(key => {
-      this.status.set(key, CacheStatus.PENDING);
-    });
-    
-    if (this.debug) {
-      console.log('[DataCache] CLEAR ALL');
-    }
-  }
   
   /**
    * Enforce maximum cache size by evicting oldest entries
@@ -338,17 +321,6 @@ class DataCacheClass {
     };
   }
   
-  /**
-   * Reset metrics
-   */
-  resetMetrics() {
-    this.metrics = {
-      hits: 0,
-      misses: 0,
-      loads: 0,
-      errors: 0
-    };
-  }
   
   /**
    * Preload cache hash data
