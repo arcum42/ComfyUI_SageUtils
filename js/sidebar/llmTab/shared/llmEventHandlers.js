@@ -223,40 +223,52 @@ export function setupEventHandlers(
         });
     }
 
+
     // ========== History Section Events ==========
 
     // New conversation button
     const newConversationBtn = historySection.querySelector('.llm-new-conversation-btn');
     if (newConversationBtn) {
-        handleNewConversationClick(state, historySection, responseSection);
+        newConversationBtn.addEventListener('click', () => {
+            llmHistoryEvents.handleNewConversationClick(state, historySection, responseSection);
+        });
     }
 
     // Export button
     const exportBtn = historySection.querySelector('.llm-export-history-btn');
     if (exportBtn) {
-        handleExportClick(state);
+        exportBtn.addEventListener('click', () => {
+            llmHistoryEvents.handleExportClick(state);
+        });
     }
 
-    // Import button
+    // Import button  
     const importBtn = historySection.querySelector('.llm-import-history-btn');
     if (importBtn) {
-        handleImportClick(state, historySection, responseSection);
+        importBtn.addEventListener('click', () => {
+            llmHistoryEvents.handleImportClick(state, historySection, responseSection);
+        });
     }
 
     // Clear button
     const clearBtn = historySection.querySelector('.llm-clear-history-btn');
     if (clearBtn) {
-        handleClearClick(state, historySection, responseSection);
+        clearBtn.addEventListener('click', () => {
+            llmHistoryEvents.handleClearClick(state, historySection, responseSection);
+        });
     }
 
     // Skip save checkbox - update message in real-time
-    handleSkipSaveCheckboxChange(historySection);
+    llmHistoryEvents.handleSkipSaveCheckboxChange(historySection);
 
     // Save to History button
     const saveToHistoryBtn = responseSection?.querySelector('.llm-save-to-history-btn');
     if (saveToHistoryBtn) {
-        handleSaveToHistoryClick(saveToHistoryBtn, state, historySection, responseSection);
+        saveToHistoryBtn.addEventListener('click', () => {
+            llmHistoryEvents.handleSaveToHistoryClick(saveToHistoryBtn, state, historySection, responseSection);
+        });
     }
+
 
     
     // Initialize provider-specific settings visibility
