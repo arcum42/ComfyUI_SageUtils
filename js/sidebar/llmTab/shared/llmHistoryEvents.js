@@ -3,8 +3,8 @@
  * Handles conversation history UI events (new/export/import/clear/skip-save/save-to-history)
  */
 
-import { addMessageToHistory, saveConversationHistory } from '../../compose/llmGenerationHandler.js';
-import { renderHistory as llmRenderHistory, updateConversationList as llmUpdateConvList } from '../../chat/llmHistorySection.js';
+import { addMessageToHistory, startNewConversation, saveConversationHistory } from '../compose/llmGenerationHandler.js';
+import { renderHistory as llmRenderHistory, updateConversationList as llmUpdateConvList } from '../chat/llmHistorySection.js';
 
 // ────────────────────────────────────────
 // New Conversation Handler
@@ -14,7 +14,8 @@ import { renderHistory as llmRenderHistory, updateConversationList as llmUpdateC
  * Start a new conversation.
  */
 export async function handleNewConversationClick(state, historySection, responseSection) {
-    const { startNewConversation: startNew } = await import('../../compose/llmGenerationHandler.js');
+        // Use top-level imported function directly
+    const startNew = startNewConversation;
     
     // Clear current state
     state.conversationHistory = [];
@@ -187,7 +188,6 @@ export async function handleSaveToHistoryClick(saveToHistoryBtn, state, historyS
         model: state._unsavedModel
     });
 
-    const { updateConversationList } = await import('../../chat/llmHistorySection.js');
 
     // Update conversation list UI
     if (updateConversationList) {
