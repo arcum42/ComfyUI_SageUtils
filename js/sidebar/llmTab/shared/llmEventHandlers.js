@@ -9,6 +9,11 @@ import { showSavePresetDialog, showManagePresetsDialog } from './llmPresetDialog
 import { clearAllImages, handleFileUpload } from '../compose/llmVisionSection.js';
 import { saveSettings, applyModelSettingsForActiveSelection, setModelContext } from '../../../llm/llmSettings.js';
 import { getModelCapabilityFlags } from '../../../llm/llmProviders.js';
+import * as llmProviderEvents from './llmProviderEvents.js';
+import * as llmTemplateEvents from './llmTemplateEvents.js';
+import * as llmPresetEvents from './llmPresetEvents.js';
+import * as llmVisionEvents from './llmVisionEvents.js';
+import * as llmHistoryEvents from './llmHistoryEvents.js';
 
 const LLM_LAST_PROVIDER_KEY = 'llm_last_selected_provider';
 
@@ -76,439 +81,183 @@ export function setupEventHandlers(
     // Reset settings button
     const resetSettingsBtn = advancedOptions.querySelector('.llm-reset-settings-btn');
     
-    // ========== Provider & Model Events ==========
-    
-    // Provider change
+
+    // ========== Provider & Model Events (delegated)
+
     providerSelect.addEventListener('change', async () => {
-        const previousProvider = state.provider;
-        const previousModel = state.model;
-        setModelContext(state.settings, previousProvider, previousModel);
-        saveSettings(state.settings);
-
-        state.provider = providerSelect.value;
-        try {
-            localStorage.setItem(LLM_LAST_PROVIDER_KEY, state.provider);
-        } catch (error) {
-            console.warn('[LLM] Failed to persist last selected provider:', error);
-        }
-        const preferredModel = state.lastModelsByProvider?.[state.provider] || null;
-        updateModelDropdown(state, modelSelect, state.provider, preferredModel);
-        await loadModels(state, modelSelection, visionSection); // Reload to update status
-
-        // Resolve settings for the newly selected model
-        applyModelSettingsForActiveSelection(state, advancedOptions);
-        
-        // Show/hide provider-specific settings
-        showProviderOptions(advancedOptions, state.provider);
-        updateCapabilityControlledOptions(state, advancedOptions);
-        
-        // Update vision section visibility
-        updateVisionSectionVisibility(state, visionSection);
+        await llmProviderEvents.handleProviderChange(
+            state, providerSelect,
+            modelSelection, visionSection, advancedOptions,
+            updateModelDropdown, loadModels,
+            setModelContext, saveSettings,
+            applyModelSettingsForActiveSelection,
+            showProviderOptions,
+            updateCapabilityControlledOptions, updateVisionSectionVisibility
+        );
     });
-    
-    // Model change
+
     modelSelect.addEventListener('change', () => {
-        const previousProvider = state.provider;
-        const previousModel = state.model;
-        setModelContext(state.settings, previousProvider, previousModel);
-        saveSettings(state.settings);
-
-        state.model = modelSelect.value;
-        rememberProviderModel(state, state.provider, state.model);
-
-        applyModelSettingsForActiveSelection(state, advancedOptions);
-        updateCapabilityControlledOptions(state, advancedOptions);
-        
-        // Update vision section visibility
-        updateVisionSectionVisibility(state, visionSection);
+        llmProviderEvents.handleModelChange(
+            state, modelSelect,
+            advancedOptions,
+            rememberProviderModel,
+            setModelContext, saveSettings,
+            applyModelSettingsForActiveSelection,
+            updateCapabilityControlledOptions, updateVisionSectionVisibility
+        );
     });
-    
-    // Refresh button
+
     refreshBtn.addEventListener('click', async () => {
-        await loadModels(state, modelSelection, visionSection, true); // Force re-initialization
-        applyModelSettingsForActiveSelection(state, advancedOptions);
+        await llmProviderEvents.handleRefreshModels(
+            state, modelSelection, visionSection, advancedOptions,
+            loadModels, applyModelSettingsForActiveSelection
+        );
     });
-    
+
     // ========== Preset Events ==========
-    
+
     // Preset selection change
     if (presetSelect) {
         presetSelect.addEventListener('change', async () => {
-            const presetId = presetSelect.value;
-            if (presetId) {
-                await applyPresetToUI(state, presetId, modelSelection, advancedOptions, inputSection);
-            }
+            await llmPresetEvents.handlePresetChange(
+                state, presetSelect,
+                modelSelection, loadPresets, showNotification
+            );
         });
     }
-    
+
     // Save preset button
     if (savePresetBtn) {
         savePresetBtn.addEventListener('click', () => {
-            showSavePresetDialog(state, modelSelection, loadPresets, showNotification);
+            llmPresetEvents.handleSavePresetClick(
+                showSavePresetDialog, state, modelSelection, loadPresets, showNotification
+            );
         });
     }
-    
+
     // Manage presets button
     if (managePresetsBtn) {
         managePresetsBtn.addEventListener('click', () => {
-            showManagePresetsDialog(
-                state,
-                modelSelection,
-                advancedOptions,
-                inputSection,
-                loadPresets,
-                applyPresetToUI,
-                showNotification
+            llmPresetEvents.handleManagePresetsClick(
+                showManagePresetsDialog, state,
+                modelSelection, loadPresets, showNotification
             );
         });
     }
-    
+
     // ========== Template & Extras Events ==========
-    
-    // Category change - update template dropdown
-    if (categorySelect) {
+
+    // Category change
+    if (categorySelect && templateSelect) {
         categorySelect.addEventListener('change', () => {
-            const category = categorySelect.value;
-            state.selectedCategory = category;
-            
-            if (!category || !state.prompts?.base) {
-                templateSelect.innerHTML = '<option value="">Select template...</option>';
-                templateSelect.disabled = true;
-                return;
-            }
-            
-            // Filter templates by category
-            const options = ['<option value="">Select template...</option>'];
-            Object.entries(state.prompts.base).forEach(([key, template]) => {
-                if (template.category === category) {
-                    options.push(`<option value="${key}">${template.name}</option>`);
-                }
-            });
-            
-            templateSelect.innerHTML = options.join('');
-            templateSelect.disabled = false;
+            llmTemplateEvents.handleCategoryChange(state, categorySelect, templateSelect);
         });
     }
-    
-    // Template change - populate main textarea
-    if (templateSelect) {
+
+    // Template change
+    if (templateSelect && textarea) {
         templateSelect.addEventListener('change', () => {
-            const templateKey = templateSelect.value;
-            state.settings.promptTemplate = templateKey;
-            
-            if (templateKey && state.prompts?.base?.[templateKey]) {
-                const template = state.prompts.base[templateKey];
-                // Populate main prompt textarea
-                if (template.prompt && textarea) {
-                    textarea.value = template.prompt;
-                    // Trigger character counter update
-                    textarea.dispatchEvent(new Event('input'));
-                }
-            }
+            llmTemplateEvents.handleTemplateChange(state, templateSelect, textarea);
         });
     }
-    
-    // Extras checkboxes change
+
+    // Extras checkboxes
     if (extrasGrid) {
         extrasGrid.addEventListener('change', (e) => {
-            if (e.target.type === 'checkbox' && e.target.dataset.extraKey) {
-                const key = e.target.dataset.extraKey;
-                state.selectedExtras[key] = e.target.checked;
-            }
+            llmTemplateEvents.handleExtrasChange(state, e);
         });
     }
-    
-    // System prompt change
+
+    // System prompt
     if (systemPromptTextarea) {
         systemPromptTextarea.addEventListener('input', () => {
-            state.settings.systemPrompt = systemPromptTextarea.value;
-            saveSettings(state.settings);
+            llmTemplateEvents.handleSystemPromptChange(state, systemPromptTextarea, saveSettings);
         });
     }
-    
-    // ========== Compose Template Section Events ==========
-    
-    setupComposeTemplateHandlers(state, inputSection, textarea);
-    
-    // ========== Settings Events ==========
-    
-    // Setup all slider and input event handlers
-    setupSettingsEventHandlers(state, advancedOptions);
-    showProviderOptions(advancedOptions, state.provider);
-    updateCapabilityControlledOptions(state, advancedOptions);
-    updateVisionSectionVisibility(state, visionSection);
-    
-    // Reset settings button
-    if (resetSettingsBtn) {
-        resetSettingsBtn.addEventListener('click', () => {
-            if (confirm('Reset all settings to defaults?')) {
-                resetSettingsToDefaults(state, advancedOptions);
-            }
-        });
-    }
-    
-    // ========== Generation Events ==========
-    
-    // Send button
-    sendBtn.addEventListener('click', () => {
-        handleSend(state, textarea, responseSection, sendBtn, stopBtn, historySection, updateConversationList);
-    });
-    
-    // Ctrl+Enter on textarea to send
-    textarea.addEventListener('keydown', (e) => {
-        if (e.ctrlKey && e.key === 'Enter') {
-            e.preventDefault();
-            handleSend(state, textarea, responseSection, sendBtn, stopBtn, historySection, updateConversationList);
-        }
-    });
-    
-    // Stop button
-    stopBtn.addEventListener('click', () => {
-        handleStop(state, responseSection, sendBtn, stopBtn);
-    });
-    
-    // From node button
-    const fromNodeBtn = inputSection.querySelector('.llm-from-node-btn');
-    if (fromNodeBtn) {
-        fromNodeBtn.addEventListener('click', () => {
-            handleCopyFromNode(textarea, app, showNotification);
-        });
-    }
-    
-    // Copy button
-    copyBtn.addEventListener('click', () => {
-        handleCopy(responseSection, copyBtn);
-    });
-    
-    // Copy to node button
-    copyToNodeBtn.addEventListener('click', () => {
-        handleCopyToNode(responseSection, copyToNodeBtn, app);
-    });
-    
-    // Send to Prompt Builder button
-    const sendToPromptBtn = responseSection.querySelector('.llm-send-to-prompt-btn');
-    if (sendToPromptBtn) {
-        sendToPromptBtn.addEventListener('click', () => {
-            const responseDisplay = responseSection.querySelector('.llm-response-display');
-            const responseText = responseDisplay.textContent.trim();
-            
-            if (!responseText || responseText === 'Response will appear here...') {
-                showStatus(responseSection, 'No response to send', 'error');
-                return;
-            }
-            
-            // Visual feedback - show sending state
-            const originalText = sendToPromptBtn.textContent;
-            sendToPromptBtn.disabled = true;
-            sendToPromptBtn.textContent = '📤 Sending...';
-            
-            // Use cross-tab messaging to send text to Prompt Builder
-            import('../../../shared/crossTabMessaging.js').then(({ sendTextToPromptBuilder }) => {
-                sendTextToPromptBuilder(responseText, {
-                    source: 'llm',
-                    autoSwitch: true
-                });
-                showNotification('Response sent to Prompt Builder', 'success');
-                
-                // Visual feedback - show success
-                sendToPromptBtn.textContent = '✓ Sent!';
-                sendToPromptBtn.classList.add('llm-btn-success-flash');
-                
-                setTimeout(() => {
-                    sendToPromptBtn.textContent = originalText;
-                    sendToPromptBtn.classList.remove('llm-btn-success-flash');
-                    sendToPromptBtn.disabled = false;
-                }, 1500);
-            }).catch(err => {
-                console.error('[LLM] Failed to send to Prompt Builder:', err);
-                showStatus(responseSection, 'Failed to send to Prompt Builder', 'error');
-                
-                // Reset button on error
-                sendToPromptBtn.textContent = originalText;
-                sendToPromptBtn.disabled = false;
-            });
-        });
-    }
-    
+
     // ========== Vision Events ==========
-    
-    // Click upload zone to trigger file input
+
+    // Upload zone click
     if (uploadZone) {
         uploadZone.addEventListener('click', () => {
-            fileInput.click();
+            llmVisionEvents.handleUploadZoneClick(uploadZone, fileInput);
         });
     }
-    
+
     // File input change
-    if (fileInput) {
-        fileInput.addEventListener('change', async () => {
-            const files = Array.from(fileInput.files);
-            await handleFileUpload(state, visionSection, files);
-            fileInput.value = ''; // Reset input
-        });
-    }
-    
-    // Drag and drop handlers
+    fileInput.addEventListener('change', async () => {
+        await llmVisionEvents.handleFileInputChange(
+            state, visionSection, fileInput,
+            handleFileUpload
+        );
+    });
+
+    // Drag and drop
     if (uploadZone) {
         uploadZone.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            uploadZone.classList.add('drag-over');
+            llmVisionEvents.handleDragOver(e, uploadZone);
         });
-        
         uploadZone.addEventListener('dragleave', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            uploadZone.classList.remove('drag-over');
+            llmVisionEvents.handleDragLeave(e, uploadZone);
         });
-        
         uploadZone.addEventListener('drop', async (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            uploadZone.classList.remove('drag-over');
-            
-            const files = Array.from(e.dataTransfer.files);
-            await handleFileUpload(state, visionSection, files);
+            await llmVisionEvents.handleDrop(
+                state, visionSection, uploadZone, e,
+                handleFileUpload
+            );
         });
     }
-    
-    // Clipboard paste handler (on document for global paste)
-    const pasteHandler = async (e) => {
-        // Only handle paste when LLM tab is active and vision section is visible
-        if (!visionSection || visionSection.classList.contains('llm-hidden')) return;
-        
-        const items = Array.from(e.clipboardData.items);
-        const imageItems = items.filter(item => item.type.startsWith('image/'));
-        
-        if (imageItems.length > 0) {
-            e.preventDefault();
-            const files = await Promise.all(
-                imageItems.map(item => {
-                    return new Promise((resolve) => {
-                        const blob = item.getAsFile();
-                        resolve(blob);
-                    });
-                })
-            );
-            await handleFileUpload(state, visionSection, files.filter(Boolean));
-        }
-    };
-    
-    document.addEventListener('paste', pasteHandler);
-    
-    // Store paste handler for cleanup
-    state._pasteHandler = pasteHandler;
-    
-    // Clear all images button
+
+    // Clipboard paste
+    document.addEventListener('paste', async (e) => {
+        const pasteHandler = await llmVisionEvents.createPasteHandler(
+            state, visionSection,
+            handleFileUpload
+        );
+    });
+
+    // Clear all images
     if (clearAllBtn) {
         clearAllBtn.addEventListener('click', () => {
-            clearAllImages(state, visionSection);
+            llmVisionEvents.handleClearAllImagesClick(state, visionSection);
         });
     }
-    
+
     // ========== History Section Events ==========
-    
+
     // New conversation button
     const newConversationBtn = historySection.querySelector('.llm-new-conversation-btn');
     if (newConversationBtn) {
-        newConversationBtn.addEventListener('click', () => {
-            startNewConversation(state, historySection, responseSection, updateConversationList);
-        });
+        handleNewConversationClick(state, historySection, responseSection);
     }
-    
+
     // Export button
     const exportBtn = historySection.querySelector('.llm-export-history-btn');
     if (exportBtn) {
-        exportBtn.addEventListener('click', () => {
-            exportConversationHistory(state);
-        });
+        handleExportClick(state);
     }
-    
+
     // Import button
     const importBtn = historySection.querySelector('.llm-import-history-btn');
     if (importBtn) {
-        importBtn.addEventListener('click', () => {
-            importConversationHistory(state, historySection, responseSection, updateConversationList);
-        });
+        handleImportClick(state, historySection, responseSection);
     }
-    
+
     // Clear button
     const clearBtn = historySection.querySelector('.llm-clear-history-btn');
     if (clearBtn) {
-        clearBtn.addEventListener('click', () => {
-            clearConversationHistory(state, historySection, responseSection, updateConversationList);
-        });
+        handleClearClick(state, historySection, responseSection);
     }
-    
-    // ========== Skip Save Checkbox Events ==========
-    
+
     // Skip save checkbox - update message in real-time
-    const skipSaveCheckbox = inputSection.querySelector('.llm-skip-save-checkbox');
-    if (skipSaveCheckbox) {
-        skipSaveCheckbox.addEventListener('change', () => {
-            const emptyMessage = historySection.querySelector('.llm-history-empty');
-            if (emptyMessage && !emptyMessage.classList.contains('llm-hidden')) {
-                if (skipSaveCheckbox.checked) {
-                    emptyMessage.textContent = 'History saving disabled (uncheck to save)';
-                } else {
-                    emptyMessage.textContent = 'No conversation history yet';
-                }
-            }
-        });
-    }
-    
-    // Save to History button - retroactively save skipped conversation
+    handleSkipSaveCheckboxChange(historySection);
+
+    // Save to History button
     const saveToHistoryBtn = responseSection?.querySelector('.llm-save-to-history-btn');
     if (saveToHistoryBtn) {
-        saveToHistoryBtn.addEventListener('click', async () => {
-            // Check if we have unsaved prompt and response
-            if (!state._unsavedPrompt || !state._unsavedResponse) {
-                console.warn('No unsaved conversation to save');
-                return;
-            }
-            
-            // Import necessary functions
-            const { addMessageToHistory, saveConversationHistory } = await import('../compose/llmGenerationHandler.js');
-            const { renderHistory } = await import('../chat/llmHistorySection.js');
-            const { updateConversationList } = await import('../chat/llmHistorySection.js');
-            
-            // Save user message
-            addMessageToHistory(state, 'user', state._unsavedPrompt, {
-                provider: state._unsavedProvider,
-                model: state._unsavedModel
-            });
-            
-            // Save assistant response
-            addMessageToHistory(state, 'assistant', state._unsavedResponse, {
-                provider: state._unsavedProvider,
-                model: state._unsavedModel
-            });
-            
-            // Update conversation list UI
-            if (updateConversationList) {
-                updateConversationList(state, historySection, responseSection);
-            }
-            
-            // Render the current conversation's messages
-            const currentConversation = state.conversationHistory?.find(c => c.id === state.currentConversationId);
-            if (currentConversation) {
-                // Delete handler for individual messages
-                const handleDeleteMessage = (index) => {
-                    currentConversation.messages.splice(index, 1);
-                    currentConversation.updated = Date.now();
-                    saveConversationHistory(state.conversationHistory);
-                    renderHistory(historySection, currentConversation.messages, handleDeleteMessage);
-                    updateConversationList(state, historySection, responseSection);
-                };
-                
-                renderHistory(historySection, currentConversation.messages, handleDeleteMessage);
-            }
-            
-            // Hide the button
-        saveToHistoryBtn.classList.add('llm-hidden');
-            console.log('Conversation saved to history');
-        });
+        handleSaveToHistoryClick(saveToHistoryBtn, state, historySection, responseSection);
     }
+
     
     // Initialize provider-specific settings visibility
     showProviderOptions(advancedOptions, state.provider);
