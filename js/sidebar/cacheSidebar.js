@@ -26,7 +26,7 @@ import { createCivitaiSearchTab } from "./civitaiSearchTab.js";
 import { createImageGalleryTab } from "./imageGalleryTab.js";
 import { createPromptBuilderTab } from "./promptBuilderTab.js";
 import { createLLMTab } from "./llmTab.js";
-import { createTestSidebarTab } from "./testSidebarTab.js";
+//import { createTestSidebarTab } from "./testSidebarTab.js";
 
 // Import cache API functions
 import { 
@@ -290,7 +290,7 @@ function createTabManager(container, tabVisibility = {}, tabContentFactories = {
         tabManager.addTab('llm', 'LLM', tabContentFactories.llm);
     }
     
-    tabManager.addTab('testcss', 'Test CSS', tabContentFactories.testcss);
+    // tabManager.addTab('testcss', 'Test CSS', tabContentFactories.testcss);
     
     // Add settings button to the tab header
     const settingsButton = document.createElement('button');
@@ -551,8 +551,8 @@ export function createCacheSidebar(el) {
         civitai: createCivitaiSearchTab,
         gallery: createImageGalleryTab,
         promptBuilder: createPromptBuilderTab,
-        llm: createLLMTab,
-        testcss: createTestSidebarTab // New test tab for CSS
+        llm: createLLMTab
+//      ,testcss: createTestSidebarTab // New test tab for CSS
 }; 
     
     // Create tab manager
