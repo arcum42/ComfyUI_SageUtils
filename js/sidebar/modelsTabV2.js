@@ -473,6 +473,59 @@ async function openEditDialog(modelHash, modelInfo, filePath, onSave) {
         }
     }, { backgroundColor: '#4CAF50' });
 
+    // Helper to repopulate form fields from modelInfo into the edit dialog DOM
+    const populateEditForm = (info) => {
+        const gV = (v) => typeof v === 'string' ? v : '';
+        
+        content.querySelector('#edit-model-name').value = gV(info.model?.name || '');
+        content.querySelector('#edit-version-name').value = gV(info.name || '');
+        content.querySelector('#edit-type').value = gV(info.model?.type || info.model_type || '');
+        content.querySelector('#edit-base-model').value = gV(info.baseModel || info.base_model || '');
+        content.querySelector('#edit-description').value = gV(info.description || '');
+        content.querySelector('#edit-triggers').value = (info.trainedWords || []).join(', ');
+        content.querySelector('#edit-notes').value = gV(info.notes || '');
+        content.querySelector('#edit-nsfw').checked = Boolean(info.nsfw);
+        content.querySelector('#edit-favorite').checked = Boolean(info.favorite || info.is_favorite);
+        content.querySelector('#edit-blacklist').checked = Boolean(info.blacklist);
+
+        // Keep the modelInfo reference in sync so Save uses fresh data too
+        Object.assign(modelInfo, info);
+    };
+
+    dialog.addFooterButton('Scan', async () => {
+        try {
+            const result = await pullMetadata(filePath, false);
+            
+            if (!result.success) {
+                alertDialog(result.error || 'Unable to retrieve model information.', 'Error');
+                return;
+            }
+            
+            // Read back the refreshed info from cache state and repopulate form fields
+            try {
+                const currentCache = selectors.cacheData() || { hash: {}, info: {} };
+                const freshInfo = (currentCache.info && currentCache.info[modelHash]) || modelInfo;
+                populateEditForm(freshInfo);
+                alertDialog('Model information updated from scan!', 'Success');
+            } catch (e) {
+                console.warn('Could not refresh form after scan:', e);
+                // Fallback: use whatever the API returned in result.info if available
+                if (result && result.info) {
+                    populateEditForm(result.info);
+                    alertDialog('Model information updated from scan!', 'Success');
+                } else {
+                    alertDialog(
+                        'Scan completed but could not refresh form fields. The data has been saved — close and reopen this dialog to see updates.',
+                        'Info'
+                    );
+                }
+            }
+        } catch (error) {
+            console.error('Error scanning model:', error);
+            alertDialog(`Unable to retrieve information: ${error.message}`, 'Error');
+        }
+    }, { backgroundColor: '#2196F3' });
+
     dialog.addFooterButton('Cancel', () => {
         dialog.close();
     }, { backgroundColor: '#666' });
