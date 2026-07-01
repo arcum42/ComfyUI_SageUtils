@@ -72,7 +72,8 @@ export function handleModelChange(state, modelSelectEl,
                                    rememberProviderModel,
                                    setModelContext, saveSettings,
                                    applyModelSettingsForActiveSelection,
-                                   updateCapabilityControlledOptions, updateVisionSectionVisibility) {
+                                   updateCapabilityControlledOptions, updateVisionSectionVisibility,
+                                   visionSection) {
     const previousProvider = state.provider;
     const previousModel = state.model;
     

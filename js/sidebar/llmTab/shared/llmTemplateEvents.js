@@ -44,6 +44,7 @@ export function handleTemplateChange(state, templateSelect, textarea) {
 export function handleExtrasChange(state, event) {
     const target = event.target;
     if (target.type === 'checkbox' && target.dataset.extraKey) {
+        state.selectedExtras = state.selectedExtras || {};
         const key = target.dataset.extraKey;
         state.selectedExtras[key] = target.checked;
     }

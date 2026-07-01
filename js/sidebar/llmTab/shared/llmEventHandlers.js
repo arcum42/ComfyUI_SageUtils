@@ -80,7 +80,6 @@ export function setupEventHandlers(
     
     // Reset settings button
     const resetSettingsBtn = advancedOptions.querySelector('.llm-reset-settings-btn');
-    
 
     // ========== Provider & Model Events (delegated)
 
@@ -103,7 +102,8 @@ export function setupEventHandlers(
             rememberProviderModel,
             setModelContext, saveSettings,
             applyModelSettingsForActiveSelection,
-            updateCapabilityControlledOptions, updateVisionSectionVisibility
+            updateCapabilityControlledOptions, updateVisionSectionVisibility,
+            visionSection
         );
     });
 
@@ -121,7 +121,9 @@ export function setupEventHandlers(
         presetSelect.addEventListener('change', async () => {
             await llmPresetEvents.handlePresetChange(
                 state, presetSelect,
-                modelSelection, loadPresets, showNotification
+                modelSelection, loadPresets, showNotification,
+                advancedOptions, inputSection,
+                applyPresetToUI
             );
         });
     }
@@ -140,7 +142,8 @@ export function setupEventHandlers(
         managePresetsBtn.addEventListener('click', () => {
             llmPresetEvents.handleManagePresetsClick(
                 showManagePresetsDialog, state,
-                modelSelection, loadPresets, showNotification
+                modelSelection, advancedOptions, inputSection,
+                loadPresets, applyPresetToUI, showNotification
             );
         });
     }
@@ -293,12 +296,14 @@ export function setupEventHandlers(
     }
 
     // Clipboard paste
-    document.addEventListener('paste', async (e) => {
-        const pasteHandler = await llmVisionEvents.createPasteHandler(
-            state, visionSection,
-            handleFileUpload
-        );
-    });
+    const pasteHandler = llmVisionEvents.createPasteHandler(
+        state, visionSection,
+        handleFileUpload
+    );
+    if (pasteHandler) {
+        state._pasteHandler = pasteHandler;
+        document.addEventListener('paste', pasteHandler);
+    }
 
     // Clear all images
     if (clearAllBtn) {
@@ -349,20 +354,28 @@ export function setupEventHandlers(
     const saveToHistoryBtn = responseSection?.querySelector('.llm-save-to-history-btn');
     if (saveToHistoryBtn) {
         saveToHistoryBtn.addEventListener('click', () => {
-            llmHistoryEvents.handleSaveToHistoryClick(saveToHistoryBtn, state, historySection, responseSection);
+            llmHistoryEvents.handleSaveToHistoryClick(saveToHistoryBtn, state, historySection, responseSection, updateConversationList);
         });
     }
 
 
     
+    // Reset settings button
+    if (resetSettingsBtn) {
+        resetSettingsBtn.addEventListener('click', () => {
+            resetSettingsToDefaults(state, advancedOptions);
+        });
+    }
+
     // Initialize provider-specific settings visibility
     showProviderOptions(advancedOptions, state.provider);
 }
 
 /**
- * Setup all settings slider and input event handlers
+ * Setup compose template event handlers
  * @param {Object} state - Tab state object
- * @param {HTMLElement} advancedOptions - Advanced options section
+ * @param {HTMLElement} inputSection - Input section
+ * @param {HTMLTextAreaElement} textarea - Prompt textarea
  */
 function setupComposeTemplateHandlers(state, inputSection, textarea) {
     const templateSection = inputSection.querySelector('.llm-compose-template-section');

@@ -11,12 +11,15 @@
  * @param {Object} state - Tab state object  
  * @param {HTMLElement} presetSelect - Preset dropdown element
  * @param {Object} modelSelection - Model selection section
+ * @param {Function} loadPresets - Function to reload presets from API
+ * @param {Function} showNotification - Notification display function
  * @param {Object} advancedOptions - Advanced options section
  * @param {Object} inputSection - Input/Compose section  
  * @param {Function} applyPresetToUI - Function to apply a preset by ID
  */
 export async function handlePresetChange(state, presetSelect, 
-                                          modelSelection, advancedOptions, inputSection,
+                                          modelSelection, loadPresets, showNotification,
+                                          advancedOptions, inputSection,
                                           applyPresetToUI) {
     const presetId = presetSelect.value;
     

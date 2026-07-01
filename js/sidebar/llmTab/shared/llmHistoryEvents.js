@@ -170,7 +170,7 @@ export function handleSkipSaveCheckboxChange(historySection) {
 /**
  * Handle "save to history" button click — retroactively saves unsaved conversation.
  */
-export async function handleSaveToHistoryClick(saveToHistoryBtn, state, historySection, responseSection) {
+export async function handleSaveToHistoryClick(saveToHistoryBtn, state, historySection, responseSection, updateConversationList) {
     if (!state._unsavedPrompt || !state._unsavedResponse) {
         console.warn('[LLM History Events] No unsaved conversation to save');
         return;
