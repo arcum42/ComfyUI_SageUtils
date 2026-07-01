@@ -24,3 +24,4 @@ This subbundle gathers UI guides and component documentation for Sage Utils.
 - [Layout guide](layout_guide.md) — layout patterns, containers, and component composition conventions.
 - [Common UI component architecture](common_ui_components.md) — shared UI component structure and reusable utilities.
 - [Models tab V2 guide](models_tab_v2.md) — browsing, filtering, and keyboard navigation for model selection.
+- [Loading external files](external_files.md) — guidance for loading CSS and other frontend assets in sidebar tabs.

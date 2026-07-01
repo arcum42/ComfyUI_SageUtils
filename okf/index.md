@@ -19,5 +19,6 @@ This bundle collects the project knowledge for ComfyUI SageUtils into a structur
 - [UI](ui/index.md) — user-facing UI components, tab guides, and interaction design.
 - [Docs](docs/index.md) — reference documentation, guides, and user-facing docs.
 - [Examples](examples/index.md) — workflow examples and usage patterns.
+- [Tools](tools/index.md) — AI-run tools and available tool documentation.
 
 Each subbundle contains an `index.md` entry point and a `log.md` file for tracking changes.

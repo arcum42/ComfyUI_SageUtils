@@ -60,11 +60,12 @@ This catches syntax errors, missing imports, and basic structural issues before 
 
 **OKF Documentation Guidance:**
 - Treat `okf/` as the primary structured documentation bundle for this project.
-- When adding or changing architecture, developer, UI, node, example, or docs content, create or update the corresponding `okf/*/index.md` and concept files.
+- When adding or changing architecture, developer, UI, node, example, docs, or tool content, create or update the corresponding `okf/*/index.md` and concept files.
 - Update `okf/*/log.md` for the bundle(s) affected by your changes.
 - Prefer pointing from legacy docs and README files to the OKF bundle when stable guidance already exists there.
 - If information belongs in the project reference docs, move it into the OKF bundle and use a short redirect/reference in legacy docs rather than duplicating the full content.
 - Keep the OKF indexes current: add new concept links to the right subbundle index and keep the bundle root (`okf/index.md`) aligned with new content.
+- Tools documentation is available in `okf/tools/index.md` and `okf/tools/available_tools.md`.
 
 **Directory Documentation Maintenance:**
 - Each directory containing README.md files must be kept up to date when making changes.
