@@ -9,7 +9,7 @@
 # https://github.com/chflame163/ComfyUI_LayerStyle_Advance
 # https://github.com/judian17/ComfyUI-joycaption-beta-one-GGUF
 
-# See ref_docs/v3_migration.md for info on migrating to v3 nodes.
+# See docs/ref_docs/v3_migration.md for info on migrating to v3 nodes.
 
 from __future__ import annotations
 

@@ -1,6 +1,6 @@
 # Text nodes, v3 edition.
 # This contains any nodes that are dealing with text, including setting text, joining text, cleaning text, and viewing text.
-# See ref_docs/v3_migration.md for info on migrating to v3 nodes.
+# See docs/ref_docs/v3_migration.md for info on migrating to v3 nodes.
 
 from __future__ import annotations
 from comfy_api.latest import io, ui

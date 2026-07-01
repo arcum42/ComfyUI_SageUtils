@@ -1,6 +1,6 @@
 # Training nodes v3
 # Training workflow helpers migrated from v1.
-# See ref_docs/v3_migration.md for info on migrating to v3 nodes.
+# See docs/ref_docs/v3_migration.md for info on migrating to v3 nodes.
 
 from __future__ import annotations
 from comfy.comfy_types.node_typing import ComfyNodeABC, InputTypeDict, IO

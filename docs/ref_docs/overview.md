@@ -12,9 +12,9 @@ Pretty much any of the custom node documentation is going to be relevant.
 
 To keep local reference docs current, use:
 
-./ref_docs/sync_upstream_docs.sh
+./sync_upstream_docs.sh
 
-This script mirrors the upstream `Comfy-Org/docs` paths below into `ref_docs/upstream_docs/`:
+This script mirrors the upstream `Comfy-Org/docs` paths below into `upstream_docs/`:
 
 - `custom-nodes`
 - `development`

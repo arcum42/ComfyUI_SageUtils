@@ -57,7 +57,7 @@ The `js/` folder is further organized into:
 ### Documentation and reference
 
 - `docs/` contains design notes, architecture guides, and implementation plans.
-- `ref_docs/` holds developer reference materials and walkthroughs.
+- `docs/ref_docs/` holds developer reference materials and walkthroughs.
 - `okf/` contains the structured, agent-friendly knowledge bundle used as the canonical reference for project organization, architecture, and documentation.
 
 ## Assets & Static Data

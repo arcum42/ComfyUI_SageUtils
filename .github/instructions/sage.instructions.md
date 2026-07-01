@@ -85,25 +85,25 @@ This catches syntax errors, missing imports, and basic structural issues before 
 - [ComfyUI GitHub Repository](https://github.com/comfyanonymous/ComfyUI)
 - [ComfyUI Frontend Repository](https://github.com/Comfy-Org/ComfyUI_frontend)
 
-**Local Documentation (ref_docs/):**
-- `ref_docs/overview.md` - Overview of all documentation links and status
-- `ref_docs/backend/` - Backend development documentation
-- `ref_docs/frontend/` - Frontend JavaScript development documentation
-- `ref_docs/extra/` - Additional resources (workflow templates, tips)
+**Local Documentation (docs/ref_docs/):**
+- `docs/ref_docs/overview.md` - Overview of all documentation links and status
+- `docs/ref_docs/backend/` - Backend development documentation
+- `docs/ref_docs/frontend/` - Frontend JavaScript development documentation
+- `docs/ref_docs/extra/` - Additional resources (workflow templates, tips)
 
-The content in `ref_docs/` is largely imported and converted from the official ComfyUI docs at `https://docs.comfy.org/` and the upstream repository `https://github.com/Comfy-Org/docs.git`.
-Depending on when the import was last run, `ref_docs/` may be out of date with the live official docs.
+The content in `docs/ref_docs/` is largely imported and converted from the official ComfyUI docs at `https://docs.comfy.org/` and the upstream repository `https://github.com/Comfy-Org/docs.git`.
+Depending on when the import was last run, `docs/ref_docs/` may be out of date with the live official docs.
 
 Key Local Documentation Files:
-- `ref_docs/backend/walkthrough.md` - Complete node development walkthrough
-- `ref_docs/backend/server_overview.md` - Server architecture and components
-- `ref_docs/backend/datatypes.md` - Data types and type handling
-- `ref_docs/backend/lifecycle.md` - Node lifecycle and execution flow
-- `ref_docs/frontend/javascript_overview.md` - JavaScript development overview
-- `ref_docs/frontend/javascript_hooks.md` - Hook system and lifecycle
-- `ref_docs/frontend/javascript_settings.md` - Settings API and configuration
-- `ref_docs/extra/workflow_templates.md` - Workflow template system
-- `ref_docs/extra/tips.md` - Development tips and best practices
+- `docs/ref_docs/backend/walkthrough.md` - Complete node development walkthrough
+- `docs/ref_docs/backend/server_overview.md` - Server architecture and components
+- `docs/ref_docs/backend/datatypes.md` - Data types and type handling
+- `docs/ref_docs/backend/lifecycle.md` - Node lifecycle and execution flow
+- `docs/ref_docs/frontend/javascript_overview.md` - JavaScript development overview
+- `docs/ref_docs/frontend/javascript_hooks.md` - Hook system and lifecycle
+- `docs/ref_docs/frontend/javascript_settings.md` - Settings API and configuration
+- `docs/ref_docs/extra/workflow_templates.md` - Workflow template system
+- `docs/ref_docs/extra/tips.md` - Development tips and best practices
 
 **OKF Note:** When an `okf/` concept already covers a topic, prefer linking to that concept from legacy docs and README files instead of duplicating the content.
 
