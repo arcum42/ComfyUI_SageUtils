@@ -1,0 +1,86 @@
+---
+title: "Manual Installation — Local Self-Hosted"
+description: "This section will guide you through the manual installation process on Windows, MacOS and Linux"
+icon: "wrench"
+sidebarTitle: "Manual (Local)"
+---
+
+import Conda from "/snippets/conda.mdx";
+import PipInstall from "/snippets/pip-install.mdx";
+import InstallGpuDependencies from "/snippets/install-gpu-dependencies.mdx";
+import RunComfy from "/snippets/run-comfy.mdx";
+import AddExternalModels from "/snippets/install/add-external-models.mdx"
+
+For the installation of ComfyUI, it is mainly divided into several steps:
+1. Create a virtual environment(avoid polluting the system-level Python environment)
+2. Clone the ComfyUI code repository
+3. Install dependencies
+4. Start ComfyUI
+
+You can also refer to [ComfyUI CLI](/comfy-cli/getting-started) to install ComfyUI, it is a command line tool that can easily install ComfyUI and manage its dependencies.
+
+## Create a virtual environment
+
+<Tip>
+    Independent virtual environments are necessary because ComfyUI's dependencies may conflict with other dependencies on the system, and it can also avoid polluting the system-level Python environment.
+</Tip>
+
+<Conda />
+
+## Clone the ComfyUI code repository
+
+You need to ensure that you have installed [Git](https://git-scm.com/downloads) on your system. First, you need to open the terminal (command line), then clone the code repository.
+<Tabs>
+<Tab title="Windows">
+<Warning>If you have not installed Microsoft Visual C++ Redistributable, please install it [here.](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist?view=msvc-170)</Warning>
+</Tab>
+<Tab title="Linux">
+Open Terminal application.
+</Tab>
+<Tab title="MacOS">
+Open [Terminal application](https://support.apple.com/guide/terminal/open-or-quit-terminal-apd5265185d-f365-44cb-8b09-71a064a42125/mac).
+</Tab>
+</Tabs>
+
+```bash
+git clone https://github.com/Comfy-Org/ComfyUI.git
+```
+
+## Install GPU and ComfyUI dependencies
+
+<Steps>
+    <Step title="Install GPU dependencies">
+   <InstallGpuDependencies />
+    </Step>
+    <Step title="Install ComfyUI dependencies">
+    <PipInstall />
+    </Step>
+    <Step title="Start ComfyUI">
+    <RunComfy />
+    </Step>
+</Steps>
+
+For advanced server configuration (custom port, LAN access, VRAM modes, and more), see the [Startup Flags reference](/development/comfyui-server/startup-flags).
+
+## How to update ComfyUI
+
+<Steps>
+    <Step title="pull the latest code">
+    Use the command line to enter the installation path of ComfyUI, then pull the latest code.
+    ```bash
+    cd <installation path>/ComfyUI
+    git pull
+    ```
+    </Step>
+    <Step title="install the dependencies">
+    Use the command line to enter the installation path of ComfyUI, then install the dependencies.
+    <Warning>
+    You need to ensure that the current Python environment is the ComfyUI virtual environment, otherwise the dependencies will be installed to the system-level Python environment, polluting the system-level Python environment.
+    </Warning>
+    ```bash
+        pip install -r requirements.txt
+    ```
+    </Step>
+</Steps>
+
+<AddExternalModels/>

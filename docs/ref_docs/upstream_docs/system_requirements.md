@@ -1,0 +1,63 @@
+---
+title: "System Requirements"
+description: "Hardware and software requirements for installing and running ComfyUI."
+sidebarTitle: "System Requirements"
+icon: "computer"
+---
+
+import InstallLink from "/snippets/install/install-link.mdx"
+
+In this guide, we will introduce the system requirements for installing ComfyUI. Due to frequent updates of ComfyUI, this document may not be updated in a timely manner. Please refer to the relevant instructions in [ComfyUI](https://github.com/Comfy-Org/ComfyUI).
+
+Regardless of which version of ComfyUI you use, it runs in a separate Python environment.
+
+### Supported Operating Systems
+
+Currently, we support the following operating systems:
+- Windows
+- Linux
+- macOS (supports Apple Silicon, such as the M series)
+
+See the links below for installation instructions specific to your OS and setup.
+
+<InstallLink/>
+
+
+### Python Version
+
+- **Python 3.13** is very well supported and recommended
+- Python 3.14 works but some custom nodes may have issues. The free threaded variant works but some dependencies will enable the GIL so it's not fully supported
+- Python 3.12 is a good fallback if you have trouble with some custom node dependencies on 3.13
+
+### Browser Requirements
+
+For the best experience, use **Google Chrome version 143 or later**. Earlier versions of Chrome (142 and below) have known issues that can cause visual glitches and performance problems in ComfyUI.
+
+### Supported Hardware
+
+- **NVIDIA GPU** - Install stable pytorch with CUDA 13.0: `pip install torch torchvision torchaudio --extra-index-url https://download.pytorch.org/whl/cu130`
+- **AMD GPU (Linux)** - ROCm 7.2 stable or nightly
+- **AMD GPU (Windows/Linux, RDNA 3/3.5/4 only)** - Experimental support for RX 7000 series (RDNA 3), Strix Halo/Ryzen AI Max+ 365 (RDNA 3.5), and RX 9000 series (RDNA 4)
+- **Intel GPU** - Arc series with native PyTorch torch.xpu support
+- **Apple Silicon** - M1/M2/M3/M4 series with Metal acceleration
+- **Ascend NPU** - Via torch_npu extension
+- **Cambricon MLU** - Via torch_mlu extension
+- **Iluvatar Corex** - Via Iluvatar Extension for PyTorch
+- **CPU** - Use the `--cpu` parameter (slower)
+
+Please refer to the [ComfyUI Windows and Linux manual installation section](https://github.com/Comfy-Org/ComfyUI?tab=readme-ov-file#manual-install-windows-linux) for detailed installation steps.
+
+<Note>
+PyTorch 2.4 and above is supported, but some features and optimizations might only work on newer versions. We generally recommend using the latest major version of PyTorch with the latest CUDA version unless it is less than 2 weeks old.
+
+The Windows portable build currently comes with Python 3.13 and PyTorch CUDA 13.0. Update your Nvidia drivers if it doesn't start.
+</Note>
+
+### Dependencies
+
+- Install PyTorch (version specific to your hardware)
+- Install all dependencies in the requirements.txt of ComfyUI: `pip install -r requirements.txt`
+
+<Card title="Manual Installation" icon="book" href="/installation/manual_install">
+Please refer to the manual installation section for detailed installation steps.
+</Card>

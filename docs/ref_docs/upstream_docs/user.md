@@ -1,0 +1,80 @@
+---
+title: "Account Management"
+description: "In this document, we will introduce the account management features of ComfyUI, including account login, registration, and logout operations."
+sidebarTitle: "User"
+icon: "user"
+---
+
+import SettingsMenuContext from "/snippets/interface/settings-menu-context.mdx"
+
+<SettingsMenuContext />
+
+Using `Partner Nodes` requires credits, so the account system provides credit management and authentication support, enabling users to conveniently access cutting-edge closed-source model APIs.
+
+Currently, we support the following login methods:
+
+- Email login
+- Google login
+- Github login
+- API Key login (for non-whitelisted site authorization)
+
+We will provide relevant login requirements and explanations in this document.
+
+## ComfyUI Version Requirements
+
+You may need to use at least [ComfyUI v0.3.0](https://github.com/Comfy-Org/ComfyUI/releases/tag/v0.3.30) to use the account system. Ensure that the corresponding frontend version is at least `1.17.11`. Sometimes the frontend may fail to install and revert to an older version, so please check if the frontend version is greater than `1.17.11` in `Settings` -> `About`.
+
+In some regions, network restrictions may prevent normal access to the login API, causing timeouts or failures. Before logging in, please **ensure that your network environment does not restrict access to the corresponding API**, and make sure you can access sites like Google or Github.
+
+<Tip>
+Since we are still in rapid iterative updates, related functions may change. If there are no special circumstances, please try to update to the latest version to get support for relevant functions.
+</Tip>
+
+## Network Requirements
+
+To login to ComfyUI account, you must be in a secure network environment:
+
+- Only allow access from `127.0.0.1` or `localhost`.
+- Do not support using the `--listen` parameter to access the Partner Node through a local network.
+- If you are using a non-SSL certificate or a site that does not start with `https`, you may not be able to successfully log in.
+- You may not be able to log in on a site that is not in our whitelist (but you can log in using an API Key now).
+- Ensure you can connect to our service normally (some regions may require a proxy).
+
+## How to Log In
+
+Log in via `Settings` -> `User`:
+
+![ComfyUI User Interface](/images/interface/setting/user.jpg)
+
+## Login Methods
+
+![user-login](/images/interface/setting/user-login.jpg)
+
+If this is your first login, please create an account first.
+
+<Card title="Logging in with an API Key" icon="key" href="/account/login#logging-in-with-an-api-key">
+  For non-whitelisted sites or LAN environments, you can use API Key login. See the detailed guide in the account login documentation.
+</Card>
+
+## Post-Login Status
+
+After logging in, a login button is displayed in the top menu bar of the ComfyUI interface. You can open the corresponding login interface through this button and log out of the corresponding account in the settings menu.
+
+![user-logged](/images/interface/setting/user-logged.jpg)
+
+![menu-user-logged](/images/interface/setting/menu-user-logged.jpg)
+
+## Frequently Asked Questions
+
+<AccordionGroup>
+  <Accordion title="Are there any login device restrictions?">
+   We do not restrict login devices. You can log in to your account on any device, but please note that your account information may be accessed by other devices, so do not log in to your account on public devices.
+  </Accordion>
+
+  <Accordion title="How to log in in a LAN environment?">
+  Currently, only API Key login is supported in a LAN environment. If you are accessing ComfyUI services through a LAN, please use API Key to log in.
+  </Accordion>
+   <Accordion title="Why can't I log in on some websites?">
+  Our login service has a whitelist, so you may not be able to log in to ComfyUI deployed on some servers, for this case, you can use API Key login to solve it.
+  </Accordion>
+</AccordionGroup>

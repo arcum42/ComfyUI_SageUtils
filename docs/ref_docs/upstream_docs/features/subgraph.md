@@ -1,0 +1,173 @@
+---
+title: "Subgraph - Simplify your workflow"
+description: "An introduction to the Subgraph feature in ComfyUI, including how to create, navigate, and manage subgraphs."
+sidebarTitle: "Subgraph"
+icon: "share-nodes"
+---
+
+<Note>
+    The subgraph feature requires ComfyUI frontend version 1.24.3 or later. If you don't see this feature, please refer to: [How to Update ComfyUI](/installation/update_comfyui)
+    - Images in this document are made with nightly version frontend, please refer to the actual interface
+    - Some features like converting subgraph back to nodes will be supported in the future
+</Note>
+
+<Tip>
+For developer documentation on working with subgraphs programmatically, see the [Subgraph Developer Guide](/custom-nodes/js/subgraphs).
+</Tip>
+
+<iframe
+  className="w-full aspect-video rounded-xl"
+  src="https://www.youtube.com/embed/xgQoGT-VpxE?si=hD5196gcX0RW-0Ko"
+  title="ComfyUI Selection Toolbox New Features"
+  allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+  allowFullScreen
+></iframe>
+A subgraph is a powerful ComfyUI feature that lets you package complex workflows into a single reusable subgraph node, making them easier to manage and share.
+
+![Subgraph](/images/interface/features/subgraph/subgraph.jpg)
+
+Think of a subgraph as a "folder" for your workflow – you can group related nodes together and use the entire collection as one unified subgraph node.
+
+**Use subgraphs to:**
+- Simplify complex workflows
+- Reuse common node combinations
+- Build more efficient workflows with modular components
+
+## Creating a Subgraph
+
+<Steps>
+    <Step title="Select nodes">
+    Select the nodes you want to group in ComfyUI
+    </Step>
+    <Step title="Click the subgraph icon">
+        ![Subgraph icon](/images/interface/features/subgraph/subgraph_icon.jpg)
+        Find the subgraph icon in the toolbar
+    </Step>
+    <Step title="Subgraph created">
+        ![Workflow using subgraph](/images/interface/features/subgraph/workflow_using_subgraph.jpg)
+        ComfyUI automatically creates a subgraph based on your selected nodes' inputs and outputs
+    </Step>
+    <Step title="Customize your subgraph">
+        Refer to [Editing Subgraphs](#editing-subgraphs), you can edit and organize the subgraph to create a fully functional node
+        ![Workflow using subgraph](/images/interface/features/subgraph/subgraph_after_edited.jpg)
+    </Step>
+</Steps>
+
+## Working with Subgraphs
+
+### Basic Operations
+
+Subgraphs work just like regular nodes. You can:
+- Change colors and names
+- Use bypass to disable
+- Apply all standard node operations
+
+### Editing Subgraphs
+
+**To enter edit mode:**
+- Double-click the empty area inside the subgraph (not on widgets), or
+- Click the subgraph edit button
+
+![Subgraph editing mode](/images/interface/features/subgraph/editing_subgraph.jpg)
+
+**In edit mode you'll see:**
+
+1. **Navigation bar**: Exit the current subgraph and return to the parent level
+2. **Input slots**: Internal node inputs exposed to the outside
+    - Connect outputs to slots like normal nodes
+    - **Right-click** connection points to rename/delete exposed slots
+3. **Output slots**: Outputs exposed to the outside (same functionality as input slots)
+
+![Subgraph slots](/images/interface/features/subgraph/subgraph_slot.jpg)
+
+**Working with slots:**
+1. **Default slot** (labeled 1): Use this to add new input/output connections
+2. **Right-click** existing slots to rename, delete, or disconnect from original nodes
+
+> Note: Slot connections follow standard data type validation rules
+
+### Parameters Panel
+
+With ComfyUI v0.3.66 or later, you can edit the subgraph parameters directly from the parameters panel without entering the subgraph.
+
+You can select any subgraph and use the "Edit Subgraph Widgets" button to open the parameters panel.
+![Open Parameters Panel](/images/interface/features/subgraph/parameters_panel_open.jpg)
+
+After it is opened, you can edit the order and visibility of the subgraph widgets directly in the parameters panel.
+
+![Open Parameters Panel](/images/interface/features/subgraph/parameters_panel_edit.jpg)
+1. Reordering: you use right-click and hold the widget to drag it to the desired position
+2. Visibility: you can check the visibility of the widget by clicking the eye icon
+
+### Nested Subgraphs
+
+Create even more complex workflows by nesting subgraphs within subgraphs.
+
+![Nested subgraph](/images/interface/features/subgraph/subgraph_nested.jpg)
+
+The navigation bar shows your current level and lets you easily move between nested subgraphs.
+
+![Nested subgraph navigation](/images/interface/features/subgraph/subgraph_navigation.jpg)
+
+### Exit subgraph
+
+To exit a subgraph and return to the parent level:
+- Use the **Navigation bar** (labeled 1 in the image) at the top of the canvas, or
+- Press the **Esc** key
+
+![Subgraph editing mode](/images/interface/features/subgraph/editing_subgraph.jpg)
+
+Click on the navigation bar or press Esc to exit the current subgraph and return to the parent workflow.
+
+## Unpack Subgraphs to Nodes
+
+When you're done creating a subgraph, you can convert it back to nodes if you need to.
+
+![Subgraph to node](/images/interface/features/subgraph/subgraph_to_nodes.jpg)
+
+1. You can select the subgraph node then use right-click menu "Unpack subgraph" to convert it back to nodes.
+2. Click the "Unpack subgraph" button in the select toolbox to convert it back to nodes.
+
+## Subgraph Blueprint
+
+With ComfyUI frontend version 1.27.7 or later, you can publish your subgraph to the node library.
+
+This feature allows you to convert a subgraph to a `Subgraph Blueprints` node, which means it's a reusable subgraph node.
+
+### Publish Subgraph to Node Library
+
+![Publish Subgraph](/images/interface/features/subgraph/subgraph_publishing.jpg)
+
+Currently, you have two ways to publish subgraph to node library, both are in the selection toolbox:
+
+1. Click the `book(publish)` icon on the selection toolbox
+2. Open the selection toolbox menu, use the `Add Subgraph to Library` menu to publish subgraph
+
+
+After you click on the `book(publish)` icon or `Add Subgraph to Library` menu, you will see the following dialog:
+
+![Subgraph naming](/images/interface/features/subgraph/subgraph_naming.jpg)
+
+By default, the subgraph will use the name of the subgraph node as the name of the subgraph blueprint.
+
+After publishing, you will see the subgraph blueprint node in the node library.
+
+![Subgraph blueprint node](/images/interface/features/subgraph/subgraph_blueprints.jpg)
+
+Now, you can drag or search the subgraph just like a normal node. The new subgraph node that has been added from Subgraph Blueprints is still isolated, which means after adding it to the workflow, it can be edited independently, they will not affect each other.
+
+### Edit Subgraph Blueprint
+
+If you want to edit the subgraph blueprint, you can click the edit button just like the image below, you can delete it as well.
+
+![Edit Subgraph Blueprint](/images/interface/features/subgraph/edit_subgraph_blueprints.jpg)
+
+This will enable the subgraph editing mode
+
+![Subgraph editing mode](/images/interface/features/subgraph/subgraph_editing_mode.jpg)
+
+After editing the subgraph blueprint, you can go to the parent level to preview the subgraph.
+
+![Update Subgraph Blueprint](/images/interface/features/subgraph/save_updated_subgraph.jpg)
+
+If you want to save the updated subgraph blueprint, you can click the save button or use the shortcut key Ctrl + S.

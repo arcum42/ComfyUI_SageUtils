@@ -1,0 +1,101 @@
+---
+title: "Credits Management"
+description: "In this article, we will introduce ComfyUI's credit management features, including how to obtain, use, and view credits."
+sidebarTitle: "Credits"
+icon: "coins"
+---
+
+import SettingsMenuContext from "/snippets/interface/settings-menu-context.mdx"
+
+<SettingsMenuContext />
+
+The credit system was added to support the `Partner Nodes`, as calling closed-source AI models requires token consumption, so proper credit management is necessary. By default, the credits interface is not displayed. Please first log in to your ComfyUI account in `Settings` -> `User`, and then you can view your associated account's credit information in `Settings` -> `Credits`.
+
+![ComfyUI Credits Interface](/images/interface/setting/menu-credits.jpg)
+
+<Note>
+ComfyUI will always remain fully open-source and free for local users.
+</Note>
+
+## How to Purchase Credits?
+
+Below is a demonstration video for purchasing credits:
+
+<video
+  controls
+  className="w-full aspect-video"
+  src="/images/interface/setting/Buy_Credits_Flow.mp4"
+></video>
+
+Detailed steps are as follows:
+
+<Steps>
+
+<Step title="Log in to your ComfyUI account">
+Log in to your ComfyUI account in `Settings` -> `User`
+![Login Interface](/images/interface/setting/user.jpg)
+</Step>
+
+<Step title="Go to `Settings` -> `Credits` to purchase credits">
+After logging in, you should see the `Credits` option added to the menu
+
+Go to `Settings` -> `Credits` to purchase credits
+![Credits Interface](/images/interface/setting/purchase-1.jpg)
+</Step>
+
+<Step title="Set the amount of credits to purchase">
+![Set Purchase Amount](/images/interface/setting/buy.jpg)
+In the popup, set the purchase amount and click the `Buy` button
+</Step>
+
+<Step title="Make payment through Stripe">
+![Stripe Payment Page](/images/interface/setting/stripe_payment.jpg)
+On the payment page, please follow these steps:
+1. Select the currency for payment
+2. Confirm that the email is the same as your ComfyUI registration email
+3. Choose your payment method
+  - Credit Card
+  - WeChat (only supported when paying in Comfy Credits)
+  - Alipay (only supported when paying in Comfy Credits)
+4. Click the `Pay` button or the `Generate QR Code` button to complete the payment process
+</Step>
+
+<Step title="Complete payment and check your credit balance">
+![Payment Successful](/images/interface/setting/purchase-2.jpg)
+After completing the payment, please return to `Menu` -> `Credits` to check if your balance has been updated. Try refreshing the interface or restarting if necessary
+</Step>
+
+</Steps>
+
+## Frequently Asked Questions
+
+<AccordionGroup>
+  <Accordion title="Can credits go negative?">
+    Credits are not intended to be used as a negative balance or credit line. However, due to race conditions where partner nodes don't always report costs before execution, a single execution may consume more credits than your remaining balance and temporarily result in a negative balance after completion. When your balance is negative, you will not be able to run Partner Nodes until you top up and restore a positive balance. Please ensure you have enough credits before making API calls.
+  </Accordion>
+
+  <Accordion title="Can I get a refund for unused credits?">
+  Currently, we do not support refunds
+  </Accordion>
+    <Accordion title="How do I check my current balance and usage?">
+  Click on `Settings` -> `Credits` to see your current balance and access the `Credit History` entry
+  </Accordion>
+
+<Accordion title="Can I share my credits with other users?">
+  You can log into the same account on multiple devices, but we do not support sharing credits with other users
+  </Accordion>
+
+  <Accordion title="How can I know how much the node will cost?">
+  Check the price badge on the API node to estimate the cost before running it. Actual costs can vary based on image size, generation quantity, and other parameters.
+  </Accordion>
+
+  <Accordion title="Why don't I see WeChat or Alipay payment options?">
+  Please ensure you are paying in Comfy Credits, as WeChat and Alipay are only supported when paying in Comfy Credits
+  </Accordion>
+
+  <Accordion title="Do credits expire?">
+  Yes, the expiration depends on the type of credits:
+  - **Monthly credits**: Expire at the end of your billing period
+  - **Top-up credits**: Expire 1 year from the date of purchase
+  </Accordion>
+</AccordionGroup>

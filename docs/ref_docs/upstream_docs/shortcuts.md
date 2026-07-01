@@ -1,0 +1,99 @@
+---
+title: "ComfyUI Keyboard Shortcuts and Custom Settings"
+description: "Keyboard and mouse shortcuts for ComfyUI and related settings"
+sidebarTitle: "Keybinding"
+icon: "keyboard"
+---
+
+import SettingsMenuContext from "/snippets/interface/settings-menu-context.mdx"
+
+{/*
+description: "A list of keyboard and mouse shortcuts for ComfyUI"
+*/}
+
+{/* TODO(yoland): Add this back to comfyUI readme page */}
+
+<SettingsMenuContext />
+
+Currently, ComfyUI supports custom keyboard shortcuts. You can set the shortcuts by clicking on `Settings (gear icon)` --> `Keybinding`.
+
+![ComfyUI Shortcut Settings](/images/interface/setting/keybinding.jpg)
+
+In the corresponding menu, you can see all the current shortcut settings for ComfyUI. Click the `edit icon` before the corresponding command to customize the shortcut.
+
+Below is the current list of shortcuts for ComfyUI, which you can customize as needed.
+
+<Tabs>
+<Tab title="Windows/Linux">
+| Shortcut                           | Command                                                                                                        |
+|------------------------------------|--------------------------------------------------------------------------------------------------------------------|
+| Ctrl + Enter                       | Queue prompt                                                                                                      |
+| Ctrl + Shift + Enter               | Queue prompt (Front)                                                                                          |
+| Ctrl + Alt + Enter                 | Interrupt                                                                                                          |
+| Ctrl + Z / Ctrl + Y                | Undo/Redo                                                                                                          |
+| Ctrl + S                           | Save workflow                                                                                                      |
+| Ctrl + O                           | Load workflow                                                                                                      |
+| Ctrl + A                           | Select all nodes                                                                                                   |
+| Alt + C                            | Collapse/uncollapse selected nodes                                                                                 |
+| Ctrl + M                           | Mute/unmute selected nodes                                                                                         |
+| Ctrl + B                           | Bypass/unbypass selected nodes                                                                                     |
+| Delete<br/>Backspace               | Delete selected nodes                                                                                              |
+| Backspace                          | Clear workflow                                                                                                     |
+| Space                              | Move canvas when holding and moving cursor                                                                         |
+| Ctrl + Click<br/>Shift + Click     | Add clicked node to selection                                                                                      |
+| Ctrl + C/Ctrl + V                  | Copy and paste selected nodes (without maintaining connections to outputs of unselected nodes)                     |
+| Ctrl + C/Ctrl + Shift + V          | Copy and paste selected nodes (maintaining connections from outputs of unselected nodes to inputs of pasted nodes) |
+| Shift + Drag                       | Move multiple selected nodes at the same time                                                                      |
+| Ctrl + G                           | Add frame to selected nodes                                                                                        |
+| Ctrl + ,                           | Show settings dialog                                                                                               |
+| Alt + =                            | Zoom in (canvas)                                                                                                   |
+| Alt + -                            | Zoom out (canvas)                                                                                                  |
+| .                                  | Fit view to selected nodes                                                                                         |
+| P                                  | Pin/unpin selected items                                                                                           |
+| Q                                  | Toggle queue sidebar                                                                                               |
+| W                                  | Toggle workflow sidebar                                                                                            |
+| N                                  | Toggle node library sidebar                                                                                        |
+| M                                  | Toggle model library sidebar                                                                                       |
+| Ctrl + `                           | Toggle log bottom panel                                                                                            |
+| F                                  | Toggle focus mode (full screen)                                                                                    |
+| R                                  | Refresh node definitions                                                                                           |
+| Double-Click LMB                   | Quick search for nodes to add                                                                                      |
+</Tab>
+
+<Tab title="MacOS">
+| Shortcut                              | Command                                                                                                           |
+|--------------------------------------|--------------------------------------------------------------------------------------------------------------------|
+| Cmd ⌘ + Enter                        | Queue prompt                                                                                                       |
+| Cmd ⌘ + Shift + Enter                | Queue prompt (Front)                                                                                               |
+| Cmd ⌘ + Alt + Enter                  | Interrupt                                                                                                          |
+| Cmd ⌘ + Z/Cmd ⌘ + Y                  | Undo/Redo                                                                                                          |
+| Cmd ⌘ + S                            | Save workflow                                                                                                      |
+| Cmd ⌘ + O                            | Load workflow                                                                                                      |
+| Cmd ⌘ + A                            | Select all nodes                                                                                                   |
+| Opt ⌥ + C                            | Collapse/uncollapse selected nodes                                                                                 |
+| Cmd ⌘ + M                            | Mute/unmute selected nodes                                                                                         |
+| Cmd ⌘ + B                            | Bypass/unbypass selected nodes                                                                                     |
+| Delete<br/>Backspace                 | Delete selected nodes                                                                                              |
+| Backspace                            | Clear workflow                                                                                                     |
+| Space                                | Move canvas when holding and moving cursor                                                                         |
+| Cmd ⌘ + Click<br/>Shift + Click      | Add clicked node to selection                                                                                      |
+| Cmd ⌘ + C / Cmd ⌘ + V                | Copy and paste selected nodes (without maintaining connections to outputs of unselected nodes)                     |
+| Cmd ⌘ + C / Cmd ⌘ + Shift + V        | Copy and paste selected nodes (maintaining connections from outputs of unselected nodes to inputs of pasted nodes) |
+| Shift + Drag                         | Move multiple selected nodes at the same time                                                                      |
+| Cmd ⌘ + G                            | Add frame to selected nodes                                                                                        |
+| Cmd ⌘ + ,                            | Show settings dialog                                                                                               |
+| Opt ⌥ + =                            | Zoom in (canvas)                                                                                                   |
+| Opt ⌥ + -                            | Zoom out (canvas)                                                                                                  |
+| .                                    | Fit view to selected nodes                                                                                         |
+| P                                    | Pin/unpin selected items                                                                                           |
+| Q                                    | Toggle queue sidebar                                                                                               |
+| W                                    | Toggle workflow sidebar                                                                                            |
+| N                                    | Toggle node library sidebar                                                                                        |
+| M                                    | Toggle model library sidebar                                                                                       |
+| Cmd ⌘ + `                            | Toggle log bottom panel                                                                                            |
+| F                                    | Toggle focus mode (full screen)                                                                                                 |
+| R                                    | Refresh node definitions                                                                                           |
+| Double-Click LMB                     | Quick search for nodes to add                                                                                      |
+
+</Tab>
+</Tabs>

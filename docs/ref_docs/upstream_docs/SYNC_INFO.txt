@@ -1,10 +1,12 @@
 Source repository: https://github.com/Comfy-Org/docs.git
 Source ref: main
 Source commit: c23e16f5c9ce370dea48735d4f22e63fab997125
-Synced at (UTC): 2026-07-01T19:18:39Z
+Synced at (UTC): 2026-07-01T20:50:27Z
 Included paths:
 - custom-nodes
 - development
+- interface
+- installation
 Notes:
 - .mdx files are copied and renamed to .md.
 - Content is preserved as-is (including MDX syntax/components).

@@ -1,83 +1,79 @@
 ---
-title: "Overview"
-description: "Using ComfyUI as a Developer"
+title: "ComfyUI Interface Overview"
+description: "In this article, we will briefly introduce the basic user interface of ComfyUI, familiarizing you with the various parts of the ComfyUI interface."
+sidebarTitle: "Interface Overview"
+icon: "window"
 ---
 
-ComfyUI is a modular GenAI inference engine that can be run as a server, accessed via API, extended with custom nodes, and managed from the command line. Choose your path below.
+The visual interface is currently the way most users utilize ComfyUI to call the [ComfyUI Server](/development/comfyui-server/comms_overview) to generate corresponding media resources. It provides a visual interface for users to operate and organize workflows, debug workflows, and create amazing works.
 
-## Deploy ComfyUI as a Server
+Typically, when you start the ComfyUI server, you will see an interface like this:
 
-Run ComfyUI in your own environment and expose it as an API endpoint. Learn about the WebSocket message protocol, available routes, and execution modes.
+![ComfyUI Basic Interface](/images/interface/overview/comfyui_new_interface.jpg)
 
-<Card title="ComfyUI Server API" icon="server" href="/development/comfyui-server/comms_overview">
-  Run ComfyUI as a server on your own machine. Start, configure, and call it via REST and WebSocket APIs.
-</Card>
+Currently, the [ComfyUI frontend](https://github.com/Comfy-Org/ComfyUI_frontend) is a separate project, released and maintained as an independent pip package. If you want to contribute, you can fork this [repository](https://github.com/Comfy-Org/ComfyUI_frontend) and submit a pull request.
 
-See also: [API Examples](/development/comfyui-server/api-examples) · [Partner Node API Integration](/development/comfyui-server/api-key-integration)
+## Localization Support
 
-## Cloud API
+Currently, ComfyUI supports: English, Chinese, Russian, French, Japanese, and Korean.
+If you need to switch the interface language to your preferred language, you can click the **Settings gear icon** and then select your desired language under `Comfy` --> `Locale`.
 
-Run workflows programmatically on Comfy Cloud without managing your own hardware. Use the REST API, browse the OpenAPI spec, and integrate Partner Nodes via API Key.
+![ComfyUI Localization Support](/images/interface/overview/locale.jpg)
 
-<Card title="Cloud API Overview" icon="cloud" href="/development/cloud/overview">
-  Learn how to authenticate, submit jobs, check status, and download results from Comfy Cloud.
-</Card>
+## New Menu Interface
 
-See also: [API Reference](/development/cloud/api-reference) · [OpenAPI Specification](/development/cloud/openapi) · [Getting an API Key](/development/api-development/getting-an-api-key) · [APIs Overview](/development/api-development/overview)
+### Workspace Areas
 
-## Agent Tools / MCP
+Below are the main interface areas of ComfyUI and a brief introduction to each part.
 
-Connect AI agents to ComfyUI via the Model Context Protocol (MCP). Use the hosted Cloud MCP or run the Partner MCP server locally for generation across 30+ providers.
+![ComfyUI Workspace](/images/interface/overview/comfyui-new-interface-main.png)
 
-<Card title="MCP Overview" icon="robot" href="/agent-tools">
-  Compare Cloud MCP and Partner MCP, and find the right setup for your AI agent integration.
-</Card>
+Currently, apart from the main workflow interface, the ComfyUI interface is mainly divided into the following parts:
 
-See also: [Comfy Cloud MCP](/agent-tools/cloud) · [Comfy Partner MCP](/agent-tools/partner-mcp)
+1. **Main Menu**: Click to expand the function menu, including file operations, help menu, etc.
 
-## Comfy CLI
+**Left Navigation Sidebar:**
+2. **Left Panel Entries**:
+   - **ASSETS**: Displays generated images, videos, and other assets.
+   - **Nodes**: Lists ComfyUI native and third-party nodes.
+   - **Models**: Shows model information detected after ComfyUI starts. After startup, if models are downloaded, press the `r` key to refresh node definitions and get the latest models.
+   - **Workflows**: Displays locally saved workflows.
+   - **Templates**: Provides ComfyUI built-in workflow templates.
 
-Manage your ComfyUI installation, custom nodes, and workflows from the command line. Install, update, configure, and automate with ease.
+**Bottom Left Toolbar:**
+3. **Bottom Toolbar**: Contains buttons for Help (opens runtime logs), Console (opens runtime logs), Shortcuts (displays shortcut panel), and Settings (opens settings panel).
 
-<Card title="CLI Getting Started" icon="terminal" href="/comfy-cli/getting-started">
-  Learn how to install, update, and manage ComfyUI from the terminal.
-</Card>
+**Top Header Bar:**
+4. **Top Area**: Displays the currently opened workflow.
+5. **New Workflow Button**: Click to create a new blank workflow file.
+6. **Right Control Area**: Run and queue control management, where you can run workflows and view the queue.
+7. **Login Status**: Not displayed by default, only shown after login, used when closed-source Partner Nodes are required.
+8. **Quick Access Button**: Opens the right-side panel.
 
-See also: [CLI Reference](/comfy-cli/reference) · [Troubleshooting](/comfy-cli/troubleshooting)
+**Bottom Right Canvas Controls:**
+9. **Canvas Navigation Tools**: Can switch between move or pan modes, open the minimap, and toggle node connection display.
 
-## Develop Custom Nodes
+### Sidebar Panel Buttons
 
-Custom nodes let you extend ComfyUI with your own Python backends, JavaScript UI widgets, and integrations. This is one of the most powerful ways to contribute to the ecosystem.
+![ComfyUI Sidebar Panel](/images/interface/overview/side-panel.png)
 
-<CardGroup cols={2}>
-  <Card title="Getting Started" icon="compass" href="/custom-nodes/overview">
-    New to custom nodes? Learn the anatomy of a node, how to publish it, and best practices.
-    <br /><br />
-    Key pages: <a href="/custom-nodes/walkthrough">Walkthrough</a> · <a href="/custom-nodes/v3_migration">v3 Migration Guide</a>
-  </Card>
+In the current ComfyUI, we provide four side panels with the following functions:
+1. Workflow History Queue (Queue): All queue information for ComfyUI executing media content generation
+2. Node Library: All nodes in ComfyUI, including `Comfy Core` and your installed custom nodes, can be found here
+3. Model Library: Models in your local `ComfyUI/models` directory can be found here
+4. Local User Workflows (Workflows): Your locally saved workflows can be found here
 
-  <Card title="Backend (Python)" icon="python" href="/custom-nodes/backend/server_overview">
-    Build the server-side of your custom node. Covers data types, image &amp; mask handling, lazy evaluation, tensors, and more.
-    <br /><br />
-    Key pages: <a href="/custom-nodes/backend/datatypes">Data Types</a> · <a href="/custom-nodes/backend/images_and_masks">Images &amp; Masks</a> · <a href="/custom-nodes/backend/lazy_evaluation">Lazy Evaluation</a> · <a href="/custom-nodes/backend/expansion">Node Expansion</a>
-  </Card>
+## Old Menu Version
 
-  <Card title="Frontend (JavaScript)" icon="js" href="/custom-nodes/js/javascript_overview">
-    Add custom UI widgets, sidebar tabs, keybindings, and dialogs to your nodes. Full control over the ComfyUI frontend.
-    <br /><br />
-    Key pages: <a href="/custom-nodes/js/javascript_hooks">Hooks</a> · <a href="/custom-nodes/js/javascript_sidebar_tabs">Sidebar Tabs</a> · <a href="/custom-nodes/js/javascript_commands_keybindings">Commands &amp; Keybindings</a> · <a href="/custom-nodes/js/javascript_examples">Examples</a>
-  </Card>
+Currently, ComfyUI enables the new interface by default. If you prefer to use the old interface, you can click the **Settings gear icon** and then set `Use new menu` to `disabled` under `Comfy` --> `Menu` to switch to the old menu version.
 
-</CardGroup>
+<Note>
+The old menu interface only supports English.
+</Note>
 
-See also: <a href="/custom-nodes/i18n">Internationalization (i18n)</a>
+The function annotations for the old menu interface are explained below:
 
-## Registry
+![ComfyUI Old Menu](/images/interface/overview/comfyui-old-menu.png)
 
-Publish and manage your custom nodes through the Comfy Registry. The Registry provides versioning, security scanning, and discovery for the community.
 
-<Card title="Publishing Overview" icon="puzzle-piece" href="/registry/overview">
-  Register as a publisher, publish your first node, claim existing ones, and set up CI/CD for automated releases.
-</Card>
 
-See also: [Publishing Tutorial](/registry/publishing) · [Standards](/registry/standards) · [CI/CD](/registry/cicd) · [Specifications](/registry/specifications)

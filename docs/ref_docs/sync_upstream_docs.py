@@ -60,7 +60,7 @@ def copy_tree(src_root: Path, target_root: Path) -> None:
 
 def write_sync_info(target_root: Path, upstream_repo_url: str, upstream_ref: str, upstream_commit: str) -> None:
     sync_info_path = target_root / "SYNC_INFO.txt"
-    synced_at = datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
+    synced_at = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
     sync_info_path.write_text(
         f"Source repository: {upstream_repo_url}\n"
@@ -70,6 +70,8 @@ def write_sync_info(target_root: Path, upstream_repo_url: str, upstream_ref: str
         "Included paths:\n"
         "- custom-nodes\n"
         "- development\n"
+        "- interface\n"
+        "- installation\n"
         "Notes:\n"
         "- .mdx files are copied and renamed to .md.\n"
         "- Content is preserved as-is (including MDX syntax/components).\n"
@@ -103,7 +105,7 @@ def main() -> int:
             silent=True,
         )
 
-        run_git(["sparse-checkout", "set", "custom-nodes", "development"], cwd=checkout_dir)
+        run_git(["sparse-checkout", "set", "custom-nodes", "development", "interface", "installation"], cwd=checkout_dir)
         upstream_commit = subprocess.run(
             ["git", "rev-parse", "HEAD"],
             cwd=str(checkout_dir),
@@ -118,6 +120,8 @@ def main() -> int:
 
         copy_tree(checkout_dir / "custom-nodes", target_root)
         copy_tree(checkout_dir / "development", target_root)
+        copy_tree(checkout_dir / "interface", target_root)
+        copy_tree(checkout_dir / "installation", target_root)
 
         write_sync_info(target_root, args.upstream_repo_url, args.upstream_ref, upstream_commit)
 
