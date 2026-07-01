@@ -3,7 +3,7 @@ type: Index
 title: Docs Subbundle
 description: Entrypoint for the Sage Utils documentation subbundle.
 tags: [okf, docs, index]
-resource: docs/ARCHITECTURE.md
+resource: docs/deprecated/ARCHITECTURE.md
 timestamp: 2026-07-01T00:00:00Z
 ---
 

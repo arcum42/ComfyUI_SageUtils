@@ -2,7 +2,7 @@
 type: Implementation Note
 title: Phase 1 Implementation Summary
 description: Summary of the first phase of Sage Utils implementation.
-resource: PHASE1_IMPLEMENTATION_SUMMARY.md
+resource: docs/planning/PHASE1_IMPLEMENTATION_SUMMARY.md
 tags: [developer, phase1, summary, okf]
 timestamp: 2026-07-01T00:00:00Z
 ---
@@ -31,4 +31,4 @@ This concept summarizes Phase 1 of the Sage Utils implementation, focused on ear
 - Manual refresh should invalidate stale data cleanly.
 - Cache metrics should report hits, misses, and hit rate reliably.
 
-For full implementation notes, see `PHASE1_IMPLEMENTATION_SUMMARY.md`.
+For full implementation notes, see `docs/planning/PHASE1_IMPLEMENTATION_SUMMARY.md`.

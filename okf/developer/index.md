@@ -3,7 +3,7 @@ type: Index
 title: Developer Subbundle
 description: Entrypoint for Sage Utils implementation and refactor knowledge.
 tags: [okf, developer, index]
-resource: Refactoring_Plan.md
+resource: docs/planning/Refactoring_Plan.md
 timestamp: 2026-07-01T00:00:00Z
 ---
 

@@ -3,7 +3,7 @@ type: Index
 title: Architecture Subbundle
 description: Entrypoint for Sage Utils architecture knowledge.
 tags: [okf, architecture, index]
-resource: docs/ARCHITECTURE.md
+resource: docs/deprecated/ARCHITECTURE.md
 timestamp: 2026-07-01T00:00:00Z
 ---
 

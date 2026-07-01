@@ -2,7 +2,7 @@
 type: Guide
 title: LLM Chat Tab Guide
 description: Guide to using the integrated LLM chat tab in Sage Utils.
-resource: docs/LLM_TAB_GUIDE.md
+resource: docs/deprecated/LLM_TAB_GUIDE.md
 tags: [ui, llm, guide, okf]
 timestamp: 2026-07-01T00:00:00Z
 ---

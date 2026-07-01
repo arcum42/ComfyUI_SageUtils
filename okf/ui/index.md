@@ -3,13 +3,15 @@ type: Index
 title: UI Subbundle
 description: Entrypoint for user-facing interface documentation in Sage Utils.
 tags: [okf, ui, index]
-resource: docs/LLM_TAB_GUIDE.md
+resource: docs/deprecated/LLM_TAB_GUIDE.md
 timestamp: 2026-07-01T00:00:00Z
 ---
 
 # UI Subbundle
 
 This subbundle gathers UI guides and component documentation for Sage Utils.
+
+> Note: OKF is the canonical source for UI documentation in Sage Utils. Legacy docs such as `docs/BUTTON_COMPONENT_GUIDE.md` now redirect to OKF concept pages.
 
 ## Concepts
 

@@ -2,7 +2,7 @@
 type: Guide
 title: Architecture Guide
 description: Comprehensive Sage Utils architecture documentation.
-resource: docs/ARCHITECTURE.md
+resource: docs/deprecated/ARCHITECTURE.md
 tags: [docs, architecture, okf]
 timestamp: 2026-07-01T00:00:00Z
 ---

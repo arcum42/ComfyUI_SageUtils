@@ -107,8 +107,8 @@ Primary documentation lives in `docs/` and includes:
 - `ARCHITECTURE.md`
 - `LLM_ARCHITECTURE_NOTE.md`
 - `LOGGING.md`
-- `PHASE1_LOGGING_COMPLETE.md`
-- `PHASE2_COMPLETE.md`
+- `docs/planning/PHASE1_LOGGING_COMPLETE.md`
+- `docs/planning/PHASE2_COMPLETE.md`
 - `TAB_MANAGER_GUIDE.md`
 - `PROMPT_BUILDER_GUIDE.md`
 - `LLM_TAB_GUIDE.md`

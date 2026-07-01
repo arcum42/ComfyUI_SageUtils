@@ -12,3 +12,5 @@ timestamp: 2026-07-01T00:00:00Z
 - Added initial architecture concept stubs.
 - Added `python_backend.md` concept documenting backend initialization, node registration, utilities, and LLM backend layering.
 - Added `assets.md` concept documenting static asset files and configuration data.
+- Added `api.md` concept documenting Sage Utils LLM and utility route contracts, streaming usage, presets, system prompt endpoints, and model readiness APIs.
+- Added `architecture.md` concept documenting the current system architecture, frontend/backend boundaries, event bus patterns, and state management.

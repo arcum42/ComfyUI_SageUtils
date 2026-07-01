@@ -2,7 +2,7 @@
 type: Guide
 title: Models Tab V2 Guide
 description: User guide for the Sage Utils Models Tab V2.
-resource: docs/MODELS_TAB_V2_USER_GUIDE.md
+resource: docs/deprecated/MODELS_TAB_V2_USER_GUIDE.md
 tags: [ui, models, guide, okf]
 timestamp: 2026-07-01T00:00:00Z
 ---

@@ -2,7 +2,7 @@
 type: Guide
 title: Logging Guidance
 description: Logging strategy and best practices for Sage Utils.
-resource: docs/LOGGING.md
+resource: docs/deprecated/LOGGING.md
 tags: [architecture, logging, guide, okf]
 timestamp: 2026-07-01T00:00:00Z
 ---

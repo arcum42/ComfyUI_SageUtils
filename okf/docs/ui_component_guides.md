@@ -2,7 +2,7 @@
 type: Guide
 title: UI Component Guides
 description: Reference guide for Sage Utils UI component documentation.
-resource: docs/BUTTON_COMPONENT_GUIDE.md
+resource: docs/deprecated/BUTTON_COMPONENT_GUIDE.md
 tags: [docs, ui, components, okf]
 timestamp: 2026-07-01T00:00:00Z
 ---

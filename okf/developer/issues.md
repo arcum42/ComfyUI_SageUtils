@@ -8,4 +8,4 @@ timestamp: 2026-07-01T00:00:00Z
 
 This concept collects known issues surfaced during refactor planning and implementation.
 
-Refer to `LLMEventHandlersRefactorIssues.md` for the original issue list and detailed notes.
+Refer to `docs/planning/LLMEventHandlersRefactorIssues.md` for the original issue list and detailed notes.

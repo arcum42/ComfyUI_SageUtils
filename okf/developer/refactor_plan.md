@@ -2,7 +2,7 @@
 type: Implementation Note
 title: Refactoring Plan
 description: Planned refactor work and the rationale behind the Sage Utils implementation.
-resource: Refactoring_Plan.md
+resource: docs/planning/Refactoring_Plan.md
 tags: [developer, refactor, plan, okf]
 timestamp: 2026-07-01T00:00:00Z
 ---
@@ -32,4 +32,4 @@ This concept documents the refactor plan for Sage Utils, focused on restoring mi
 
 # References
 
-For full implementation details and step-by-step tasks, see `Refactoring_Plan.md`.
+For full implementation details and step-by-step tasks, see `docs/planning/Refactoring_Plan.md`.

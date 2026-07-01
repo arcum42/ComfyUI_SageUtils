@@ -2,7 +2,7 @@
 type: Implementation Note
 title: Phase 2 Completion Note
 description: Notes on completion of the second Sage Utils implementation phase.
-resource: docs/PHASE2_COMPLETE.md
+resource: docs/planning/PHASE2_COMPLETE.md
 tags: [developer, phase2, summary, okf]
 timestamp: 2026-07-01T00:00:00Z
 ---
@@ -30,4 +30,4 @@ This concept records Phase 2 of the Sage Utils implementation, focused on logger
 - No remaining direct `print()` statements in the core utilities.
 - Logger usage now follows a predictable module hierarchy.
 
-For full details, see `docs/PHASE2_COMPLETE.md`.
+For full details, see `docs/planning/PHASE2_COMPLETE.md`.

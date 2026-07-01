@@ -2,7 +2,7 @@
 type: Guide
 title: Tab Manager Design
 description: Design notes for the Sage Utils tab manager and sidebar integration.
-resource: docs/TAB_MANAGER_GUIDE.md
+resource: docs/deprecated/TAB_MANAGER_GUIDE.md
 tags: [architecture, ui, guide, okf]
 timestamp: 2026-07-01T00:00:00Z
 ---

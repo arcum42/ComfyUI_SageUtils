@@ -2,7 +2,7 @@
 type: Guide
 title: Prompt Builder Guide
 description: Guide to using the Prompt Builder in Sage Utils.
-resource: docs/PROMPT_BUILDER_GUIDE.md
+resource: docs/deprecated/PROMPT_BUILDER_GUIDE.md
 tags: [ui, prompt-builder, guide, okf]
 timestamp: 2026-07-01T00:00:00Z
 ---
