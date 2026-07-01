@@ -175,6 +175,90 @@ export function setupEventHandlers(
         });
     }
 
+
+    // ========== Generation Events ==========
+
+    // Send button click
+    sendBtn.addEventListener('click', () => {
+        handleSend(state, textarea, responseSection, sendBtn, stopBtn, historySection, updateConversationList);
+    });
+
+    // Ctrl+Enter on textarea to send
+    textarea.addEventListener('keydown', (e) => {
+        if (e.ctrlKey && e.key === 'Enter') {
+            e.preventDefault();
+            handleSend(state, textarea, responseSection, sendBtn, stopBtn, historySection, updateConversationList);
+        }
+    });
+
+    // Stop button click
+    stopBtn.addEventListener('click', () => {
+        handleStop(state, responseSection, sendBtn, stopBtn);
+    });
+
+    // From Node button — read prompt from selected ComfyUI node
+    const fromNodeBtn = inputSection.querySelector('.llm-from-node-btn');
+    if (fromNodeBtn) {
+        fromNodeBtn.addEventListener('click', () => {
+            handleCopyFromNode(textarea, app, showNotification);
+        });
+    }
+
+    // Copy response to clipboard
+    copyBtn.addEventListener('click', () => {
+        handleCopy(responseSection, copyBtn);
+    });
+
+    // Copy to node — paste response into selected ComfyUI node
+    copyToNodeBtn.addEventListener('click', () => {
+        handleCopyToNode(responseSection, copyToNodeBtn, app);
+    });
+
+    // Send to Prompt Builder button (cross-tab messaging)
+    const sendToPromptBtn = responseSection.querySelector('.llm-send-to-prompt-btn');
+    if (sendToPromptBtn) {
+        sendToPromptBtn.addEventListener('click', () => {
+            const responseDisplay = responseSection.querySelector('.llm-response-display');
+            const responseText = responseDisplay.textContent.trim();
+
+            if (!responseText || responseText === 'Response will appear here...') {
+                showStatus(responseSection, 'No response to send', 'error');
+                return;
+            }
+
+            // Visual feedback — show sending state
+            const originalText = sendToPromptBtn.textContent;
+            sendToPromptBtn.disabled = true;
+            sendToPromptBtn.textContent = '\ud83d\udce4 Sending...';
+
+            // Use cross-tab messaging to send text to Prompt Builder
+            import('../../../shared/crossTabMessaging.js').then(({ sendTextToPromptBuilder }) => {
+                sendTextToPromptBuilder(responseText, {
+                    source: 'llm',
+                    autoSwitch: true
+                });
+                showNotification('Response sent to Prompt Builder', 'success');
+
+                // Visual feedback — show success
+                sendToPromptBtn.textContent = '\u2713 Sent!';
+                sendToPromptBtn.classList.add('llm-btn-success-flash');
+
+                setTimeout(() => {
+                    sendToPromptBtn.textContent = originalText;
+                    sendToPromptBtn.classList.remove('llm-btn-success-flash');
+                    sendToPromptBtn.disabled = false;
+                }, 1500);
+            }).catch(err => {
+                console.error('[LLM] Failed to send to Prompt Builder:', err);
+                showStatus(responseSection, 'Failed to send to Prompt Builder', 'error');
+
+                // Reset button on error
+                sendToPromptBtn.textContent = originalText;
+                sendToPromptBtn.disabled = false;
+            });
+        });
+    }
+
     // ========== Vision Events ==========
 
     // Upload zone click
