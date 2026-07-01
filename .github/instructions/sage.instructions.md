@@ -86,7 +86,7 @@ This catches syntax errors, missing imports, and basic structural issues before 
 - [ComfyUI Frontend Repository](https://github.com/Comfy-Org/ComfyUI_frontend)
 
 **Local Documentation (docs/ref_docs/):**
-- `docs/ref_docs/overview.md` - Overview of all documentation links and status
+- `okf/docs/ref_docs_overview.md` - Overview of the local docs mirror and upstream sync workflow
 - `docs/ref_docs/backend/` - Backend development documentation
 - `docs/ref_docs/frontend/` - Frontend JavaScript development documentation
 - `docs/ref_docs/extra/` - Additional resources (workflow templates, tips)

@@ -113,6 +113,7 @@ Primary documentation lives in `docs/` and includes:
 - `PROMPT_BUILDER_GUIDE.md`
 - `LLM_TAB_GUIDE.md`
 - UI component guides (`BUTTON_COMPONENT_GUIDE.md`, `FORM_ELEMENTS_GUIDE.md`, `LAYOUT_COMPONENT_GUIDE.md`)
+- `okf/docs/civitai_api.md` — CivitAI REST API reference for model metadata and integration.
 
 ## Notes
 

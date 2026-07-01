@@ -21,3 +21,5 @@ This subbundle gathers reference documentation from the `docs/` directory into O
 - [Tab manager guide](tab_manager_guide.md) — sidebar and tab management reference.
 - [UI component guides](ui_component_guides.md) — collection of UI component guide links.
 - [Models Tab V2 guide](models_tab_v2_user_guide.md) — model browser usage documentation.
+- [Local reference docs overview](ref_docs_overview.md) — local docs mirror and upstream sync workflow.
+- [CivitAI REST API reference](civitai_api.md) — CivitAI API endpoints and response fields.
