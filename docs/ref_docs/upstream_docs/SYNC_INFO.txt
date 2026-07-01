@@ -1,7 +1,7 @@
 Source repository: https://github.com/Comfy-Org/docs.git
 Source ref: main
-Source commit: 035f2e63b607a3a6c9e39a5473bb059fc2a71178
-Synced at (UTC): 2026-04-12T15:24:59Z
+Source commit: c23e16f5c9ce370dea48735d4f22e63fab997125
+Synced at (UTC): 2026-07-01T19:18:39Z
 Included paths:
 - custom-nodes
 - development

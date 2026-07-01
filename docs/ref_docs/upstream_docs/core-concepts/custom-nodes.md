@@ -74,8 +74,8 @@ If Git is installed, you will see output similar to the following:
 If not yet installed, please visit [git-scm.com](https://git-scm.com/) to download the corresponding installation package. Linux users please refer to [git-scm.com/downloads/linux](https://git-scm.com/downloads/linux) for installation instructions.
 
 <Tip>
-For ComfyUI Desktop version, you can use the Desktop terminal as shown below to complete the installation.
-![ComfyUI Desktop Terminal](/images/concepts/custom_nodes/desktop_terminal.png)
+For Comfy Desktop version, you can use the Desktop terminal as shown below to complete the installation.
+![Comfy Desktop Terminal](/images/concepts/custom_nodes/desktop_terminal.png)
 </Tip>
 </Step>
 
@@ -186,14 +186,14 @@ python_embeded\python.exe -m pip install -r ComfyUI\custom_nodes\ComfyUI-Manager
 Of course, you can replace ComfyUI-Manager with the name of the custom node you actually installed, but make sure that a `requirements.txt` file exists in the corresponding node directory.
 </Tab>
 
-<Tab title="ComfyUI Desktop">
+<Tab title="Comfy Desktop">
 
 <Tip>
-Since ComfyUI Desktop already has ComfyUI-Manager and its dependencies installed during the installation process, and this guide uses ComfyUI Manager as an example for custom node installation, you don't actually need to perform ComfyUI Manager dependency installation in the desktop version.
+Since Comfy Desktop already has ComfyUI-Manager and its dependencies installed during the installation process, and this guide uses ComfyUI Manager as an example for custom node installation, you don't actually need to perform ComfyUI Manager dependency installation in the desktop version.
 If there are no unexpected issues, we recommend using ComfyUI Manager to install custom nodes, so you don't need to manually install dependencies.
 </Tip>
 
-![ComfyUI Desktop Terminal](/images/concepts/custom_nodes/desktop_terminal.png)
+![Comfy Desktop Terminal](/images/concepts/custom_nodes/desktop_terminal.png)
  
 Then use the following command to install the dependencies for the corresponding plugin:
 
@@ -202,7 +202,7 @@ pip install -r .\custom_nodes\<corresponding_custom_node_name>\requirements.txt
 ```
 As shown below, this is the dependency installation for ComfyUI-Hunyuan3Dwrapper:
 
-![ComfyUI Desktop Dependency Installation](/images/concepts/custom_nodes/install_dependencies.png)
+![Comfy Desktop Dependency Installation](/images/concepts/custom_nodes/install_dependencies.png)
 
 </Tab>
 
@@ -315,7 +315,13 @@ If you are running the ComfyUI server application, you need to install the manag
 
 The first step is to install Git, which is a command-line application for software version control. Git will download the ComfyUI manager from [github.com](https://github.com). Download and install Git from [git-scm.com](https://git-scm.com/).
 
-After installing Git, navigate to the ComfyUI server program directory and enter the folder labeled **custom_nodes**. Open a command window or terminal. Make sure the command line shows the current directory path as **custom_nodes**. Enter the following command. This will download the manager. Technically, this is called _cloning a Git repository_.
+After installing Git, navigate to the ComfyUI server program directory and enter the folder labeled **custom_nodes**. Open a command window or terminal. Make sure the command line shows the current directory path as **custom_nodes**. Run the following command to clone the ComfyUI-Manager repository:
+
+```bash
+git clone https://github.com/Comfy-Org/ComfyUI-Manager.git
+```
+
+This will download the manager. Technically, this is called _cloning a Git repository_.
 
 ### Detecting Missing Nodes
 

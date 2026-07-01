@@ -1,28 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Sync selected documentation from Comfy-Org/docs into a local mirror.
-# By default this pulls only sections most relevant for node development.
-
-UPSTREAM_REPO_URL="${UPSTREAM_REPO_URL:-https://github.com/Comfy-Org/docs.git}"
-UPSTREAM_REF="${UPSTREAM_REF:-main}"
-SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-TARGET_ROOT="${TARGET_ROOT:-${SCRIPT_DIR}/upstream_docs}"
-
-TMP_DIR="$(mktemp -d)"
-cleanup() {
-  rm -rf "${TMP_DIR}"
-}
-trap cleanup EXIT
-
-echo "Cloning ${UPSTREAM_REPO_URL} (${UPSTREAM_REF}) with sparse checkout..."
-git clone \
-  --depth 1 \
-  --branch "${UPSTREAM_REF}" \
-  --filter=blob:none \
-  --sparse \
-  "${UPSTREAM_REPO_URL}" \
-  "${TMP_DIR}/docs" >/dev/null
+python3 "$(dirname -- "$0")/sync_upstream_docs.py" "$@"
 
 pushd "${TMP_DIR}/docs" >/dev/null
 git sparse-checkout set custom-nodes development

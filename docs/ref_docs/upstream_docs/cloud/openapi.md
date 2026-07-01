@@ -1,6 +1,7 @@
 ---
 title: "OpenAPI Specification"
 description: "Machine-readable OpenAPI specification for Comfy Cloud API"
+icon: "file-lines"
 openapi: "/openapi-cloud.yaml"
 ---
 
@@ -47,7 +48,7 @@ All API requests require an API key passed in the `X-API-Key` header.
 
 ### Getting an API Key
 
-See the [Cloud API Overview](/development/cloud/overview#getting-an-api-key) for step-by-step instructions with screenshots.
+See [Getting an API Key](/development/api-development/getting-an-api-key) for step-by-step instructions with screenshots.
 
 ### Using the API Key
 

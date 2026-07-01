@@ -18,8 +18,12 @@ import GetApiKey from '/snippets/get-api-key.mdx'
 The Comfy Cloud API provides programmatic access to run workflows on Comfy Cloud infrastructure. The API is compatible with local ComfyUI's API, making it easy to migrate existing integrations.
 
 <Note>
-  **Subscription Required:** Running workflows via the API requires an active Comfy Cloud subscription. See [pricing plans](https://www.comfy.org/cloud/pricing?utm_source=docs&utm_campaign=cloud-api) for details.
+  **Subscription required:** API access is available on the **Standard**, **Creator** and **Pro** tiers. The Free tier does not include API access. See [pricing plans](https://www.comfy.org/cloud/pricing?utm_source=docs&utm_campaign=cloud-api) for details.
 </Note>
+
+## Credits and Usage
+
+API requests draw from the same monthly credit allocation as the Comfy Cloud web UI — there is no separate API credit pool. Each tier's included credits, top-up options, and per-workflow runtime caps apply to API jobs in exactly the same way as UI jobs. See the [pricing page](https://www.comfy.org/cloud/pricing?utm_source=docs&utm_campaign=cloud-api) for the monthly credit amounts on the Standard, Creator and Pro tiers. If you run out of credits mid-month, top-ups can be purchased from your account dashboard.
 
 ## Base URL
 
@@ -33,11 +37,7 @@ All API requests require an API key passed via the `X-API-Key` header.
 
 ### Getting an API Key
 
-<GetApiKey />
-
-<Warning>
-  Keep your API key secure. Never commit it to version control or share it publicly.
-</Warning>
+See [Getting an API Key](/development/api-development/getting-an-api-key) for instructions on creating and managing your Cloud API key.
 
 ### Using the API Key
 
@@ -76,7 +76,7 @@ response = requests.get(
 
 ### Workflows
 
-ComfyUI workflows are JSON objects describing a graph of nodes. The API accepts workflows in the "API format" (node IDs as keys with class_type, inputs, etc.) as produced by the ComfyUI frontend's "Save (API Format)" option.
+ComfyUI workflows are JSON objects describing a graph of nodes. The API accepts workflows in the [API format](/development/api-development/workflow-api-format) (node IDs as keys with class_type, inputs, etc.) as produced by the ComfyUI frontend's "Export Workflow (API)" option.
 
 ### Jobs
 
@@ -92,7 +92,6 @@ API users can submit multiple workflows concurrently without waiting for previou
 
 | Subscription Tier | Concurrent Jobs |
 |-------------------|-----------------|
-| Free              | 1               |
 | Standard          | 1               |
 | Creator           | 3               |
 | Pro               | 5               |
