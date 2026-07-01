@@ -146,28 +146,42 @@ export function createPasteHandler(state, visionSection, handleFileUpload) {
  */
 export function handleClearAllImagesClick(state, visionSection) {
     if (!visionSection || !state) return;
-    
-    // Remove all image preview containers from the vision section
-    const previews = visionSection.querySelectorAll('.llm-image-preview');
+
+    const previewGrid = visionSection.querySelector('.llm-image-preview-grid');
+    const previewItems = visionSection.querySelectorAll('.llm-image-preview-item');
     let removedCount = 0;
-    
-    for (const img of previews) {
-        try {
-            if (img.src?.startsWith('blob:')) {
-                URL.revokeObjectURL(img.src);
-            }
-            // Remove from tracked URLs in state._imageUrls array
-            const urlIndex = state._imageUrls ? state._imageUrls.indexOf(img.src) : -1;
-            if (urlIndex !== -1 && Array.isArray(state._imageUrls)) {
-                URL.revokeObjectURL(state._imageUrls[urlIndex]);
-                state._imageUrls.splice(urlIndex, 1);
-            }
-        } catch { /* ignore errors during cleanup */ }
-        
-        img.remove(); // Remove DOM element
+
+    for (const item of previewItems) {
+        const img = item.querySelector('img.llm-preview-image');
+        if (img && img.src?.startsWith('blob:')) {
+            URL.revokeObjectURL(img.src);
+        }
+        item.remove();
         removedCount++;
     }
-    
+
+    if (state.images && Array.isArray(state.images)) {
+        state.images.forEach((imageData) => {
+            try {
+                if (imageData.preview?.startsWith('blob:')) {
+                    URL.revokeObjectURL(imageData.preview);
+                }
+            } catch {
+                /* ignore */
+            }
+        });
+        state.images = [];
+    }
+
+    if (previewGrid) {
+        previewGrid.innerHTML = '';
+    }
+
+    const imageCount = visionSection.querySelector('.llm-image-count');
+    if (imageCount) {
+        imageCount.textContent = '0 images';
+    }
+
     if (removedCount > 0) {
         console.debug(`[LLM Vision Events] Cleared ${removedCount} image(s)`);
     }

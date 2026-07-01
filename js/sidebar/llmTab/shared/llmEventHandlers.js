@@ -20,7 +20,6 @@ const LLM_LAST_PROVIDER_KEY = 'llm_last_selected_provider';
 /**
  * Setup all event handlers for the LLM tab
  * @param {Object} state - Tab state object
- * @param {HTMLElement} wrapper - Tab wrapper element
  * @param {HTMLElement} modelSelection - Model selection section
  * @param {HTMLElement} visionSection - Vision section
  * @param {HTMLElement} inputSection - Input section
@@ -36,7 +35,6 @@ const LLM_LAST_PROVIDER_KEY = 'llm_last_selected_provider';
  */
 export function setupEventHandlers(
     state,
-    wrapper,
     modelSelection,
     visionSection,
     inputSection,
@@ -63,8 +61,6 @@ export function setupEventHandlers(
     // Vision section controls
     const uploadZone = visionSection.querySelector('.llm-upload-zone');
     const fileInput = visionSection.querySelector('.llm-file-input');
-    const previewGrid = visionSection.querySelector('.llm-image-preview-grid');
-    const imageCount = visionSection.querySelector('.llm-image-count');
     const clearAllBtn = visionSection.querySelector('.llm-clear-all-images-btn');
     
     // Preset controls
@@ -178,6 +174,11 @@ export function setupEventHandlers(
         });
     }
 
+    // Compose template section event handlers
+    setupComposeTemplateHandlers(state, inputSection, textarea);
+
+    // Settings slider and advanced controls handlers
+    setupSettingsEventHandlers(state, advancedOptions);
 
     // ========== Generation Events ==========
 
@@ -301,6 +302,9 @@ export function setupEventHandlers(
         handleFileUpload
     );
     if (pasteHandler) {
+        if (state._pasteHandler) {
+            document.removeEventListener('paste', state._pasteHandler);
+        }
         state._pasteHandler = pasteHandler;
         document.addEventListener('paste', pasteHandler);
     }

@@ -313,7 +313,6 @@ async function initializeTab(state, wrapper, modelSelection, visionSection, inpu
         // Setup all event handlers
         setupEventHandlers(
             state,
-            wrapper,
             modelSelection,
             visionSection,
             inputSection,
