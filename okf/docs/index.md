@@ -17,6 +17,7 @@ This subbundle gathers reference documentation from the `docs/` directory into O
 - [LLM architecture note](llm_architecture_note.md) — LLM backend design and integration notes.
 - [LLM wiki](llm_wiki.md) — pattern for treating OKF as an agent-maintained knowledge wiki.
 - [Logging guide](logging_guide.md) — logging strategy and diagnostics documentation.
+- [LLM REST API reference](llm_rest_api/index.md) — reference material for LLM REST APIs and compatibility patterns.
 - [Prompt builder guide](prompt_builder_guide.md) — prompt builder usage and design documentation.
 - [LLM tab guide](llm_tab_guide.md) — user-facing LLM tab documentation.
 - [Tab manager guide](tab_manager_guide.md) — sidebar and tab management reference.
