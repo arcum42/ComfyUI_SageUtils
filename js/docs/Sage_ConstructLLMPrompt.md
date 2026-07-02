@@ -1,32 +1,73 @@
-# Sage_ConstructLLMPrompt
+---
+type: NodeDoc
+title: Construct LLM Prompt
+description: Auto-generated node documentation.
+tags: [nodes, docs]
+---
 
-**Construct LLM Prompt**
+# Construct LLM Prompt
 
-Builds a comprehensive prompt for use with LLM nodes based on predefined templates and customizable options.
+* **Node ID:** `Sage_ConstructLLMPrompt`
+* **Category:** `Sage Utils/LLM`
+
+Construct a prompt for an LLM based on the provided image and prompt.
 
 ## Inputs
 
-### Required
+### `prompt` — `COMBO`
+- **Name:** `prompt`
+- **Description:** The base prompt template to construct.
 
-- **prompt** (STRING): Base prompt template from available categories (multiline)
-- **extra_instructions** (STRING): Additional custom instructions to append (multiline, default: "")
-- **Various style/quality/content options** (BOOLEAN): Dynamic options based on available prompt extras (style, quality, content_focus categories)
+### `extra_instructions` — `STRING`
+- **Name:** `extra_instructions`
+- **Description:** Additional instructions to append to the generated prompt.
+
+### `only_output_description` — `BOOLEAN`
+- **Description:** Only Output Description
+
+### `avoid_euphemisms` — `BOOLEAN`
+- **Description:** Avoid Euphemisms
+
+### `non_technical` — `BOOLEAN`
+- **Description:** Non-technical Terms
+
+### `be_specific` — `BOOLEAN`
+- **Description:** Be Specific
+
+### `use_vulgar_language` — `BOOLEAN`
+- **Description:** Use Vulgar Slang and Profanity
+
+### `erotic_imagery` — `BOOLEAN`
+- **Description:** Erotic Imagery
+
+### `adult_content` — `BOOLEAN`
+- **Description:** Adult Content
+
+### `exclude_sexual` — `BOOLEAN`
+- **Description:** Exclude Sexual Content
+
+### `only_describe_key_elements` — `BOOLEAN`
+- **Description:** Describe Key Elements Only
+
+### `avoid_flowery_language` — `BOOLEAN`
+- **Description:** Avoid Flowery Language
+
+### `exclude_watermarks` — `BOOLEAN`
+- **Description:** Exclude Watermarks
+
+### `exaggerate_quality` — `BOOLEAN`
+- **Description:** Exaggerate Image Quality
+
 
 ## Outputs
 
-- **prompt** (STRING): The constructed prompt ready for LLM use
+### `out_prompt` — `STRING`
+- **Name:** `prompt`
+- **Description:** The constructed LLM prompt.
 
-## Usage
-
-Use to assemble comprehensive prompts for LLM nodes in your workflow. Select from predefined prompt templates and add custom instructions and style options.
 
 ## Notes
 
-- **EXPERIMENTAL**: This node is experimental and may change in future versions
-- Prompt templates are loaded from llm_prompts.json configuration
-- Available prompts are organized by category and shown as "category/prompt_name"
-- Style, quality, and content focus options are dynamically generated based on configuration
-- Ensures proper sentence-ending punctuation and formatting
-- Extra instructions are appended after the base prompt and options
-- Boolean options add their associated prompt text when enabled
-- Prompt cannot be empty after construction
+
+
+Generated from the node schema.

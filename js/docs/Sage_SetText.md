@@ -1,24 +1,41 @@
-# Sage_SetText
+---
+type: NodeDoc
+title: Set Text
+description: Auto-generated node documentation.
+tags: [nodes, docs]
+---
 
-**Set Text**
+# Set Text
 
-Sets and outputs a text string with optional prefix and suffix. Useful for providing static or user-defined text to workflows.
+* **Node ID:** `Sage_SetText`
+* **Category:** `Sage Utils/text/input`
+
+Sets some text.
 
 ## Inputs
 
-### Required
+### `str` — `STRING`
+- **Name:** `str`
+- **Description:** Text to set or modify.
 
-- **str** (STRING): The main text string to output
+### `prefix` — `STRING` (optional)
+- **Name:** `prefix`
+- **Description:** Text to prepend to the main string.
 
-### Optional
+### `suffix` — `STRING` (optional)
+- **Name:** `suffix`
+- **Description:** Text to append to the main string.
 
-- **prefix** (STRING): Text to add before the main string
-- **suffix** (STRING): Text to add after the main string
 
 ## Outputs
 
-- **str** (STRING): The combined text string (prefix + str + suffix)
+### `str_out` — `STRING`
+- **Name:** `str`
+- **Description:** Output value for str_out.
 
-## Usage
 
-Connect to nodes that require a text input, such as prompt or metadata nodes. The node combines prefix, main text, and suffix into a single output string.
+## Notes
+
+
+
+Generated from the node schema.

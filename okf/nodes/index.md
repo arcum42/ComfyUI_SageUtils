@@ -14,6 +14,7 @@ This subbundle collects knowledge about node families, node usage, and developme
 ## Concepts
 
 - [Node families](node_families.md) — categorization of Sage Utils node types and their roles.
+- [Node documentation](node_documentation.md) — how custom node markdown docs are authored under `js/docs` and loaded into the ComfyUI UI.
 - [Metadata nodes](metadata_nodes.md) — nodes for building, saving, and inspecting image metadata.
 - [Sampler and UI nodes](sampler_ui_nodes.md) — nodes that expose sampler settings and streamline workflow UX.
 - [Model loader nodes](model_loader_nodes.md) — nodes for loading models, checkpoints, and LoRA stacks with provenance.

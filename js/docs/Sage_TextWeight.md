@@ -1,29 +1,41 @@
-# Sage_TextWeight
+---
+type: NodeDoc
+title: Text Weight
+description: Auto-generated node documentation.
+tags: [nodes, docs]
+---
 
-**Text Weight**
+# Text Weight
 
-Applies a weight to a text string for prompt conditioning.
+* **Node ID:** `Sage_TextWeight`
+* **Category:** `Sage Utils/text/helper`
+
+Applies a weight to a text string.
 
 ## Inputs
 
-- **text** (STRING, required): The text string to apply weight to
-- **weight** (FLOAT, required): The weight value to apply
-  - Default: 1.0
-  - Range: -10.0 to 10.0
-  - Step: 0.05
+### `text` — `STRING`
+- **Name:** `text`
+- **Description:** The text to apply a weight to.
+
+### `weight` — `FLOAT`
+- **Name:** `weight`
+- **Description:** Weight value to add to the text.
+
+### `separator` — `STRING`
+- **Name:** `separator`
+- **Description:** Separator to use after the weighted text.
+
 
 ## Outputs
 
-- **weighted_text** (STRING): The text wrapped in weight syntax with trailing comma
+### `weighted_text` — `STRING`
+- **Name:** `weighted_text`
+- **Description:** Output value for weighted_text.
 
-## Usage
-
-Use to emphasize or de-emphasize parts of a prompt by applying numerical weights. The node formats the text in the standard prompt weighting syntax `(text:weight),` which is recognized by most AI image generation models.
 
 ## Notes
 
-- Weights greater than 1.0 emphasize the text (make it stronger)
-- Weights less than 1.0 de-emphasize the text (make it weaker)
-- Weight is formatted to 2 decimal places
-- Output includes trailing comma for easy prompt concatenation
-- Standard prompt weighting syntax: `(text:weight),`
+
+
+Generated from the node schema.

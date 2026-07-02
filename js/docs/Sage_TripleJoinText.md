@@ -1,23 +1,49 @@
-# Sage_TripleJoinText
+---
+type: NodeDoc
+title: Triple Join Text (Legacy)
+description: Auto-generated node documentation.
+tags: [nodes, docs]
+---
 
-**Join Text x3**
+# Triple Join Text (Legacy)
 
-Joins three text strings together with a customizable separator. Useful for building complex prompts or metadata with controlled formatting.
+* **Node ID:** `Sage_TripleJoinText`
+* **Category:** `Sage Utils/text/helper`
+
+Joins three strings with a separator.
 
 ## Inputs
 
-### Required
+### `separator` — `STRING`
+- **Name:** `separator`
+- **Description:** Separator string used between inputs.
 
-- **separator** (STRING): The separator to use between strings (default: ', ')
-- **add_separator_to_end** (BOOLEAN): Whether to add separator to the end of the joined string (default: False)
-- **str1** (STRING): First string to join
-- **str2** (STRING): Second string to join
-- **str3** (STRING): Third string to join
+### `add_separator_to_end` — `BOOLEAN`
+- **Name:** `add_separator_to_end`
+- **Description:** Add separator to the end of the joined string.
+
+### `str1` — `STRING`
+- **Name:** `str1`
+- **Description:** First string to join.
+
+### `str2` — `STRING`
+- **Name:** `str2`
+- **Description:** Second string to join.
+
+### `str3` — `STRING`
+- **Name:** `str3`
+- **Description:** Third string to join.
+
 
 ## Outputs
 
-- **str** (STRING): The joined string with separator
+### `str` — `STRING`
+- **Name:** `str`
+- **Description:** Output value for str.
 
-## Usage
 
-Use to concatenate multiple text fields for prompts or metadata. The separator parameter allows you to control how the strings are joined (comma, space, newline, etc.), and the add_separator_to_end option lets you append the separator to the final result.
+## Notes
+
+
+
+Generated from the node schema.

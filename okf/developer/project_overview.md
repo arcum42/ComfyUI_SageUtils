@@ -59,6 +59,7 @@ The `js/` folder is further organized into:
 - `docs/` contains design notes, architecture guides, and implementation plans.
 - `docs/ref_docs/` holds developer reference materials and walkthroughs.
 - `okf/` contains the structured, agent-friendly knowledge bundle used as the canonical reference for project organization, architecture, and documentation.
+- `js/docs/` is the local node documentation source for custom nodes and should be considered when authoring or updating Sage Utils node docs.
 
 ## Assets & Static Data
 

@@ -345,7 +345,7 @@ class Sage_CombineConditioning(io.ComfyNode):
     @classmethod
     def define_schema(cls):
         autogrow_template = io.Autogrow.TemplatePrefix(
-            input=io.Conditioning.Input("conditioning"),
+            input=io.Conditioning.Input("conditioning", tooltip="A conditioning input to combine."),
             prefix="conditioning_",
             min=2,
             max=100,
@@ -356,7 +356,7 @@ class Sage_CombineConditioning(io.ComfyNode):
             description="Combines multiple conditionings into a single conditioning.",
             category=f"{SAGE_UTILS_CAT}/clip/conditioning",
             inputs=[
-                io.DynamicCombo.Input("operation", display_name="operation", options=[
+                io.DynamicCombo.Input("operation", display_name="operation", tooltip="Select how conditioning values should be scaled.", options=[
                     io.DynamicCombo.Option("none", []),
                     io.DynamicCombo.Option("multiply", [
                         io.Float.Input(id="value", display_name="value", default=1.0, min=0.0, max=100.0, step=0.01, tooltip="Multiply by this value.")
@@ -365,7 +365,7 @@ class Sage_CombineConditioning(io.ComfyNode):
                         io.Float.Input(id="value", display_name="value", default=1.0, min=0.000001, max=100.0, step=0.01, tooltip="Divide by this value.")
                     ]),
                 ]),
-                io.Autogrow.Input("conditionings", template=autogrow_template),
+                io.Autogrow.Input("conditionings", template=autogrow_template, tooltip="Input value for conditionings."),
             ],
             outputs=[
                 io.Conditioning.Output(id="conditioning", display_name="conditioning"),
@@ -404,7 +404,7 @@ class Sage_AverageConditioning(io.ComfyNode):
     @classmethod
     def define_schema(cls):
         autogrow_template = io.Autogrow.TemplatePrefix(
-            input=io.Conditioning.Input("conditioning"),
+            input=io.Conditioning.Input("conditioning", tooltip="A conditioning input to average."),
             prefix="conditioning_",
             min=2,
             max=100,
@@ -416,7 +416,7 @@ class Sage_AverageConditioning(io.ComfyNode):
             category=f"{SAGE_UTILS_CAT}/clip/conditioning",
             enable_expand=True,
             inputs=[
-                io.Autogrow.Input("conditionings", template=autogrow_template),
+                io.Autogrow.Input("conditionings", template=autogrow_template, tooltip="Input value for conditionings."),
             ],
             outputs=[
                 io.Conditioning.Output(id="conditioning", display_name="conditioning"),
@@ -466,7 +466,7 @@ class Sage_CombineCLIPTextEncode(io.ComfyNode):
     @classmethod
     def define_schema(cls):
         autogrow_template = io.Autogrow.TemplatePrefix(
-            input=io.String.Input("text", force_input=True, multiline=True, dynamic_prompts=True),
+            input=io.String.Input("text", force_input=True, multiline=True, dynamic_prompts=True, tooltip="A dynamic text prompt input to encode."),
             prefix="text_",
             min=1,
             max=100,
@@ -478,7 +478,7 @@ class Sage_CombineCLIPTextEncode(io.ComfyNode):
             category=f"{SAGE_UTILS_CAT}/clip/helpers",
             inputs=[
                 io.Clip.Input(id="clip", display_name="clip", tooltip="The CLIP model used for encoding the text."),
-                io.DynamicCombo.Input("operation", display_name="operation", options=[
+                io.DynamicCombo.Input("operation", display_name="operation", tooltip="Choose whether to scale the combined text conditioning.", options=[
                     io.DynamicCombo.Option("none", []),
                     io.DynamicCombo.Option("multiply", [
                         io.Float.Input(id="value", display_name="value", default=1.0, min=0.0, max=100.0, step=0.01, tooltip="Multiply by this value.")
@@ -487,7 +487,7 @@ class Sage_CombineCLIPTextEncode(io.ComfyNode):
                         io.Float.Input(id="value", display_name="value", default=1.0, min=0.000001, max=100.0, step=0.01, tooltip="Divide by this value.")
                     ]),
                 ]),
-                io.Autogrow.Input("texts", template=autogrow_template),
+                io.Autogrow.Input("texts", template=autogrow_template, tooltip="Input value for texts."),
             ],
             outputs=[
                 io.Conditioning.Output(id="conditioning", display_name="conditioning", tooltip="A conditioning containing all encoded text prompts combined."),
@@ -539,7 +539,7 @@ class Sage_CombineCLIPMultilineTextEncode(io.ComfyNode):
             inputs=[
                 io.Clip.Input(id="clip", display_name="clip", tooltip="The CLIP model used for encoding the text."),
                 io.Combo.Input(id="mode", display_name="mode", options=["combine", "average"], default="combine", tooltip="How to merge line conditionings."),
-                io.DynamicCombo.Input("operation", display_name="operation", options=[
+                io.DynamicCombo.Input("operation", display_name="operation", tooltip="Choose whether to scale the per-line conditioning output.", options=[
                     io.DynamicCombo.Option("none", []),
                     io.DynamicCombo.Option("multiply", [
                         io.Float.Input(id="value", display_name="value", default=1.0, min=0.0, max=100.0, step=0.01, tooltip="Multiply by this value.")
@@ -624,7 +624,7 @@ class Sage_MultiplyConditioningStrength(io.ComfyNode):
             category=f"{SAGE_UTILS_CAT}/clip/conditioning",
             inputs=[
                 io.Conditioning.Input(id="conditioning", display_name="conditioning", tooltip="The conditioning to scale."),
-                io.DynamicCombo.Input("operation", display_name="operation", options=[
+                io.DynamicCombo.Input("operation", display_name="operation", tooltip="Select how to adjust the conditioning strength.", options=[
                     io.DynamicCombo.Option("multiply", [
                         io.Float.Input(id="value", display_name="value", default=1.0, min=0.0, max=100.0, step=0.01, tooltip="Multiply by this value.")
                     ]),

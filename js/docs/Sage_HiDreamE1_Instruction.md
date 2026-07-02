@@ -1,26 +1,37 @@
-# Sage_HiDreamE1_Instruction
+---
+type: NodeDoc
+title: HiDream E1 Instruction
+description: Auto-generated node documentation.
+tags: [nodes, docs]
+---
 
-**HiDreamE1 Instruction**
+# HiDream E1 Instruction
 
-Generates a formatted prompt for HiDream E1 models based on instruction and description inputs.
+* **Node ID:** `Sage_HiDreamE1_Instruction`
+* **Category:** `Sage Utils/text/prompt/hidream`
+
+Generates a prompt for HiDream E1 based on the given instruction and description.
 
 ## Inputs
 
-- **instruction** (STRING, required): The instruction text for the model
-- **description** (STRING, required): The description text for the model
+### `instruction` — `STRING`
+- **Name:** `instruction`
+- **Description:** The instruction text for the HiDream E1 prompt.
+
+### `description` — `STRING`
+- **Name:** `description`
+- **Description:** The description text to include in the HiDream E1 prompt.
+
 
 ## Outputs
 
-- **prompt** (STRING): Formatted prompt combining instruction and description
+### `prompt` — `STRING`
+- **Name:** `prompt`
+- **Description:** The generated HiDream E1 prompt.
 
-## Usage
-
-Use to create properly formatted prompts for HiDream E1 models. The node takes separate instruction and description inputs and combines them into the specific format expected by HiDream E1.
 
 ## Notes
 
-- Both instruction and description inputs are required and cannot be empty
-- Text inputs are automatically cleaned (whitespace trimmed, etc.)
-- If the instruction doesn't end with a period, one is automatically added
-- Output format: "Instruction: {instruction}\nDescription: {description}"
-- Designed specifically for HiDream E1 model prompt formatting requirements
+
+
+Generated from the node schema.

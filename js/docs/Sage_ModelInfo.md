@@ -1,31 +1,48 @@
-# Sage_ModelInfo
+---
+type: NodeDoc
+title: Model Info
+description: Auto-generated node documentation.
+tags: [nodes, docs]
+---
 
-**Model Info**
+# Model Info
 
-Retrieves Civitai model information and metadata based on model info input.
+* **Node ID:** `Sage_ModelInfo`
+* **Category:** `Sage Utils/info`
+
+Pull the civitai model info, and return what the base model is, the name with version, the url, the url for the latest version, and a preview image.
 
 ## Inputs
 
-- **model_info** (MODEL_INFO, required): Model information containing hash and metadata
+### `model_info` — `MODEL_INFO`
+- **Name:** `model_info`
+
 
 ## Outputs
 
-- **base_model** (STRING): The base model type (e.g., SDXL, SD1.5, etc.)
-- **name** (STRING): Model name with version information
-- **url** (STRING): Civitai URL for the specific model version
-- **latest_url** (STRING): Civitai URL for the latest version of the model
-- **image** (IMAGE): Preview image from Civitai
+### `base_model` — `STRING`
+- **Name:** `base_model`
+- **Description:** The base model name from the Civitai model metadata.
 
-## Usage
+### `name` — `STRING`
+- **Name:** `name`
+- **Description:** The full model name including version info.
 
-Use to retrieve and display comprehensive model information from Civitai. The node queries Civitai's API using the model hash to fetch metadata, URLs, and preview images for documentation or workflow information display.
+### `url` — `STRING`
+- **Name:** `url`
+- **Description:** The Civitai page URL for the model.
+
+### `latest_url` — `STRING`
+- **Name:** `latest_url`
+- **Description:** The URL of the latest version of the model.
+
+### `image` — `IMAGE`
+- **Name:** `image`
+- **Description:** Preview image for the model from Civitai.
+
 
 ## Notes
 
-- Requires internet connection to fetch data from Civitai
-- Uses model hash to query Civitai API for model information
-- Returns empty strings and blank image if model info is unavailable
-- Handles exceptions gracefully by returning empty values
-- The "latest_url" provides a link to the most recent version of the model
-- Preview image is fetched from Civitai's image URLs
-- Useful for model documentation and workflow metadata
+
+
+Generated from the node schema.

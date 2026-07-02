@@ -24,12 +24,12 @@ class Sage_EmptyAceStep15LatentAudio(io.ComfyNode):
             description="Creates an empty latent audio tensor for Ace Step 1.5 models.",
             category=f"{SAGE_UTILS_CAT}/audio",
             inputs=[
-                io.Float.Input("seconds", display_name="seconds", default=120.0, min=1.0, max=1000.0, step=0.01),
-                io.Int.Input("batch_size", display_name="batch_size", default=1),
+                io.Float.Input("seconds", display_name="seconds", default=120.0, min=1.0, max=1000.0, step=0.01, tooltip="Length of the empty audio tensor in seconds."),
+                io.Int.Input("batch_size", display_name="batch_size", default=1, tooltip="Number of audio examples in the batch."),
             ],
             outputs=[
-                io.Latent.Output("latent", display_name="latent"),
-                io.Float.Output("out_seconds", display_name="seconds")
+                io.Latent.Output("latent", display_name="latent", tooltip="The empty latent audio tensor for Ace Step 1.5."),
+                io.Float.Output("out_seconds", display_name="seconds", tooltip="The duration of the generated audio in seconds.")
             ]
         )
         
@@ -51,15 +51,15 @@ class Sage_AceAdvOptions(io.ComfyNode):
             description="Advanced options for Ace Step 1.5 audio encoding. These options can be used to fine-tune the behavior of the audio encoding process.",
             category=f"{SAGE_UTILS_CAT}/audio",
             inputs=[
-                io.Combo.Input("language", options=["en", "ja", "zh", "es", "de", "fr", "pt", "ru", "it", "nl", "pl", "tr", "vi", "cs", "fa", "id", "ko", "uk", "hu", "ar", "sv", "ro", "el"]),
-                io.Float.Input("cfg_scale", default=2.0, min=0.0, max=100.0, step=0.1, advanced=True),
-                io.Float.Input("temperature", default=0.85, min=0.0, max=2.0, step=0.01, advanced=True),
-                io.Float.Input("top_p", default=0.9, min=0.0, max=2000.0, step=0.01, advanced=True),
-                io.Int.Input("top_k", default=0, min=0, max=100, advanced=True),
-                io.Float.Input("min_p", default=0.000, min=0.0, max=1.0, step=0.001, advanced=True),
+                io.Combo.Input("language", options=["en", "ja", "zh", "es", "de", "fr", "pt", "ru", "it", "nl", "pl", "tr", "vi", "cs", "fa", "id", "ko", "uk", "hu", "ar", "sv", "ro", "el"], tooltip="The language for Ace Step 1.5 audio encoding."),
+                io.Float.Input("cfg_scale", default=2.0, min=0.0, max=100.0, step=0.1, advanced=True, tooltip="How strongly the audio encoding should follow the conditioning."),
+                io.Float.Input("temperature", default=0.85, min=0.0, max=2.0, step=0.01, advanced=True, tooltip="Sampling temperature for the audio code generation."),
+                io.Float.Input("top_p", default=0.9, min=0.0, max=2000.0, step=0.01, advanced=True, tooltip="Nucleus sampling probability threshold for audio code generation."),
+                io.Int.Input("top_k", default=0, min=0, max=100, advanced=True, tooltip="Top-K sampling limit for audio code generation."),
+                io.Float.Input("min_p", default=0.000, min=0.0, max=1.0, step=0.001, advanced=True, tooltip="Minimum allowed probability for audio code sampling."),
             ],
             outputs=[
-                AdvAudioInfo.Output("adv_audio_info", display_name="Advanced Audio Info", tooltip="The advanced audio options for Ace Step 1.5 encoding."),
+                AdvAudioInfo.Output("adv_audio_info", display_name="Advanced Audio Info", tooltip="The configured advanced audio encoding options."),
             ],
         )
 
@@ -93,18 +93,20 @@ class Sage_Ace15AudioEncode(io.ComfyNode):
             description="Encodes an audio clip into a conditioning using the Ace Step 1.5 model. This is used to create a conditioning from an audio reference.",
             category=f"{SAGE_UTILS_CAT}/audio",
             inputs=[
-                io.Clip.Input("clip"),
-                io.String.Input("tags", force_input=True, multiline=True, dynamic_prompts=True),
-                io.String.Input("lyrics", force_input=True, multiline=True, dynamic_prompts=True),
-                io.Int.Input("seed", default=0, min=0, max=0xffffffffffffffff, control_after_generate=True),
-                io.Float.Input("duration", default=120.0, min=0.0, max=2000.0, step=0.1),
-                io.Int.Input("bpm", default=120, min=10, max=300),
-                io.Combo.Input("timesignature", options=['2', '3', '4', '6']),
-                io.Combo.Input("keyscale", options=[f"{root} {quality}" for quality in ["major", "minor"] for root in ["C", "C#", "Db", "D", "D#", "Eb", "E", "F", "F#", "Gb", "G", "G#", "Ab", "A", "A#", "Bb", "B"]]),
-                io.Boolean.Input("generate_audio_codes", default=True, tooltip="Enable the LLM that generates audio codes. This can be slow but will increase the quality of the generated audio. Turn this off if you are giving the model an audio reference.", advanced=True),
-                AdvAudioInfo.Input("adv_audio_info", display_name="Advanced Audio Info", tooltip="Advanced audio options for Ace Step 1.5 encoding.", advanced=True)
+                io.Clip.Input("clip", tooltip="The audio clip to encode into Ace Step 1.5 conditioning."),
+                io.String.Input("tags", force_input=True, multiline=True, dynamic_prompts=True, tooltip="Descriptive tags or prompts for the audio encoding."),
+                io.String.Input("lyrics", force_input=True, multiline=True, dynamic_prompts=True, tooltip="Lyrics or vocal metadata to include during audio encoding."),
+                io.Int.Input("seed", default=0, min=0, max=0xffffffffffffffff, control_after_generate=True, tooltip="Random seed used for encoding determinism."),
+                io.Float.Input("duration", default=120.0, min=0.0, max=2000.0, step=0.1, tooltip="Target duration of the encoded audio in seconds."),
+                io.Int.Input("bpm", default=120, min=10, max=300, tooltip="Beats-per-minute tempo used for audio conditioning."),
+                io.Combo.Input("timesignature", options=['2', '3', '4', '6'], tooltip="Time signature for the encoded audio."),
+                io.Combo.Input("keyscale", options=[f"{root} {quality}" for quality in ["major", "minor"] for root in ["C", "C#", "Db", "D", "D#", "Eb", "E", "F", "F#", "Gb", "G", "G#", "Ab", "A", "A#", "Bb", "B"]], tooltip="Musical key and scale for the encoded audio."),
+                io.Boolean.Input("generate_audio_codes", default=True, tooltip="Enable LLM-generated audio codes for higher-quality audio encoding.", advanced=True),
+                AdvAudioInfo.Input("adv_audio_info", display_name="Advanced Audio Info", tooltip="Advanced audio encoding settings for Ace Step 1.5.", advanced=True)
             ],
-            outputs=[io.Conditioning.Output()],
+            outputs=[
+                io.Conditioning.Output(tooltip="The generated Ace Step 1.5 conditioning for audio."),
+            ],
         )
 
     @classmethod

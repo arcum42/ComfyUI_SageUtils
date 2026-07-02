@@ -1,33 +1,53 @@
-# Sage_EmptyLatentImagePassthrough
+---
+type: NodeDoc
+title: Empty Latent Image Passthrough
+description: Auto-generated node documentation.
+tags: [nodes, docs]
+---
 
-**Empty Latent Passthrough**
+# Empty Latent Image Passthrough
 
-Creates an empty latent image and passes width/height for easier wiring. Includes a switch for SD3 compatibility.
+* **Node ID:** `Sage_EmptyLatentImagePassthrough`
+* **Category:** `Sage Utils/image`
+
+Passes through an empty latent image.
 
 ## Inputs
 
-### Required
+### `width` — `INT`
+- **Name:** `width`
+- **Description:** The width of the empty latent image.
 
-- **width** (INT): The width of the latent images in pixels (default: 1024, range: 16 to MAX_RESOLUTION, step: 8)
-- **height** (INT): The height of the latent images in pixels (default: 1024, range: 16 to MAX_RESOLUTION, step: 8)
-- **batch_size** (INT): The number of latent images in the batch (default: 1, range: 1-4096)
-- **sd3** (BOOLEAN): Enable for SD3 compatibility - changes latent channels from 4 to 16 (default: False)
+### `height` — `INT`
+- **Name:** `height`
+- **Description:** The height of the empty latent image.
+
+### `batch_size` — `INT`
+- **Name:** `batch_size`
+- **Description:** The number of latent images in the batch.
+
+### `type` — `COMBO`
+- **Name:** `type`
+- **Description:** The type of latent to create. 4_channel is for standard latent diffusion models, 16_channel is for SD3 models, and radiance is for Chroma Radiance models.
+
 
 ## Outputs
 
-- **latent** (LATENT): The empty latent image batch
-- **width** (INT): Pass through the image width
-- **height** (INT): Pass through the image height
+### `latent` — `LATENT`
+- **Name:** `latent`
+- **Description:** The generated empty latent image tensor.
 
-## Usage
+### `out_width` — `INT`
+- **Name:** `width`
+- **Description:** The width of the output latent image.
 
-Use to generate latent images and pass dimensions to downstream nodes. The passthrough outputs make it easier to wire width/height to other nodes without additional connections.
+### `out_height` — `INT`
+- **Name:** `height`
+- **Description:** The height of the output latent image.
+
 
 ## Notes
 
-- Creates empty latent tensors on intermediate device for memory efficiency
-- SD3 mode uses 16 channels instead of 4 for compatibility with SD3 models
-- Latent dimensions are automatically scaled down by factor of 8 (standard for diffusion models)
-- Width and height must be multiples of 8 for proper latent space alignment
-- Batch size allows creating multiple latent images in a single tensor
-- Useful for starting generation workflows with proper dimension tracking
+
+
+Generated from the node schema.

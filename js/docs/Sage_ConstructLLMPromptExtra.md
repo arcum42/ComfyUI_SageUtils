@@ -1,31 +1,84 @@
-# Sage_ConstructLLMPromptExtra
+---
+type: NodeDoc
+title: Construct LLM Prompt Extra
+description: Auto-generated node documentation.
+tags: [nodes, docs]
+---
 
-**Construct LLM Prompt Extra**
+# Construct LLM Prompt Extra
 
-Builds extra instructions for LLM prompts using advanced options not covered in the main prompt constructor.
+* **Node ID:** `Sage_ConstructLLMPromptExtra`
+* **Category:** `Sage Utils/LLM`
+
+Construct extra instructions for an LLM based on the provided options.
 
 ## Inputs
 
-### Required
+### `extra_instructions` — `STRING`
+- **Name:** `extra_instructions`
+- **Description:** Extra instruction text to include with the prompt.
 
-- **extra_instructions** (STRING): Custom extra instructions to include (multiline, default: "")
-- **Various advanced options** (BOOLEAN): Dynamic options for categories other than style, quality, and content_focus
+### `include_emphasis_on_details` — `BOOLEAN`
+- **Description:** Emphasize Details
+
+### `include_lighting` — `BOOLEAN`
+- **Description:** Include Lighting
+
+### `include_marks` — `BOOLEAN`
+- **Description:** Include Marks
+
+### `include_camera_details` — `BOOLEAN`
+- **Description:** Include Camera Details
+
+### `describe_mood` — `BOOLEAN`
+- **Description:** Describe Mood
+
+### `describe_actions` — `BOOLEAN`
+- **Description:** Describe Actions
+
+### `describe_setting` — `BOOLEAN`
+- **Description:** Describe Setting
+
+### `include_time_of_day` — `BOOLEAN`
+- **Description:** Include Time of Day
+
+### `include_weather` — `BOOLEAN`
+- **Description:** Include Weather
+
+### `include_materials` — `BOOLEAN`
+- **Description:** Include Materials
+
+### `include_motion` — `BOOLEAN`
+- **Description:** Include Motion
+
+### `include_context` — `BOOLEAN`
+- **Description:** Include Context
+
+### `include_scale` — `BOOLEAN`
+- **Description:** Include Scale
+
+### `include_cultural_references` — `BOOLEAN`
+- **Description:** Include Cultural References
+
+### `include_anomalies` — `BOOLEAN`
+- **Description:** Include Anomalies
+
+### `include_symmetry` — `BOOLEAN`
+- **Description:** Include Symmetry
+
+### `include_reflections` — `BOOLEAN`
+- **Description:** Include Reflections
+
 
 ## Outputs
 
-- **extra** (STRING): The constructed extra instructions string
+### `extra` — `STRING`
+- **Name:** `extra`
+- **Description:** The generated extra instructions for the LLM.
 
-## Usage
-
-Use to assemble advanced extra instructions for LLM nodes. This node provides access to additional prompt options not available in the main constructor.
 
 ## Notes
 
-- **EXPERIMENTAL**: This node is experimental and may change in future versions
-- Complements Sage_ConstructLLMPrompt by handling advanced options
-- Options are loaded from llm_prompts.json configuration
-- Only shows options NOT in style, quality, or content_focus categories
-- Each enabled boolean option adds its associated prompt text
-- Custom extra_instructions are prepended to the generated options
-- Results can be combined with main prompt outputs
-- Automatic formatting with proper line breaks and spacing
+
+
+Generated from the node schema.

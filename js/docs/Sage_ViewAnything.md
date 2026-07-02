@@ -1,31 +1,33 @@
-# Sage_ViewAnything
+---
+type: NodeDoc
+title: View Anything
+description: Auto-generated node documentation.
+tags: [nodes, docs]
+---
 
-**View Any Node as Text**
+# View Anything
 
-Displays the output of any node as text in the UI and returns it as a string. This is an output node useful for debugging, inspecting non-string outputs, and visualizing data flow.
+* **Node ID:** `Sage_ViewAnything`
+* **Category:** `Sage Utils/text/output`
+
+Shows some text.
 
 ## Inputs
 
-### Required
+### `any` — `*`
+- **Name:** `any`
+- **Description:** Any value to view as text.
 
-- **any** (ANY): The value to display as text (accepts any data type, including lists)
 
 ## Outputs
 
-- **STRING**: The converted text representation of the input
+### `str` — `STRING`
+- **Name:** `str`
+- **Description:** Output value for str.
 
-## Usage
-
-Connect to any node to visualize its output as a string. This node:
-
-- Accepts any data type as input
-- Handles both single values and lists
-- Displays the result in the ComfyUI interface
-- Returns the text representation for use in other nodes
-- Is particularly useful for debugging and data inspection
 
 ## Notes
 
-- This is an output node that displays results in the UI
-- When input is a list, each item is displayed on a new line
-- The node converts any input type to its string representation
+
+
+Generated from the node schema.

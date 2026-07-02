@@ -1,43 +1,61 @@
-# Sage_KSamplerAudioDecoder
+---
+type: NodeDoc
+title: KSampler + Audio Decoder
+description: Auto-generated node documentation.
+tags: [nodes, docs]
+---
 
-**KSampler + Audio Decoder**
+# KSampler + Audio Decoder
 
-A specialized KSampler node designed for audio generation workflows. It performs sampling on latent audio data and automatically decodes it to audio format, outputting both the denoised latent and decoded audio.
+* **Node ID:** `Sage_KSamplerAudioDecoder`
+* **Category:** `Sage Utils/sampler`
+
+Uses the provided model, positive and negative conditioning to denoise the latent audio, and generate audio with the provided vae. Designed to work with the Sampler info node.
 
 ## Inputs
 
-### Required
-- **model** (MODEL): The model used for denoising the input latent
-- **sampler_info** (SAMPLER_INFO): Most of the KSampler options. Should be piped both here and to the Construct Metadata node
-- **positive** (CONDITIONING): The conditioning describing the attributes you want to include in the audio
-- **negative** (CONDITIONING): The conditioning describing the attributes you want to exclude from the audio
-- **latent_audio** (LATENT): The latent audio to denoise
-- **vae** (VAE): The VAE used for decoding the latent audio
-- **denoise** (FLOAT): The amount of denoising applied, lower values will maintain the structure of the initial audio allowing for audio to audio sampling (default: 1.0, range: 0.0-1.0)
+### `model` — `MODEL`
+- **Name:** `model`
+- **Description:** The model used for denoising audio latent.
 
-### Optional
+### `sampler_info` — `SAMPLER_INFO`
+- **Name:** `sampler_info`
+- **Description:** Sampler configuration for the KSampler.
 
-- **advanced_info** (ADV_SAMPLER_INFO): Optional. Adds in the options an advanced KSampler would have
+### `positive` — `CONDITIONING`
+- **Name:** `positive`
+- **Description:** Positive conditioning for audio generation.
+
+### `negative` — `CONDITIONING`
+- **Name:** `negative`
+- **Description:** Negative conditioning for audio generation.
+
+### `latent_audio` — `LATENT`
+- **Name:** `latent_audio`
+- **Description:** The latent audio tensor to denoise.
+
+### `vae` — `VAE`
+- **Name:** `vae`
+- **Description:** The audio VAE used to decode the denoised latent.
+
+### `denoise` — `FLOAT`
+- **Name:** `denoise`
+- **Description:** The denoising strength.
+
 
 ## Outputs
 
-- **LATENT**: The denoised latent
-- **AUDIO**: The decoded audio (44.1kHz sample rate with normalized waveform)
+### `latent` — `LATENT`
+- **Name:** `latent`
+- **Description:** The denoised latent audio output.
 
-## Usage
+### `audio` — `AUDIO`
+- **Name:** `audio`
+- **Description:** The decoded audio result.
 
-This node is specifically designed for audio generation workflows using latent diffusion models. It combines the sampling and decoding steps into a single node for convenience.
-
-Key features:
-
-- Automatic audio normalization (scales by 5x standard deviation, minimum 1.0)
-- Fixed 44.1kHz sample rate output
-- Supports advanced sampling options when connected to Sage_AdvSamplerInfo
-- Works with the Sage_SamplerInfo node for consistent workflow integration
 
 ## Notes
 
-- The audio output includes automatic normalization to prevent clipping
-- This node is optimized for audio generation workflows
-- Use with audio-specific VAE models for best results
-- The latent_audio input should come from audio-compatible latent sources
+
+
+Generated from the node schema.

@@ -1,26 +1,33 @@
-# Sage_PonyStyle
+---
+type: NodeDoc
+title: Pony Style
+description: Auto-generated node documentation.
+tags: [nodes, docs]
+---
 
-**Add Pony Style**
+# Pony Style
 
-Adds three-letter artist style codes from Pony v6 to prompts.
+* **Node ID:** `Sage_PonyStyle`
+* **Category:** `Sage Utils/text/prompt/pony`
+
+Adds the chosen three letter artist styles from Pony v6.
 
 ## Inputs
 
-- **style** (multi-select): Choose from hundreds of three-letter artist style codes
-  - Multi-select dropdown with chip display
-  - Options include: aav, aax, aba, aca, acb, acl, etc. (extensive list of artist style codes)
+### `style` — `COMBO`
+- **Name:** `style`
+- **Description:** Choose Pony style codes to include in the prompt.
+
 
 ## Outputs
 
-- **text** (STRING): Comma-separated list of selected style codes
+### `styled_text` — `STRING`
+- **Name:** `styled_text`
+- **Description:** The combined Pony style text generated from selected styles.
 
-## Usage
-
-Use to add specific artist styles to your Pony v6 prompts. Select one or more three-letter codes that correspond to different artistic styles. The node will output them as a comma-separated string that can be added to your prompt.
 
 ## Notes
 
-- Contains hundreds of three-letter artist style codes specific to Pony v6
-- Supports multi-selection for combining multiple artistic influences
-- Output is formatted as comma-separated values for easy prompt integration
-- Style codes are based on the Pony v6 model's training data and recognized artistic styles
+
+
+Generated from the node schema.

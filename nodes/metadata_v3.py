@@ -49,19 +49,19 @@ class Sage_ConstructMetadataFlexible(io.ComfyNode):
             description="Flexible metadata constructor supporting multiple styles: A1111 Full (with LoRA hashes), A1111 Lite (simplified, only includes models on Civitai), Simple (No models or LoRAs) as well as any others defined in metadata_templates.",
             category=f"{SAGE_UTILS_CAT}/metadata",
             inputs=[
-                ModelInfo.Input("model_info", display_name="model_info"),
-                io.String.Input("positive_string", display_name="positive_string", default=""),
-                io.String.Input("negative_string", display_name="negative_string", default=""),
-                SamplerInfo.Input("sampler_info", display_name="sampler_info"),
-                io.Int.Input("width", display_name="width", default=1024),
-                io.Int.Input("height", display_name="height", default=1024),
+                ModelInfo.Input("model_info", display_name="model_info", tooltip="Model info used to build metadata, such as checkpoint and model details."),
+                io.String.Input("positive_string", display_name="positive_string", default="", tooltip="The positive prompt text to include in metadata."),
+                io.String.Input("negative_string", display_name="negative_string", default="", tooltip="The negative prompt text to include in metadata."),
+                SamplerInfo.Input("sampler_info", display_name="sampler_info", tooltip="Sampler settings used to generate the image."),
+                io.Int.Input("width", display_name="width", default=1024, tooltip="Image width used in metadata."),
+                io.Int.Input("height", display_name="height", default=1024, tooltip="Image height used in metadata."),
                 io.Combo.Input("metadata_style", display_name="metadata_style", 
                              options=list(metadata_templates.keys()),
-                             default="A1111 Full"),
-                LoraStack.Input("lora_stack", display_name="lora_stack", optional=True)
+                             default="A1111 Full", tooltip="The metadata style format to produce."),
+                LoraStack.Input("lora_stack", display_name="lora_stack", optional=True, tooltip="Optional LoRA stack information to include in metadata."),
             ],
             outputs=[
-                io.String.Output("param_metadata", display_name="param_metadata")
+                io.String.Output("param_metadata", display_name="param_metadata", tooltip="The generated metadata string." )
             ]
         )
         return schema
@@ -325,32 +325,32 @@ class Sage_ParseMetadataFlexible(io.ComfyNode):
             description="Parses A1111 Full format metadata string and extracts individual components. Returns parsed values for positive prompt, negative prompt, sampler info (sampler, scheduler, cfg, steps, seed), dimensions (width, height), and attempts to find models and LoRAs by hash in the local cache.",
             category=f"{SAGE_UTILS_CAT}/metadata",
             inputs=[
-                io.String.Input("metadata_string", display_name="metadata_string", multiline=True),
-                io.Int.Input("default_seed", display_name="default_seed", default=0, optional=True),
-                io.Int.Input("default_steps", display_name="default_steps", default=20, min=1, max=10000, optional=True),
-                io.Float.Input("default_cfg", display_name="default_cfg", default=7.0, min=0.0, max=100.0, step=0.1, optional=True),
+                io.String.Input("metadata_string", display_name="metadata_string", multiline=True, tooltip="The metadata string to parse."),
+                io.Int.Input("default_seed", display_name="default_seed", default=0, optional=True, tooltip="Default seed used when the metadata does not specify one."),
+                io.Int.Input("default_steps", display_name="default_steps", default=20, min=1, max=10000, optional=True, tooltip="Default steps used when the metadata does not specify them."),
+                io.Float.Input("default_cfg", display_name="default_cfg", default=7.0, min=0.0, max=100.0, step=0.1, optional=True, tooltip="Default CFG scale used when the metadata does not specify it."),
                 io.Combo.Input("default_sampler", display_name="default_sampler",
                                options=comfy.samplers.SAMPLER_NAMES,
-                               default="euler", optional=True),
+                               default="euler", optional=True, tooltip="Default sampler to use when the metadata string does not specify one."),
                 io.Combo.Input("default_scheduler", display_name="default_scheduler",
                                options=comfy.samplers.SCHEDULER_NAMES,
-                               default="normal", optional=True),
-                io.Int.Input("default_width", display_name="default_width", default=1024, min=0, optional=True),
-                io.Int.Input("default_height", display_name="default_height", default=1024, min=0, optional=True),
-                ModelInfo.Input("default_model_info", display_name="default_model_info", optional=True),
+                               default="normal", optional=True, tooltip="Default scheduler to use when the metadata string does not specify one."),
+                io.Int.Input("default_width", display_name="default_width", default=1024, min=0, optional=True, tooltip="Default width used when the metadata does not specify dimensions."),
+                io.Int.Input("default_height", display_name="default_height", default=1024, min=0, optional=True, tooltip="Default height used when the metadata does not specify dimensions."),
+                ModelInfo.Input("default_model_info", display_name="default_model_info", optional=True, tooltip="Default model info used when the metadata string does not identify a model."),
             ],
             outputs=[
-                io.String.Output("positive_string", display_name="positive_string"),
-                io.String.Output("negative_string", display_name="negative_string"),
-                io.Int.Output("seed", display_name="seed"),
-                io.Int.Output("steps", display_name="steps"),
-                io.Float.Output("cfg", display_name="cfg"),
-                io.Combo.Output("sampler_name", display_name="sampler_name"),
-                io.Combo.Output("scheduler", display_name="scheduler"),
-                io.Int.Output("width", display_name="width"),
-                io.Int.Output("height", display_name="height"),
-                ModelInfo.Output("model_info", display_name="model_info"),
-                LoraStack.Output("lora_stack", display_name="lora_stack"),
+                io.String.Output("positive_string", display_name="positive_string", tooltip="Extracted positive prompt string."),
+                io.String.Output("negative_string", display_name="negative_string", tooltip="Extracted negative prompt string."),
+                io.Int.Output("seed", display_name="seed", tooltip="Extracted seed value."),
+                io.Int.Output("steps", display_name="steps", tooltip="Extracted number of steps."),
+                io.Float.Output("cfg", display_name="cfg", tooltip="Extracted CFG scale."),
+                io.Combo.Output("sampler_name", display_name="sampler_name", tooltip="Extracted sampler name."),
+                io.Combo.Output("scheduler", display_name="scheduler", tooltip="Extracted scheduler name."),
+                io.Int.Output("width", display_name="width", tooltip="Extracted image width."),
+                io.Int.Output("height", display_name="height", tooltip="Extracted image height."),
+                ModelInfo.Output("model_info", display_name="model_info", tooltip="Extracted default model info from metadata, if available."),
+                LoraStack.Output("lora_stack", display_name="lora_stack", tooltip="Extracted LoRA stack information from the metadata.")
             ]
         )
         return schema

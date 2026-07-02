@@ -1,44 +1,57 @@
-# Sage_SaveImageWithMetadata
+---
+type: NodeDoc
+title: Save Image With Metadata
+description: Auto-generated node documentation.
+tags: [nodes, docs]
+---
 
-**Save Image w/ Added Metadata**
+# Save Image With Metadata
 
-Saves images with comprehensive metadata options including custom parameters, extra metadata, and ComfyUI workflow information.
+* **Node ID:** `Sage_SaveImageWithMetadata`
+* **Category:** `Sage Utils/image/file`
+
+Saves images to disk with embedded metadata.
 
 ## Inputs
 
-### Required
+### `images` — `IMAGE`
+- **Name:** `images`
+- **Description:** The images to save.
 
-- **images** (IMAGE): The images to save
-- **filename_prefix** (STRING): The prefix for the file to save, supports formatting like %date:yyyy-MM-dd% or %Empty Latent Image.width% (default: "ComfyUI_Meta")
-- **include_node_metadata** (BOOLEAN): Whether to include ComfyUI prompt/workflow metadata (default: True)
-- **include_extra_pnginfo_metadata** (BOOLEAN): Whether to include extra PNG info metadata (default: True)
+### `filename_prefix` — `STRING`
+- **Name:** `filename_prefix`
+- **Description:** The prefix for the saved image filenames.
 
-### Optional
+### `include_node_metadata` — `BOOLEAN`
+- **Name:** `include_node_metadata`
+- **Description:** Whether to include node metadata in the saved image.
 
-- **param_metadata** (STRING): Metadata string for "parameters" field (A1111-style)
-- **extra_metadata** (STRING): Additional metadata for "Extra" field
+### `include_extra_pnginfo_metadata` — `BOOLEAN`
+- **Name:** `include_extra_pnginfo_metadata`
+- **Description:** Whether to include extra PNG info metadata.
 
-### Hidden
+### `save_text` — `BOOLEAN`
+- **Name:** `save_text`
+- **Description:** Whether to save accompanying text files with metadata.
 
-- **prompt**: ComfyUI workflow prompt (automatically provided)
-- **extra_pnginfo**: Extra PNG info (automatically provided)
+### `param_metadata` — `STRING`
+- **Name:** `param_metadata`
+- **Description:** The metadata to embed in the image.
+
+### `extra_metadata` — `STRING`
+- **Name:** `extra_metadata`
+- **Description:** Any extra metadata to include.
+
 
 ## Outputs
 
-- **None** (Output Node): Saves images to ComfyUI output directory
+## Outputs
 
-## Usage
+_No outputs defined._
 
-Use to save images with custom and standard metadata for better tracking and sharing. Connect param_metadata from Construct Metadata node for A1111-compatible metadata.
 
 ## Notes
 
-- Saves images as PNG with customizable compression level
-- param_metadata is stored under "parameters" key (A1111 standard)
-- extra_metadata is stored under "Extra" key
-- Filename prefix supports dynamic formatting with node values and dates
-- Batch number support with %batch_num% placeholder
-- Respects ComfyUI's --disable-metadata flag
-- Compatible with A1111 and Civitai metadata standards
-- Output node that appears in ComfyUI's image output interface
-- Useful for workflows requiring comprehensive metadata tracking
+
+
+Generated from the node schema.

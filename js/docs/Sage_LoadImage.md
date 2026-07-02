@@ -1,34 +1,48 @@
-# Sage_LoadImage
+---
+type: NodeDoc
+title: Load Image
+description: Auto-generated node documentation.
+tags: [nodes, docs]
+---
 
-**Load Image w/ Size & Metadata**
+# Load Image
 
-Loads an image and outputs its size and embedded metadata along with the image and mask.
+* **Node ID:** `Sage_LoadImage`
+* **Category:** `Sage Utils/image/file`
+
+Loads an image from a specified file path.
 
 ## Inputs
 
-### Required
+### `image_name` — `COMBO`
+- **Description:** The file path of the image to load.
 
-- **image** (STRING): The image file to load from the input directory (supports image upload)
 
 ## Outputs
 
-- **image** (IMAGE): The loaded image
-- **mask** (MASK): The alpha channel mask (if present)
-- **width** (INT): The image width in pixels
-- **height** (INT): The image height in pixels
-- **metadata** (STRING): Embedded metadata from the image file
+### `image` — `IMAGE`
+- **Name:** `image`
+- **Description:** The loaded image.
 
-## Usage
+### `mask` — `IMAGE`
+- **Name:** `mask`
+- **Description:** The alpha or mask output for the loaded image, if available.
 
-Use to inspect images and extract their metadata for use in workflows. Provides both the image data and useful information about dimensions and embedded metadata.
+### `out_width` — `INT`
+- **Name:** `width`
+- **Description:** The width of the loaded image.
+
+### `out_height` — `INT`
+- **Name:** `height`
+- **Description:** The height of the loaded image.
+
+### `metadata` — `STRING`
+- **Name:** `metadata`
+- **Description:** Metadata extracted from the loaded image.
+
 
 ## Notes
 
-- Automatically scans all files in the ComfyUI input directory
-- Supports image upload functionality
-- Extracts alpha channel as mask if present
-- Metadata includes EXIF data, PNG text chunks, and other embedded information
-- File validation ensures only valid image files are processed
-- Uses SHA256 hash to detect file changes for cache invalidation
-- Supports all common image formats (PNG, JPEG, WebP, etc.)
-- Useful for loading reference images and extracting generation parameters
+This note was added to test automatic documentation generation from schema metadata.
+
+Generated from the node schema.

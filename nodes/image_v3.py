@@ -136,15 +136,15 @@ class Sage_EmptyLatentImagePassthrough(io.ComfyNode):
             description="Passes through an empty latent image.",
             category=f"{SAGE_UTILS_CAT}/image",
             inputs=[
-                io.Int.Input("width", display_name="width", default=1024),
-                io.Int.Input("height", display_name="height", default=1024),
-                io.Int.Input("batch_size", display_name="batch_size", default=1),
+                io.Int.Input("width", display_name="width", default=1024, tooltip="The width of the empty latent image."),
+                io.Int.Input("height", display_name="height", default=1024, tooltip="The height of the empty latent image."),
+                io.Int.Input("batch_size", display_name="batch_size", default=1, tooltip="The number of latent images in the batch."),
                 io.Combo.Input("type", display_name="type", default="4_channel", options=["4_channel", "16_channel", "radiance"], tooltip="The type of latent to create. 4_channel is for standard latent diffusion models, 16_channel is for SD3 models, and radiance is for Chroma Radiance models."),
             ],
             outputs=[
-                io.Latent.Output("latent", display_name="latent"),
-                io.Int.Output("out_width", display_name="width"),
-                io.Int.Output("out_height", display_name="height"),
+                io.Latent.Output("latent", display_name="latent", tooltip="The generated empty latent image tensor."),
+                io.Int.Output("out_width", display_name="width", tooltip="The width of the output latent image."),
+                io.Int.Output("out_height", display_name="height", tooltip="The height of the output latent image."),
             ]
         )
 
@@ -311,13 +311,14 @@ class Sage_LoadImage(io.ComfyNode):
             is_output_node=True,
             inputs=[],
             outputs=[
-                io.Image.Output("image", display_name="image"),
-                io.Image.Output("mask", display_name="mask"),
-                io.Int.Output("out_width", display_name="width"),
-                io.Int.Output("out_height", display_name="height"),
-                io.String.Output("metadata", display_name="metadata"),
+                io.Image.Output("image", display_name="image", tooltip="The loaded image."),
+                io.Image.Output("mask", display_name="mask", tooltip="The alpha or mask output for the loaded image, if available."),
+                io.Int.Output("out_width", display_name="width", tooltip="The width of the loaded image."),
+                io.Int.Output("out_height", display_name="height", tooltip="The height of the loaded image."),
+                io.String.Output("metadata", display_name="metadata", tooltip="Metadata extracted from the loaded image."),
             ]
         )
+        schema.notes = "This note was added to test automatic documentation generation from schema metadata."
         schema.inputs.append(
             io.Combo.Input(
                 "image_name",

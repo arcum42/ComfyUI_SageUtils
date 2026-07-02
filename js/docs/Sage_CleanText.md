@@ -1,19 +1,33 @@
-# Sage_CleanText
+---
+type: NodeDoc
+title: Clean Text
+description: Auto-generated node documentation.
+tags: [nodes, docs]
+---
 
-**Clean Text**
+# Clean Text
 
-Cleans or normalizes a text string by removing unwanted characters, excess whitespace, and formatting inconsistencies. Useful for preparing text for prompt or metadata processing.
+* **Node ID:** `Sage_CleanText`
+* **Category:** `Sage Utils/text/helper`
+
+Cleans up the string given.
 
 ## Inputs
 
-### Required
+### `str` — `STRING`
+- **Name:** `str`
+- **Description:** Text input to clean using the configured clean_text utility.
 
-- **str** (STRING): The string to clean and normalize
 
 ## Outputs
 
-- **cleaned_string** (STRING): The cleaned and normalized text
+### `cleaned_string` — `STRING`
+- **Name:** `cleaned string`
+- **Description:** Output value for cleaned_string.
 
-## Usage
 
-Use before passing text to prompt or metadata nodes to ensure clean input. This node applies text cleaning functions that remove extra spaces, normalize line breaks, and clean up formatting issues that can interfere with text processing.
+## Notes
+
+
+
+Generated from the node schema.

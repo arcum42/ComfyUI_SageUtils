@@ -57,15 +57,15 @@ class Sage_OllamaAdvancedOptions(io.ComfyNode):
             description="Get advanced options for LLMs.",
             category=f"{SAGE_UTILS_CAT}/LLM/Ollama",
             inputs=[
-                io.Int.Input("num_keep", display_name="num_keep", default=0, min=0, max=100, step=1),
-                io.Int.Input("num_predict", display_name="num_predict", default=-1, min=-1, max=16384, step=1),
-                io.Int.Input("top_k", display_name="top_k", default=40, min=1, max=1000, step=1),
-                io.Float.Input("top_p", display_name="top_p", default=0.9, min=0.0, max=1.0, step=0.01),
-                io.Int.Input("repeat_last_n", display_name="repeat_last_n", default=64, min=0, max=256, step=1),
-                io.Float.Input("temperature", display_name="temperature", default=0.8, min=0.0, max=1.0, step=0.01),
-                io.Float.Input("repeat_penalty", display_name="repeat_penalty", default=1.1, min=1.0, max=2.0, step=0.01),
-                io.Float.Input("presence_penalty", display_name="presence_penalty", default=0.0, min=-2.0, max=2.0, step=0.01),
-                io.Float.Input("frequency_penalty", display_name="frequency_penalty", default=0.0, min=-2.0, max=2.0, step=0.01)
+                io.Int.Input("num_keep", display_name="num_keep", default=0, min=0, max=100, step=1, tooltip="Input value for num_keep."),
+                io.Int.Input("num_predict", display_name="num_predict", default=-1, min=-1, max=16384, step=1, tooltip="Input value for num_predict."),
+                io.Int.Input("top_k", display_name="top_k", default=40, min=1, max=1000, step=1, tooltip="Input value for top_k."),
+                io.Float.Input("top_p", display_name="top_p", default=0.9, min=0.0, max=1.0, step=0.01, tooltip="Input value for top_p."),
+                io.Int.Input("repeat_last_n", display_name="repeat_last_n", default=64, min=0, max=256, step=1, tooltip="Input value for repeat_last_n."),
+                io.Float.Input("temperature", display_name="temperature", default=0.8, min=0.0, max=1.0, step=0.01, tooltip="Input value for temperature."),
+                io.Float.Input("repeat_penalty", display_name="repeat_penalty", default=1.1, min=1.0, max=2.0, step=0.01, tooltip="Input value for repeat_penalty."),
+                io.Float.Input("presence_penalty", display_name="presence_penalty", default=0.0, min=-2.0, max=2.0, step=0.01, tooltip="Input value for presence_penalty."),
+                io.Float.Input("frequency_penalty", display_name="frequency_penalty", default=0.0, min=-2.0, max=2.0, step=0.01, tooltip="Input value for frequency_penalty.")
             ],
             outputs=[
                 OllamaOptions.Output("options", display_name="options")
@@ -91,15 +91,15 @@ class Sage_OllamaLLMPromptText(io.ComfyNode):
             description="Provider-specific text generation node for Ollama models.",
             category=f"{SAGE_UTILS_CAT}/LLM/Ollama",
             inputs=[
-                io.String.Input("prompt", display_name="prompt", default=DEFAULT_TEXT_PROMPT, multiline=True),
-                io.Combo.Input("model", display_name="model", options=sorted(models)),
-                io.Int.Input("seed", display_name="seed", default=0, min=0, max=2**32 - 1, step=1),
-                io.Float.Input("keep_alive", display_name="keep_alive", default=0.0, min=-1.0, max=60.0 * 60.0, step=1),
+                io.String.Input("prompt", display_name="prompt", default=DEFAULT_TEXT_PROMPT, multiline=True, tooltip="Input value for prompt."),
+                io.Combo.Input("model", display_name="model", options=sorted(models), tooltip="Input value for model."),
+                io.Int.Input("seed", display_name="seed", default=0, min=0, max=2**32 - 1, step=1, tooltip="Input value for seed."),
+                io.Float.Input("keep_alive", display_name="keep_alive", default=0.0, min=-1.0, max=60.0 * 60.0, step=1, tooltip="Input value for keep_alive."),
                 OllamaOptions.Input("options", display_name="options", optional=True),
-                io.String.Input("system_prompt", display_name="system_prompt", default="", multiline=True, optional=True)
+                io.String.Input("system_prompt", display_name="system_prompt", default="", multiline=True, optional=True, tooltip="Input value for system_prompt.")
             ],
             outputs=[
-                io.String.Output("response", display_name="response")
+                io.String.Output("response", display_name="response", tooltip="Output value for response.")
             ]
         )
 
@@ -150,16 +150,16 @@ class Sage_OllamaLLMPromptVision(io.ComfyNode):
             description="Provider-specific vision generation node for Ollama models.",
             category=f"{SAGE_UTILS_CAT}/LLM/Ollama",
             inputs=[
-                io.String.Input("prompt", display_name="prompt", default=DEFAULT_VISION_PROMPT, multiline=True),
-                io.Combo.Input("model", display_name="model", options=sorted(models)),
-                io.Image.Input("image", display_name="image"),
-                io.Int.Input("seed", display_name="seed", default=0, min=0, max=2**32 - 1, step=1),
-                io.Float.Input("keep_alive", display_name="keep_alive", default=0.0, min=-1.0, max=60.0 * 60.0, step=0.1),
+                io.String.Input("prompt", display_name="prompt", default=DEFAULT_VISION_PROMPT, multiline=True, tooltip="Input value for prompt."),
+                io.Combo.Input("model", display_name="model", options=sorted(models), tooltip="Input value for model."),
+                io.Image.Input("image", display_name="image", tooltip="Input value for image."),
+                io.Int.Input("seed", display_name="seed", default=0, min=0, max=2**32 - 1, step=1, tooltip="Input value for seed."),
+                io.Float.Input("keep_alive", display_name="keep_alive", default=0.0, min=-1.0, max=60.0 * 60.0, step=0.1, tooltip="Input value for keep_alive."),
                 OllamaOptions.Input("options", display_name="options", optional=True),
-                io.String.Input("system_prompt", display_name="system_prompt", default="", multiline=True, optional=True)
+                io.String.Input("system_prompt", display_name="system_prompt", default="", multiline=True, optional=True, tooltip="Input value for system_prompt.")
             ],
             outputs=[
-                io.String.Output("response", display_name="response")
+                io.String.Output("response", display_name="response", tooltip="Output value for response.")
             ]
         )
 
@@ -216,17 +216,17 @@ class Sage_OllamaLLMPromptVisionRefine(io.ComfyNode):
             description="Provider-specific vision-refine node for Ollama models.",
             category=f"{SAGE_UTILS_CAT}/LLM/Ollama",
             inputs=[
-                io.String.Input("prompt", default=DEFAULT_VISION_PROMPT, multiline=True),
-                io.Combo.Input("model", options=sorted(models)),
-                io.Image.Input("image"),
-                io.Int.Input("seed", default=0, min=0, max=2**32 - 1, step=1),
-                io.String.Input("refine_prompt", default="Take the provided text description and rewrite it to be more vivid, detailed, and engaging, while preserving the original meaning.", multiline=True),
-                io.Combo.Input("refine_model", options=sorted(refine_models)),
-                io.Int.Input("refine_seed", default=0, min=0, max=2**32 - 1, step=1)
+                io.String.Input("prompt", default=DEFAULT_VISION_PROMPT, multiline=True, tooltip="The text prompt for the initial vision generation pass."),
+                io.Combo.Input("model", options=sorted(models), tooltip="The Ollama vision model used for initial generation."),
+                io.Image.Input("image", tooltip="The reference image sent to the Ollama vision model."),
+                io.Int.Input("seed", default=0, min=0, max=2**32 - 1, step=1, tooltip="Seed for the initial generation pass."),
+                io.String.Input("refine_prompt", default="Take the provided text description and rewrite it to be more vivid, detailed, and engaging, while preserving the original meaning.", multiline=True, tooltip="Instructions used for the second, refinement pass."),
+                io.Combo.Input("refine_model", options=sorted(refine_models), tooltip="The Ollama model used for the refinement pass."),
+                io.Int.Input("refine_seed", default=0, min=0, max=2**32 - 1, step=1, tooltip="Seed for the refinement pass."),
             ],
             outputs=[
-                io.String.Output("initial_response"),
-                io.String.Output("refined_response")
+                io.String.Output("initial_response", tooltip="The initial vision response returned by Ollama."),
+                io.String.Output("refined_response", tooltip="The refined vision response returned by the second pass."),
             ]
         )
 

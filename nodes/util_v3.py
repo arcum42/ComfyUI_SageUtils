@@ -33,11 +33,11 @@ class Sage_FreeMemory(io.ComfyNode):
             description="Unload models, run garbage collection, and empty caches when enabled.",
             category=f"{SAGE_UTILS_CAT}/util",
             inputs=[
-                io.Boolean.Input("free_memory", display_name="free_memory", default=False),
-                io.AnyType.Input("value", display_name="value")
+                io.Boolean.Input("free_memory", display_name="free_memory", default=False, tooltip="Unload models and clear caches when enabled."),
+                io.AnyType.Input("value", display_name="value", tooltip="Optional value to pass through unchanged.")
             ],
             outputs=[
-                io.AnyType.Output("out_value", display_name="value")
+                io.AnyType.Output("out_value", display_name="value", tooltip="The passed-through value after optionally freeing memory.")
             ]
         )
     
@@ -62,12 +62,12 @@ class Sage_LogicalSwitch(io.ComfyNode):
             category=f"{SAGE_UTILS_CAT}/util",
             is_deprecated=True,
             inputs=[
-                io.Boolean.Input("condition", display_name="condition", default=True),
-                io.AnyType.Input("true_value", display_name="true_value", lazy=True, optional=True),
-                io.AnyType.Input("false_value", display_name="false_value", lazy=True, optional=True)
+                io.Boolean.Input("condition", display_name="condition", default=True, tooltip="Choose which branch to return."),
+                io.AnyType.Input("true_value", display_name="true_value", lazy=True, optional=True, tooltip="Value returned when the condition is true."),
+                io.AnyType.Input("false_value", display_name="false_value", lazy=True, optional=True, tooltip="Value returned when the condition is false.")
             ],
             outputs=[
-                io.AnyType.Output("result", display_name="result")
+                io.AnyType.Output("result", display_name="result", tooltip="The selected branch value returned by the logical switch.")
             ]
         )
     
@@ -120,11 +120,11 @@ class Sage_ModelInfo(io.ComfyNode):
                 ModelInfo.Input("model_info", display_name="model_info")
             ],
             outputs=[
-                io.String.Output("base_model", display_name="base_model"),
-                io.String.Output("name", display_name="name"),
-                io.String.Output("url", display_name="url"),
-                io.String.Output("latest_url", display_name="latest_url"),
-                io.Image.Output("image", display_name="image")
+                io.String.Output("base_model", display_name="base_model", tooltip="The base model name from the Civitai model metadata."),
+                io.String.Output("name", display_name="name", tooltip="The full model name including version info."),
+                io.String.Output("url", display_name="url", tooltip="The Civitai page URL for the model."),
+                io.String.Output("latest_url", display_name="latest_url", tooltip="The URL of the latest version of the model."),
+                io.Image.Output("image", display_name="image", tooltip="Preview image for the model from Civitai.")
             ]
         )
     
@@ -178,7 +178,7 @@ class Sage_ModelInfoDisplay(io.ComfyNode):
                 ModelInfo.Input("model_info", display_name="model_info")
             ],
             outputs=[
-                io.String.Output("markdown_display", display_name="markdown_display")
+                io.String.Output("markdown_display", display_name="markdown_display", tooltip="Formatted markdown text displaying model information.")
             ]
         )
     
@@ -302,7 +302,7 @@ class Sage_LoraStackInfoDisplay(io.ComfyNode):
                 LoraStack.Input("lora_stack", display_name="lora_stack")
             ],
             outputs=[
-                io.String.Output("markdown_display", display_name="markdown_display")
+                io.String.Output("markdown_display", display_name="markdown_display", tooltip="Formatted markdown text displaying LoRA stack information.")
             ]
         )
     
@@ -441,10 +441,10 @@ class Sage_MultiModelPicker(io.ComfyNode):
             category=f"{SAGE_UTILS_CAT}/util",
             inputs=[
                 io.Int.Input("index", display_name="index", default=0, min=0, max=100, step=1, tooltip="0-based index into provided model list"),
-                io.Autogrow.Input("model_template", template=autogrow_template)
+                io.Autogrow.Input("model_template", template=autogrow_template, tooltip="Input value for model_template.")
             ],
             outputs=[
-                ModelInfo.Output("model_info", display_name="model_info")
+                ModelInfo.Output("model_info", display_name="model_info", tooltip="Selected model_info output from the provided model list.")
             ]
         )
     
@@ -474,7 +474,7 @@ class Sage_CollectKeywordsFromLoraStack(io.ComfyNode):
                 LoraStack.Input("lora_stack", display_name="lora_stack")
             ],
             outputs=[
-                io.String.Output("keywords", display_name="keywords")
+                io.String.Output("keywords", display_name="keywords", tooltip="Collected keyword string extracted from the LoRA stack.")
             ]
         )
     
@@ -500,9 +500,9 @@ class Sage_CheckLorasForUpdates(io.ComfyNode):
                 io.Boolean.Input("force", display_name="force", default=False, tooltip="Force a check even if marked up to date.")
             ],
             outputs=[
-                LoraStack.Output("out_lora_stack", display_name="lora_stack"),
-                io.String.Output("path", display_name="path"),
-                io.String.Output("latest_url", display_name="latest_url")
+                LoraStack.Output("out_lora_stack", display_name="lora_stack", tooltip="The original LoRA stack after update checking."),
+                io.String.Output("path", display_name="path", tooltip="Stringified paths for any LoRAs with updates."),
+                io.String.Output("latest_url", display_name="latest_url", tooltip="Latest Civitai URLs for LoRAs with updates.")
             ]
         )
     
@@ -545,10 +545,10 @@ class Sage_PercentageToFloat(io.ComfyNode):
             description="Convert a percentage value (0-100) to a float (0.0-1.0).",
             category=f"{SAGE_UTILS_CAT}/util",
             inputs=[
-                io.Float.Input("percentage", display_name="percentage", default=0.0, min=0.0, max=100.0)
+                io.Float.Input("percentage", display_name="percentage", default=0.0, min=0.0, max=100.0, tooltip="Percentage value to convert into a normalized float.")
             ],
             outputs=[
-                io.Float.Output("float_value", display_name="float_value")
+                io.Float.Output("float_value", display_name="float_value", tooltip="Converted normalized float value from the input percentage.")
             ]
         )
 

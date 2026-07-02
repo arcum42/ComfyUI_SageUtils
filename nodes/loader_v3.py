@@ -47,9 +47,9 @@ class Sage_LoadModelFromInfo(io.ComfyNode):
                 ModelShiftInfo.Input("model_shifts", display_name="model_shifts", optional=True)
             ],
             outputs=[
-                io.Model.Output("model", display_name="model"),
-                io.Clip.Output("clip", display_name="clip"),
-                io.Vae.Output("vae", display_name="vae")
+                io.Model.Output("model", display_name="model", tooltip="The loaded UNet model component."),
+                io.Clip.Output("clip", display_name="clip", tooltip="The loaded CLIP model component."),
+                io.Vae.Output("vae", display_name="vae", tooltip="The loaded VAE model component."),
             ]
         )
     
@@ -152,7 +152,7 @@ class Sage_ChromaCLIPLoaderFromInfo(io.ComfyNode):
                 ClipInfo.Input("clip_info", display_name="clip_info")
             ],
             outputs=[
-                io.Clip.Output("clip")
+                io.Clip.Output("clip", tooltip="The loaded CLIP model component with Chroma T5 tokenizer options applied.")
             ]
         )
     
@@ -217,15 +217,15 @@ class Sage_LoraStackLoader(io.ComfyNode):
             enable_expand=True,
             inputs=[
                 io.Model.Input("model", display_name="model"),
-                io.Clip.Input("clip", display_name="clip"),
+                io.Clip.Input("clip", display_name="clip", tooltip="Input value for clip."),
                 LoraStack.Input("lora_stack", display_name="lora_stack", optional=True),
                 ModelShiftInfo.Input("model_shifts", display_name="model_shifts", optional=True)
             ],
             outputs=[
                 io.Model.Output("out_model", display_name="model"),
                 io.Clip.Output("out_clip", display_name="clip"),
-                LoraStack.Output("out_lora_stack", display_name="lora_stack"),
-                io.String.Output("keywords", display_name="keywords")
+                LoraStack.Output("out_lora_stack", display_name="lora_stack", tooltip="Output value for out_lora_stack."),
+                io.String.Output("keywords", display_name="keywords", tooltip="Output value for keywords.")
             ]
         )
     
@@ -272,8 +272,8 @@ class Sage_ModelLoraStackLoader(io.ComfyNode):
                 io.Model.Output("model", display_name="model"),
                 io.Clip.Output("clip", display_name="clip"),
                 io.Vae.Output("vae", display_name="vae"),
-                LoraStack.Output("out_lora_stack", display_name="lora_stack"),
-                io.String.Output("keywords", display_name="keywords")
+                LoraStack.Output("out_lora_stack", display_name="lora_stack", tooltip="Output value for out_lora_stack."),
+                io.String.Output("keywords", display_name="keywords", tooltip="Output value for keywords.")
             ]
         )
     
@@ -318,8 +318,8 @@ class Sage_UNETLoRALoader(io.ComfyNode):
             ],
             outputs=[
                 io.Model.Output("out_model", display_name="model"),
-                LoraStack.Output("out_lora_stack", display_name="lora_stack"),
-                io.String.Output("keywords", display_name="keywords")
+                LoraStack.Output("out_lora_stack", display_name="lora_stack", tooltip="Output value for out_lora_stack."),
+                io.String.Output("keywords", display_name="keywords", tooltip="Output value for keywords.")
             ]
         )
     

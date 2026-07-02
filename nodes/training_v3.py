@@ -41,15 +41,15 @@ class Sage_Load_Dataset_From_Folder(io.ComfyNode):
             description="Loads images and paired captions from a folder; applies optional prefix/suffix.",
             category=f"{SAGE_UTILS_CAT}/train",
             inputs=[
-                io.String.Input("dataset_path", display_name="dataset_path"),
-                io.String.Input("prefix", display_name="prefix", default="", optional=True),
-                io.String.Input("suffix", display_name="suffix", default="", optional=True),
-                io.String.Input("separator", display_name="separator", default=" ", optional=True)
+                io.String.Input("dataset_path", display_name="dataset_path", tooltip="Path to the folder containing image files and optional caption text files."),
+                io.String.Input("prefix", display_name="prefix", default="", optional=True, tooltip="Optional text prefix to prepend to each caption."),
+                io.String.Input("suffix", display_name="suffix", default="", optional=True, tooltip="Optional text suffix to append to each caption."),
+                io.String.Input("separator", display_name="separator", default=" ", optional=True, tooltip="Separator used when concatenating prefix/suffix with caption text.")
             ],
             outputs=[
-                io.Image.Output("images", display_name="images"),
-                io.String.Output("filenames", display_name="filenames"),
-                io.String.Output("captions", display_name="captions")
+                io.Image.Output("images", display_name="images", tooltip="Output value for images."),
+                io.String.Output("filenames", display_name="filenames", tooltip="Output value for filenames."),
+                io.String.Output("captions", display_name="captions", tooltip="Output value for captions.")
             ]
         )
     
@@ -144,8 +144,8 @@ class Sage_TrainingCaptionsToConditioning(io.ComfyNode):
             description="Encodes captions with a CLIP model to produce conditioning vectors for training workflows.",
             category=f"{SAGE_UTILS_CAT}/train",
             inputs=[
-                io.Clip.Input("clip", display_name="clip"),
-                io.String.Input("captions", display_name="captions")
+                io.Clip.Input("clip", display_name="clip", tooltip="CLIP model conditioning input used to encode training captions."),
+                io.String.Input("captions", display_name="captions", tooltip="List of captions to encode into conditioning vectors.")
             ],
             outputs=[
                 io.Conditioning.Output("conditioning", display_name="conditioning")

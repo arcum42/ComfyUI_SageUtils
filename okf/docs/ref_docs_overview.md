@@ -22,6 +22,8 @@ This concept describes how Sage Utils keeps a local mirror of selected ComfyUI d
 
 The local mirror is intended as a stable, offline-friendly reference for Sage Utils development.
 
+> Note: Custom node docs are authored under `js/docs/` in the Sage Utils extension and are a primary source for node help content in the UI. See [Node Documentation and Local JS Docs](../nodes/node_documentation.md) for the supported pattern.
+
 ## Sync workflow
 
 The current sync workflow is:

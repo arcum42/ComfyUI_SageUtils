@@ -13,3 +13,4 @@ This subbundle documents the AI-run tools available in Sage Utils for generally 
 ## Concepts
 
 - [Available tools](available_tools.md) — list of tools and the actions they perform.
+- [Node metadata extraction tool](node_metadata_tool.md) — documentation for the Sage Utils node schema extraction tool.

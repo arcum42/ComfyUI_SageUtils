@@ -81,14 +81,14 @@ class Sage_StylePromptFromConfig(io.ComfyNode):
 
             dynamic_options.append(
                 io.DynamicCombo.Option(model_name, [
-                    io.Combo.Input("style", display_name="style", options=styles_for_model or ["None"], default=default_style)
+                    io.Combo.Input("style", display_name="style", options=styles_for_model or ["None"], default=default_style, tooltip="Input value for style.")
                 ])
             )
 
         if not dynamic_options:
             dynamic_options = [
                 io.DynamicCombo.Option("No models", [
-                    io.Combo.Input("style", display_name="style", options=["No styles"], default="No styles")
+                    io.Combo.Input("style", display_name="style", options=["No styles"], default="No styles", tooltip="Input value for style.")
                 ])
             ]
 
@@ -98,13 +98,13 @@ class Sage_StylePromptFromConfig(io.ComfyNode):
             description="Builds positive and negative prompts from sage_styles.json. If a style template contains {prompt}, your input is inserted there; otherwise your input is appended with ', '.",
             category=f"{SAGE_UTILS_CAT}/text/prompt/style",
             inputs=[
-                io.DynamicCombo.Input("model", options=dynamic_options),
+                io.DynamicCombo.Input("model", options=dynamic_options, tooltip="Input value for model."),
                 io.String.Input("positive", display_name="positive", force_input=True, multiline=True, tooltip="User positive prompt text to insert into the style template (or append if no {prompt} token exists)."),
                 io.String.Input("negative", display_name="negative", force_input=True, multiline=True, tooltip="User negative prompt text to insert into the style template (or append if no {prompt} token exists).")
             ],
             outputs=[
-                io.String.Output("positive_prompt", display_name="positive_prompt"),
-                io.String.Output("negative_prompt", display_name="negative_prompt")
+                io.String.Output("positive_prompt", display_name="positive_prompt", tooltip="The generated positive prompt string."),
+                io.String.Output("negative_prompt", display_name="negative_prompt", tooltip="The generated negative prompt string.")
             ]
         )
 
@@ -144,11 +144,11 @@ class Sage_HiDreamE1_Instruction(io.ComfyNode):
             description="Generates a prompt for HiDream E1 based on the given instruction and description.",
             category=f"{SAGE_UTILS_CAT}/text/prompt/hidream",
             inputs=[
-                io.String.Input("instruction", display_name="instruction", multiline=True),
-                io.String.Input("description", display_name="description", multiline=True)
+                io.String.Input("instruction", display_name="instruction", multiline=True, tooltip="The instruction text for the HiDream E1 prompt."),
+                io.String.Input("description", display_name="description", multiline=True, tooltip="The description text to include in the HiDream E1 prompt.")
             ],
             outputs=[
-                io.String.Output("prompt", display_name="prompt")
+                io.String.Output("prompt", display_name="prompt", tooltip="The generated HiDream E1 prompt.")
             ]
         )
     
@@ -182,11 +182,11 @@ class Sage_LuminaPromptText(io.ComfyNode):
             description="Combines a system prompt and a user prompt into a single prompt, with <Prompt Start> between them.",
             category=f"{SAGE_UTILS_CAT}/text/prompt/lumina2",
             inputs=[
-                io.String.Input("system", display_name="system", force_input=True, multiline=True),
-                io.String.Input("prompt", display_name="prompt", force_input=True, multiline=True)
+                io.String.Input("system", display_name="system", force_input=True, multiline=True, tooltip="The system prompt portion for Lumina 2."),
+                io.String.Input("prompt", display_name="prompt", force_input=True, multiline=True, tooltip="The user prompt portion for Lumina 2.")
             ],
             outputs=[
-                io.String.Output("combined_prompt", display_name="combined_prompt")
+                io.String.Output("combined_prompt", display_name="combined_prompt", tooltip="The combined system and user prompt for Lumina 2.")
             ]
         )
     
@@ -207,12 +207,12 @@ class Sage_ErniePromptEnhancerPrompt(io.ComfyNode):
             description="Builds a prompt for the Ernie Prompt Enhancer model based on a prompt, image width, and image height. Connect to an LLM mode using native with a clip for Ernie's prompt enhancer, or the TextGenerate node in core. Uses the example prompt.",
             category=f"{SAGE_UTILS_CAT}/text/prompt/ernie",
             inputs=[
-                io.String.Input("prompt", display_name="prompt", force_input=True, multiline=True),
-                io.Int.Input("width", display_name="width", default=1024, min=1, max=8192),
-                io.Int.Input("height", display_name="height", default=1024, min=1, max=8192)
+                io.String.Input("prompt", display_name="prompt", force_input=True, multiline=True, tooltip="The base prompt to enhance for Ernie."),
+                io.Int.Input("width", display_name="width", default=1024, min=1, max=8192, tooltip="The target image width used by the Ernie prompt."),
+                io.Int.Input("height", display_name="height", default=1024, min=1, max=8192, tooltip="The target image height used by the Ernie prompt.")
             ],
             outputs=[
-                io.String.Output("enhanced_prompt", display_name="enhanced_prompt")
+                io.String.Output("enhanced_prompt", display_name="enhanced_prompt", tooltip="The enhanced prompt generated for the Ernie model.")
             ]
         )
 
@@ -246,7 +246,7 @@ class Sage_LuminaSystemPrompt(io.ComfyNode):
                 io.Combo.Input("system", display_name="system", options=list(LUMINA2_SYSTEM_PROMPTS_V2.keys()), default="superior", tooltip=LUMINA2_SYSTEM_PROMPT_TIP)
             ],
             outputs=[
-                io.String.Output("system_prompt", display_name="system_prompt")
+                io.String.Output("system_prompt", display_name="system_prompt", tooltip="The selected Lumina 2 system prompt text.")
             ]
         )
     
@@ -268,10 +268,10 @@ class Sage_PonyStyle(io.ComfyNode):
             category=f"{SAGE_UTILS_CAT}/text/prompt/pony",
             
             inputs=[
-                io.MultiCombo.Input("style", display_name="style", options=pony_strings, chip=True, placeholder="Pony Style")
+                io.MultiCombo.Input("style", display_name="style", options=pony_strings, chip=True, placeholder="Pony Style", tooltip="Choose Pony style codes to include in the prompt.")
             ],
             outputs=[
-                io.String.Output("styled_text", display_name="styled_text")
+                io.String.Output("styled_text", display_name="styled_text", tooltip="The combined Pony style text generated from selected styles.")
             ]
         )
     
@@ -299,10 +299,10 @@ class Sage_PonySource(io.ComfyNode):
             description="Creates a source string for pony prompts based on the given source.",
             category=f"{SAGE_UTILS_CAT}/text/prompt/pony",
             inputs=[
-                io.Combo.Input("source", display_name="source", options=PONY_SOURCE, default="none")
+                io.Combo.Input("source", display_name="source", options=PONY_SOURCE, default="none", tooltip="Choose the prompt source type for Pony prompts.")
             ],
             outputs=[
-                io.String.Output("source_text", display_name="source_text")
+                io.String.Output("source_text", display_name="source_text", tooltip="The source text fragment generated for Pony prompts.")
             ]
         )
     
@@ -324,12 +324,12 @@ class Sage_PonyScore(io.ComfyNode):
             description="Creates a score string for pony prompts based on the given start and end scores.",
             category=f"{SAGE_UTILS_CAT}/text/prompt/pony",
             inputs=[
-                io.Int.Input("score_start", display_name="score_start", default=9, min=0, max=9, step=1),
-                io.Int.Input("score_end", display_name="score_end", default=4, min=0, max=9, step=1),
+                io.Int.Input("score_start", display_name="score_start", default=9, min=0, max=9, step=1, tooltip="The starting score for the Pony score string."),
+                io.Int.Input("score_end", display_name="score_end", default=4, min=0, max=9, step=1, tooltip="The ending score for the Pony score string."),
                 io.Boolean.Input("up_to", display_name="up_to", default=True, tooltip="If true, adds '_up' to the score string, except for score_9. (v6 uses up, v7 doesn't)")
             ],
             outputs=[
-                io.String.Output("score_text", display_name="score_text")
+                io.String.Output("score_text", display_name="score_text", tooltip="The generated Pony score string.")
             ]
         )
     
@@ -360,10 +360,10 @@ class Sage_PonyRatingv6(io.ComfyNode):
             description="Creates a rating string for pony prompts based on the given rating. (v6 style)",
             category=f"{SAGE_UTILS_CAT}/text/prompt/pony",
             inputs=[
-                io.Combo.Input("rating", display_name="rating", options=PONY_V6_RATING, default="none")
+                io.Combo.Input("rating", display_name="rating", options=PONY_V6_RATING, default="none", tooltip="The Pony v6 rating level to include.")
             ],
             outputs=[
-                io.String.Output("rating_text", display_name="rating_text")
+                io.String.Output("rating_text", display_name="rating_text", tooltip="The generated Pony v6 rating text.")
             ]
         )
     
@@ -384,14 +384,14 @@ class Sage_PonyPrefix(io.ComfyNode):
             description="Generates a prefix for pony-related content.",
             category=f"{SAGE_UTILS_CAT}/text/prompt/pony",
             inputs=[
-                io.Boolean.Input("add_score", display_name="add_score", default=False),
-                io.Int.Input("score_start", display_name="Score Start", default=9),
-                io.Int.Input("score_end", display_name="Score End", default=4),
-                io.Combo.Input("rating", display_name="rating", default="none", options=["none", "safe", "questionable", "explicit"]),
-                io.Combo.Input("source", display_name="source", default="none", options=["none", "pony", "furry", "anime", "cartoon", "3d", "western", "comic", "monster"])
+                io.Boolean.Input("add_score", display_name="add_score", default=False, tooltip="Include a generated score string in the prefix."),
+                io.Int.Input("score_start", display_name="Score Start", default=9, tooltip="The starting score for the prefix score range."),
+                io.Int.Input("score_end", display_name="Score End", default=4, tooltip="The ending score for the prefix score range."),
+                io.Combo.Input("rating", display_name="rating", default="none", options=["none", "safe", "questionable", "explicit"], tooltip="The rating to include in the prefix."),
+                io.Combo.Input("source", display_name="source", default="none", options=["none", "pony", "furry", "anime", "cartoon", "3d", "western", "comic", "monster"], tooltip="The source type to include in the prefix.")
             ],
             outputs=[
-                io.String.Output("str_out", display_name="string")
+                io.String.Output("str_out", display_name="string", tooltip="The generated Pony prefix string.")
             ]
         )
 
@@ -429,10 +429,10 @@ class Sage_PonyStyleCluster(io.ComfyNode):
             description="Creates a style cluster string for pony prompts based on the given style cluster number.",
             category=f"{SAGE_UTILS_CAT}/text/prompt/pony",
             inputs=[
-                io.Int.Input("style_cluster", display_name="style_cluster", default=1, min=1, max=2048, step=1)
+                io.Int.Input("style_cluster", display_name="style_cluster", default=1, min=1, max=2048, step=1, tooltip="The Pony style cluster number to generate.")
             ],
             outputs=[
-                io.String.Output("style_cluster_text", display_name="style_cluster_text")
+                io.String.Output("style_cluster_text", display_name="style_cluster_text", tooltip="The generated Pony style cluster text.")
             ]
         )
     
@@ -451,10 +451,10 @@ class Sage_PonyRatingv7(io.ComfyNode):
             description="Creates a rating string for pony prompts based on the given rating. (v7 style)",
             category=f"{SAGE_UTILS_CAT}/text/prompt/pony",
             inputs=[
-                io.Combo.Input("rating", display_name="rating", options=PONY_V7_RATING, default="none")
+                io.Combo.Input("rating", display_name="rating", options=PONY_V7_RATING, default="none", tooltip="The Pony v7 rating level to include.")
             ],
             outputs=[
-                io.String.Output("rating_text", display_name="rating_text")
+                io.String.Output("rating_text", display_name="rating_text", tooltip="The generated Pony v7 rating text.")
             ]
         )
     

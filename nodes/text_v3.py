@@ -25,12 +25,12 @@ class Sage_SetText(io.ComfyNode):
             description="Sets some text.",
             category=f"{SAGE_UTILS_CAT}/text/input",
             inputs = [
-                io.String.Input("str", display_name="str", force_input = False, dynamic_prompts = False, multiline = True),
-                io.String.Input("prefix", display_name="prefix", force_input = True, multiline = True, optional=True),
-                io.String.Input("suffix", display_name="suffix", force_input = True, multiline = True, optional=True)
+                io.String.Input("str", display_name="str", force_input = False, dynamic_prompts = False, multiline = True, tooltip="Text to set or modify."),
+                io.String.Input("prefix", display_name="prefix", force_input = True, multiline = True, optional=True, tooltip="Text to prepend to the main string."),
+                io.String.Input("suffix", display_name="suffix", force_input = True, multiline = True, optional=True, tooltip="Text to append to the main string.")
             ],
             outputs = [
-                io.String.Output("str_out", display_name="str")
+                io.String.Output("str_out", display_name="str", tooltip="Output value for str_out.")
             ],
         )
     @classmethod
@@ -87,12 +87,12 @@ class Sage_SetTextWithoutComments(io.ComfyNode):
             description="Sets some text after removing comments (Python #, C/C++ //, and /* */ style).",
             category=f"{SAGE_UTILS_CAT}/text/input",
             inputs = [
-                io.String.Input("str", display_name="str", force_input = False, dynamic_prompts = False, multiline = True),
-                io.String.Input("prefix", display_name="prefix", force_input = True, multiline = True, optional=True),
-                io.String.Input("suffix", display_name="suffix", force_input = True, multiline = True, optional=True)
+                io.String.Input("str", display_name="str", force_input = False, dynamic_prompts = False, multiline = True, tooltip="Input value for str."),
+                io.String.Input("prefix", display_name="prefix", force_input = True, multiline = True, optional=True, tooltip="Input value for prefix."),
+                io.String.Input("suffix", display_name="suffix", force_input = True, multiline = True, optional=True, tooltip="Input value for suffix.")
             ],
             outputs = [
-                io.String.Output("str_out", display_name="str")
+                io.String.Output("str_out", display_name="str", tooltip="Output value for str_out.")
             ],
         )
     @classmethod
@@ -109,7 +109,7 @@ class Sage_TextSubstitution(io.ComfyNode):
     @classmethod
     def define_schema(cls):
         autogrow_template = io.Autogrow.TemplatePrefix(
-            input = io.String.Input("strings"),
+            input = io.String.Input("strings", tooltip="Text input used for placeholder substitution."),
             prefix = "str_",
             min = 1,
             max = 100
@@ -120,14 +120,14 @@ class Sage_TextSubstitution(io.ComfyNode):
             description="Substitutes the placeholders in the text with the provided strings. The placeholders use the specified delimiter (default $) followed by str_1, str_2, etc. based on the number of connected inputs. The prefix and suffix are added to the final result.",
             category=f"{SAGE_UTILS_CAT}/text/input",
             inputs=[
-                io.String.Input("text", display_name="text", default="", multiline=True),
-                io.String.Input("delimiter", display_name="delimiter", default="$"),
-                io.String.Input("prefix", display_name="prefix", force_input=True, multiline=True, optional=True),
-                io.String.Input("suffix", display_name="suffix", force_input=True, multiline=True, optional=True),
-                io.Autogrow.Input("strings", template=autogrow_template)
+                io.String.Input("text", display_name="text", default="", multiline=True, tooltip="The template text containing placeholders."),
+                io.String.Input("delimiter", display_name="delimiter", default="$", tooltip="Delimiter used to mark placeholder variables."),
+                io.String.Input("prefix", display_name="prefix", force_input=True, multiline=True, optional=True, tooltip="Text to prepend to the substituted result."),
+                io.String.Input("suffix", display_name="suffix", force_input=True, multiline=True, optional=True, tooltip="Text to append to the substituted result."),
+                io.Autogrow.Input("strings", template=autogrow_template, tooltip="Input value for strings.")
             ],
             outputs=[
-                io.String.Output("result", display_name="result")
+                io.String.Output("result", display_name="result", tooltip="Output value for result.")
             ]
         )
     
@@ -188,14 +188,14 @@ class Sage_SetTextWithDynamicPrompts(io.ComfyNode):
             description="Loads user defined wildcard from the wildcards directory, and applies them to any wildcards in the text using the dynamic prompts library.",
             category=f"{SAGE_UTILS_CAT}/text/input",
             inputs=[
-                io.String.Input("str_input", display_name="str", force_input=False, dynamic_prompts=True, multiline=True),
-                io.Int.Input("seed", display_name="seed", default=0, min=0, max=2**32-1, step=1),
-                io.Boolean.Input("clean", display_name="clean", default=False),
-                io.String.Input("prefix", display_name="prefix", force_input=True, multiline=True, optional=True),
-                io.String.Input("suffix", display_name="suffix", force_input=True, multiline=True, optional=True)
+                io.String.Input("str_input", display_name="str", force_input=False, dynamic_prompts=True, multiline=True, tooltip="Text containing dynamic prompt wildcards."),
+                io.Int.Input("seed", display_name="seed", default=0, min=0, max=2**32-1, step=1, tooltip="Seed for wildcard generation."),
+                io.Boolean.Input("clean", display_name="clean", default=False, tooltip="Remove unwanted whitespace or formatting after prompt generation."),
+                io.String.Input("prefix", display_name="prefix", force_input=True, multiline=True, optional=True, tooltip="Text to prepend before dynamic prompt expansion."),
+                io.String.Input("suffix", display_name="suffix", force_input=True, multiline=True, optional=True, tooltip="Text to append after dynamic prompt expansion.")
             ],
             outputs=[
-                io.String.Output("str_output", display_name="str")
+                io.String.Output("str_output", display_name="str", tooltip="Output value for str_output.")
             ]
         )
     
@@ -240,10 +240,10 @@ class Sage_ViewAnything(io.ComfyNode):
             category=f"{SAGE_UTILS_CAT}/text/output",
             is_output_node=True,
             inputs=[
-                io.AnyType.Input("any", display_name="any")
+                io.AnyType.Input("any", display_name="any", tooltip="Any value to view as text.")
             ],
             outputs=[
-                io.String.Output("str", display_name="str")
+                io.String.Output("str", display_name="str", tooltip="Output value for str.")
             ]
         )
     
@@ -272,11 +272,11 @@ class Sage_SaveText(io.ComfyNode):
             inputs=[
                 io.String.Input("filename_prefix", display_name="filename_prefix", default="ComfyUI_Text", tooltip="The prefix for the file to save. This may include formatting information such as %date:yyyy-MM-dd% to include values from nodes."),
                 io.String.Input("file_extension", display_name="file_extension", default="txt", tooltip="The file extension to use for the saved file."),
-                io.String.Input("text", display_name="text", force_input=True, multiline=True),
+                io.String.Input("text", display_name="text", force_input=True, multiline=True, tooltip="The text to save to a file."),
                 io.Int.Input("batch_size", display_name="batch_size", default=1, tooltip="The number of files to save.")
             ],
             outputs=[
-                io.String.Output("filepath", display_name="filepath")
+                io.String.Output("filepath", display_name="filepath", tooltip="Output value for filepath.")
             ]
         )
     
@@ -327,10 +327,10 @@ class Sage_ViewNotes(io.ComfyNode):
             category=f"{SAGE_UTILS_CAT}/text/output",
             is_output_node=True,
             inputs=[
-                io.Combo.Input("filename", display_name="filename", options=notes_files)
+                io.Combo.Input("filename", display_name="filename", options=notes_files, tooltip="Select a notes file to load from the notes directory.")
             ],
             outputs=[
-                io.String.Output("content", display_name="content")
+                io.String.Output("content", display_name="content", tooltip="Output value for content.")
             ]
         )
     
@@ -364,15 +364,15 @@ class Sage_NumberToStr(io.ComfyNode):
             inputs=[
                 io.DynamicCombo.Input("num_type", options=[
                     io.DynamicCombo.Option("float", [
-                        io.Float.Input("num", display_name="num", default=0.0, step=0.01)
+                        io.Float.Input("num", display_name="num", default=0.0, step=0.01, tooltip="Float number to convert to string.")
                     ]),
                     io.DynamicCombo.Option("int", [
-                        io.Int.Input("num", display_name="num", default=0)
+                        io.Int.Input("num", display_name="num", default=0, tooltip="Integer number to convert to string.")
                     ])
-                ])
+                ], tooltip="Choose the numeric type to convert to a string.")
             ],
             outputs=[
-                io.String.Output("str", display_name="str")
+                io.String.Output("str", display_name="str", tooltip="Output value for str.")
             ]
         )
     
@@ -395,10 +395,10 @@ class Sage_AnythingToStr(io.ComfyNode):
             description="Converts any input to a string.",
             category=f"{SAGE_UTILS_CAT}/text/conversion",
             inputs=[
-                io.AnyType.Input("any", display_name="any")
+                io.AnyType.Input("any", display_name="any", tooltip="Any input value to convert to a string.")
             ],
             outputs=[
-                io.String.Output("str", display_name="str")
+                io.String.Output("str", display_name="str", tooltip="Output value for str.")
             ]
         )
     
@@ -422,21 +422,21 @@ class Sage_SetTextWithNum(io.ComfyNode):
             description="Sets some text and adds a number at the end.",
             category=f"{SAGE_UTILS_CAT}/text/helper",
             inputs = [
-                io.String.Input("str", display_name="str", force_input = False, dynamic_prompts = False, multiline = True),
-                io.String.Input("prefix", display_name="prefix", force_input = True, multiline = True, optional=True),
-                io.String.Input("suffix", display_name="suffix", force_input = True, multiline = True, optional=True),
+                io.String.Input("str", display_name="str", force_input = False, dynamic_prompts = False, multiline = True, tooltip="Text to format with a number at the end."),
+                io.String.Input("prefix", display_name="prefix", force_input = True, multiline = True, optional=True, tooltip="Text to prepend before the main string."),
+                io.String.Input("suffix", display_name="suffix", force_input = True, multiline = True, optional=True, tooltip="Text to append after the main string."),
                 
                 io.DynamicCombo.Input("num_type", options=[
                     io.DynamicCombo.Option("float", [
-                        io.Float.Input("num", display_name="num", default=0.0, step=0.01)
+                        io.Float.Input("num", display_name="num", default=0.0, step=0.01, tooltip="Float number to append to the text.")
                     ]),
                     io.DynamicCombo.Option("int", [
-                        io.Int.Input("num", display_name="num", default=0)
+                        io.Int.Input("num", display_name="num", default=0, tooltip="Integer number to append to the text.")
                     ])
-                ])
+                ], tooltip="Choose whether the appended number should be treated as float or int.")
             ],
             outputs = [
-                io.String.Output("str_out", display_name="str")
+                io.String.Output("str_out", display_name="str", tooltip="Output value for str_out.")
             ],
         )
     @classmethod
@@ -463,12 +463,12 @@ class Sage_TextWeight(io.ComfyNode):
             description="Applies a weight to a text string.",
             category=f"{SAGE_UTILS_CAT}/text/helper",
             inputs=[
-                io.String.Input("text", display_name="text", multiline=True),
-                io.Float.Input("weight", display_name="weight", default=1.0, min=-10.0, max=10.0, step=0.05),
-                io.String.Input("separator", display_name="separator", default=", ")
+                io.String.Input("text", display_name="text", multiline=True, tooltip="The text to apply a weight to."),
+                io.Float.Input("weight", display_name="weight", default=1.0, min=-10.0, max=10.0, step=0.05, tooltip="Weight value to add to the text."),
+                io.String.Input("separator", display_name="separator", default=", ", tooltip="Separator to use after the weighted text.")
             ],
             outputs=[
-                io.String.Output("weighted_text", display_name="weighted_text")
+                io.String.Output("weighted_text", display_name="weighted_text", tooltip="Output value for weighted_text.")
             ]
         )
     
@@ -491,11 +491,11 @@ class Sage_TextSwitch(io.ComfyNode):
             description="Passes the text if active is true, otherwise passes an empty string.",
             category=f"{SAGE_UTILS_CAT}/text/helper",
             inputs=[
-                io.String.Input("str", display_name="str", force_input=True, multiline=True),
-                io.Boolean.Input("active", display_name="active", default=True)
+                io.String.Input("str", display_name="str", force_input=True, multiline=True, tooltip="Text to conditionally pass through."),
+                io.Boolean.Input("active", display_name="active", default=True, tooltip="If true, passes the text through; otherwise returns an empty string.")
             ],
             outputs=[
-                io.String.Output("str_out", display_name="str")
+                io.String.Output("str_out", display_name="str", tooltip="Output value for str_out.")
             ]
         )
 
@@ -514,10 +514,10 @@ class Sage_CleanText(io.ComfyNode):
             description="Cleans up the string given.",
             category=f"{SAGE_UTILS_CAT}/text/helper",
             inputs=[
-                io.String.Input("str", display_name="str", force_input=True, multiline=True)
+                io.String.Input("str", display_name="str", force_input=True, multiline=True, tooltip="Text input to clean using the configured clean_text utility.")
             ],
             outputs=[
-                io.String.Output("cleaned_string", display_name="cleaned string")
+                io.String.Output("cleaned_string", display_name="cleaned string", tooltip="Output value for cleaned_string.")
             ]
         )
 
@@ -530,7 +530,7 @@ class Sage_DynamicJoinText(io.ComfyNode):
     @classmethod
     def define_schema(cls):
         autogrow_template = io.Autogrow.TemplatePrefix(
-            input=io.String.Input("strings"),  # template for each input
+            input=io.String.Input("strings", tooltip="Each string input to join."),  # template for each input
             prefix="str_",                  # prefix for generated input names
             min=1,                           # minimum number of inputs shown
             max=100,                          # maximum number of inputs allowed
@@ -541,12 +541,12 @@ class Sage_DynamicJoinText(io.ComfyNode):
             description="Joins multiple strings with a separator.",
             category=f"{SAGE_UTILS_CAT}/text/helper",
             inputs=[
-                io.Autogrow.Input("strings", template=autogrow_template),
-                io.String.Input("separator", display_name="separator", default=", "),
+                io.Autogrow.Input("strings", template=autogrow_template, tooltip="Input value for strings."),
+                io.String.Input("separator", display_name="separator", default=", ", tooltip="String used to separate joined inputs."),
                 io.Boolean.Input("add_separator_to_end", display_name="add_separator_to_end", default=False, tooltip="Add separator to the end of the joined string.")
             ],
             outputs=[
-                io.String.Output("str", display_name="str")
+                io.String.Output("str", display_name="str", tooltip="Output value for str.")
             ]
         )
     
@@ -577,13 +577,13 @@ class Sage_JoinText(io.ComfyNode):
             category=f"{SAGE_UTILS_CAT}/text/helper",
             is_deprecated=True,
             inputs=[
-                io.String.Input("separator", display_name="separator", default=", "),
+                io.String.Input("separator", display_name="separator", default=", ", tooltip="Separator string used between inputs."),
                 io.Boolean.Input("add_separator_to_end", display_name="add_separator_to_end", default=False, tooltip="Add separator to the end of the joined string."),
-                io.String.Input("str1", display_name="str1", multiline=True),
-                io.String.Input("str2", display_name="str2", multiline=True)
+                io.String.Input("str1", display_name="str1", multiline=True, tooltip="First string to join."),
+                io.String.Input("str2", display_name="str2", multiline=True, tooltip="Second string to join.")
             ],
             outputs=[
-                io.String.Output("str", display_name="str")
+                io.String.Output("str", display_name="str", tooltip="Output value for str.")
             ]
         )
     
@@ -610,14 +610,14 @@ class Sage_TripleJoinText(io.ComfyNode):
             category=f"{SAGE_UTILS_CAT}/text/helper",
             is_deprecated=True,
             inputs=[
-                io.String.Input("separator", display_name="separator", default=", "),
+                io.String.Input("separator", display_name="separator", default=", ", tooltip="Separator string used between inputs."),
                 io.Boolean.Input("add_separator_to_end", display_name="add_separator_to_end", default=False, tooltip="Add separator to the end of the joined string."),
-                io.String.Input("str1", display_name="str1", multiline=True),
-                io.String.Input("str2", display_name="str2", multiline=True),
-                io.String.Input("str3", display_name="str3", multiline=True)
+                io.String.Input("str1", display_name="str1", multiline=True, tooltip="First string to join."),
+                io.String.Input("str2", display_name="str2", multiline=True, tooltip="Second string to join."),
+                io.String.Input("str3", display_name="str3", multiline=True, tooltip="Third string to join.")
             ],
             outputs=[
-                io.String.Output("str", display_name="str")
+                io.String.Output("str", display_name="str", tooltip="Output value for str.")
             ]
         )
     
@@ -644,11 +644,11 @@ class Sage_TextRandomLine(io.ComfyNode):
             description="Returns a random line from the given text.",
             category=f"{SAGE_UTILS_CAT}/text/line",
             inputs=[
-                io.String.Input("text", display_name="text", multiline=True),
-                io.Int.Input("seed", display_name="seed", default=0)
+                io.String.Input("text", display_name="text", multiline=True, tooltip="Text to take a random line from."),
+                io.Int.Input("seed", display_name="seed", default=0, tooltip="Random seed used to choose the line.")
             ],
             outputs=[
-                io.String.Output("random_line", display_name="random_line")
+                io.String.Output("random_line", display_name="random_line", tooltip="Output value for random_line.")
             ]
         )
     
@@ -676,11 +676,11 @@ class Sage_TextSelectLine(io.ComfyNode):
             description="Selects a specific line from the given text based on the line number. Line numbers start from 0.",
             category=f"{SAGE_UTILS_CAT}/text/line",
             inputs=[
-                io.String.Input("text", display_name="text", multiline=True),
-                io.Int.Input("line_number", display_name="line_number", default=0, min=0)
+                io.String.Input("text", display_name="text", multiline=True, tooltip="Text to select a specific line from."),
+                io.Int.Input("line_number", display_name="line_number", default=0, min=0, tooltip="Line number to return (0-based index).")
             ],
             outputs=[
-                io.String.Output("selected_line", display_name="selected_line")
+                io.String.Output("selected_line", display_name="selected_line", tooltip="Output value for selected_line.")
             ]
         )
     

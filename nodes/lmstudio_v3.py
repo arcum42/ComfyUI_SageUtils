@@ -48,13 +48,13 @@ class Sage_LMStudioLLMPromptText(io.ComfyNode):
             description="Provider-specific text generation node for LM Studio models.",
             category=f"{SAGE_UTILS_CAT}/LLM/LM Studio",
             inputs=[
-                io.String.Input("prompt", display_name="prompt", default=DEFAULT_TEXT_PROMPT, multiline=True),
-                io.Combo.Input("model", display_name="model", options=sorted(models)),
-                io.Int.Input("seed", display_name="seed", default=0, min=0, max=2**32 - 1, step=1),
-                io.Int.Input("load_for_seconds", display_name="load_for_seconds", default=0, min=-1, max=60*60, step=1)
+                io.String.Input("prompt", display_name="prompt", default=DEFAULT_TEXT_PROMPT, multiline=True, tooltip="Input value for prompt."),
+                io.Combo.Input("model", display_name="model", options=sorted(models), tooltip="Input value for model."),
+                io.Int.Input("seed", display_name="seed", default=0, min=0, max=2**32 - 1, step=1, tooltip="Input value for seed."),
+                io.Int.Input("load_for_seconds", display_name="load_for_seconds", default=0, min=-1, max=60*60, step=1, tooltip="Input value for load_for_seconds.")
             ],
             outputs=[
-                io.String.Output("response", display_name="response")
+                io.String.Output("response", display_name="response", tooltip="Output value for response.")
             ]
         )
 
@@ -108,14 +108,14 @@ class Sage_LMStudioLLMPromptVision(io.ComfyNode):
             description="Provider-specific vision generation node for LM Studio models.",
             category=f"{SAGE_UTILS_CAT}/LLM/LM Studio",
             inputs=[
-                io.String.Input("prompt", display_name="prompt", default=DEFAULT_VISION_PROMPT, multiline=True),
-                io.Combo.Input("model", display_name="model", options=sorted(models)),
-                io.Image.Input("image", display_name="image"),
-                io.Int.Input("seed", display_name="seed", default=0, min=0, max=2**32 - 1, step=1),
-                io.Int.Input("load_for_seconds", display_name="load_for_seconds", default=0, min=-1, max=60*60, step=1)
+                io.String.Input("prompt", display_name="prompt", default=DEFAULT_VISION_PROMPT, multiline=True, tooltip="Input value for prompt."),
+                io.Combo.Input("model", display_name="model", options=sorted(models), tooltip="Input value for model."),
+                io.Image.Input("image", display_name="image", tooltip="Input value for image."),
+                io.Int.Input("seed", display_name="seed", default=0, min=0, max=2**32 - 1, step=1, tooltip="Input value for seed."),
+                io.Int.Input("load_for_seconds", display_name="load_for_seconds", default=0, min=-1, max=60*60, step=1, tooltip="Input value for load_for_seconds.")
             ],
             outputs=[
-                io.String.Output("response", display_name="response")
+                io.String.Output("response", display_name="response", tooltip="Output value for response.")
             ]
         )
 
@@ -174,17 +174,17 @@ class Sage_LMStudioLLMPromptVisionRefine(io.ComfyNode):
             description="Provider-specific vision-refine node for LM Studio models.",
             category=f"{SAGE_UTILS_CAT}/LLM/LM Studio",
             inputs=[
-                io.String.Input("prompt", default=DEFAULT_VISION_PROMPT, multiline=True),
-                io.Combo.Input("model", options=sorted(models)),
-                io.Image.Input("image"),
-                io.Int.Input("seed", default=0, min=0, max=2**32 - 1, step=1),
-                io.String.Input("refine_prompt", default="Take the provided text description and rewrite it to be more vivid, detailed, and engaging, while preserving the original meaning.", multiline=True),
-                io.Combo.Input("refine_model", options=sorted(refine_models)),
-                io.Int.Input("refine_seed", default=0, min=0, max=2**32 - 1, step=1)
+                io.String.Input("prompt", default=DEFAULT_VISION_PROMPT, multiline=True, tooltip="The text prompt for the initial vision generation pass."),
+                io.Combo.Input("model", options=sorted(models), tooltip="The LM Studio vision model used for initial generation."),
+                io.Image.Input("image", tooltip="The reference image sent to the LM Studio vision model."),
+                io.Int.Input("seed", default=0, min=0, max=2**32 - 1, step=1, tooltip="Seed for the initial generation pass."),
+                io.String.Input("refine_prompt", default="Take the provided text description and rewrite it to be more vivid, detailed, and engaging, while preserving the original meaning.", multiline=True, tooltip="Instructions used for the second, refinement pass."),
+                io.Combo.Input("refine_model", options=sorted(refine_models), tooltip="The LM Studio model used for the refinement pass."),
+                io.Int.Input("refine_seed", default=0, min=0, max=2**32 - 1, step=1, tooltip="Seed for the refinement pass."),
             ],
             outputs=[
-                io.String.Output("initial_response"),
-                io.String.Output("refined_response")
+                io.String.Output("initial_response", tooltip="The initial vision response returned by the LM Studio model."),
+                io.String.Output("refined_response", tooltip="The refined vision response returned by the second pass."),
             ]
         )
 

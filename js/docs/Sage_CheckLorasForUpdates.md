@@ -1,32 +1,44 @@
-# Sage_CheckLorasForUpdates
+---
+type: NodeDoc
+title: Check LoRAs For Updates
+description: Auto-generated node documentation.
+tags: [nodes, docs]
+---
 
-**Check Loras for Updates**
+# Check LoRAs For Updates
 
-Checks LoRAs in your stack for available updates from Civitai and provides download information.
+* **Node ID:** `Sage_CheckLorasForUpdates`
+* **Category:** `Sage Utils/lora`
+
+Check if LoRAs in the stack have updates available on Civitai.
 
 ## Inputs
 
-### Required
+### `lora_stack` — `LORA_STACK`
+- **Name:** `lora_stack`
 
-- **lora_stack** (LORA_STACK): The stack of LoRAs to check for updates
-- **force** (BOOLEAN): Force a check for updates, even if the LoRA is up to date (default: False)
+### `force` — `BOOLEAN`
+- **Name:** `force`
+- **Description:** Force a check even if marked up to date.
+
 
 ## Outputs
 
-- **lora_stack** (LORA_STACK): The original LoRA stack (passed through)
-- **path** (STRING): List of local paths for LoRAs that have updates available
-- **latest_url** (STRING): List of Civitai URLs for the latest versions of updated LoRAs
+### `out_lora_stack` — `LORA_STACK`
+- **Name:** `lora_stack`
+- **Description:** The original LoRA stack after update checking.
 
-## Usage
+### `path` — `STRING`
+- **Name:** `path`
+- **Description:** Stringified paths for any LoRAs with updates.
 
-Use to keep your LoRA library up to date with the latest versions. The node doesn't automatically download updates but provides the information needed to manually update.
+### `latest_url` — `STRING`
+- **Name:** `latest_url`
+- **Description:** Latest Civitai URLs for LoRAs with updates.
+
 
 ## Notes
 
-- Checks each LoRA in the stack against Civitai for newer versions
-- Only reports LoRAs that have updates available
-- Force option will re-check even recently checked LoRAs
-- Returns Civitai URLs in format: `https://civitai.com/models/{modelId}?modelVersionId={versionId}`
-- Does not automatically download or replace LoRAs
-- Useful for maintenance workflows and keeping models current
-- Requires LoRAs to have Civitai metadata for update checking
+
+
+Generated from the node schema.

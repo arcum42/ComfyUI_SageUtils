@@ -1,38 +1,52 @@
-# Sage_LoraStackLoader
+---
+type: NodeDoc
+title: Lora Stack Loader
+description: Auto-generated node documentation.
+tags: [nodes, docs]
+---
 
-**Lora Stack Loader**
+# Lora Stack Loader
 
-Loads all LoRAs in a stack and applies them to the model and CLIP, with optional model shifts.
+* **Node ID:** `Sage_LoraStackLoader`
+* **Category:** `Sage Utils/loader`
+
+Accept a lora_stack with Model and Clip, and apply all the loras in the stack at once.
 
 ## Inputs
 
-### Required
+### `model` — `MODEL`
+- **Name:** `model`
 
-- **model** (MODEL): The diffusion model the LoRA will be applied to
-- **clip** (CLIP): The CLIP model the LoRA will be applied to
+### `clip` — `CLIP`
+- **Name:** `clip`
+- **Description:** Input value for clip.
 
-### Optional
+### `lora_stack` — `LORA_STACK` (optional)
+- **Name:** `lora_stack`
 
-- **lora_stack** (LORA_STACK): The stack of LoRAs to load and apply
-- **model_shifts** (MODEL_SHIFTS): The model shifts & FreeU2 settings to apply to the model
+### `model_shifts` — `MODEL_SHIFTS` (optional)
+- **Name:** `model_shifts`
+
 
 ## Outputs
 
-- **model** (MODEL): The modified diffusion model with LoRAs applied
-- **clip** (CLIP): The modified CLIP model with LoRAs applied
-- **lora_stack** (LORA_STACK): The stack of LoRAs (passed through)
-- **keywords** (STRING): Keywords from the LoRA stack
+### `out_model` — `MODEL`
+- **Name:** `model`
 
-## Usage
+### `out_clip` — `CLIP`
+- **Name:** `clip`
 
-Connect to a LoRA stack node to load all LoRAs at once. Supports model shifts for advanced model modifications.
+### `out_lora_stack` — `LORA_STACK`
+- **Name:** `lora_stack`
+- **Description:** Output value for out_lora_stack.
+
+### `keywords` — `STRING`
+- **Name:** `keywords`
+- **Description:** Output value for keywords.
+
 
 ## Notes
 
-- Applies all LoRAs in the stack to both model and CLIP
-- Shows progress bar during loading process
-- Extracts and returns keywords from all LoRAs in the stack
-- Supports model shifts including discrete flow sampling and FreeU v2
-- Model shifts can apply x1 or x1000 multipliers for different model types
-- FreeU v2 can be enabled for improved quality with specific parameters
-- Compatible with LoRA stacks from other node packs
+
+
+Generated from the node schema.

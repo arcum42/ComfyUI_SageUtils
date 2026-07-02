@@ -1,19 +1,49 @@
-# Sage_PonyPrefix
+---
+type: NodeDoc
+title: Pony Prefix
+description: Auto-generated node documentation.
+tags: [nodes, docs]
+---
 
-**Add Pony v6 Prefixes**
+# Pony Prefix
 
-Creates Pony v6 prefixes for prompt engineering based on score, rating, and source parameters.
+* **Node ID:** `Sage_PonyPrefix`
+* **Category:** `Sage Utils/text/prompt/pony`
+
+Generates a prefix for pony-related content.
 
 ## Inputs
 
-- **add_score** (boolean, required): Whether to include score prefixes (score_9, score_8_up, etc.)
-- **rating** (string, required): Content rating - Options: "none", "safe", "questionable", "explicit"
-- **source** (string, required): Content source - Options: "none", "pony", "furry", "anime", "cartoon", "3d", "western", "comic", "monster"
+### `add_score` — `BOOLEAN`
+- **Name:** `add_score`
+- **Description:** Include a generated score string in the prefix.
+
+### `score_start` — `INT`
+- **Name:** `Score Start`
+- **Description:** The starting score for the prefix score range.
+
+### `score_end` — `INT`
+- **Name:** `Score End`
+- **Description:** The ending score for the prefix score range.
+
+### `rating` — `COMBO`
+- **Name:** `rating`
+- **Description:** The rating to include in the prefix.
+
+### `source` — `COMBO`
+- **Name:** `source`
+- **Description:** The source type to include in the prefix.
+
 
 ## Outputs
 
-- **STRING**: Generated prefix string containing the selected score, rating, and source tags
+### `str_out` — `STRING`
+- **Name:** `string`
+- **Description:** The generated Pony prefix string.
 
-## Usage
 
-Use to automatically generate appropriate prefixes for Pony v6 models. The node combines score tags (if enabled), source tags, and rating tags into a properly formatted prefix string that can be prepended to your main prompt.
+## Notes
+
+
+
+Generated from the node schema.

@@ -84,8 +84,8 @@ class Sage_ConstructLLMPrompt(io.ComfyNode):
             extra_inputs = []
 
         schema_inputs: list[io.Input] = [
-            io.Combo.Input("prompt", display_name="prompt", options=prompt_list),
-            io.String.Input("extra_instructions", display_name="extra_instructions", default="", multiline=True),
+            io.Combo.Input("prompt", display_name="prompt", options=prompt_list, tooltip="The base prompt template to construct."),
+            io.String.Input("extra_instructions", display_name="extra_instructions", default="", multiline=True, tooltip="Additional instructions to append to the generated prompt."),
         ]
         schema_inputs.extend(extra_inputs)
         return io.Schema(
@@ -95,7 +95,7 @@ class Sage_ConstructLLMPrompt(io.ComfyNode):
             category=f"{SAGE_UTILS_CAT}/LLM",
             inputs=schema_inputs,
             outputs=[
-                io.String.Output("out_prompt", display_name="prompt")
+                io.String.Output("out_prompt", display_name="prompt", tooltip="The constructed LLM prompt.")
             ]
         )
     
@@ -160,7 +160,7 @@ class Sage_ConstructLLMPromptExtra(io.ComfyNode):
             extra_inputs = []
 
         schema_inputs: list[io.Input] = [
-            io.String.Input("extra_instructions", display_name="extra_instructions", default="", multiline=True),
+            io.String.Input("extra_instructions", display_name="extra_instructions", default="", multiline=True, tooltip="Extra instruction text to include with the prompt."),
         ]
         schema_inputs.extend(extra_inputs)
         return io.Schema(
@@ -170,7 +170,7 @@ class Sage_ConstructLLMPromptExtra(io.ComfyNode):
             category=f"{SAGE_UTILS_CAT}/LLM",
             inputs=schema_inputs,
             outputs=[
-                io.String.Output("extra", display_name="extra")
+                io.String.Output("extra", display_name="extra", tooltip="The generated extra instructions for the LLM.")
             ]
         )
     
@@ -207,10 +207,10 @@ class Sage_LLMPromptText(io.ComfyNode):
             openai_models = ["(OpenAI not available)"]
 
         native_inputs = [
-            io.Clip.Input("native_clip", display_name="model"),
-            io.Int.Input("native_max_length", display_name="max_length", default=256, min=1, max=16384),
+            io.Clip.Input("native_clip", display_name="model", tooltip="The native CLIP model used for local LLM generation."),
+            io.Int.Input("native_max_length", display_name="max_length", default=256, min=1, max=16384, tooltip="Maximum sequence length for native generation."),
             io.Boolean.Input("native_thinking", display_name="thinking", default=False, optional=True, tooltip="Enable model thinking mode if supported by the loaded CLIP model."),
-            io.DynamicCombo.Input("native_sampling", display_name="sampling", options=[
+            io.DynamicCombo.Input("native_sampling", display_name="sampling", tooltip="Choose native sampling settings for the local model.", options=[
                 io.DynamicCombo.Option("Default", []),
                 io.DynamicCombo.Option("Advanced", [
                     io.Boolean.Input("native_do_sample", display_name="do_sample", default=True, tooltip="Disable for deterministic greedy decoding."),
@@ -228,7 +228,7 @@ class Sage_LLMPromptText(io.ComfyNode):
             io.DynamicCombo.Option(
                 "LM Studio",
                 [
-                    io.Combo.Input("lmstudio_rest_model", display_name="model", options=sorted(lmstudio_rest_models)),
+                    io.Combo.Input("lmstudio_rest_model", display_name="model", options=sorted(lmstudio_rest_models), tooltip="Input value for lmstudio_rest_model."),
                     io.Int.Input("lmstudio_rest_load_for_seconds", display_name="load_for_seconds", default=0, min=-1, max=60 * 60, step=1, advanced=True, tooltip="Compatibility field for LM Studio REST model load duration."),
                     io.String.Input("lmstudio_rest_system_prompt", display_name="system_prompt", default="", multiline=True, optional=True, advanced=True, tooltip="Optional system instruction prepended as model context."),
                 ],
@@ -236,7 +236,7 @@ class Sage_LLMPromptText(io.ComfyNode):
             io.DynamicCombo.Option(
                 "Ollama",
                 [
-                    io.Combo.Input("ollama_rest_model", display_name="model", options=sorted(ollama_rest_models)),
+                    io.Combo.Input("ollama_rest_model", display_name="model", options=sorted(ollama_rest_models), tooltip="Input value for ollama_rest_model."),
                     io.String.Input("ollama_rest_keep_alive", display_name="keep_alive", default="5m", advanced=True, tooltip="How long to keep the model loaded after generation (Ollama duration string)."),
                     OllamaOptions.Input("ollama_rest_options", display_name="options", optional=True, advanced=True, tooltip="Optional low-level Ollama generation parameters."),
                     io.String.Input("ollama_rest_system_prompt", display_name="system_prompt", default="", multiline=True, optional=True, advanced=True, tooltip="Optional system instruction prepended as model context."),
@@ -245,10 +245,10 @@ class Sage_LLMPromptText(io.ComfyNode):
             io.DynamicCombo.Option(
                 "OpenAI",
                 [
-                    io.Combo.Input("openai_model", display_name="model", options=sorted(openai_models)),
+                    io.Combo.Input("openai_model", display_name="model", options=sorted(openai_models), tooltip="Input value for openai_model."),
                     io.String.Input("openai_system_prompt", display_name="system_prompt", default="", multiline=True, optional=True, advanced=True, tooltip="Optional system instruction prepended as model context."),
-                    io.Float.Input("openai_temperature", display_name="temperature", default=0.7, min=0.0, max=2.0, step=0.01, advanced=True),
-                    io.Int.Input("openai_max_tokens", display_name="max_tokens", default=4096, min=1, max=16384, step=1, advanced=True),
+                    io.Float.Input("openai_temperature", display_name="temperature", default=0.7, min=0.0, max=2.0, step=0.01, advanced=True, tooltip="Input value for openai_temperature."),
+                    io.Int.Input("openai_max_tokens", display_name="max_tokens", default=4096, min=1, max=16384, step=1, advanced=True, tooltip="Input value for openai_max_tokens."),
                 ],
             ),
             io.DynamicCombo.Option("Native", native_inputs),
@@ -260,12 +260,12 @@ class Sage_LLMPromptText(io.ComfyNode):
             description="Unified provider-switching text generation node for REST/OpenAI and Native CLIP.",
             category=f"{SAGE_UTILS_CAT}/LLM",
             inputs=[
-                io.String.Input("prompt", display_name="prompt", default=DEFAULT_TEXT_PROMPT, multiline=True),
+                io.String.Input("prompt", display_name="prompt", default=DEFAULT_TEXT_PROMPT, multiline=True, tooltip="The text prompt sent to the selected LLM provider."),
                 io.DynamicCombo.Input("provider", display_name="provider", options=provider_options, tooltip="Pick the backend provider and its model/runtime settings."),
                 io.Int.Input("seed", display_name="seed", default=0, min=0, max=2**32 - 1, step=1, tooltip="Base seed used by all providers (provider-specific behavior may vary)."),
             ],
             outputs=[
-                io.String.Output("response", display_name="response")
+                io.String.Output("response", display_name="response", tooltip="The text response returned by the selected provider.")
             ]
         )
 
@@ -367,10 +367,10 @@ class Sage_LLMPromptVision(io.ComfyNode):
             openai_models = ["(No OpenAI vision models available)"]
 
         native_inputs = [
-            io.Clip.Input("native_clip", display_name="model"),
-            io.Int.Input("native_max_length", display_name="max_length", default=256, min=1, max=16384),
+            io.Clip.Input("native_clip", display_name="model", tooltip="The native CLIP model used for local LLM generation."),
+            io.Int.Input("native_max_length", display_name="max_length", default=256, min=1, max=16384, tooltip="Maximum sequence length for native generation."),
             io.Boolean.Input("native_thinking", display_name="thinking", default=False, optional=True, tooltip="Enable model thinking mode if supported by the loaded CLIP model."),
-            io.DynamicCombo.Input("native_sampling", display_name="sampling", options=[
+            io.DynamicCombo.Input("native_sampling", display_name="sampling", tooltip="Choose native sampling settings for the local model.", options=[
                 io.DynamicCombo.Option("Default", []),
                 io.DynamicCombo.Option("Advanced", [
                     io.Boolean.Input("native_do_sample", display_name="do_sample", default=True, tooltip="Disable for deterministic greedy decoding."),
@@ -388,7 +388,7 @@ class Sage_LLMPromptVision(io.ComfyNode):
             io.DynamicCombo.Option(
                 "LM Studio",
                 [
-                    io.Combo.Input("lmstudio_rest_model", display_name="model", options=sorted(lmstudio_rest_models)),
+                    io.Combo.Input("lmstudio_rest_model", display_name="model", options=sorted(lmstudio_rest_models), tooltip="Input value for lmstudio_rest_model."),
                     io.Int.Input("lmstudio_rest_load_for_seconds", display_name="load_for_seconds", default=0, min=-1, max=60 * 60, step=1, advanced=True, tooltip="Compatibility field for LM Studio REST model load duration."),
                     io.String.Input("lmstudio_rest_system_prompt", display_name="system_prompt", default="", multiline=True, optional=True, advanced=True, tooltip="Optional system instruction prepended as model context."),
                 ],
@@ -396,7 +396,7 @@ class Sage_LLMPromptVision(io.ComfyNode):
             io.DynamicCombo.Option(
                 "Ollama",
                 [
-                    io.Combo.Input("ollama_rest_model", display_name="model", options=sorted(ollama_rest_models)),
+                    io.Combo.Input("ollama_rest_model", display_name="model", options=sorted(ollama_rest_models), tooltip="Input value for ollama_rest_model."),
                     io.String.Input("ollama_rest_keep_alive", display_name="keep_alive", default="5m", advanced=True, tooltip="How long to keep the model loaded after generation (Ollama duration string)."),
                     OllamaOptions.Input("ollama_rest_options", display_name="options", optional=True, advanced=True, tooltip="Optional low-level Ollama generation parameters."),
                     io.String.Input("ollama_rest_system_prompt", display_name="system_prompt", default="", multiline=True, optional=True, advanced=True, tooltip="Optional system instruction prepended as model context."),
@@ -405,10 +405,10 @@ class Sage_LLMPromptVision(io.ComfyNode):
             io.DynamicCombo.Option(
                 "OpenAI",
                 [
-                    io.Combo.Input("openai_model", display_name="model", options=sorted(openai_models)),
+                    io.Combo.Input("openai_model", display_name="model", options=sorted(openai_models), tooltip="Input value for openai_model."),
                     io.String.Input("openai_system_prompt", display_name="system_prompt", default="", multiline=True, optional=True, advanced=True, tooltip="Optional system instruction prepended as model context."),
-                    io.Float.Input("openai_temperature", display_name="temperature", default=0.7, min=0.0, max=2.0, step=0.01, advanced=True),
-                    io.Int.Input("openai_max_tokens", display_name="max_tokens", default=1024, min=1, max=16384, step=1, advanced=True),
+                    io.Float.Input("openai_temperature", display_name="temperature", default=0.7, min=0.0, max=2.0, step=0.01, advanced=True, tooltip="Input value for openai_temperature."),
+                    io.Int.Input("openai_max_tokens", display_name="max_tokens", default=1024, min=1, max=16384, step=1, advanced=True, tooltip="Input value for openai_max_tokens."),
                 ],
             ),
             io.DynamicCombo.Option("Native", native_inputs),
@@ -420,13 +420,13 @@ class Sage_LLMPromptVision(io.ComfyNode):
             description="Unified provider-switching vision generation node for REST/OpenAI and Native CLIP.",
             category=f"{SAGE_UTILS_CAT}/LLM",
             inputs=[
-                io.String.Input("prompt", display_name="prompt", default=DEFAULT_VISION_PROMPT, multiline=True),
-                io.Image.Input("image", display_name="image"),
+                io.String.Input("prompt", display_name="prompt", default=DEFAULT_VISION_PROMPT, multiline=True, tooltip="The text prompt for vision-capable LLM providers."),
+                io.Image.Input("image", display_name="image", tooltip="The reference image sent to the vision provider."),
                 io.DynamicCombo.Input("provider", display_name="provider", options=provider_options, tooltip="Pick the backend provider and its model/runtime settings."),
                 io.Int.Input("seed", display_name="seed", default=0, min=0, max=2**32 - 1, step=1, tooltip="Base seed used by all providers (provider-specific behavior may vary)."),
             ],
             outputs=[
-                io.String.Output("response", display_name="response")
+                io.String.Output("response", display_name="response", tooltip="The text response returned by the selected vision provider.")
             ]
         )
     
@@ -550,11 +550,11 @@ class Sage_LLMPromptVisionRefine(io.ComfyNode):
             openai_refine_models = ["(OpenAI not available)"]
 
         native_inputs = [
-            io.Clip.Input("native_clip", display_name="model"),
+            io.Clip.Input("native_clip", display_name="model", tooltip="Input value for native_clip."),
             io.Clip.Input("native_refine_clip", display_name="refine_model", optional=True, advanced=True, tooltip="Optional second CLIP model used only for the refine pass."),
-            io.Int.Input("native_max_length", display_name="max_length", default=256, min=1, max=16384),
+            io.Int.Input("native_max_length", display_name="max_length", default=256, min=1, max=16384, tooltip="Input value for native_max_length."),
             io.Boolean.Input("native_thinking", display_name="thinking", default=False, optional=True, tooltip="Enable model thinking mode if supported by the loaded CLIP model."),
-            io.DynamicCombo.Input("native_sampling", display_name="sampling", options=[
+            io.DynamicCombo.Input("native_sampling", display_name="sampling", tooltip="Choose native sampling settings for the local model.", options=[
                 io.DynamicCombo.Option("Default", []),
                 io.DynamicCombo.Option("Advanced", [
                     io.Boolean.Input("native_do_sample", display_name="do_sample", default=True, tooltip="Disable for deterministic greedy decoding."),
@@ -572,29 +572,29 @@ class Sage_LLMPromptVisionRefine(io.ComfyNode):
             io.DynamicCombo.Option(
                 "LM Studio",
                 [
-                    io.Combo.Input("lmstudio_rest_model", display_name="model", options=sorted(lmstudio_rest_models)),
-                    io.Combo.Input("lmstudio_rest_refine_model", display_name="refine_model", options=sorted(lmstudio_rest_refine_models)),
-                    io.String.Input("lmstudio_rest_system_prompt", display_name="system_prompt", default="", multiline=True, optional=True, advanced=True),
+                    io.Combo.Input("lmstudio_rest_model", display_name="model", options=sorted(lmstudio_rest_models), tooltip="Input value for lmstudio_rest_model."),
+                    io.Combo.Input("lmstudio_rest_refine_model", display_name="refine_model", options=sorted(lmstudio_rest_refine_models), tooltip="Input value for lmstudio_rest_refine_model."),
+                    io.String.Input("lmstudio_rest_system_prompt", display_name="system_prompt", default="", multiline=True, optional=True, advanced=True, tooltip="Input value for lmstudio_rest_system_prompt."),
                 ],
             ),
             io.DynamicCombo.Option(
                 "Ollama",
                 [
-                    io.Combo.Input("ollama_rest_model", display_name="model", options=sorted(ollama_rest_models)),
-                    io.Combo.Input("ollama_rest_refine_model", display_name="refine_model", options=sorted(ollama_rest_refine_models)),
-                    io.String.Input("ollama_rest_keep_alive", display_name="keep_alive", default="5m", advanced=True),
+                    io.Combo.Input("ollama_rest_model", display_name="model", options=sorted(ollama_rest_models), tooltip="Input value for ollama_rest_model."),
+                    io.Combo.Input("ollama_rest_refine_model", display_name="refine_model", options=sorted(ollama_rest_refine_models), tooltip="Input value for ollama_rest_refine_model."),
+                    io.String.Input("ollama_rest_keep_alive", display_name="keep_alive", default="5m", advanced=True, tooltip="Input value for ollama_rest_keep_alive."),
                     OllamaOptions.Input("ollama_rest_options", display_name="options", optional=True, advanced=True),
-                    io.String.Input("ollama_rest_system_prompt", display_name="system_prompt", default="", multiline=True, optional=True, advanced=True),
+                    io.String.Input("ollama_rest_system_prompt", display_name="system_prompt", default="", multiline=True, optional=True, advanced=True, tooltip="Input value for ollama_rest_system_prompt."),
                 ],
             ),
             io.DynamicCombo.Option(
                 "OpenAI",
                 [
-                    io.Combo.Input("openai_model", display_name="model", options=sorted(openai_models)),
-                    io.Combo.Input("openai_refine_model", display_name="refine_model", options=sorted(openai_refine_models)),
-                    io.String.Input("openai_system_prompt", display_name="system_prompt", default="", multiline=True, optional=True, advanced=True),
-                    io.Float.Input("openai_temperature", display_name="temperature", default=0.7, min=0.0, max=2.0, step=0.01, advanced=True),
-                    io.Int.Input("openai_max_tokens", display_name="max_tokens", default=4096, min=1, max=16384, step=1, advanced=True),
+                    io.Combo.Input("openai_model", display_name="model", options=sorted(openai_models), tooltip="Input value for openai_model."),
+                    io.Combo.Input("openai_refine_model", display_name="refine_model", options=sorted(openai_refine_models), tooltip="Input value for openai_refine_model."),
+                    io.String.Input("openai_system_prompt", display_name="system_prompt", default="", multiline=True, optional=True, advanced=True, tooltip="Input value for openai_system_prompt."),
+                    io.Float.Input("openai_temperature", display_name="temperature", default=0.7, min=0.0, max=2.0, step=0.01, advanced=True, tooltip="Input value for openai_temperature."),
+                    io.Int.Input("openai_max_tokens", display_name="max_tokens", default=4096, min=1, max=16384, step=1, advanced=True, tooltip="Input value for openai_max_tokens."),
                 ],
             ),
             io.DynamicCombo.Option("Native", native_inputs),
@@ -606,16 +606,16 @@ class Sage_LLMPromptVisionRefine(io.ComfyNode):
             description="Unified provider-switching vision-refine node that outputs both initial and refined responses.",
             category=f"{SAGE_UTILS_CAT}/LLM",
             inputs=[
-                io.String.Input("prompt", display_name="prompt", default=DEFAULT_VISION_PROMPT, multiline=True),
-                io.Image.Input("image", display_name="image"),
+                io.String.Input("prompt", display_name="prompt", default=DEFAULT_VISION_PROMPT, multiline=True, tooltip="The text prompt for the initial vision generation pass."),
+                io.Image.Input("image", display_name="image", tooltip="The reference image sent to the vision provider."),
                 io.Int.Input("seed", display_name="seed", default=0, min=0, max=2**32 - 1, step=1, tooltip="Seed for the initial generation pass."),
                 io.String.Input("refine_prompt", display_name="refine_prompt", default="Take the provided text description and rewrite it to be more vivid, detailed, and engaging, while preserving the original meaning.", multiline=True, tooltip="Instructions used for the second (refinement) pass."),
                 io.Int.Input("refine_seed", display_name="refine_seed", default=0, min=0, max=2**32 - 1, step=1, tooltip="Seed for the refinement pass."),
                 io.DynamicCombo.Input("provider", display_name="provider", options=provider_options, tooltip="Pick the backend provider and its model/runtime settings."),
             ],
             outputs=[
-                io.String.Output("initial_response", display_name="initial_response"),
-                io.String.Output("refined_response", display_name="refined_response"),
+                io.String.Output("initial_response", display_name="initial_response", tooltip="The initial response generated by the vision provider."),
+                io.String.Output("refined_response", display_name="refined_response", tooltip="The refined response generated during the second pass."),
             ]
         )
     

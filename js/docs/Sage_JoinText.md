@@ -1,22 +1,45 @@
-# Sage_JoinText
+---
+type: NodeDoc
+title: Join Text (Legacy)
+description: Auto-generated node documentation.
+tags: [nodes, docs]
+---
 
-**Join Text**
+# Join Text (Legacy)
 
-Joins two text strings together with a customizable separator. Useful for building prompts or metadata with controlled formatting.
+* **Node ID:** `Sage_JoinText`
+* **Category:** `Sage Utils/text/helper`
+
+Joins two strings with a separator.
 
 ## Inputs
 
-### Required
+### `separator` — `STRING`
+- **Name:** `separator`
+- **Description:** Separator string used between inputs.
 
-- **separator** (STRING): The separator to use between strings (default: ', ')
-- **add_separator_to_end** (BOOLEAN): Whether to add separator to the end of the joined string (default: False)
-- **str1** (STRING): First string to join
-- **str2** (STRING): Second string to join
+### `add_separator_to_end` — `BOOLEAN`
+- **Name:** `add_separator_to_end`
+- **Description:** Add separator to the end of the joined string.
+
+### `str1` — `STRING`
+- **Name:** `str1`
+- **Description:** First string to join.
+
+### `str2` — `STRING`
+- **Name:** `str2`
+- **Description:** Second string to join.
+
 
 ## Outputs
 
-- **str** (STRING): The joined string with separator
+### `str` — `STRING`
+- **Name:** `str`
+- **Description:** Output value for str.
 
-## Usage
 
-Use to concatenate text for prompts, metadata, or other string fields. The separator parameter allows you to control how the strings are joined (comma, space, newline, etc.), and the add_separator_to_end option lets you append the separator to the final result.
+## Notes
+
+
+
+Generated from the node schema.
