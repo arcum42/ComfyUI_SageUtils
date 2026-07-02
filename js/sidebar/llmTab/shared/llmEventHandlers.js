@@ -222,10 +222,9 @@ export function setupEventHandlers(
     const sendToPromptBtn = responseSection.querySelector('.llm-send-to-prompt-btn');
     if (sendToPromptBtn) {
         sendToPromptBtn.addEventListener('click', () => {
-            const responseDisplay = responseSection.querySelector('.llm-response-display');
-            const responseText = responseDisplay.textContent.trim();
+            const responseText = getTranscriptText(responseSection).trim();
 
-            if (!responseText || responseText === 'Response will appear here...') {
+            if (!responseText) {
                 showStatus(responseSection, 'No response to send', 'error');
                 return;
             }

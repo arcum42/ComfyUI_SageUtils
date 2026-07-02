@@ -274,7 +274,11 @@ export function setGeneratingState(responseSection, generating) {
 export function appendResponseText(responseSection, text, autoScroll = true) {
     const responseDisplay = responseSection.querySelector('.llm-response-display');
     const responseText = responseSection.querySelector('.llm-response-answer');
+    const placeholder = responseSection.querySelector('.llm-response-placeholder');
     if (responseText) {
+        if (placeholder) {
+            placeholder.classList.add('llm-hidden');
+        }
         responseText.textContent += text;
         
         if (autoScroll) {
