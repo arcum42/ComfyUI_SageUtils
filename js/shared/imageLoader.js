@@ -4,14 +4,16 @@
  * Uses the correct API endpoints and handles errors consistently
  */
 
+import { API_ENDPOINTS } from './config.js';
+
 /**
  * Loads a full-size image using the sage_utils API
  * @param {Object|string} imageInput - Image object or path string
  * @returns {Promise<string>} Promise that resolves to a blob URL
  */
 export async function loadFullImage(imageInput) {
-    const imagePath = typeof imageInput === 'string' 
-        ? imageInput 
+    const imagePath = typeof imageInput === 'string'
+        ? imageInput
         : (imageInput.path || imageInput.relative_path || imageInput.name);
 
     if (!imagePath) {
@@ -19,7 +21,7 @@ export async function loadFullImage(imageInput) {
     }
 
     try {
-        const response = await fetch('/sage_utils/image', {
+        const response = await fetch(API_ENDPOINTS.getImage, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -58,7 +60,7 @@ export async function loadThumbnail(imageInput, size = 'large') {
     }
 
     try {
-        const response = await fetch('/sage_utils/thumbnail', {
+        const response = await fetch(API_ENDPOINTS.getThumbnail, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'

@@ -8,6 +8,7 @@ import { api } from "../../../../scripts/api.js";
 import { actions, selectors } from "../stateManager.js";
 import { handleError } from "../errorHandler.js";
 import { formatFileSize } from "../../reports/reportGenerator.js";
+import { API_ENDPOINTS } from "../config.js";
 
 /**
  * Check if an image has generation parameters in its metadata
@@ -97,7 +98,7 @@ export async function checkImagesForGenerationParams(images, setStatus = null, s
         const results = await Promise.allSettled(
             batch.map(async (image) => {
                 try {
-                    const response = await api.fetchApi('/sage_utils/image_metadata', {
+                    const response = await api.fetchApi(API_ENDPOINTS.getImageMetadata, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ image_path: image.path }),
@@ -161,7 +162,7 @@ async function loadMetadataInBackground(images, signal, setStatus, onProgress) {
         const results = await Promise.allSettled(
             batch.map(async (image) => {
                 try {
-                    const response = await api.fetchApi('/sage_utils/image_metadata', {
+                    const response = await api.fetchApi(API_ENDPOINTS.getImageMetadata, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ image_path: image.path }),
@@ -261,7 +262,7 @@ export async function loadImagesFromFolder(folderType, customPath = null, setSta
             console.log('[GalleryApi] Sending /sage_utils/list_images request:', JSON.stringify(requestBody));
         }
 
-        const response = await api.fetchApi('/sage_utils/list_images', {
+        const response = await api.fetchApi(API_ENDPOINTS.listImages, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(requestBody),
@@ -356,7 +357,7 @@ export async function loadImageMetadata(image, setStatus = null) {
         if (setStatus) setStatus('Loading image metadata...');
         actions.toggleMetadata(true);
         
-        const response = await api.fetchApi('/sage_utils/image_metadata', {
+        const response = await api.fetchApi(API_ENDPOINTS.getImageMetadata, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ image_path: image.path })
@@ -545,7 +546,7 @@ export async function findDuplicateImages(folderPath, includeSubfolders = false,
             setStatus('Scanning for duplicates...');
         }
         
-        const response = await api.fetchApi('/sage_utils/find_duplicates', {
+        const response = await api.fetchApi(API_ENDPOINTS.findDuplicates, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -591,7 +592,7 @@ export async function deleteImages(imagePaths, setStatus = null) {
             setStatus(`Deleting ${imagePaths.length} images...`);
         }
         
-        const response = await api.fetchApi('/sage_utils/delete_images', {
+        const response = await api.fetchApi(API_ENDPOINTS.deleteImages, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({

@@ -6,12 +6,13 @@
 
 import { api } from "../../../../scripts/api.js";
 import { actions, selectors } from '../shared/stateManager.js';
-import { copyImageToClipboard } from '../shared/imageUtils.js';
+import { copyImageToClipboard, browseFolder, loadImagesFromFolder } from '../shared/imageUtils.js';
 import { handleDatasetText } from '../shared/datasetTextManager.js';
 import { loadImageMetadata, formatMetadataForDisplay } from '../shared/api/galleryApi.js';
 import { loadFullImage, openImageInNewTab as openImageInNewTabUtil } from '../shared/imageLoader.js';
 import { CONTEXT_MENU_WIDTH, CONTEXT_MENU_ITEM_HEIGHT } from '../shared/constants.js';
 import { notifications } from '../shared/notifications.js';
+import { API_ENDPOINTS } from '../shared/config.js';
 
 /**
  * Shows a native OS folder picker dialog
@@ -250,7 +251,7 @@ async function showFolderBrowserDialog(callback) {
                 </div>
             `;
             
-            const response = await api.fetchApi('/sage_utils/browse_directory_tree', {
+            const response = await api.fetchApi(API_ENDPOINTS.browseDirectoryTree, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ path })
@@ -1112,19 +1113,13 @@ function renderContextMenuItems(contextMenu, menuItems) {
  */
 async function imageToBase64(imagePath) {
     try {
-        // Use the correct API endpoint (POST with JSON body)
-        const response = await fetch('/sage_utils/image', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ image_path: imagePath })
-        });
-        
+        const imageUrl = await loadFullImage(imagePath);
+        const response = await fetch(imageUrl);
         if (!response.ok) {
-            throw new Error(`Failed to fetch image: ${response.statusText}`);
+            throw new Error(`Failed to fetch image blob: ${response.statusText}`);
         }
-        
+
         const blob = await response.blob();
-        
         return new Promise((resolve, reject) => {
             const reader = new FileReader();
             reader.onloadend = () => resolve(reader.result);
@@ -1176,26 +1171,16 @@ export async function browseCustomFolder(context) {
         
         if (!folderPath || folderPath.trim() === '') return;
         
-        console.log('Gallery: Loading images from custom folder...');
-        
-        // Use the same endpoint as the main gallery loading function
-        const response = await api.fetchApi('/sage_utils/list_images', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-                folder: 'custom', 
-                path: folderPath.trim() 
-            })
-        });
-        
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
+        console.log('Gallery: Validating custom folder path...');
+        const validation = await browseFolder(folderPath.trim());
+
+        if (!validation.valid || !validation.accessible) {
+            throw new Error(`Folder cannot be accessed: ${folderPath.trim()}`);
         }
-        
-        const result = await response.json();
-        
-        if (result.success) {
-            const { images = [], folders = [] } = result;
+
+        console.log('Gallery: Loading images from custom folder...');
+        const result = await loadImagesFromFolder('custom', folderPath.trim());
+        const { images = [], folders = [] } = result;
             
             if (images.length === 0 && folders.length === 0) {
                 notifications.warning(`Folder "${folderPath}" contains no images or subfolders`);
@@ -1256,21 +1241,6 @@ export async function browseCustomFolder(context) {
             
             console.log(`Gallery: Loaded ${images.length} images and ${folders.length} folders from custom folder: ${folderPath}`);
             
-        } else {
-            // Check the specific error to provide helpful feedback
-            const errorMsg = result.error || 'Failed to browse folder';
-            if (errorMsg.includes('does not exist')) {
-                notifications.error(`Path not found: "${folderPath}"\n\nPlease check that:\n• The path is correct\n• The folder exists\n• You have access permissions`);
-            } else if (errorMsg.includes('not a directory')) {
-                notifications.error(`Not a folder: "${folderPath}"\n\nPlease provide a path to a folder, not a file.`);
-            } else if (errorMsg.includes('Permission denied')) {
-                notifications.error(`Access denied: "${folderPath}"\n\nYou don't have permission to access this folder.`);
-            } else {
-                notifications.error(`Error: ${errorMsg}`);
-            }
-            throw new Error(errorMsg);
-        }
-        
     } catch (error) {
         console.error('Error browsing folder:', error);
         

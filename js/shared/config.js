@@ -37,9 +37,13 @@ export const API_ENDPOINTS = {
     // Gallery management
     listImages: '/sage_utils/list_images',
     getThumbnail: '/sage_utils/thumbnail',
+    getImage: '/sage_utils/image',
     getImageMetadata: '/sage_utils/image_metadata',
     browseFolder: '/sage_utils/browse_folder',
-    copyImage: '/sage_utils/copy_image'
+    browseDirectoryTree: '/sage_utils/browse_directory_tree',
+    copyImage: '/sage_utils/copy_image',
+    findDuplicates: '/sage_utils/find_duplicates',
+    deleteImages: '/sage_utils/delete_images'
 };
 
 /**

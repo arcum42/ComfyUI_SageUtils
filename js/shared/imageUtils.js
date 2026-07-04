@@ -6,6 +6,7 @@
 import { API_ENDPOINTS } from './config.js';
 import { actions } from './stateManager.js';
 import { MetadataCache } from './metadataCache.js';
+import { loadFullImage as loadFullImageFromLoader, loadThumbnail as loadThumbnailFromLoader } from './imageLoader.js';
 
 /**
  * Load images from a specified folder
@@ -67,27 +68,40 @@ export async function loadImagesFromFolder(folderType, customPath = null) {
  * @param {number} size - Thumbnail size (default: 200)
  * @returns {Promise<string|null>} Thumbnail URL or null if failed
  */
-export async function generateThumbnail(image, size = 200) {
-    try {
-        const params = new URLSearchParams({
-            image_path: image.path,
-            size: size.toString()
-        });
-        
-        const response = await fetch(`${API_ENDPOINTS.getThumbnail}?${params}`);
-        
-        if (response.ok) {
-            const blob = await response.blob();
-            const thumbnailUrl = URL.createObjectURL(blob);
-            return thumbnailUrl;
-        } else {
-            console.error('Thumbnail generation failed:', response.statusText);
-            return null;
+const THUMBNAIL_SIZE_MAP = {
+    small: 'small',
+    medium: 'medium',
+    large: 'large'
+};
+
+function _resolveThumbnailSize(size) {
+    if (typeof size === 'string') {
+        const normalized = size.toLowerCase();
+        if (THUMBNAIL_SIZE_MAP[normalized]) {
+            return normalized;
         }
-    } catch (error) {
+        const parsed = parseInt(size, 10);
+        if (!Number.isNaN(parsed)) {
+            size = parsed;
+        }
+    }
+
+    if (typeof size === 'number') {
+        if (size <= 120) return 'small';
+        if (size <= 200) return 'medium';
+        return 'large';
+    }
+
+    return 'medium';
+}
+
+export async function generateThumbnail(image, size = 200) {
+    const imagePath = image?.path || image?.relative_path || image?.name;
+    const sizeParam = _resolveThumbnailSize(size);
+    return await loadThumbnailFromLoader(imagePath, sizeParam).catch(error => {
         console.error('Error generating thumbnail:', error);
         return null;
-    }
+    });
 }
 
 /**
@@ -96,7 +110,7 @@ export async function generateThumbnail(image, size = 200) {
  */
 export async function copyImageToClipboard(imagePath) {
     try {
-        const response = await fetch('/sage_utils/copy_image', {
+        const response = await fetch(API_ENDPOINTS.copyImage, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ image_path: imagePath })
@@ -132,7 +146,7 @@ export async function loadImageMetadata(image, options = {}) {
             }
         }
 
-        const response = await fetch('/sage_utils/image_metadata', {
+        const response = await fetch(API_ENDPOINTS.getImageMetadata, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ image_path: image.path })
@@ -188,21 +202,10 @@ export function isCachedMetadataStale(image) {
  * @returns {Promise<string|null>} Image URL or null if failed
  */
 export async function loadFullImage(imagePath) {
-    try {
-        const params = new URLSearchParams({ image_path: imagePath });
-        const response = await fetch(`/sage_utils/get_image?${params}`);
-        
-        if (response.ok) {
-            const blob = await response.blob();
-            return URL.createObjectURL(blob);
-        } else {
-            console.error('Full image loading failed:', response.statusText);
-            return null;
-        }
-    } catch (error) {
+    return await loadFullImageFromLoader(imagePath).catch(error => {
         console.error('Error loading full image:', error);
         return null;
-    }
+    });
 }
 
 /**
@@ -212,17 +215,19 @@ export async function loadFullImage(imagePath) {
  */
 export async function browseFolder(folderPath) {
     try {
-        const response = await fetch('/sage_utils/browse_folder', {
+        const response = await fetch(API_ENDPOINTS.browseFolder, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ folder_path: folderPath })
+            body: JSON.stringify({ path: folderPath })
         });
         
         const result = await response.json();
         if (result.success) {
             return {
-                images: result.images || [],
-                folders: result.folders || []
+                valid: result.valid,
+                accessible: result.accessible,
+                image_count: result.image_count,
+                path: result.path
             };
         } else {
             throw new Error(result.error || 'Failed to browse folder');
