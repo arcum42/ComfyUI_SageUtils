@@ -108,22 +108,6 @@ def _error_response_from_exception(prefix, exc, status=500, default_error_code='
     )
 
 
-def _sse_error_chunk(message, *, error_code='LLM_STREAM_ERROR', provider=None, operation=None, cause=None):
-    """Create a standardized SSE error chunk payload."""
-    payload = {
-        'error': message,
-        'error_code': error_code,
-        'done': True,
-    }
-    if provider:
-        payload['provider'] = provider
-    if operation:
-        payload['operation'] = operation
-    if cause:
-        payload['cause'] = cause
-    return routes_helpers.format_sse_chunk(payload)
-
-
 def register_routes(routes_instance):
     """
     Register LLM-related routes.
@@ -606,53 +590,33 @@ def register_routes(routes_instance):
 
             # Generate response based on provider
             response_text = ""
-            
-            if provider == LMSTUDIO_REST_KEY:
-                if not llm.LMSTUDIO_REST_AVAILABLE:
-                    return _error_response_with_metadata(
-                        'LM Studio REST is not available',
-                        status=503,
-                        error_code='LLM_PROVIDER_UNAVAILABLE',
-                        provider=LMSTUDIO_REST_KEY,
-                        operation='generate',
-                    )
 
-                response_text = llm.lmstudio_rest_generate(
-                    model=model,
-                    prompt=prompt,
-                    keep_alive=0,
-                    options=options,
-                    system_prompt=system_prompt,
+            if provider == LMSTUDIO_REST_KEY and not llm.LMSTUDIO_REST_AVAILABLE:
+                return _error_response_with_metadata(
+                    'LM Studio REST is not available',
+                    status=503,
+                    error_code='LLM_PROVIDER_UNAVAILABLE',
+                    provider=LMSTUDIO_REST_KEY,
+                    operation='generate',
                 )
-
-            elif provider == OLLAMA_REST_KEY or provider == OPENAI_KEY:
-                if provider == OLLAMA_REST_KEY and not llm.OLLAMA_REST_AVAILABLE:
-                    return _error_response_with_metadata(
-                        'Ollama REST is not available',
-                        status=503,
-                        error_code='LLM_PROVIDER_UNAVAILABLE',
-                        provider=OLLAMA_REST_KEY,
-                        operation='generate',
-                    )
-                if provider == OPENAI_KEY and not llm.OPENAI_AVAILABLE:
-                    return _error_response_with_metadata(
-                        'OpenAI provider is not available',
-                        status=503,
-                        error_code='LLM_PROVIDER_UNAVAILABLE',
-                        provider=OPENAI_KEY,
-                        operation='generate',
-                    )
-
-                response_text = llm.generate(
-                    provider,
-                    model=model,
-                    prompt=prompt,
-                    options=options,
-                    system_prompt=system_prompt,
+            if provider == OLLAMA_REST_KEY and not llm.OLLAMA_REST_AVAILABLE:
+                return _error_response_with_metadata(
+                    'Ollama REST is not available',
+                    status=503,
+                    error_code='LLM_PROVIDER_UNAVAILABLE',
+                    provider=OLLAMA_REST_KEY,
+                    operation='generate',
                 )
-
-            elif provider == NATIVE_KEY:
-                available_native = llm_native.get_native_models()
+            if provider == OPENAI_KEY and not llm.OPENAI_AVAILABLE:
+                return _error_response_with_metadata(
+                    'OpenAI provider is not available',
+                    status=503,
+                    error_code='LLM_PROVIDER_UNAVAILABLE',
+                    provider=OPENAI_KEY,
+                    operation='generate',
+                )
+            if provider == NATIVE_KEY:
+                available_native = llm.get_native_models()
                 if model not in available_native:
                     return _error_response_with_metadata(
                         f"Native CLIP model '{model}' is not available",
@@ -662,17 +626,19 @@ def register_routes(routes_instance):
                         operation='generate',
                     )
 
-                response_text = llm_native.generate_native(
-                    model=model,
-                    prompt=prompt,
-                    system_prompt=system_prompt,
-                    options=options,
-                )
-            
+            response_text = llm.generate(
+                provider,
+                model=model,
+                prompt=prompt,
+                options=options,
+                system_prompt=system_prompt,
+                keep_alive=0,
+            )
+
             return success_response(data={
                 "response": response_text,
                 "provider": provider,
-                "model": model
+                "model": model,
             })
             
         except ValueError as e:
@@ -749,78 +715,43 @@ def register_routes(routes_instance):
             response = await routes_helpers.prepare_sse_response(request)
 
             try:
-                # Generate streaming response based on provider
-                if provider == LMSTUDIO_REST_KEY:
-                    if not llm.LMSTUDIO_REST_AVAILABLE:
-                        error_chunk = _sse_error_chunk(
-                            'LM Studio REST is not available',
-                            error_code='LLM_PROVIDER_UNAVAILABLE',
-                            provider=LMSTUDIO_REST_KEY,
-                            operation='generate_stream',
-                        )
-                        await response.write(error_chunk.encode('utf-8'))
-                        await response.write_eof()
-                        return response
-
-                    await routes_helpers.stream_sse_chunks(
-                        response,
-                        llm.generate_stream(
-                            provider,
-                            model=model,
-                            prompt=prompt,
-                            keep_alive=0,
-                            options=options,
-                            system_prompt=system_prompt,
-                        ),
+                if provider == LMSTUDIO_REST_KEY and not llm.LMSTUDIO_REST_AVAILABLE:
+                    error_chunk = routes_helpers.format_sse_error_chunk(
+                        'LM Studio REST is not available',
+                        error_code='LLM_PROVIDER_UNAVAILABLE',
+                        provider=LMSTUDIO_REST_KEY,
+                        operation='generate_stream',
                     )
-                elif provider == OLLAMA_REST_KEY:
-                    if not llm.OLLAMA_REST_AVAILABLE:
-                        error_chunk = _sse_error_chunk(
-                            'Ollama REST is not available',
-                            error_code='LLM_PROVIDER_UNAVAILABLE',
-                            provider=OLLAMA_REST_KEY,
-                            operation='generate_stream',
-                        )
-                        await response.write(error_chunk.encode('utf-8'))
-                        await response.write_eof()
-                        return response
+                    await response.write(error_chunk.encode('utf-8'))
+                    await response.write_eof()
+                    return response
 
-                    await routes_helpers.stream_sse_chunks(
-                        response,
-                        llm.generate_stream(
-                            provider,
-                            model=model,
-                            prompt=prompt,
-                            options=options,
-                            system_prompt=system_prompt,
-                        ),
+                if provider == OLLAMA_REST_KEY and not llm.OLLAMA_REST_AVAILABLE:
+                    error_chunk = routes_helpers.format_sse_error_chunk(
+                        'Ollama REST is not available',
+                        error_code='LLM_PROVIDER_UNAVAILABLE',
+                        provider=OLLAMA_REST_KEY,
+                        operation='generate_stream',
                     )
-                elif provider == OPENAI_KEY:
-                    if not llm.OPENAI_AVAILABLE:
-                        error_chunk = _sse_error_chunk(
-                            'OpenAI provider is not available',
-                            error_code='LLM_PROVIDER_UNAVAILABLE',
-                            provider=OPENAI_KEY,
-                            operation='generate_stream',
-                        )
-                        await response.write(error_chunk.encode('utf-8'))
-                        await response.write_eof()
-                        return response
+                    await response.write(error_chunk.encode('utf-8'))
+                    await response.write_eof()
+                    return response
 
-                    await routes_helpers.stream_sse_chunks(
-                        response,
-                        llm.generate_stream(
-                            provider,
-                            model=model,
-                            prompt=prompt,
-                            options=options,
-                            system_prompt=system_prompt,
-                        ),
+                if provider == OPENAI_KEY and not llm.OPENAI_AVAILABLE:
+                    error_chunk = routes_helpers.format_sse_error_chunk(
+                        'OpenAI provider is not available',
+                        error_code='LLM_PROVIDER_UNAVAILABLE',
+                        provider=OPENAI_KEY,
+                        operation='generate_stream',
                     )
-                elif provider == NATIVE_KEY:
-                    available_native = llm_native.get_native_models()
+                    await response.write(error_chunk.encode('utf-8'))
+                    await response.write_eof()
+                    return response
+
+                if provider == NATIVE_KEY:
+                    available_native = llm.get_native_models()
                     if model not in available_native:
-                        error_chunk = _sse_error_chunk(
+                        error_chunk = routes_helpers.format_sse_error_chunk(
                             f"Native CLIP model '{model}' is not available",
                             error_code='LLM_MODEL_NOT_FOUND',
                             provider=NATIVE_KEY,
@@ -830,24 +761,25 @@ def register_routes(routes_instance):
                         await response.write_eof()
                         return response
 
-                    await routes_helpers.stream_sse_chunks(
-                        response,
-                        llm_native.generate_native_stream(
-                            model=model,
-                            prompt=prompt,
-                            system_prompt=system_prompt,
-                            options=options,
-                        ),
-                    )
-                
+                await routes_helpers.stream_sse_chunks(
+                    response,
+                    llm.generate_stream(
+                        provider,
+                        model=model,
+                        prompt=prompt,
+                        options=options,
+                        system_prompt=system_prompt,
+                        keep_alive=0,
+                    ),
+                )
                 await response.write_eof()
                 return response
-                
+
             except Exception as e:
                 logger.error(f"Error during streaming: {str(e)}")
                 payload = _last_llm_error.get()
                 _clear_last_llm_error()
-                error_chunk = _sse_error_chunk(
+                error_chunk = routes_helpers.format_sse_error_chunk(
                     payload.get('scoped_message') if payload else str(e),
                     error_code=f"LLM_{str(payload.get('error_type', 'STREAM_ERROR')).upper()}" if payload else 'LLM_STREAM_ERROR',
                     provider=payload.get('provider') if payload else provider,
@@ -857,7 +789,7 @@ def register_routes(routes_instance):
                 await response.write(error_chunk.encode('utf-8'))
                 await response.write_eof()
                 return response
-                
+
         except Exception as e:
             logger.error(f"Failed to initialize streaming: {str(e)}")
             return _error_response_from_exception('Failed to initialize streaming', e, status=500, default_error_code='LLM_STREAM_INIT_ERROR')
@@ -904,6 +836,14 @@ def register_routes(routes_instance):
             provider = routes_helpers.normalize_provider(data["provider"])
             model = data["model"]
             
+            if provider == NATIVE_KEY:
+                return _error_response_with_metadata(
+                    'Native provider does not support vision generation',
+                    status=400,
+                    error_code='LLM_MODEL_CAPABILITY_ERROR',
+                    provider=NATIVE_KEY,
+                )
+
             # Check vision capability before attempting dispatch
             can_do_vision, capability_error = routes_helpers.check_model_vision_capability(provider, model)
             if not can_do_vision:
@@ -925,67 +865,44 @@ def register_routes(routes_instance):
             # Initialize LLM services for active vision generation use
             llm.ensure_llm_initialized(force=True)
             
-            response_text = ""
-            
-            if provider == LMSTUDIO_REST_KEY:
-                if not llm.LMSTUDIO_REST_AVAILABLE:
-                    return _error_response_with_metadata(
-                        'LM Studio REST is not available',
-                        status=503,
-                        error_code='LLM_PROVIDER_UNAVAILABLE',
-                        provider=LMSTUDIO_REST_KEY,
-                        operation='vision_generate',
-                    )
-
-                response_text = llm.lmstudio_rest_generate_vision(
-                    model=model,
-                    prompt=prompt,
-                    keep_alive=0,
-                    images=images_data,
-                    options=options,
-                    system_prompt=system_prompt,
+            if provider == LMSTUDIO_REST_KEY and not llm.LMSTUDIO_REST_AVAILABLE:
+                return _error_response_with_metadata(
+                    'LM Studio REST is not available',
+                    status=503,
+                    error_code='LLM_PROVIDER_UNAVAILABLE',
+                    provider=LMSTUDIO_REST_KEY,
+                    operation='vision_generate',
+                )
+            if provider == OLLAMA_REST_KEY and not llm.OLLAMA_REST_AVAILABLE:
+                return _error_response_with_metadata(
+                    'Ollama REST is not available',
+                    status=503,
+                    error_code='LLM_PROVIDER_UNAVAILABLE',
+                    provider=OLLAMA_REST_KEY,
+                    operation='vision_generate',
+                )
+            if provider == OPENAI_KEY and not llm.OPENAI_AVAILABLE:
+                return _error_response_with_metadata(
+                    'OpenAI provider is not available',
+                    status=503,
+                    error_code='LLM_PROVIDER_UNAVAILABLE',
+                    provider=OPENAI_KEY,
+                    operation='vision_generate',
                 )
 
-            elif provider == OLLAMA_REST_KEY:
-                if not llm.OLLAMA_REST_AVAILABLE:
-                    return _error_response_with_metadata(
-                        'Ollama REST is not available',
-                        status=503,
-                        error_code='LLM_PROVIDER_UNAVAILABLE',
-                        provider=OLLAMA_REST_KEY,
-                        operation='vision_generate',
-                    )
-
-                response_text = llm.ollama_rest_generate_vision(
-                    model=model,
-                    prompt=prompt,
-                    images=images_data,
-                    options=options,
-                    system_prompt=system_prompt,
-                )
-
-            elif provider == OPENAI_KEY:
-                if not llm.OPENAI_AVAILABLE:
-                    return _error_response_with_metadata(
-                        'OpenAI provider is not available',
-                        status=503,
-                        error_code='LLM_PROVIDER_UNAVAILABLE',
-                        provider=OPENAI_KEY,
-                        operation='vision_generate',
-                    )
-
-                response_text = llm.openai_generate_vision(
-                    model=model,
-                    prompt=prompt,
-                    images=images_data,
-                    options=options,
-                    system_prompt=system_prompt,
-                )
-            
+            response_text = llm.generate_vision(
+                provider,
+                model=model,
+                prompt=prompt,
+                images=images_data,
+                options=options,
+                system_prompt=system_prompt,
+                keep_alive=0,
+            )
             return success_response(data={
                 "response": response_text,
                 "provider": provider,
-                "model": model
+                "model": model,
             })
             
         except ValueError as e:
@@ -1055,58 +972,56 @@ def register_routes(routes_instance):
             response = await routes_helpers.prepare_sse_response(request)
 
             try:
-                if provider in (LMSTUDIO_REST_KEY, OLLAMA_REST_KEY, OPENAI_KEY):
-                    if provider == LMSTUDIO_REST_KEY and not llm.LMSTUDIO_REST_AVAILABLE:
-                        error_chunk = _sse_error_chunk(
-                            'LM Studio REST is not available',
-                            error_code='LLM_PROVIDER_UNAVAILABLE',
-                            provider=LMSTUDIO_REST_KEY,
-                            operation='vision_generate_stream',
-                        )
-                        await response.write(error_chunk.encode('utf-8'))
-                        await response.write_eof()
-                        return response
-                    if provider == OLLAMA_REST_KEY and not llm.OLLAMA_REST_AVAILABLE:
-                        error_chunk = _sse_error_chunk(
-                            'Ollama REST is not available',
-                            error_code='LLM_PROVIDER_UNAVAILABLE',
-                            provider=OLLAMA_REST_KEY,
-                            operation='vision_generate_stream',
-                        )
-                        await response.write(error_chunk.encode('utf-8'))
-                        await response.write_eof()
-                        return response
-                    if provider == OPENAI_KEY and not llm.OPENAI_AVAILABLE:
-                        error_chunk = _sse_error_chunk(
-                            'OpenAI provider is not available',
-                            error_code='LLM_PROVIDER_UNAVAILABLE',
-                            provider=OPENAI_KEY,
-                            operation='vision_generate_stream',
-                        )
-                        await response.write(error_chunk.encode('utf-8'))
-                        await response.write_eof()
-                        return response
-
-                    await routes_helpers.stream_sse_chunks(
-                        response,
-                        llm.generate_vision_stream(
-                            provider,
-                            model=model,
-                            prompt=prompt,
-                            images=images_data,
-                            options=options,
-                            system_prompt=system_prompt,
-                        ),
+                if provider == LMSTUDIO_REST_KEY and not llm.LMSTUDIO_REST_AVAILABLE:
+                    error_chunk = routes_helpers.format_sse_error_chunk(
+                        'LM Studio REST is not available',
+                        error_code='LLM_PROVIDER_UNAVAILABLE',
+                        provider=LMSTUDIO_REST_KEY,
+                        operation='vision_generate_stream',
                     )
-                
+                    await response.write(error_chunk.encode('utf-8'))
+                    await response.write_eof()
+                    return response
+                if provider == OLLAMA_REST_KEY and not llm.OLLAMA_REST_AVAILABLE:
+                    error_chunk = routes_helpers.format_sse_error_chunk(
+                        'Ollama REST is not available',
+                        error_code='LLM_PROVIDER_UNAVAILABLE',
+                        provider=OLLAMA_REST_KEY,
+                        operation='vision_generate_stream',
+                    )
+                    await response.write(error_chunk.encode('utf-8'))
+                    await response.write_eof()
+                    return response
+                if provider == OPENAI_KEY and not llm.OPENAI_AVAILABLE:
+                    error_chunk = routes_helpers.format_sse_error_chunk(
+                        'OpenAI provider is not available',
+                        error_code='LLM_PROVIDER_UNAVAILABLE',
+                        provider=OPENAI_KEY,
+                        operation='vision_generate_stream',
+                    )
+                    await response.write(error_chunk.encode('utf-8'))
+                    await response.write_eof()
+                    return response
+
+                await routes_helpers.stream_sse_chunks(
+                    response,
+                    llm.generate_vision_stream(
+                        provider,
+                        model=model,
+                        prompt=prompt,
+                        images=images_data,
+                        options=options,
+                        system_prompt=system_prompt,
+                    ),
+                )
                 await response.write_eof()
                 return response
-                
+
             except Exception as e:
                 logger.error(f"Error during vision streaming: {str(e)}")
                 payload = _last_llm_error.get()
                 _clear_last_llm_error()
-                error_chunk = _sse_error_chunk(
+                error_chunk = routes_helpers.format_sse_error_chunk(
                     payload.get('scoped_message') if payload else str(e),
                     error_code=f"LLM_{str(payload.get('error_type', 'STREAM_ERROR')).upper()}" if payload else 'LLM_STREAM_ERROR',
                     provider=payload.get('provider') if payload else provider,
@@ -1116,7 +1031,7 @@ def register_routes(routes_instance):
                 await response.write(error_chunk.encode('utf-8'))
                 await response.write_eof()
                 return response
-                
+
         except Exception as e:
             logger.error(f"Failed to initialize vision streaming: {str(e)}")
             return _error_response_from_exception('Failed to initialize vision streaming', e, status=500, default_error_code='LLM_VISION_STREAM_INIT_ERROR')
@@ -1737,25 +1652,16 @@ def register_routes(routes_instance):
 
             response_text = ""
 
-            if provider == LMSTUDIO_REST_KEY:
-                if not llm.LMSTUDIO_REST_AVAILABLE:
-                    return _error_response_with_metadata(
-                        'LM Studio REST is not available',
-                        status=503,
-                        error_code='LLM_PROVIDER_UNAVAILABLE',
-                        provider=LMSTUDIO_REST_KEY,
-                        operation='generate_only',
-                    )
-                response_text = llm.lmstudio_rest_generate(
-                    model=model,
-                    prompt=prompt,
-                    keep_alive=int(keep_alive),
-                    options=options,
-                    system_prompt=system_prompt,
+            if provider == LMSTUDIO_REST_KEY and not llm.LMSTUDIO_REST_AVAILABLE:
+                return _error_response_with_metadata(
+                    'LM Studio REST is not available',
+                    status=503,
+                    error_code='LLM_PROVIDER_UNAVAILABLE',
+                    provider=LMSTUDIO_REST_KEY,
+                    operation='generate_only',
                 )
-
-            elif provider == NATIVE_KEY:
-                available_native = llm_native.get_native_models()
+            if provider == NATIVE_KEY:
+                available_native = llm.get_native_models()
                 if model not in available_native:
                     return _error_response_with_metadata(
                         f"Native CLIP model '{model}' is not available",
@@ -1764,14 +1670,14 @@ def register_routes(routes_instance):
                         provider=NATIVE_KEY,
                         operation='generate_only',
                     )
-
-                response_text = llm_native.generate_native(
-                    model=model,
-                    prompt=prompt,
-                    system_prompt=system_prompt,
-                    options=options,
-                )
-
+            response_text = llm.generate(
+                provider,
+                model=model,
+                prompt=prompt,
+                options=options,
+                system_prompt=system_prompt,
+                keep_alive=keep_alive,
+            )
             return success_response(data={
                 "response": response_text,
                 "provider": provider,

@@ -14,7 +14,8 @@ from .init import (
 from .providers.lmstudio import client as lmstudio_rest_provider
 from .providers.ollama import client as ollama_rest_provider
 from .providers.openai import client as openai_provider
-from .provider_keys import LMSTUDIO_REST_KEY, OLLAMA_REST_KEY, OPENAI_KEY, normalize_provider_key
+from .provider_keys import LMSTUDIO_REST_KEY, NATIVE_KEY, OLLAMA_REST_KEY, OPENAI_KEY, normalize_provider_key
+from . import native as native_helpers
 from . import registry as llm_registry
 
 logger = get_logger('llm')
@@ -282,6 +283,13 @@ def generate(
             options=options,
             system_prompt=system_prompt,
         )
+    if provider_key == NATIVE_KEY:
+        return native_helpers.generate_native(
+            model,
+            prompt,
+            system_prompt=system_prompt,
+            options=options,
+        )
 
     raise ValueError(f'Unsupported provider for generate: {provider_key}')
 
@@ -319,6 +327,13 @@ def generate_stream(
             prompt,
             options=options,
             system_prompt=system_prompt,
+        )
+    if provider_key == NATIVE_KEY:
+        return native_helpers.generate_native_stream(
+            model,
+            prompt,
+            system_prompt=system_prompt,
+            options=options,
         )
 
     raise ValueError(f'Unsupported provider for generate_stream: {provider_key}')
@@ -362,6 +377,8 @@ def generate_vision(
             options=options,
             system_prompt=system_prompt,
         )
+    if provider_key == NATIVE_KEY:
+        raise ValueError('Native provider does not support vision generation')
 
     raise ValueError(f'Unsupported provider for generate_vision: {provider_key}')
 
@@ -404,6 +421,8 @@ def generate_vision_stream(
             options=options,
             system_prompt=system_prompt,
         )
+    if provider_key == NATIVE_KEY:
+        raise ValueError('Native provider does not support vision generation')
 
     raise ValueError(f'Unsupported provider for generate_vision_stream: {provider_key}')
 
@@ -505,6 +524,11 @@ def get_openai_models() -> list[str]:
 def get_openai_vision_models() -> list[str]:
     """Retrieve vision models from OpenAI-compatible provider."""
     return _get_models_by_kind(OPENAI_KEY, 'vision')
+
+
+def get_native_models() -> list[str]:
+    """Retrieve available native CLIP models."""
+    return native_helpers.get_native_models()
 
 
 def get_lmstudio_rest_tool_models() -> list[str]:

@@ -535,6 +535,29 @@ def format_sse_chunk(chunk_data: dict[str, Any]) -> str:
     return f"data: {json.dumps(chunk_data)}\n\n"
 
 
+def format_sse_error_chunk(
+    message: str,
+    *,
+    error_code: str = 'LLM_STREAM_ERROR',
+    provider: str | None = None,
+    operation: str | None = None,
+    cause: str | None = None,
+) -> str:
+    """Create a standardized SSE error chunk payload."""
+    payload = {
+        'error': message,
+        'error_code': error_code,
+        'done': True,
+    }
+    if provider:
+        payload['provider'] = provider
+    if operation:
+        payload['operation'] = operation
+    if cause:
+        payload['cause'] = cause
+    return format_sse_chunk(payload)
+
+
 async def prepare_sse_response(request: web.Request) -> web.StreamResponse:
     """Prepare a streaming SSE response with the required headers."""
     response = web.StreamResponse()
