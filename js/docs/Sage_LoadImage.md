@@ -43,6 +43,4 @@ Loads an image from a specified file path.
 
 ## Notes
 
-This note was added to test automatic documentation generation from schema metadata.
-
 Generated from the node schema.
