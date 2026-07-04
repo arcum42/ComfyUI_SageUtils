@@ -14,7 +14,7 @@ from .init import (
 from .providers.lmstudio import client as lmstudio_rest_provider
 from .providers.ollama import client as ollama_rest_provider
 from .providers.openai import client as openai_provider
-from .provider_keys import LMSTUDIO_REST_KEY, OLLAMA_REST_KEY, OPENAI_KEY
+from .provider_keys import LMSTUDIO_REST_KEY, OLLAMA_REST_KEY, OPENAI_KEY, normalize_provider_key
 from . import registry as llm_registry
 
 logger = get_logger('llm')
@@ -246,6 +246,166 @@ def _generate_vision_streaming(
     if keep_alive is not None:
         kwargs['keep_alive'] = keep_alive
     return provider.generate_vision_stream(enabled, model, prompt, **kwargs)
+
+
+def generate(
+    provider_key: str,
+    model: str,
+    prompt: str,
+    *,
+    options=None,
+    system_prompt: str = '',
+    keep_alive=None,
+):
+    provider_key = normalize_provider_key(provider_key)
+
+    if provider_key == LMSTUDIO_REST_KEY:
+        return lmstudio_rest_generate(
+            model,
+            prompt,
+            keep_alive=int(keep_alive) if keep_alive is not None else 0,
+            options=options,
+            system_prompt=system_prompt,
+        )
+    if provider_key == OLLAMA_REST_KEY:
+        return ollama_rest_generate(
+            model,
+            prompt,
+            options=options,
+            system_prompt=system_prompt,
+            keep_alive=keep_alive,
+        )
+    if provider_key == OPENAI_KEY:
+        return openai_generate(
+            model,
+            prompt,
+            options=options,
+            system_prompt=system_prompt,
+        )
+
+    raise ValueError(f'Unsupported provider for generate: {provider_key}')
+
+
+def generate_stream(
+    provider_key: str,
+    model: str,
+    prompt: str,
+    *,
+    options=None,
+    system_prompt: str = '',
+    keep_alive=None,
+):
+    provider_key = normalize_provider_key(provider_key)
+
+    if provider_key == LMSTUDIO_REST_KEY:
+        return lmstudio_rest_generate_stream(
+            model,
+            prompt,
+            keep_alive=int(keep_alive) if keep_alive is not None else 0,
+            options=options,
+            system_prompt=system_prompt,
+        )
+    if provider_key == OLLAMA_REST_KEY:
+        return ollama_rest_generate_stream(
+            model,
+            prompt,
+            options=options,
+            system_prompt=system_prompt,
+            keep_alive=keep_alive,
+        )
+    if provider_key == OPENAI_KEY:
+        return openai_generate_stream(
+            model,
+            prompt,
+            options=options,
+            system_prompt=system_prompt,
+        )
+
+    raise ValueError(f'Unsupported provider for generate_stream: {provider_key}')
+
+
+def generate_vision(
+    provider_key: str,
+    model: str,
+    prompt: str,
+    *,
+    images=None,
+    options=None,
+    system_prompt: str = '',
+    keep_alive=None,
+):
+    provider_key = normalize_provider_key(provider_key)
+
+    if provider_key == LMSTUDIO_REST_KEY:
+        return lmstudio_rest_generate_vision(
+            model,
+            prompt,
+            images=images,
+            options=options,
+            system_prompt=system_prompt,
+            keep_alive=int(keep_alive) if keep_alive is not None else 0,
+        )
+    if provider_key == OLLAMA_REST_KEY:
+        return ollama_rest_generate_vision(
+            model,
+            prompt,
+            images=images,
+            options=options,
+            system_prompt=system_prompt,
+            keep_alive=keep_alive,
+        )
+    if provider_key == OPENAI_KEY:
+        return openai_generate_vision(
+            model,
+            prompt,
+            images=images,
+            options=options,
+            system_prompt=system_prompt,
+        )
+
+    raise ValueError(f'Unsupported provider for generate_vision: {provider_key}')
+
+
+def generate_vision_stream(
+    provider_key: str,
+    model: str,
+    prompt: str,
+    *,
+    images=None,
+    options=None,
+    system_prompt: str = '',
+    keep_alive=None,
+):
+    provider_key = normalize_provider_key(provider_key)
+
+    if provider_key == LMSTUDIO_REST_KEY:
+        return lmstudio_rest_generate_vision_stream(
+            model,
+            prompt,
+            images=images,
+            options=options,
+            system_prompt=system_prompt,
+            keep_alive=int(keep_alive) if keep_alive is not None else 0,
+        )
+    if provider_key == OLLAMA_REST_KEY:
+        return ollama_rest_generate_vision_stream(
+            model,
+            prompt,
+            images=images,
+            options=options,
+            system_prompt=system_prompt,
+            keep_alive=keep_alive,
+        )
+    if provider_key == OPENAI_KEY:
+        return openai_generate_vision_stream(
+            model,
+            prompt,
+            images=images,
+            options=options,
+            system_prompt=system_prompt,
+        )
+
+    raise ValueError(f'Unsupported provider for generate_vision_stream: {provider_key}')
 
 
 def _generate_lmstudio_non_streaming(model: str, prompt: str, *, options=None, system_prompt: str = '') -> str:

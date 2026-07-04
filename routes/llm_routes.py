@@ -10,15 +10,12 @@ from pathlib import Path
 from datetime import datetime
 
 # ComfyUI related imports
-import folder_paths
-import nodes as comfy_nodes
 from server import PromptServer
 
 # SageUtils specific imports
-from ..utils import sage_users_path
 from ..utils.logger import get_logger
 from ..utils.settings import get_setting
-from ..utils.llm import clean_response, routes_helpers, set_llm_error_reporter
+from ..utils.llm import native as llm_native, presets, routes_helpers, set_llm_error_reporter, system_prompts
 from ..utils.llm import service as llm
 from ..utils.llm.routes_helpers import get_compatible_models, get_available_presets_full
 from ..utils.llm.provider_keys import (
@@ -127,76 +124,6 @@ def _sse_error_chunk(message, *, error_code='LLM_STREAM_ERROR', provider=None, o
     return routes_helpers.format_sse_chunk(payload)
 
 
-def _native_chunk_text(text: str, chunk_size: int = 8):
-    """Yield fixed-size chunks for simulated streaming responses."""
-    if not text:
-        return
-    for i in range(0, len(text), chunk_size):
-        yield text[i:i + chunk_size]
-
-
-def _get_native_clip_models() -> list[str]:
-    """Return available native CLIP text encoder models for sidebar provider selection."""
-    try:
-        models = folder_paths.get_filename_list("text_encoders") or []
-        return sorted([m for m in models if isinstance(m, str) and m])
-    except Exception as e:
-        logger.warning(f"Failed to list native CLIP models: {e}")
-        return []
-
-
-def _load_native_clip(clip_name: str):
-    """Load a single CLIP text encoder via ComfyUI's native CLIP loader."""
-
-    loader = comfy_nodes.CLIPLoader()
-    loaded = loader.load_clip(clip_name=clip_name, type="stable_diffusion", device="default")
-    if isinstance(loaded, (tuple, list)) and loaded:
-        return loaded[0]
-    return loaded
-
-
-def _native_generate_response(model: str, prompt: str, system_prompt: str, options: dict) -> str:
-    """Generate text with a native CLIP model selected from the text_encoders directory."""
-    if not model:
-        raise ValueError("Missing CLIP model for native provider")
-
-    clip = _load_native_clip(model)
-    if clip is None:
-        raise RuntimeError(f"Failed to load native CLIP model '{model}'")
-
-    _ensure_promptserver_progress_context()
-
-    full_prompt = prompt or ""
-    if system_prompt:
-        full_prompt = f"{system_prompt.strip()}\n\n{full_prompt}"
-
-    seed = int(options.get("seed", 0) or 0)
-    sampling_seed = None if seed < 0 else seed
-    max_length = int(options.get("max_length", options.get("max_tokens", 256)) or 256)
-    max_length = max(1, min(max_length, 4096))
-
-    tokens = clip.tokenize(
-        full_prompt,
-        skip_template=False,
-        min_length=1,
-        thinking=bool(options.get("thinking", False)),
-    )
-    generated_ids = clip.generate(
-        tokens,
-        do_sample=bool(options.get("do_sample", True)),
-        max_length=max_length,
-        temperature=float(options.get("temperature", 0.7)),
-        top_k=int(options.get("top_k", 64)),
-        top_p=float(options.get("top_p", 0.95)),
-        min_p=float(options.get("min_p", 0.05)),
-        repetition_penalty=float(options.get("repetition_penalty", 1.05)),
-        presence_penalty=float(options.get("presence_penalty", 0.0)),
-        seed=sampling_seed,
-    )
-    generated_text = clip.decode(generated_ids, skip_special_tokens=True)
-    return clean_response(generated_text)
-
-
 def register_routes(routes_instance):
     """
     Register LLM-related routes.
@@ -260,7 +187,7 @@ def register_routes(routes_instance):
             lmstudio_rest_available = llm.LMSTUDIO_REST_AVAILABLE and lmstudio_rest_enabled
             ollama_rest_available = llm.OLLAMA_REST_AVAILABLE and ollama_rest_enabled
             openai_available = llm.OPENAI_AVAILABLE and openai_enabled
-            native_models = _get_native_clip_models()
+            native_models = llm_native.get_native_models()
             native_available = len(native_models) > 0
             
             # Get custom URLs if applicable
@@ -344,7 +271,7 @@ def register_routes(routes_instance):
             
             # Get models from configured providers
             lmstudio_rest_models = []
-            native_models = _get_native_clip_models()
+            native_models = llm_native.get_native_models()
             lmstudio_rest_tool_models = []
             ollama_rest_tool_models = []
             openai_tool_models = []
@@ -698,8 +625,8 @@ def register_routes(routes_instance):
                     system_prompt=system_prompt,
                 )
 
-            elif provider == OLLAMA_REST_KEY:
-                if not llm.OLLAMA_REST_AVAILABLE:
+            elif provider == OLLAMA_REST_KEY or provider == OPENAI_KEY:
+                if provider == OLLAMA_REST_KEY and not llm.OLLAMA_REST_AVAILABLE:
                     return _error_response_with_metadata(
                         'Ollama REST is not available',
                         status=503,
@@ -707,16 +634,7 @@ def register_routes(routes_instance):
                         provider=OLLAMA_REST_KEY,
                         operation='generate',
                     )
-
-                response_text = llm.ollama_rest_generate(
-                    model=model,
-                    prompt=prompt,
-                    options=options,
-                    system_prompt=system_prompt,
-                )
-
-            elif provider == OPENAI_KEY:
-                if not llm.OPENAI_AVAILABLE:
+                if provider == OPENAI_KEY and not llm.OPENAI_AVAILABLE:
                     return _error_response_with_metadata(
                         'OpenAI provider is not available',
                         status=503,
@@ -725,7 +643,8 @@ def register_routes(routes_instance):
                         operation='generate',
                     )
 
-                response_text = llm.openai_generate(
+                response_text = llm.generate(
+                    provider,
                     model=model,
                     prompt=prompt,
                     options=options,
@@ -733,7 +652,7 @@ def register_routes(routes_instance):
                 )
 
             elif provider == NATIVE_KEY:
-                available_native = _get_native_clip_models()
+                available_native = llm_native.get_native_models()
                 if model not in available_native:
                     return _error_response_with_metadata(
                         f"Native CLIP model '{model}' is not available",
@@ -743,7 +662,7 @@ def register_routes(routes_instance):
                         operation='generate',
                     )
 
-                response_text = _native_generate_response(
+                response_text = llm_native.generate_native(
                     model=model,
                     prompt=prompt,
                     system_prompt=system_prompt,
@@ -827,13 +746,8 @@ def register_routes(routes_instance):
             # Initialize LLM services for active streaming use
             llm.ensure_llm_initialized(force=True)
             
-            # Create SSE response
-            response = web.StreamResponse()
-            response.headers['Content-Type'] = 'text/event-stream'
-            response.headers['Cache-Control'] = 'no-cache'
-            response.headers['Connection'] = 'keep-alive'
-            await response.prepare(request)
-            
+            response = await routes_helpers.prepare_sse_response(request)
+
             try:
                 # Generate streaming response based on provider
                 if provider == LMSTUDIO_REST_KEY:
@@ -848,19 +762,17 @@ def register_routes(routes_instance):
                         await response.write_eof()
                         return response
 
-                    for chunk_data in llm.lmstudio_rest_generate_stream(
-                        model=model,
-                        prompt=prompt,
-                        keep_alive=0,
-                        options=options,
-                        system_prompt=system_prompt,
-                    ):
-                        sse_data = routes_helpers.format_sse_chunk(chunk_data)
-                        await response.write(sse_data.encode('utf-8'))
-
-                        if chunk_data.get("done", False):
-                            break
-
+                    await routes_helpers.stream_sse_chunks(
+                        response,
+                        llm.generate_stream(
+                            provider,
+                            model=model,
+                            prompt=prompt,
+                            keep_alive=0,
+                            options=options,
+                            system_prompt=system_prompt,
+                        ),
+                    )
                 elif provider == OLLAMA_REST_KEY:
                     if not llm.OLLAMA_REST_AVAILABLE:
                         error_chunk = _sse_error_chunk(
@@ -873,18 +785,16 @@ def register_routes(routes_instance):
                         await response.write_eof()
                         return response
 
-                    for chunk_data in llm.ollama_rest_generate_stream(
-                        model=model,
-                        prompt=prompt,
-                        options=options,
-                        system_prompt=system_prompt,
-                    ):
-                        sse_data = routes_helpers.format_sse_chunk(chunk_data)
-                        await response.write(sse_data.encode('utf-8'))
-
-                        if chunk_data.get("done", False):
-                            break
-
+                    await routes_helpers.stream_sse_chunks(
+                        response,
+                        llm.generate_stream(
+                            provider,
+                            model=model,
+                            prompt=prompt,
+                            options=options,
+                            system_prompt=system_prompt,
+                        ),
+                    )
                 elif provider == OPENAI_KEY:
                     if not llm.OPENAI_AVAILABLE:
                         error_chunk = _sse_error_chunk(
@@ -897,20 +807,18 @@ def register_routes(routes_instance):
                         await response.write_eof()
                         return response
 
-                    for chunk_data in llm.openai_generate_stream(
-                        model=model,
-                        prompt=prompt,
-                        options=options,
-                        system_prompt=system_prompt,
-                    ):
-                        sse_data = routes_helpers.format_sse_chunk(chunk_data)
-                        await response.write(sse_data.encode('utf-8'))
-
-                        if chunk_data.get("done", False):
-                            break
-
+                    await routes_helpers.stream_sse_chunks(
+                        response,
+                        llm.generate_stream(
+                            provider,
+                            model=model,
+                            prompt=prompt,
+                            options=options,
+                            system_prompt=system_prompt,
+                        ),
+                    )
                 elif provider == NATIVE_KEY:
-                    available_native = _get_native_clip_models()
+                    available_native = llm_native.get_native_models()
                     if model not in available_native:
                         error_chunk = _sse_error_chunk(
                             f"Native CLIP model '{model}' is not available",
@@ -922,28 +830,15 @@ def register_routes(routes_instance):
                         await response.write_eof()
                         return response
 
-                    response_text = _native_generate_response(
-                        model=model,
-                        prompt=prompt,
-                        system_prompt=system_prompt,
-                        options=options,
+                    await routes_helpers.stream_sse_chunks(
+                        response,
+                        llm_native.generate_native_stream(
+                            model=model,
+                            prompt=prompt,
+                            system_prompt=system_prompt,
+                            options=options,
+                        ),
                     )
-
-                    for chunk in _native_chunk_text(response_text):
-                        chunk_data = {
-                            "chunk": chunk,
-                            "done": False,
-                        }
-                        sse_data = routes_helpers.format_sse_chunk(chunk_data)
-                        await response.write(sse_data.encode('utf-8'))
-
-                    final_data = {
-                        "chunk": "",
-                        "done": True,
-                        "full_response": response_text,
-                    }
-                    sse_data = routes_helpers.format_sse_chunk(final_data)
-                    await response.write(sse_data.encode('utf-8'))
                 
                 await response.write_eof()
                 return response
@@ -1157,16 +1052,11 @@ def register_routes(routes_instance):
             # Ensure the provider is rechecked before active vision streaming use
             llm.ensure_llm_initialized(force=True)
             
-            # Create SSE response
-            response = web.StreamResponse()
-            response.headers['Content-Type'] = 'text/event-stream'
-            response.headers['Cache-Control'] = 'no-cache'
-            response.headers['Connection'] = 'keep-alive'
-            await response.prepare(request)
-            
+            response = await routes_helpers.prepare_sse_response(request)
+
             try:
-                if provider == LMSTUDIO_REST_KEY:
-                    if not llm.LMSTUDIO_REST_AVAILABLE:
+                if provider in (LMSTUDIO_REST_KEY, OLLAMA_REST_KEY, OPENAI_KEY):
+                    if provider == LMSTUDIO_REST_KEY and not llm.LMSTUDIO_REST_AVAILABLE:
                         error_chunk = _sse_error_chunk(
                             'LM Studio REST is not available',
                             error_code='LLM_PROVIDER_UNAVAILABLE',
@@ -1176,23 +1066,7 @@ def register_routes(routes_instance):
                         await response.write(error_chunk.encode('utf-8'))
                         await response.write_eof()
                         return response
-
-                    for chunk_data in llm.lmstudio_rest_generate_vision_stream(
-                        model=model,
-                        prompt=prompt,
-                        keep_alive=0,
-                        images=images_data,
-                        options=options,
-                        system_prompt=system_prompt,
-                    ):
-                        sse_data = routes_helpers.format_sse_chunk(chunk_data)
-                        await response.write(sse_data.encode('utf-8'))
-
-                        if chunk_data.get('done', False):
-                            break
-
-                elif provider == OLLAMA_REST_KEY:
-                    if not llm.OLLAMA_REST_AVAILABLE:
+                    if provider == OLLAMA_REST_KEY and not llm.OLLAMA_REST_AVAILABLE:
                         error_chunk = _sse_error_chunk(
                             'Ollama REST is not available',
                             error_code='LLM_PROVIDER_UNAVAILABLE',
@@ -1202,22 +1076,7 @@ def register_routes(routes_instance):
                         await response.write(error_chunk.encode('utf-8'))
                         await response.write_eof()
                         return response
-
-                    for chunk_data in llm.ollama_rest_generate_vision_stream(
-                        model=model,
-                        prompt=prompt,
-                        images=images_data,
-                        options=options,
-                        system_prompt=system_prompt,
-                    ):
-                        sse_data = routes_helpers.format_sse_chunk(chunk_data)
-                        await response.write(sse_data.encode('utf-8'))
-
-                        if chunk_data.get('done', False):
-                            break
-
-                elif provider == OPENAI_KEY:
-                    if not llm.OPENAI_AVAILABLE:
+                    if provider == OPENAI_KEY and not llm.OPENAI_AVAILABLE:
                         error_chunk = _sse_error_chunk(
                             'OpenAI provider is not available',
                             error_code='LLM_PROVIDER_UNAVAILABLE',
@@ -1228,18 +1087,17 @@ def register_routes(routes_instance):
                         await response.write_eof()
                         return response
 
-                    for chunk_data in llm.openai_generate_vision_stream(
-                        model=model,
-                        prompt=prompt,
-                        images=images_data,
-                        options=options,
-                        system_prompt=system_prompt,
-                    ):
-                        sse_data = routes_helpers.format_sse_chunk(chunk_data)
-                        await response.write(sse_data.encode('utf-8'))
-
-                        if chunk_data.get('done', False):
-                            break
+                    await routes_helpers.stream_sse_chunks(
+                        response,
+                        llm.generate_vision_stream(
+                            provider,
+                            model=model,
+                            prompt=prompt,
+                            images=images_data,
+                            options=options,
+                            system_prompt=system_prompt,
+                        ),
+                    )
                 
                 await response.write_eof()
                 return response
@@ -1283,31 +1141,13 @@ def register_routes(routes_instance):
         """
         try:
             prompt_id = request.match_info['prompt_id']
-            
-            # Map built-in prompt IDs to files in assets
-            builtin_prompts = {
-                'e621_prompt_generator': 'system_prompt.md',
-            }
-            
-            # Check if it's a built-in prompt
-            if prompt_id in builtin_prompts:
-                current_dir = Path(__file__).parent.parent
-                assets_dir = current_dir / "assets"
-                prompt_file = assets_dir / builtin_prompts[prompt_id]
-            else:
-                # Check user directory for custom prompts
-                user_prompts_dir = Path(sage_users_path) / "llm_system_prompts"
-                prompt_file = user_prompts_dir / f"{prompt_id}.md"
-            
-            if not prompt_file.exists():
+            content = system_prompts.get_system_prompt_text(prompt_id)
+
+            if not content and prompt_id != 'default':
                 return error_response(f"System prompt '{prompt_id}' not found", status=404)
-            
-            # Read and return the file
-            with open(prompt_file, 'r', encoding='utf-8') as f:
-                content = f.read()
-            
+
             return web.Response(text=content, content_type='text/markdown')
-            
+
         except Exception as e:
             logger.error(f"Error loading system prompt: {str(e)}")
             return error_response(f"Failed to load system prompt: {str(e)}", status=500)
@@ -1342,36 +1182,13 @@ def register_routes(routes_instance):
             
             if not prompt_id or not name or not content:
                 return error_response("Missing required fields: id, name, content", status=400)
-            
-            # Create user directory for system prompts
-            user_prompts_dir = Path(sage_users_path) / "llm_system_prompts"
-            user_prompts_dir.mkdir(parents=True, exist_ok=True)
-            
-            # Save markdown file
-            prompt_file = user_prompts_dir / f"{prompt_id}.md"
-            with open(prompt_file, 'w', encoding='utf-8') as f:
-                f.write(content)
-            
-            # Save metadata
-            metadata_file = user_prompts_dir / "_metadata.json"
-            metadata = {}
-            if metadata_file.exists():
-                with open(metadata_file, 'r', encoding='utf-8') as f:
-                    metadata = json.load(f)
-            
-            from datetime import datetime
-            metadata[prompt_id] = {
-                "name": name,
-                "description": description,
-                "created": metadata.get(prompt_id, {}).get('created', datetime.now().isoformat()),
-                "updated": datetime.now().isoformat()
-            }
-            
-            with open(metadata_file, 'w', encoding='utf-8') as f:
-                json.dump(metadata, f, indent=2)
-            
+
+            system_prompts.save_system_prompt(prompt_id, name, content, description)
             return success_response({"id": prompt_id, "name": name})
             
+        except ValueError as e:
+            logger.error(f"Validation error saving system prompt: {str(e)}")
+            return error_response(str(e), status=400)
         except Exception as e:
             logger.error(f"Error saving system prompt: {str(e)}")
             return error_response(f"Failed to save system prompt: {str(e)}", status=500)
@@ -1397,28 +1214,11 @@ def register_routes(routes_instance):
             
             if not prompt_id:
                 return error_response("Missing prompt id", status=400)
-            
-            user_prompts_dir = Path(sage_users_path) / "llm_system_prompts"
-            prompt_file = user_prompts_dir / f"{prompt_id}.md"
-            
-            if not prompt_file.exists():
+
+            deleted = system_prompts.delete_system_prompt(prompt_id)
+            if not deleted:
                 return error_response(f"System prompt '{prompt_id}' not found", status=404)
-            
-            # Delete file
-            prompt_file.unlink()
-            
-            # Update metadata
-            metadata_file = user_prompts_dir / "_metadata.json"
-            if metadata_file.exists():
-                with open(metadata_file, 'r', encoding='utf-8') as f:
-                    metadata = json.load(f)
-                
-                if prompt_id in metadata:
-                    del metadata[prompt_id]
-                    
-                with open(metadata_file, 'w', encoding='utf-8') as f:
-                    json.dump(metadata, f, indent=2)
-            
+
             return success_response({"deleted": prompt_id})
             
         except Exception as e:
@@ -1446,35 +1246,7 @@ def register_routes(routes_instance):
             }
         """
         try:
-            prompts = {}
-            
-            # Add built-in prompts
-            prompts['default'] = {
-                "name": "Default",
-                "description": "Basic helpful assistant",
-                "isBuiltin": True
-            }
-            prompts['e621_prompt_generator'] = {
-                "name": "E621 Prompt Generator",
-                "description": "Advanced image description for E621-style prompts",
-                "isBuiltin": True
-            }
-            
-            # Add custom prompts from user directory
-            user_prompts_dir = Path(sage_users_path) / "llm_system_prompts"
-            if user_prompts_dir.exists():
-                metadata_file = user_prompts_dir / "_metadata.json"
-                if metadata_file.exists():
-                    with open(metadata_file, 'r', encoding='utf-8') as f:
-                        metadata = json.load(f)
-                    
-                    for prompt_id, meta in metadata.items():
-                        prompts[prompt_id] = {
-                            "name": meta.get('name', prompt_id),
-                            "description": meta.get('description', ''),
-                            "isBuiltin": False
-                        }
-            
+            prompts = system_prompts.list_system_prompts()
             return success_response({"prompts": prompts})
             
         except Exception as e:
@@ -1502,15 +1274,7 @@ def register_routes(routes_instance):
             }
         """
         try:
-            # Load custom presets from user directory
-            user_presets_file = Path(sage_users_path) / "llm_presets.json"
-            custom_presets = {}
-            
-            if user_presets_file.exists():
-                with open(user_presets_file, 'r', encoding='utf-8') as f:
-                    custom_presets = json.load(f)
-            
-            return success_response({"presets": custom_presets})
+            return success_response({"presets": presets.list_presets()})
             
         except Exception as e:
             logger.error(f"Error listing presets: {str(e)}")
@@ -1541,29 +1305,13 @@ def register_routes(routes_instance):
             
             if not preset_id or not preset_data:
                 return error_response("Missing required fields: id, preset", status=400)
+
+            saved_preset = presets.save_preset(preset_id, preset_data)
+            return success_response({"id": preset_id, "preset": saved_preset})
             
-            # Load existing presets
-            user_presets_file = Path(sage_users_path) / "llm_presets.json"
-            presets = {}
-            
-            if user_presets_file.exists():
-                with open(user_presets_file, 'r', encoding='utf-8') as f:
-                    presets = json.load(f)
-            
-            # Update preset with timestamps
-            preset_data['updatedAt'] = datetime.now().isoformat()
-            if preset_id not in presets:
-                preset_data['createdAt'] = datetime.now().isoformat()
-            
-            presets[preset_id] = preset_data
-            
-            # Save to file
-            user_presets_file.parent.mkdir(parents=True, exist_ok=True)
-            with open(user_presets_file, 'w', encoding='utf-8') as f:
-                json.dump(presets, f, indent=2)
-            
-            return success_response({"id": preset_id, "preset": preset_data})
-            
+        except ValueError as e:
+            logger.error(f"Validation error saving preset: {str(e)}")
+            return error_response(str(e), status=400)
         except Exception as e:
             logger.error(f"Error saving preset: {str(e)}")
             return error_response(f"Failed to save preset: {str(e)}", status=500)
@@ -1589,26 +1337,11 @@ def register_routes(routes_instance):
             
             if not preset_id:
                 return error_response("Missing preset id", status=400)
-            
-            # Load existing presets
-            user_presets_file = Path(sage_users_path) / "llm_presets.json"
-            
-            if not user_presets_file.exists():
+
+            deleted = presets.delete_preset(preset_id)
+            if not deleted:
                 return error_response(f"Preset '{preset_id}' not found", status=404)
-            
-            with open(user_presets_file, 'r', encoding='utf-8') as f:
-                presets = json.load(f)
-            
-            if preset_id not in presets:
-                return error_response(f"Preset '{preset_id}' not found", status=404)
-            
-            # Delete preset
-            del presets[preset_id]
-            
-            # Save updated presets
-            with open(user_presets_file, 'w', encoding='utf-8') as f:
-                json.dump(presets, f, indent=2)
-            
+
             return success_response({"deleted": preset_id})
             
         except Exception as e:
@@ -1700,59 +1433,11 @@ def register_routes(routes_instance):
             if not images_data or not isinstance(images_data, list):
                 return error_response("Images must be a non-empty array", status=400)
             
-            # Get all presets
-            builtin_presets = {
-                'descriptive_prompt': {
-                    'provider': LMSTUDIO_REST_KEY,
-                    'model': 'gemma3:12b',
-                    'promptTemplate': 'description/Descriptive Prompt',
-                    'systemPrompt': 'e621_prompt_generator',
-                    'settings': {
-                        'temperature': 0.7,
-                        'seed': -1,
-                        'maxTokens': 512,
-                        'keepAlive': 300
-                    }
-                },
-                'e621_description': {
-                    'provider': LMSTUDIO_REST_KEY,
-                    'model': 'gemma3:12b',
-                    'promptTemplate': 'description/Descriptive Prompt',
-                    'systemPrompt': 'e621_prompt_generator',
-                    'settings': {
-                        'temperature': 0.8,
-                        'seed': -1,
-                        'maxTokens': 1024,
-                        'keepAlive': 300
-                    }
-                },
-                'casual_chat': {
-                    'provider': LMSTUDIO_REST_KEY,
-                    'model': None,
-                    'promptTemplate': '',
-                    'systemPrompt': 'default',
-                    'settings': {
-                        'temperature': 0.9,
-                        'seed': -1,
-                        'maxTokens': 1024,
-                        'keepAlive': 300
-                    }
-                }
-            }
-            
-            # Check for user override
-            preset = builtin_presets.get(preset_id)
-            user_presets_file = Path(sage_users_path) / "llm_presets.json"
-            if user_presets_file.exists():
-                with open(user_presets_file, 'r', encoding='utf-8') as f:
-                    custom_presets = json.load(f)
-                if preset_id in custom_presets:
-                    preset = custom_presets[preset_id]
-            
-            if not preset:
+            try:
+                preset = presets.load_preset(preset_id)
+            except ValueError:
                 return error_response(f"Preset '{preset_id}' not found", status=404)
-            
-            # Get provider and model
+
             provider = routes_helpers.normalize_provider(preset.get('provider', LMSTUDIO_REST_KEY))
             model = preset.get('model')
             
@@ -1779,32 +1464,8 @@ def register_routes(routes_instance):
             
             # Get system prompt
             system_prompt_text = system_prompt_override
-            
             if not system_prompt_text and preset.get('systemPrompt'):
-                system_prompt_id = preset['systemPrompt']
-                
-                # Map system prompts
-                if system_prompt_id == 'default':
-                    system_prompt_text = 'You are a helpful AI assistant.'
-                elif system_prompt_id == 'e621_prompt_generator':
-                    # Load from file
-                    current_dir = Path(__file__).parent.parent
-                    assets_dir = current_dir / "assets"
-                    prompt_file = assets_dir / "system_prompt.md"
-                    
-                    if prompt_file.exists():
-                        with open(prompt_file, 'r', encoding='utf-8') as f:
-                            system_prompt_text = f.read()
-                    else:
-                        system_prompt_text = 'You are an AI assistant specialized in generating detailed image descriptions.'
-                else:
-                    # Try to load from user directory
-                    user_prompts_dir = Path(sage_users_path) / "llm_system_prompts"
-                    prompt_file = user_prompts_dir / f"{system_prompt_id}.md"
-                    
-                    if prompt_file.exists():
-                        with open(prompt_file, 'r', encoding='utf-8') as f:
-                            system_prompt_text = f.read()
+                system_prompt_text = system_prompts.get_system_prompt_text(preset['systemPrompt'])
             
             # Merge settings
             settings = preset.get('settings', {})
@@ -1995,7 +1656,7 @@ def register_routes(routes_instance):
                 # Treat this as a successful readiness check.
 
             elif provider == NATIVE_KEY:
-                available_native = _get_native_clip_models()
+                available_native = llm_native.get_native_models()
                 if model not in available_native:
                     return _error_response_with_metadata(
                         f"Native CLIP model '{model}' is not available",
@@ -2094,7 +1755,7 @@ def register_routes(routes_instance):
                 )
 
             elif provider == NATIVE_KEY:
-                available_native = _get_native_clip_models()
+                available_native = llm_native.get_native_models()
                 if model not in available_native:
                     return _error_response_with_metadata(
                         f"Native CLIP model '{model}' is not available",
@@ -2104,7 +1765,7 @@ def register_routes(routes_instance):
                         operation='generate_only',
                     )
 
-                response_text = _native_generate_response(
+                response_text = llm_native.generate_native(
                     model=model,
                     prompt=prompt,
                     system_prompt=system_prompt,

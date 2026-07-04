@@ -8,8 +8,9 @@ from pathlib import Path
 from typing import Any, Optional
 
 from ..logger import get_logger
+from aiohttp import web
 from ..settings import get_setting
-from . import llm_raise
+from . import llm_raise, presets, system_prompts
 from .provider_keys import (
     LMSTUDIO_REST_KEY,
     NATIVE_KEY,
@@ -304,71 +305,17 @@ def cleanup_temp_files(temp_files: list[str]) -> None:
 
 def load_preset(preset_id: str) -> dict[str, Any]:
     """Load a preset from built-in or user directory."""
-    from pathlib import Path
-    from ...utils import sage_users_path
-    
-    # Built-in presets
-    builtin_presets = {
-        'descriptive_prompt': {
-            'provider': 'lmstudio_rest',
-            'model': 'gemma3:12b',
-            'promptTemplate': 'description/Descriptive Prompt',
-            'systemPrompt': 'e621_prompt_generator',
-            'settings': {
-                'temperature': 0.7,
-                'seed': -1,
-                'maxTokens': 512,
-                'keepAlive': 300,
-            },
-        },
-        'e621_description': {
-            'provider': 'lmstudio_rest',
-            'model': 'gemma3:12b',
-            'promptTemplate': 'description/Descriptive Prompt',
-            'systemPrompt': 'e621_prompt_generator',
-            'settings': {
-                'temperature': 0.8,
-                'seed': -1,
-                'maxTokens': 1024,
-                'keepAlive': 300,
-            },
-        },
-        'casual_chat': {
-            'provider': 'lmstudio_rest',
-            'model': None,
-            'promptTemplate': '',
-            'systemPrompt': 'default',
-            'settings': {
-                'temperature': 0.9,
-                'seed': -1,
-                'maxTokens': 1024,
-                'keepAlive': 300,
-            },
-        },
-    }
+    try:
+        return presets.load_preset(preset_id)
+    except ValueError as e:
+        llm_raise(
+            ValueError,
+            str(e),
+            provider='routes',
+            operation='load_preset',
+            cause=e,
+        )
 
-    # Check built-in first
-    if preset_id in builtin_presets:
-        return builtin_presets[preset_id].copy()
-
-    # Check user directory
-    user_presets_file = Path(sage_users_path) / 'llm_presets.json'
-    if user_presets_file.exists():
-        try:
-            with open(user_presets_file, 'r', encoding='utf-8') as f:
-                custom_presets = json.load(f)
-            if preset_id in custom_presets:
-                return custom_presets[preset_id].copy()
-        except Exception as e:
-            logger.warning(f'Failed to load custom presets: {e}')
-
-    llm_raise(
-        ValueError,
-        f"Preset '{preset_id}' not found",
-        provider='routes',
-        operation='load_preset',
-    )
-    # Unreachable, but satisfies return type
     return {}
 
 
@@ -541,114 +488,13 @@ def get_system_prompt_text(
     if not system_prompt_id:
         return ''
 
-    from pathlib import Path
-    from ...utils import sage_users_path
-
-    # Built-in prompts
-    if system_prompt_id == 'default':
-        return 'You are a helpful AI assistant.'
-
-    if system_prompt_id == 'e621_prompt_generator':
-        current_dir = Path(__file__).parent.parent
-        assets_dir = current_dir / 'assets'
-        prompt_file = assets_dir / 'system_prompt.md'
-
-        if prompt_file.exists():
-            with open(prompt_file, 'r', encoding='utf-8') as f:
-                return f.read()
-
-    # Try user directory
-    user_prompts_dir = Path(sage_users_path) / 'llm_system_prompts'
-    prompt_file = user_prompts_dir / f'{system_prompt_id}.md'
-
-    if prompt_file.exists():
-        with open(prompt_file, 'r', encoding='utf-8') as f:
-            return f.read()
-
-    # Return empty if not found (don't raise, allow graceful fallback)
-    logger.warning(f'System prompt {system_prompt_id} not found')
-    return ''
+    return system_prompts.get_system_prompt_text(system_prompt_id)
 
 
 def get_available_presets_full(
 ) -> dict[str, dict[str, Any]]:
     """Get all available LLM presets (built-in + custom) with full details."""
-    from pathlib import Path
-    from ...utils import sage_users_path
-
-    # Built-in presets
-    builtin_presets = {
-        'descriptive_prompt': {
-            'name': 'Descriptive Prompt',
-            'description': 'Generate detailed image descriptions',
-            'provider': 'lmstudio_rest',
-            'model': 'gemma3:12b',
-            'promptTemplate': 'description/Descriptive Prompt',
-            'systemPrompt': 'e621_prompt_generator',
-            'settings': {
-                'temperature': 0.7,
-                'seed': -1,
-                'maxTokens': 512,
-                'keepAlive': 300,
-                'includeHistory': False,
-            },
-            'isBuiltin': True,
-            'category': 'description',
-        },
-        'e621_description': {
-            'name': 'E621 Image Description',
-            'description': 'Generate E621-style detailed image descriptions',
-            'provider': 'lmstudio_rest',
-            'model': 'gemma3:12b',
-            'promptTemplate': 'description/Descriptive Prompt',
-            'systemPrompt': 'e621_prompt_generator',
-            'settings': {
-                'temperature': 0.8,
-                'seed': -1,
-                'maxTokens': 1024,
-                'keepAlive': 300,
-                'includeHistory': False,
-            },
-            'isBuiltin': True,
-            'category': 'description',
-        },
-        'casual_chat': {
-            'name': 'Casual Chat',
-            'description': 'Friendly conversational assistant',
-            'provider': 'lmstudio_rest',
-            'model': None,
-            'promptTemplate': '',
-            'systemPrompt': 'default',
-            'settings': {
-                'temperature': 0.9,
-                'seed': -1,
-                'maxTokens': 1024,
-                'keepAlive': 300,
-                'includeHistory': True,
-                'maxHistoryMessages': 10,
-            },
-            'isBuiltin': True,
-            'category': 'chat',
-        },
-    }
-
-    # Start with built-in presets
-    all_presets = builtin_presets.copy()
-
-    # Load custom presets and overrides from user directory
-    user_presets_file = Path(sage_users_path) / 'llm_presets.json'
-    if user_presets_file.exists():
-        try:
-            with open(user_presets_file, 'r', encoding='utf-8') as f:
-                custom_presets = json.load(f)
-
-            # Override built-ins or add custom presets
-            for preset_id, preset_data in custom_presets.items():
-                all_presets[preset_id] = preset_data
-        except Exception as e:
-            logger.warning(f'Failed to load custom presets: {e}')
-
-    return all_presets
+    return presets.get_all_presets_full()
 
 
 def validate_request_fields(
@@ -687,6 +533,23 @@ def validate_provider(provider: str) -> tuple[bool, Optional[str]]:
 def format_sse_chunk(chunk_data: dict[str, Any]) -> str:
     """Format a data chunk as Server-Sent Events (SSE) format."""
     return f"data: {json.dumps(chunk_data)}\n\n"
+
+
+async def prepare_sse_response(request: web.Request) -> web.StreamResponse:
+    """Prepare a streaming SSE response with the required headers."""
+    response = web.StreamResponse()
+    response.headers['Content-Type'] = 'text/event-stream'
+    response.headers['Cache-Control'] = 'no-cache'
+    response.headers['Connection'] = 'keep-alive'
+    await response.prepare(request)
+    return response
+
+
+async def stream_sse_chunks(response: web.StreamResponse, chunk_iterable):
+    """Write SSE-formatted chunks to the response and close the stream."""
+    for chunk_data in chunk_iterable:
+        await response.write(format_sse_chunk(chunk_data).encode('utf-8'))
+    await response.write_eof()
 
 
 def validate_vision_data(
