@@ -193,6 +193,45 @@ def get_models(enabled: bool) -> list[str]:
         label='LM Studio REST models',
     )
 
+
+def get_models_payload(enabled: bool) -> list[dict[str, Any]]:
+    """Retrieve raw model payloads from LM Studio REST."""
+    if is_provider_unavailable(enabled):
+        return []
+
+    try:
+        response = lmstudio_request_json_models()
+        return _extract_models_payload(response)
+    except Exception as e:
+        report_fetch_error(
+            llm_report,
+            'Error retrieving raw model payloads from LM Studio REST',
+            provider=_PROVIDER_NAME,
+            operation='get_models_payload',
+            cause=e,
+            fallback=[],
+        )
+        return []
+
+
+def is_model_loaded(enabled: bool, model: str) -> bool:
+    """Return whether an LM Studio model already has a loaded instance."""
+    if is_provider_unavailable(enabled):
+        return False
+
+    try:
+        for model_obj in get_models_payload(enabled):
+            model_name = _extract_model_name(model_obj)
+            if model_name != model:
+                continue
+
+            loaded_instances = model_obj.get('loaded_instances')
+            return bool(loaded_instances)
+    except Exception:
+        pass
+
+    return False
+
 def get_vision_models(enabled: bool) -> list[str]:
     """Retrieve a list of available vision models from LM Studio REST."""
     if is_provider_unavailable(enabled):

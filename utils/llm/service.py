@@ -1,6 +1,8 @@
 import time
+from typing import Any, Optional
 
 from ..logger import get_logger
+from ..settings import get_setting
 from .providers.settings import (
     is_lmstudio_rest_enabled,
     is_ollama_rest_enabled,
@@ -163,6 +165,16 @@ def _get_model_capabilities_dict(provider_key: str) -> dict[str, dict[str, objec
     enabled = _provider_enabled(provider_key)
     capability_map = provider.get_model_capabilities_map(enabled)
     return {model_name: capabilities.to_dict() for model_name, capabilities in capability_map.items()}
+
+
+def _status_key(provider_key: str) -> str:
+    return f'{provider_key}_available'
+
+
+def _filter_compatible_models(model_list: list[str]) -> list[str]:
+    if not model_list:
+        return []
+    return [model for model in model_list if model and not model.startswith('(')]
 
 
 def _generate_non_streaming(
@@ -493,6 +505,155 @@ def _unload_provider_model(
     return provider.unload_model(enabled, model)
 
 
+def load_model(
+    provider_key: str,
+    model: str,
+    *,
+    keep_alive: int = 0,
+) -> bool:
+    provider_key = normalize_provider_key(provider_key)
+
+    if provider_key == NATIVE_KEY:
+        native_models = get_native_models()
+        return model in native_models
+
+    if provider_key == LMSTUDIO_REST_KEY:
+        ensure_lmstudio_rest_initialized(force=True)
+        enabled = _provider_enabled(provider_key)
+        if _provider_client(provider_key).is_model_loaded(enabled, model):
+            return True
+        return _load_provider_model(provider_key, model, keep_alive=keep_alive)
+
+    if provider_key == OLLAMA_REST_KEY:
+        ensure_ollama_rest_initialized(force=True)
+        enabled = _provider_enabled(provider_key)
+        if _provider_client(provider_key).is_model_loaded(enabled, model):
+            return True
+        return _load_provider_model(provider_key, model, keep_alive=keep_alive)
+
+    if provider_key == OPENAI_KEY:
+        ensure_openai_initialized(force=True)
+        compatible_models = _filter_compatible_models(get_openai_models())
+        return model in compatible_models
+
+    raise ValueError(f'Unsupported provider for load_model: {provider_key}')
+
+
+def is_model_loaded(provider_key: str, model: str) -> bool:
+    provider_key = normalize_provider_key(provider_key)
+
+    if provider_key == NATIVE_KEY:
+        return model in get_native_models()
+
+    if provider_key == LMSTUDIO_REST_KEY:
+        ensure_lmstudio_rest_initialized(force=True)
+        enabled = _provider_enabled(provider_key)
+        return _provider_client(provider_key).is_model_loaded(enabled, model)
+
+    if provider_key == OLLAMA_REST_KEY:
+        ensure_ollama_rest_initialized(force=True)
+        enabled = _provider_enabled(provider_key)
+        return _provider_client(provider_key).is_model_loaded(enabled, model)
+
+    if provider_key == OPENAI_KEY:
+        ensure_openai_initialized(force=True)
+        compatible_models = _filter_compatible_models(get_openai_models())
+        return model in compatible_models
+
+    raise ValueError(f'Unsupported provider for is_model_loaded: {provider_key}')
+
+
+def generate_only(
+    provider_key: str,
+    model: str,
+    prompt: str,
+    *,
+    options=None,
+    system_prompt: str = '',
+    keep_alive=None,
+):
+    provider_key = normalize_provider_key(provider_key)
+
+    if not is_provider_available(provider_key, force=True):
+        raise ValueError(f'Provider {provider_key} is not available')
+
+    if provider_key == NATIVE_KEY and not is_native_model_available(model):
+        raise ValueError(f"Native CLIP model '{model}' is not available")
+
+    if provider_key in {LMSTUDIO_REST_KEY, OLLAMA_REST_KEY}:
+        if not is_model_loaded(provider_key, model):
+            raise ValueError(f"Model '{model}' is not loaded for provider {provider_key}")
+
+    return generate(
+        provider_key,
+        model,
+        prompt,
+        options=options,
+        system_prompt=system_prompt,
+        keep_alive=keep_alive,
+    )
+
+
+def is_provider_available(provider_key: str, *, force: bool = False) -> bool:
+    provider_key = normalize_provider_key(provider_key)
+
+    if provider_key == NATIVE_KEY:
+        return len(get_native_models()) > 0
+
+    if provider_key == LMSTUDIO_REST_KEY:
+        return ensure_lmstudio_rest_initialized(force=force) and LMSTUDIO_REST_AVAILABLE and is_lmstudio_rest_enabled()
+
+    if provider_key == OLLAMA_REST_KEY:
+        return ensure_ollama_rest_initialized(force=force) and OLLAMA_REST_AVAILABLE and is_ollama_rest_enabled()
+
+    if provider_key == OPENAI_KEY:
+        return ensure_openai_initialized(force=force) and OPENAI_AVAILABLE and is_openai_enabled()
+
+    return False
+
+
+def is_native_model_available(model: str) -> bool:
+    return model in get_native_models()
+
+
+def get_provider_model_capabilities_map(provider_key: str) -> dict[str, dict[str, object]]:
+    provider_key = normalize_provider_key(provider_key)
+
+    if provider_key == LMSTUDIO_REST_KEY:
+        return get_lmstudio_rest_model_capabilities_map()
+    if provider_key == OLLAMA_REST_KEY:
+        return get_ollama_rest_model_capabilities_map()
+    if provider_key == OPENAI_KEY:
+        return get_openai_model_capabilities_map()
+
+    return {}
+
+
+def is_model_vision_capable(provider_key: str, model: str) -> tuple[bool, Optional[str]]:
+    provider_key = normalize_provider_key(provider_key)
+
+    if provider_key == NATIVE_KEY:
+        return False, 'Native provider does not support vision generation'
+
+    if provider_key not in {LMSTUDIO_REST_KEY, OLLAMA_REST_KEY, OPENAI_KEY}:
+        return False, f'Unknown provider: {provider_key}'
+
+    ensure_llm_initialized(force=True)
+    capability_map = get_provider_model_capabilities_map(provider_key)
+    if not capability_map:
+        return False, f'No capability data available for provider {provider_key}'
+
+    if model not in capability_map:
+        available = ', '.join(sorted(capability_map.keys())[:10])
+        return False, f"Model '{model}' not found for {provider_key}. Available: {available}"
+
+    capabilities = capability_map[model]
+    if not capabilities.get('vision', False):
+        return False, f"Model '{model}' does not support vision capability on provider {provider_key}"
+
+    return True, None
+
+
 # ============================================================================
 # MODEL DISCOVERY
 # ============================================================================
@@ -796,6 +957,217 @@ def _ensure_registered_providers(force: bool = False) -> dict[str, bool]:
             continue
         results[descriptor.key] = ensure_func(force=force)
     return results
+
+
+def get_llm_status(force: bool = False) -> dict[str, dict[str, object]]:
+    """Return availability and enabled state for all supported providers."""
+    if force:
+        reset_llm_initialization_state()
+
+    ensure_llm_initialized(force=force)
+
+    status = {
+        LMSTUDIO_REST_KEY: {
+            'available': LMSTUDIO_REST_AVAILABLE and is_lmstudio_rest_enabled(),
+            'enabled': is_lmstudio_rest_enabled(),
+        },
+        OLLAMA_REST_KEY: {
+            'available': OLLAMA_REST_AVAILABLE and is_ollama_rest_enabled(),
+            'enabled': is_ollama_rest_enabled(),
+        },
+        OPENAI_KEY: {
+            'available': OPENAI_AVAILABLE and is_openai_enabled(),
+            'enabled': is_openai_enabled(),
+        },
+    }
+
+    native_models = get_native_models()
+    status[NATIVE_KEY] = {
+        'available': len(native_models) > 0,
+        'enabled': True,
+    }
+
+    return status
+
+
+def get_llm_models(force: bool = False) -> dict[str, object]:
+    """Return model lists, capabilities, tool models, reasoning models, and status."""
+    if force:
+        reset_llm_initialization_state()
+
+    ensure_llm_initialized(force=force)
+
+    lmstudio_rest_enabled = is_lmstudio_rest_enabled()
+    ollama_rest_enabled = is_ollama_rest_enabled()
+    openai_enabled = is_openai_enabled()
+
+    lmstudio_rest_models = []
+    lmstudio_rest_tool_models = []
+    lmstudio_rest_reasoning_models = []
+    lmstudio_rest_capabilities = {}
+    ollama_rest_models = []
+    ollama_rest_tool_models = []
+    ollama_rest_reasoning_models = []
+    ollama_rest_capabilities = {}
+    openai_models = []
+    openai_tool_models = []
+    openai_reasoning_models = []
+    openai_capabilities = {}
+
+    if lmstudio_rest_enabled and LMSTUDIO_REST_AVAILABLE:
+        try:
+            models = get_lmstudio_rest_models()
+            lmstudio_rest_models = _filter_compatible_models(models)
+            lmstudio_rest_tool_models = _filter_compatible_models(get_lmstudio_rest_tool_models())
+            lmstudio_rest_reasoning_models = _filter_compatible_models(get_lmstudio_rest_reasoning_models())
+            lmstudio_rest_capabilities = get_lmstudio_rest_model_capabilities_map()
+        except Exception as e:
+            logger.warning(f'Failed to get LM Studio REST models: {e}')
+
+    if ollama_rest_enabled and OLLAMA_REST_AVAILABLE:
+        try:
+            models = get_ollama_rest_models()
+            ollama_rest_models = _filter_compatible_models(models)
+            ollama_rest_tool_models = _filter_compatible_models(get_ollama_rest_tool_models())
+            ollama_rest_reasoning_models = _filter_compatible_models(get_ollama_rest_reasoning_models())
+            ollama_rest_capabilities = get_ollama_rest_model_capabilities_map()
+        except Exception as e:
+            logger.warning(f'Failed to get Ollama REST models: {e}')
+
+    if openai_enabled and OPENAI_AVAILABLE:
+        try:
+            models = get_openai_models()
+            openai_models = _filter_compatible_models(models)
+            openai_tool_models = _filter_compatible_models(get_openai_tool_models())
+            openai_reasoning_models = _filter_compatible_models(get_openai_reasoning_models())
+            openai_capabilities = get_openai_model_capabilities_map()
+        except Exception as e:
+            logger.warning(f'Failed to get OpenAI models: {e}')
+
+    native_models = get_native_models()
+
+    return {
+        'models': {
+            LMSTUDIO_REST_KEY: lmstudio_rest_models,
+            OLLAMA_REST_KEY: ollama_rest_models,
+            OPENAI_KEY: openai_models,
+            NATIVE_KEY: native_models,
+        },
+        'capabilities': {
+            LMSTUDIO_REST_KEY: lmstudio_rest_capabilities,
+            OLLAMA_REST_KEY: ollama_rest_capabilities,
+            OPENAI_KEY: openai_capabilities,
+            NATIVE_KEY: {},
+        },
+        'tool_models': {
+            LMSTUDIO_REST_KEY: lmstudio_rest_tool_models,
+            OLLAMA_REST_KEY: ollama_rest_tool_models,
+            OPENAI_KEY: openai_tool_models,
+            NATIVE_KEY: [],
+        },
+        'reasoning_models': {
+            LMSTUDIO_REST_KEY: lmstudio_rest_reasoning_models,
+            OLLAMA_REST_KEY: ollama_rest_reasoning_models,
+            OPENAI_KEY: openai_reasoning_models,
+            NATIVE_KEY: [],
+        },
+        'status': {
+            _status_key(LMSTUDIO_REST_KEY): len(lmstudio_rest_models) > 0,
+            _status_key(OLLAMA_REST_KEY): len(ollama_rest_models) > 0,
+            _status_key(OPENAI_KEY): len(openai_models) > 0,
+            _status_key(NATIVE_KEY): len(native_models) > 0,
+        },
+    }
+
+
+def get_llm_vision_models(force: bool = False) -> dict[str, object]:
+    """Return vision model lists, capabilities, tool models, reasoning models, and status."""
+    if force:
+        reset_llm_initialization_state()
+
+    ensure_llm_initialized(force=force)
+
+    lmstudio_rest_enabled = is_lmstudio_rest_enabled()
+    ollama_rest_enabled = is_ollama_rest_enabled()
+    openai_enabled = is_openai_enabled()
+
+    lmstudio_rest_models = []
+    lmstudio_rest_tool_models = []
+    lmstudio_rest_reasoning_models = []
+    lmstudio_rest_capabilities = {}
+    ollama_rest_models = []
+    ollama_rest_tool_models = []
+    ollama_rest_reasoning_models = []
+    ollama_rest_capabilities = {}
+    openai_models = []
+    openai_tool_models = []
+    openai_reasoning_models = []
+    openai_capabilities = {}
+
+    if lmstudio_rest_enabled and LMSTUDIO_REST_AVAILABLE:
+        try:
+            models = get_lmstudio_rest_vision_models()
+            lmstudio_rest_models = _filter_compatible_models(models)
+            lmstudio_rest_tool_models = _filter_compatible_models(get_lmstudio_rest_tool_models())
+            lmstudio_rest_reasoning_models = _filter_compatible_models(get_lmstudio_rest_reasoning_models())
+            lmstudio_rest_capabilities = get_lmstudio_rest_model_capabilities_map()
+        except Exception as e:
+            logger.warning(f'Failed to get LM Studio REST vision models: {e}')
+
+    if ollama_rest_enabled and OLLAMA_REST_AVAILABLE:
+        try:
+            models = get_ollama_rest_vision_models()
+            ollama_rest_models = _filter_compatible_models(models)
+            ollama_rest_tool_models = _filter_compatible_models(get_ollama_rest_tool_models())
+            ollama_rest_reasoning_models = _filter_compatible_models(get_ollama_rest_reasoning_models())
+            ollama_rest_capabilities = get_ollama_rest_model_capabilities_map()
+        except Exception as e:
+            logger.warning(f'Failed to get Ollama REST vision models: {e}')
+
+    if openai_enabled and OPENAI_AVAILABLE:
+        try:
+            models = get_openai_vision_models()
+            openai_models = _filter_compatible_models(models)
+            openai_tool_models = _filter_compatible_models(get_openai_tool_models())
+            openai_reasoning_models = _filter_compatible_models(get_openai_reasoning_models())
+            openai_capabilities = get_openai_model_capabilities_map()
+        except Exception as e:
+            logger.warning(f'Failed to get OpenAI vision models: {e}')
+
+    native_models = []
+
+    return {
+        'models': {
+            LMSTUDIO_REST_KEY: lmstudio_rest_models,
+            OLLAMA_REST_KEY: ollama_rest_models,
+            OPENAI_KEY: openai_models,
+            NATIVE_KEY: native_models,
+        },
+        'capabilities': {
+            LMSTUDIO_REST_KEY: lmstudio_rest_capabilities,
+            OLLAMA_REST_KEY: ollama_rest_capabilities,
+            OPENAI_KEY: openai_capabilities,
+            NATIVE_KEY: {},
+        },
+        'tool_models': {
+            LMSTUDIO_REST_KEY: lmstudio_rest_tool_models,
+            OLLAMA_REST_KEY: ollama_rest_tool_models,
+            OPENAI_KEY: openai_tool_models,
+            NATIVE_KEY: [],
+        },
+        'reasoning_models': {
+            LMSTUDIO_REST_KEY: lmstudio_rest_reasoning_models,
+            OLLAMA_REST_KEY: ollama_rest_reasoning_models,
+            OPENAI_KEY: openai_reasoning_models,
+            NATIVE_KEY: [],
+        },
+        'status': {
+            _status_key(LMSTUDIO_REST_KEY): len(lmstudio_rest_models) > 0,
+            _status_key(OLLAMA_REST_KEY): len(ollama_rest_models) > 0,
+            _status_key(OPENAI_KEY): len(openai_models) > 0,
+            _status_key(NATIVE_KEY): False,
+        },
+    }
 
 
 def init_llm() -> None:

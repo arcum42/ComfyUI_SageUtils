@@ -4,6 +4,7 @@ import base64
 import json
 import os
 import tempfile
+from contextvars import ContextVar
 from pathlib import Path
 from typing import Any, Optional
 
@@ -21,6 +22,7 @@ from .provider_keys import (
 )
 
 logger = get_logger('llm.routes_helpers')
+_last_llm_error = ContextVar('sageutils_last_llm_error', default=None)
 
 
 _BUILTIN_TOOL_PROFILES: dict[str, list[dict[str, Any]]] = {
@@ -725,16 +727,18 @@ def get_provider_availability_error(
     """Return a standardized provider availability error tuple if unavailable."""
     provider = normalize_provider(provider)
 
-    if provider == LMSTUDIO_REST_KEY and not llm.LMSTUDIO_REST_AVAILABLE:
-        return False, 'LM Studio REST is not available', 'LLM_PROVIDER_UNAVAILABLE', 503
+    if provider == NATIVE_KEY:
+        if not llm.is_provider_available(provider, force=True):
+            return False, 'Native CLIP provider is not available', 'LLM_PROVIDER_UNAVAILABLE', 503
+        return True, None, None, None
 
-    if provider == OLLAMA_REST_KEY and not llm.OLLAMA_REST_AVAILABLE:
-        return False, 'Ollama REST is not available', 'LLM_PROVIDER_UNAVAILABLE', 503
+    if provider in {LMSTUDIO_REST_KEY, OLLAMA_REST_KEY, OPENAI_KEY}:
+        if not llm.is_provider_available(provider, force=True):
+            provider_name = provider.replace('_', ' ').title()
+            return False, f'{provider_name} is not available', 'LLM_PROVIDER_UNAVAILABLE', 503
+        return True, None, None, None
 
-    if provider == OPENAI_KEY and not llm.OPENAI_AVAILABLE:
-        return False, 'OpenAI provider is not available', 'LLM_PROVIDER_UNAVAILABLE', 503
-
-    return True, None, None, None
+    return False, f'Invalid provider: {provider}', 'LLM_INVALID_PROVIDER', 400
 
 
 def validate_native_model_availability(
@@ -747,10 +751,25 @@ def validate_native_model_availability(
     if provider != NATIVE_KEY:
         return True, None, None, None
 
-    available_native = llm.get_native_models()
-    if model not in available_native:
+    if not llm.is_native_model_available(model):
         return False, f"Native CLIP model '{model}' is not available", 'LLM_MODEL_NOT_FOUND', 404
     return True, None, None, None
+
+
+def get_provider_and_native_error(
+    provider: str,
+    model: str,
+    operation: str,
+) -> tuple[bool, Optional[str], Optional[str], Optional[int]]:
+    """Validate provider availability and native model selection in one check."""
+    is_available, error_msg, error_code, status_code = get_provider_availability_error(
+        provider,
+        operation,
+    )
+    if not is_available:
+        return is_available, error_msg, error_code, status_code
+
+    return validate_native_model_availability(provider, model, operation)
 
 
 def format_sse_chunk(chunk_data: dict[str, Any]) -> str:
@@ -801,44 +820,142 @@ async def write_sse_error_and_close(
     await response.write_eof()
 
 
-async def write_provider_availability_error_if_unavailable(
+def set_last_llm_error(payload: Any) -> None:
+    """Store the last structured LLM error payload for route error handling."""
+    _last_llm_error.set(payload)
+
+
+def clear_last_llm_error() -> None:
+    """Clear any stale LLM error payload before route handling."""
+    _last_llm_error.set(None)
+
+
+def pop_last_llm_error() -> Any:
+    """Retrieve and clear the last structured LLM error payload."""
+    payload = _last_llm_error.get()
+    _last_llm_error.set(None)
+    return payload
+
+
+def build_error_payload(
+    message: str,
+    *,
+    error_code: str = 'LLM_ERROR',
+    provider: str | None = None,
+    operation: str | None = None,
+    cause: str | None = None,
+) -> dict[str, Any]:
+    payload = {
+        'success': False,
+        'error': message,
+        'error_code': error_code,
+    }
+    if provider:
+        payload['provider'] = provider
+    if operation:
+        payload['operation'] = operation
+    if cause:
+        payload['cause'] = cause
+    return payload
+
+
+def error_response(
+    message: str,
+    status: int = 500,
+    *,
+    error_code: str = 'LLM_ERROR',
+    provider: str | None = None,
+    operation: str | None = None,
+    cause: str | None = None,
+) -> web.Response:
+    return web.json_response(
+        build_error_payload(
+            message,
+            error_code=error_code,
+            provider=provider,
+            operation=operation,
+            cause=cause,
+        ),
+        status=status,
+    )
+
+
+def error_response_from_exception(
+    prefix: str,
+    exc: Exception,
+    status: int = 500,
+    default_error_code: str = 'LLM_ROUTE_ERROR',
+) -> web.Response:
+    payload = pop_last_llm_error()
+    if payload:
+        message = payload.get('scoped_message') or payload.get('message') or f'{prefix}: {str(exc)}'
+        error_type = str(payload.get('error_type', 'ERROR')).upper()
+        return error_response(
+            message,
+            status=status,
+            error_code=f'LLM_{error_type}',
+            provider=payload.get('provider'),
+            operation=payload.get('operation'),
+            cause=payload.get('cause'),
+        )
+
+    return error_response(
+        f'{prefix}: {str(exc)}',
+        status=status,
+        error_code=default_error_code,
+    )
+
+
+async def write_sse_error_from_exception(
+    response: web.StreamResponse,
+    exc: Exception,
+    operation: str,
+    prefix: str = 'Stream error',
+    default_error_code: str = 'LLM_STREAM_ERROR',
+) -> None:
+    payload = pop_last_llm_error()
+    if payload:
+        message = str(payload.get('scoped_message') or payload.get('message') or f'{prefix}: {str(exc)}')
+        error_type = str(payload.get('error_type', 'STREAM_ERROR')).upper()
+        await write_sse_error_and_close(
+            response,
+            message,
+            error_code=f'LLM_{error_type}',
+            provider=payload.get('provider'),
+            operation=payload.get('operation') or operation,
+            cause=payload.get('cause'),
+        )
+        return
+
+    await write_sse_error_and_close(
+        response,
+        f'{prefix}: {str(exc)}',
+        error_code=default_error_code,
+        operation=operation,
+    )
+
+
+async def write_provider_and_native_error_if_unavailable(
     response: web.StreamResponse,
     provider: str,
+    model: str,
     operation: str,
 ) -> bool:
-    """Write a provider availability SSE error and return True if unavailable."""
-    provider = normalize_provider(provider)
-
-    if provider == LMSTUDIO_REST_KEY and not llm.LMSTUDIO_REST_AVAILABLE:
+    """Write a shared SSE error chunk for provider or native model availability failures."""
+    is_valid, error_msg, error_code, status_code = get_provider_and_native_error(
+        provider,
+        model,
+        operation,
+    )
+    if not is_valid:
         await write_sse_error_and_close(
             response,
-            'LM Studio REST is not available',
-            error_code='LLM_PROVIDER_UNAVAILABLE',
-            provider=LMSTUDIO_REST_KEY,
+            str(error_msg or 'Provider or model unavailable'),
+            error_code=error_code or 'LLM_PROVIDER_UNAVAILABLE',
+            provider=provider,
             operation=operation,
         )
         return True
-
-    if provider == OLLAMA_REST_KEY and not llm.OLLAMA_REST_AVAILABLE:
-        await write_sse_error_and_close(
-            response,
-            'Ollama REST is not available',
-            error_code='LLM_PROVIDER_UNAVAILABLE',
-            provider=OLLAMA_REST_KEY,
-            operation=operation,
-        )
-        return True
-
-    if provider == OPENAI_KEY and not llm.OPENAI_AVAILABLE:
-        await write_sse_error_and_close(
-            response,
-            'OpenAI provider is not available',
-            error_code='LLM_PROVIDER_UNAVAILABLE',
-            provider=OPENAI_KEY,
-            operation=operation,
-        )
-        return True
-
     return False
 
 
@@ -915,48 +1032,6 @@ def validate_generation_data(
 def check_model_vision_capability(provider: str, model: str) -> tuple[bool, Optional[str]]:
     """
     Check if a model supports vision capability before attempting vision operations.
-    
-    Args:
-        provider: Provider name (e.g., 'ollama', 'lmstudio', 'openai')
-        model: Model name
-        
-    Returns:
-        Tuple of (supports_vision, error_message)
-        - If supports_vision is True, error_message is None
-        - If supports_vision is False, error_message describes why
     """
     provider = normalize_provider(provider)
-    
-    try:
-        from . import service as llm
-        # Ensure LLM services are initialized for active model capability validation
-        llm.ensure_llm_initialized(force=True)
-        
-        # Get capability map for the provider
-        if provider == 'lmstudio_rest':
-            cap_map = llm.get_lmstudio_rest_model_capabilities_map()
-        elif provider == 'ollama_rest':
-            cap_map = llm.get_ollama_rest_model_capabilities_map()
-        elif provider == 'openai':
-            cap_map = llm.get_openai_model_capabilities_map()
-        else:
-            return False, f"Unknown provider: {provider}"
-        
-        # Check if model exists and supports vision
-        if not cap_map:
-            return False, f"No capability data available for {provider}"
-        
-        if model not in cap_map:
-            available = ', '.join(sorted(cap_map.keys())[:5])
-            return False, f"Model '{model}' not found in {provider}. Available: {available}..."
-        
-        capabilities = cap_map[model]
-        if not capabilities.get('vision', False):
-            return False, f"Model '{model}' does not support vision capability on provider {provider}"
-        
-        return True, None
-        
-    except Exception as e:
-        logger.warning(f'Error checking vision capability for {provider}:{model}: {e}')
-        # Degrade gracefully. If we can't check, allow the attempt.
-        return True, None
+    return llm.is_model_vision_capable(provider, model)
