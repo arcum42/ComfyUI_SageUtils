@@ -7,8 +7,7 @@
 import { getThumbnailSize } from "./config.js";
 import { formatFileSize } from "../reports/reportGenerator.js";
 import { actions, selectors } from "./stateManager.js";
-import { copyImageToClipboard } from "./imageUtils.js";
-import { loadThumbnail } from "./imageLoader.js";
+import { copyImageToClipboard, generateThumbnail } from "./imageUtils.js";
 
 /**
  * Creates a thumbnail item for an image with hover effects and click handlers
@@ -55,26 +54,24 @@ export function createImageItem(image, showFullImage, showImageContextMenu) {
     // Set thumbnail source with error handling
     const thumbnailSizeConfig = getThumbnailSize(selectors.thumbnailSize());
     
-    // Generate thumbnail using centralized loader
-    const generateThumbnail = async () => {
+    // Load thumbnail using centralized loader
+    const loadThumbnailUrl = async () => {
         try {
-            // Map size to thumbnail size names
             const sizeName = thumbnailSizeConfig.width <= 120 ? 'small' : 
                            thumbnailSizeConfig.width <= 200 ? 'medium' : 'large';
-                           
-            return await loadThumbnail(image, sizeName);
+            return await generateThumbnail(image, sizeName);
         } catch (error) {
             console.error('Error generating thumbnail:', error);
             return null;
         }
     };
-    
-    // Generate thumbnail and set source
-    generateThumbnail().then(thumbnailUrl => {
+
+    item.appendChild(thumbnail);
+
+    loadThumbnailUrl().then(thumbnailUrl => {
         if (thumbnailUrl) {
             thumbnail.src = thumbnailUrl;
         } else {
-            // Show error state
             thumbnail.style.display = 'none';
             const errorDiv = document.createElement('div');
             errorDiv.style.cssText = `
@@ -88,7 +85,7 @@ export function createImageItem(image, showFullImage, showImageContextMenu) {
                 font-size: 12px;
             `;
             errorDiv.textContent = 'Thumbnail failed';
-            thumbnail.parentNode.insertBefore(errorDiv, thumbnail.nextSibling);
+            item.appendChild(errorDiv);
         }
     });
     

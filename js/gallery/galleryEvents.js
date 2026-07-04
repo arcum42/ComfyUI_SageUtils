@@ -8,8 +8,8 @@ import { api } from "../../../../scripts/api.js";
 import { actions, selectors } from '../shared/stateManager.js';
 import { copyImageToClipboard, browseFolder, loadImagesFromFolder } from '../shared/imageUtils.js';
 import { handleDatasetText } from '../shared/datasetTextManager.js';
-import { loadImageMetadata, formatMetadataForDisplay } from '../shared/api/galleryApi.js';
-import { loadFullImage, openImageInNewTab as openImageInNewTabUtil } from '../shared/imageLoader.js';
+import { getImageMetadataHtml } from '../shared/api/galleryApi.js';
+import { loadFullImage, openImageInNewTab as openImageInNewTabUtil, loadImageDataUrl } from '../shared/imageLoader.js';
 import { CONTEXT_MENU_WIDTH, CONTEXT_MENU_ITEM_HEIGHT } from '../shared/constants.js';
 import { notifications } from '../shared/notifications.js';
 import { API_ENDPOINTS } from '../shared/config.js';
@@ -383,21 +383,8 @@ async function openImageInNewTab(image) {
  * @param {Object} image - Image object
  */
 async function showImageMetadata(image) {
-    try {
-        const result = await loadImageMetadata(image);
-        
-        if (result.success) {
-            const { html, hasErrors } = formatMetadataForDisplay(result.metadata);
-            showMetadataModal(image, html, hasErrors, result.metadata);
-        } else {
-            const fallbackHtml = generateFallbackMetadata(image, result.error);
-            showMetadataModal(image, fallbackHtml, true, null);
-        }
-    } catch (error) {
-        console.error('Error loading image metadata:', error);
-        const fallbackHtml = generateFallbackMetadata(image, `Error: ${error.message}`);
-        showMetadataModal(image, fallbackHtml, true, null);
-    }
+    const { html, hasErrors, metadata } = await getImageMetadataHtml(image);
+    showMetadataModal(image, html, hasErrors, metadata);
 }
 
 /**
@@ -1113,19 +1100,7 @@ function renderContextMenuItems(contextMenu, menuItems) {
  */
 async function imageToBase64(imagePath) {
     try {
-        const imageUrl = await loadFullImage(imagePath);
-        const response = await fetch(imageUrl);
-        if (!response.ok) {
-            throw new Error(`Failed to fetch image blob: ${response.statusText}`);
-        }
-
-        const blob = await response.blob();
-        return new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onloadend = () => resolve(reader.result);
-            reader.onerror = reject;
-            reader.readAsDataURL(blob);
-        });
+        return await loadImageDataUrl(imagePath);
     } catch (error) {
         console.error('Error converting image to base64:', error);
         throw error;

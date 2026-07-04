@@ -259,7 +259,7 @@ export async function loadImagesFromFolder(folderType, customPath = null, setSta
 
         // Debug log for outgoing request
         if (window && window.console) {
-            console.log('[GalleryApi] Sending /sage_utils/list_images request:', JSON.stringify(requestBody));
+            console.log('[GalleryApi] Sending listImages request:', JSON.stringify(requestBody));
         }
 
         const response = await api.fetchApi(API_ENDPOINTS.listImages, {
@@ -531,6 +531,41 @@ export function generateFallbackMetadata(image, errorMessage) {
     `;
     
     return fallbackHtml;
+}
+
+/**
+ * Build metadata HTML for an image using shared loading and formatting rules
+ * @param {Object} image - Image object with path and filename
+ * @param {Function} setStatus - Optional status callback
+ * @returns {Promise<{success:boolean, html:string, hasErrors:boolean, metadata:Object|null}>}
+ */
+export async function getImageMetadataHtml(image, setStatus = null) {
+    try {
+        const result = await loadImageMetadata(image, setStatus);
+        if (result.success) {
+            const { html, hasErrors } = formatMetadataForDisplay(result.metadata);
+            return {
+                success: true,
+                html,
+                hasErrors,
+                metadata: result.metadata
+            };
+        }
+
+        return {
+            success: false,
+            html: generateFallbackMetadata(image, result.error || 'Failed to load metadata'),
+            hasErrors: true,
+            metadata: null
+        };
+    } catch (error) {
+        return {
+            success: false,
+            html: generateFallbackMetadata(image, error.message || 'Unknown error'),
+            hasErrors: true,
+            metadata: null
+        };
+    }
 }
 
 /**

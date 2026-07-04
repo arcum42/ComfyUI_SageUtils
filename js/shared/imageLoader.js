@@ -109,6 +109,15 @@ export function createFallbackImage(message = 'Failed to load image', width = 40
  * @param {boolean} options.fallbackOnError - Whether to return fallback image on error
  * @returns {Promise<string>} Promise that resolves to image URL or fallback
  */
+async function _blobToDataUrl(blob) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+    });
+}
+
 export async function loadImageWithFallback(imageInput, options = {}) {
     const {
         thumbnail = false,
@@ -129,6 +138,38 @@ export async function loadImageWithFallback(imageInput, options = {}) {
         } else {
             throw error;
         }
+    }
+}
+
+export async function loadImageDataUrl(imageInput) {
+    const imagePath = typeof imageInput === 'string'
+        ? imageInput
+        : (imageInput.path || imageInput.relative_path || imageInput.name);
+
+    if (!imagePath) {
+        throw new Error('No valid image path provided');
+    }
+
+    try {
+        const response = await fetch(API_ENDPOINTS.getImage, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                image_path: imagePath
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error(`Failed to load image data URL: ${response.status} ${response.statusText}`);
+        }
+
+        const blob = await response.blob();
+        return await _blobToDataUrl(blob);
+    } catch (error) {
+        console.error('Error loading image data URL:', error);
+        throw error;
     }
 }
 

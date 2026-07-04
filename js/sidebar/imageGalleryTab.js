@@ -16,9 +16,7 @@ import {
 // Import gallery API functions
 import {
     loadImagesFromFolder,
-    loadImageMetadata,
-    formatMetadataForDisplay,
-    generateFallbackMetadata
+    getImageMetadataHtml
 } from "../shared/api/galleryApi.js";
 
 // Import global data cache
@@ -800,25 +798,13 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
     async function showImageMetadata(image, autoScroll = false) {
         try {
             metadata.metadataSection.classList.remove('gallery-metadata-section--hidden');
+            const { html, hasErrors } = await getImageMetadataHtml(image, setStatus);
+            metadata.metadataContent.innerHTML = html;
             
-            // Call the imported API function
-            const result = await loadImageMetadata(image, setStatus);
-            
-            if (result.success) {
-                // Format the metadata using the imported function
-                const { html, hasErrors } = formatMetadataForDisplay(result.metadata);
-                metadata.metadataContent.innerHTML = html;
-                
-                if (setStatus) {
-                    setStatus(hasErrors ? 'Metadata loaded with some warnings' : 'Metadata loaded');
-                }
-            } else {
-                // Show fallback metadata using the imported function
-                const fallbackHtml = generateFallbackMetadata(image, result.error);
-                metadata.metadataContent.innerHTML = fallbackHtml;
+            if (setStatus) {
+                setStatus(hasErrors ? 'Metadata loaded with some warnings' : 'Metadata loaded');
             }
             
-            // Only scroll to metadata section if explicitly requested
             if (autoScroll) {
                 setTimeout(() => {
                     metadata.metadataSection.scrollIntoView({ 
@@ -830,8 +816,8 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
             
         } catch (error) {
             console.error('Error in showImageMetadata wrapper:', error);
-            const fallbackHtml = generateFallbackMetadata(image, error.message);
-            metadata.metadataContent.innerHTML = fallbackHtml;
+            const { html } = await getImageMetadataHtml(image, setStatus);
+            metadata.metadataContent.innerHTML = html;
         }
     }
 
