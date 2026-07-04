@@ -268,7 +268,7 @@ def generate(
     *,
     options=None,
     system_prompt: str = '',
-    keep_alive=None,
+    keep_alive: str | None = None,
 ):
     provider_key = normalize_provider_key(provider_key)
 
@@ -313,7 +313,7 @@ def generate_stream(
     *,
     options=None,
     system_prompt: str = '',
-    keep_alive=None,
+    keep_alive: str | None = None,
 ):
     provider_key = normalize_provider_key(provider_key)
 
@@ -359,7 +359,7 @@ def generate_vision(
     images=None,
     options=None,
     system_prompt: str = '',
-    keep_alive=None,
+    keep_alive: str | None = None,
 ):
     provider_key = normalize_provider_key(provider_key)
 
@@ -403,7 +403,7 @@ def generate_vision_stream(
     images=None,
     options=None,
     system_prompt: str = '',
-    keep_alive=None,
+    keep_alive: str | None = None,
 ):
     provider_key = normalize_provider_key(provider_key)
 
@@ -766,7 +766,7 @@ def lmstudio_rest_generate_vision(model: str, prompt: str, keep_alive: int = 0, 
 
 
 # Canonical provider operations (Ollama REST)
-def ollama_rest_generate(model: str, prompt: str, options=None, system_prompt: str = '', keep_alive: str = '5m') -> str:
+def ollama_rest_generate(model: str, prompt: str, options=None, system_prompt: str = '', keep_alive: str | None = '5m') -> str:
     """Generate text via Ollama REST."""
     ensure_ollama_rest_initialized()
     return _generate_non_streaming(
@@ -779,7 +779,7 @@ def ollama_rest_generate(model: str, prompt: str, options=None, system_prompt: s
     )
 
 
-def ollama_rest_generate_vision(model: str, prompt: str, images=None, options=None, system_prompt: str = '', keep_alive: str = '5m') -> str:
+def ollama_rest_generate_vision(model: str, prompt: str, images=None, options=None, system_prompt: str = '', keep_alive: str | None = '5m') -> str:
     """Generate vision output via Ollama REST."""
     ensure_ollama_rest_initialized()
     return _generate_vision_non_streaming(
@@ -848,7 +848,7 @@ def lmstudio_rest_generate_vision_stream(model: str, prompt: str, keep_alive: in
 
 
 # Canonical provider operations (Ollama REST)
-def ollama_rest_generate_stream(model: str, prompt: str, options=None, system_prompt: str = '', keep_alive: str = '5m'):
+def ollama_rest_generate_stream(model: str, prompt: str, options=None, system_prompt: str = '', keep_alive: str | None = '5m'):
     """Stream text via Ollama REST."""
     ensure_ollama_rest_initialized()
     return _generate_streaming(
@@ -861,7 +861,7 @@ def ollama_rest_generate_stream(model: str, prompt: str, options=None, system_pr
     )
 
 
-def ollama_rest_generate_vision_stream(model: str, prompt: str, images=None, options=None, system_prompt: str = '', keep_alive: str = '5m'):
+def ollama_rest_generate_vision_stream(model: str, prompt: str, images=None, options=None, system_prompt: str = '', keep_alive: str | None = '5m'):
     """Stream vision output via Ollama REST."""
     ensure_ollama_rest_initialized()
     return _generate_vision_streaming(
@@ -959,7 +959,7 @@ def _ensure_registered_providers(force: bool = False) -> dict[str, bool]:
     return results
 
 
-def get_llm_status(force: bool = False) -> dict[str, dict[str, object]]:
+def get_llm_status(force: bool = False) -> dict[str, dict[str, bool]]:
     """Return availability and enabled state for all supported providers."""
     if force:
         reset_llm_initialization_state()

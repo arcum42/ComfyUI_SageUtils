@@ -6,7 +6,7 @@ LLM routes expose model discovery, text generation, vision generation, streaming
 
 Current route implementation lives in:
 
-- `routes/llm_routes.py`
+- `routes/llm_routes.py` (intentionally thin; uses the service layer and route helpers for business logic)
 - helper normalization/validation in `utils/llm/routes_helpers.py`
 
 ## Provider Naming

@@ -3,6 +3,10 @@ LLM Routes Module
 Handles LLM chat endpoints for Ollama, LM Studio, and Native CLIP integration.
 """
 
+# This module is intentionally thin. It delegates business logic, provider
+# capability checks, model discovery, and validation to `utils/llm/service.py`
+# and `utils/llm/routes_helpers.py`.
+
 import json
 from aiohttp import web
 from pathlib import Path
@@ -172,7 +176,7 @@ def _register_generation_routes(routes_instance):
 
             is_valid, error_msg, payload = routes_helpers.parse_generation_request(data)
             if not is_valid:
-                return llm_error_response(error_msg, status=400, error_code='LLM_VALIDATION_ERROR')
+                return llm_error_response(error_msg or 'Invalid generation request', status=400, error_code='LLM_VALIDATION_ERROR')
 
             provider = payload['provider']
             model = payload['model']
@@ -203,7 +207,6 @@ def _register_generation_routes(routes_instance):
                 prompt=prompt,
                 options=options,
                 system_prompt=system_prompt,
-                keep_alive=0,
             )
 
             return success_response(data={
@@ -230,7 +233,7 @@ def _register_generation_routes(routes_instance):
 
             is_valid, error_msg, payload = routes_helpers.parse_generation_request(data)
             if not is_valid:
-                return llm_error_response(error_msg, status=400, error_code='LLM_VALIDATION_ERROR')
+                return llm_error_response(error_msg or 'Invalid generation request', status=400, error_code='LLM_VALIDATION_ERROR')
 
             provider = payload['provider']
             model = payload['model']
@@ -269,7 +272,6 @@ def _register_generation_routes(routes_instance):
                         prompt=prompt,
                         options=options,
                         system_prompt=system_prompt,
-                        keep_alive=0,
                     ),
                 )
                 await response.write_eof()
@@ -294,7 +296,7 @@ def _register_generation_routes(routes_instance):
 
             is_valid, error_msg, payload = routes_helpers.parse_vision_generation_request(data)
             if not is_valid:
-                return llm_error_response(error_msg, status=400, error_code='LLM_VALIDATION_ERROR')
+                return llm_error_response(error_msg or 'Invalid vision generation request', status=400, error_code='LLM_VALIDATION_ERROR')
 
             provider = payload['provider']
             model = payload['model']
@@ -306,7 +308,7 @@ def _register_generation_routes(routes_instance):
             can_do_vision, capability_error = llm.is_model_vision_capable(provider, model)
             if not can_do_vision:
                 return llm_error_response(
-                    capability_error,
+                    capability_error or 'Model does not support vision',
                     status=400,
                     error_code='LLM_MODEL_CAPABILITY_ERROR',
                     provider=provider,
@@ -328,14 +330,6 @@ def _register_generation_routes(routes_instance):
                     provider=provider,
                     operation='vision_generate',
                 )
-            if not is_valid:
-                return llm_error_response(
-                    error_msg,
-                    status=status_code,
-                    error_code=error_code,
-                    provider=provider,
-                    operation='vision_generate',
-                )
 
             response_text = llm.generate_vision(
                 provider,
@@ -344,7 +338,6 @@ def _register_generation_routes(routes_instance):
                 images=images_data,
                 options=options,
                 system_prompt=system_prompt,
-                keep_alive=0,
             )
             return success_response(data={
                 "response": response_text,
@@ -370,7 +363,7 @@ def _register_generation_routes(routes_instance):
 
             is_valid, error_msg, payload = routes_helpers.parse_vision_generation_request(data)
             if not is_valid:
-                return llm_error_response(error_msg, status=400, error_code='LLM_VALIDATION_ERROR')
+                return llm_error_response(error_msg or 'Invalid vision generation request', status=400, error_code='LLM_VALIDATION_ERROR')
 
             provider = payload['provider']
             model = payload['model']
@@ -382,7 +375,7 @@ def _register_generation_routes(routes_instance):
             can_do_vision, capability_error = llm.is_model_vision_capable(provider, model)
             if not can_do_vision:
                 return llm_error_response(
-                    capability_error,
+                    capability_error or 'Model does not support vision',
                     status=400,
                     error_code='LLM_MODEL_CAPABILITY_ERROR',
                     provider=provider,
@@ -463,7 +456,7 @@ def _register_system_prompt_routes(routes_instance):
 
             is_valid, error_msg, payload = routes_helpers.parse_system_prompt_save_request(data)
             if not is_valid:
-                return error_response(error_msg, status=400)
+                return error_response(error_msg or 'Invalid system prompt save request', status=400)
 
             system_prompts.save_system_prompt(
                 payload['id'],
@@ -490,7 +483,7 @@ def _register_system_prompt_routes(routes_instance):
 
             is_valid, error_msg, payload = routes_helpers.parse_system_prompt_delete_request(data)
             if not is_valid:
-                return error_response(error_msg, status=400)
+                return error_response(error_msg or 'Invalid system prompt delete request', status=400)
 
             deleted = system_prompts.delete_system_prompt(payload['id'])
             if not deleted:
@@ -539,7 +532,7 @@ def _register_preset_routes(routes_instance):
 
             is_valid, error_msg, payload = routes_helpers.parse_preset_save_request(data)
             if not is_valid:
-                return error_response(error_msg, status=400)
+                return error_response(error_msg or 'Invalid preset save request', status=400)
 
             saved_preset = presets.save_preset(payload['id'], payload['preset'])
             return success_response({"id": payload['id'], "preset": saved_preset})
@@ -561,7 +554,7 @@ def _register_preset_routes(routes_instance):
 
             is_valid, error_msg, payload = routes_helpers.parse_preset_delete_request(data)
             if not is_valid:
-                return error_response(error_msg, status=400)
+                return error_response(error_msg or 'Invalid preset delete request', status=400)
 
             deleted = presets.delete_preset(payload['id'])
             if not deleted:
@@ -596,7 +589,7 @@ def _register_preset_routes(routes_instance):
             
             is_valid, error_msg, payload = routes_helpers.parse_preset_image_generation_request(data)
             if not is_valid:
-                return error_response(error_msg, status=400)
+                return error_response(error_msg or 'Invalid preset generation request', status=400)
 
             preset_id = payload['preset_id']
             images_data = payload['images']
@@ -637,12 +630,18 @@ def _register_preset_routes(routes_instance):
             )
             if not is_valid:
                 return llm_error_response(
-                    error_msg,
-                    status=status_code,
-                    error_code=error_code,
+                    error_msg or 'Provider or model unavailable',
+                    status=status_code or 500,
+                    error_code=error_code or 'LLM_PROVIDER_UNAVAILABLE',
                     provider=provider,
                     operation='preset_generate_with_image',
                 )
+
+            keep_alive = None
+            if isinstance(settings_override, dict) and 'keepAlive' in settings_override:
+                keep_alive = settings_override['keepAlive']
+            elif isinstance(preset.get('settings'), dict):
+                keep_alive = preset['settings'].get('keepAlive')
 
             response_text = llm.generate_vision(
                 provider,
@@ -651,7 +650,7 @@ def _register_preset_routes(routes_instance):
                 images=images_data,
                 options=options,
                 system_prompt=system_prompt_text,
-                keep_alive=settings.get('keepAlive'),
+                keep_alive=keep_alive,
             )
 
             return success_response({
@@ -683,7 +682,7 @@ def _register_load_routes(routes_instance):
 
             is_valid, error_msg, payload = routes_helpers.parse_load_model_request(data)
             if not is_valid:
-                return llm_error_response(error_msg, status=400, error_code='LLM_VALIDATION_ERROR')
+                return llm_error_response(error_msg or 'Invalid load model request', status=400, error_code='LLM_VALIDATION_ERROR')
 
             provider = payload['provider']
             model = payload['model']
@@ -739,7 +738,7 @@ def _register_load_routes(routes_instance):
 
             is_valid, error_msg, payload = routes_helpers.parse_generation_request(data)
             if not is_valid:
-                return llm_error_response(error_msg, status=400, error_code='LLM_VALIDATION_ERROR')
+                return llm_error_response(error_msg or 'Invalid generation request', status=400, error_code='LLM_VALIDATION_ERROR')
 
             provider = payload['provider']
             model = payload['model']

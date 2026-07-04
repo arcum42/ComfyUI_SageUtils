@@ -120,6 +120,8 @@ def _load_service_module():
     provider_keys_module.LMSTUDIO_REST_KEY = 'lmstudio_rest'
     provider_keys_module.OLLAMA_REST_KEY = 'ollama_rest'
     provider_keys_module.OPENAI_KEY = 'openai'
+    provider_keys_module.NATIVE_KEY = 'native'
+    provider_keys_module.normalize_provider_key = lambda provider: provider
 
     logger_module = types.ModuleType('comfyui_sageutils.utils.logger')
     logger_module.get_logger = lambda name='': SimpleNamespace(
@@ -162,6 +164,10 @@ def _load_service_module():
     providers_pkg.ollama = ollama_module
     providers_pkg.openai = openai_module
 
+    llm_pkg.native = types.ModuleType('comfyui_sageutils.utils.llm.native')
+    llm_pkg.native.generate_native = lambda model, prompt, system_prompt='', options=None: ''
+    llm_pkg.native.generate_native_stream = lambda model, prompt, system_prompt='', options=None: iter(())
+
     sys.modules['comfyui_sageutils'] = comfy_pkg
     sys.modules['comfyui_sageutils.utils'] = utils_pkg
     sys.modules['comfyui_sageutils.utils.logger'] = logger_module
@@ -175,6 +181,7 @@ def _load_service_module():
     sys.modules['comfyui_sageutils.utils.llm.providers.lmstudio'] = lmstudio_module
     sys.modules['comfyui_sageutils.utils.llm.providers.ollama'] = ollama_module
     sys.modules['comfyui_sageutils.utils.llm.providers.openai'] = openai_module
+    sys.modules['comfyui_sageutils.utils.llm.native'] = llm_pkg.native
 
     spec = importlib.util.spec_from_file_location(SERVICE_MODULE_NAME, SERVICE_FILE_PATH)
     module = importlib.util.module_from_spec(spec)
@@ -243,6 +250,79 @@ def test_get_openai_models_delegates_to_provider(monkeypatch, service_module):
 
     assert service_module.get_openai_models() == ['gpt-test']
     assert calls == [True]
+
+
+def test_is_provider_available_delegates_to_init_and_availability_flags(monkeypatch, service_module):
+    monkeypatch.setattr(service_module, 'ensure_lmstudio_rest_initialized', lambda force=False: True)
+    monkeypatch.setattr(service_module, 'is_lmstudio_rest_enabled', lambda: True)
+    service_module.LMSTUDIO_REST_AVAILABLE = False
+
+    assert service_module.is_provider_available(service_module.LMSTUDIO_REST_KEY, force=True) is False
+
+
+def test_is_native_model_available_checks_available_native_models(monkeypatch, service_module):
+    monkeypatch.setattr(service_module, 'get_native_models', lambda: ['clip-a'])
+
+    assert service_module.is_native_model_available('clip-a') is True
+    assert service_module.is_native_model_available('clip-b') is False
+
+
+def test_is_model_vision_capable_rejects_native_and_unknown_providers(monkeypatch, service_module):
+    valid, error = service_module.is_model_vision_capable(service_module.NATIVE_KEY, 'clip-a')
+    assert valid is False
+    assert 'Native provider does not support vision generation' in error
+
+    valid, error = service_module.is_model_vision_capable('unknown', 'x')
+    assert valid is False
+    assert 'Unknown provider' in error
+
+
+def test_is_model_vision_capable_checks_provider_capabilities(monkeypatch, service_module):
+    monkeypatch.setattr(service_module, 'ensure_llm_initialized', lambda force=True: True)
+    monkeypatch.setattr(service_module, 'get_provider_model_capabilities_map', lambda provider_key: {'gpt-test': {'vision': True}})
+
+    valid, error = service_module.is_model_vision_capable(service_module.OPENAI_KEY, 'gpt-test')
+    assert valid is True
+    assert error is None
+
+
+def test_generate_only_raises_when_provider_unavailable(monkeypatch, service_module):
+    monkeypatch.setattr(service_module, 'is_provider_available', lambda provider_key, force=True: False)
+
+    with pytest.raises(ValueError, match=r'Provider .* is not available'):
+        service_module.generate_only(service_module.LMSTUDIO_REST_KEY, 'gemma', 'hello')
+
+
+def test_generate_only_raises_when_native_model_missing(monkeypatch, service_module):
+    monkeypatch.setattr(service_module, 'is_provider_available', lambda provider_key, force=True: True)
+    monkeypatch.setattr(service_module, 'is_native_model_available', lambda model: False)
+
+    with pytest.raises(ValueError, match="Native CLIP model 'gemma' is not available"):
+        service_module.generate_only(service_module.NATIVE_KEY, 'gemma', 'hello')
+
+
+def test_generate_only_raises_when_rest_model_not_loaded(monkeypatch, service_module):
+    monkeypatch.setattr(service_module, 'is_provider_available', lambda provider_key, force=True: True)
+    monkeypatch.setattr(service_module, 'is_model_loaded', lambda provider_key, model: False)
+
+    with pytest.raises(ValueError, match="Model 'gemma' is not loaded"):
+        service_module.generate_only(service_module.OLLAMA_REST_KEY, 'gemma', 'hello')
+
+
+def test_generate_only_delegates_to_generate_when_checks_pass(monkeypatch, service_module):
+    monkeypatch.setattr(service_module, 'is_provider_available', lambda provider_key, force=True: True)
+    monkeypatch.setattr(service_module, 'is_native_model_available', lambda model: True)
+    monkeypatch.setattr(service_module, 'is_model_loaded', lambda provider_key, model: True)
+    monkeypatch.setattr(service_module, 'generate', lambda provider_key, model, prompt, options=None, system_prompt='', keep_alive=None: 'result')
+
+    assert service_module.generate_only(
+        service_module.OLLAMA_REST_KEY,
+        'gemma',
+        'hello',
+        options={'temperature': 0.5},
+        system_prompt='sys',
+        keep_alive='60',
+    ) == 'result'
 
 
 def test_get_lmstudio_rest_model_capabilities_map_converts_objects(monkeypatch, service_module):
@@ -657,6 +737,81 @@ def test_reset_llm_initialization_state_clears_all_flags(service_module):
     assert service_module._lmstudio_rest_last_checked is None
     assert service_module._ollama_rest_last_checked is None
     assert service_module._openai_last_checked is None
+
+
+def test_get_llm_status_returns_provider_availability_and_enabled_flags(monkeypatch, service_module):
+    monkeypatch.setattr(service_module, 'ensure_llm_initialized', lambda force=False: True)
+    monkeypatch.setattr(service_module, 'is_lmstudio_rest_enabled', lambda: True)
+    monkeypatch.setattr(service_module, 'is_ollama_rest_enabled', lambda: False)
+    monkeypatch.setattr(service_module, 'is_openai_enabled', lambda: True)
+    monkeypatch.setattr(service_module, 'get_native_models', lambda: ['clip-a'])
+
+    service_module.LMSTUDIO_REST_AVAILABLE = True
+    service_module.OLLAMA_REST_AVAILABLE = True
+    service_module.OPENAI_AVAILABLE = False
+
+    status = service_module.get_llm_status()
+
+    assert status[service_module.LMSTUDIO_REST_KEY] == {'available': True, 'enabled': True}
+    assert status[service_module.OLLAMA_REST_KEY] == {'available': False, 'enabled': False}
+    assert status[service_module.OPENAI_KEY] == {'available': False, 'enabled': True}
+    assert status[service_module.NATIVE_KEY] == {'available': True, 'enabled': True}
+
+
+def test_get_llm_models_returns_provider_models_and_status(monkeypatch, service_module):
+    monkeypatch.setattr(service_module, 'ensure_llm_initialized', lambda force=False: True)
+    monkeypatch.setattr(service_module, 'is_lmstudio_rest_enabled', lambda: True)
+    monkeypatch.setattr(service_module, 'is_ollama_rest_enabled', lambda: False)
+    monkeypatch.setattr(service_module, 'is_openai_enabled', lambda: True)
+
+    service_module.LMSTUDIO_REST_AVAILABLE = True
+    service_module.OLLAMA_REST_AVAILABLE = True
+    service_module.OPENAI_AVAILABLE = True
+
+    monkeypatch.setattr(service_module, 'get_lmstudio_rest_models', lambda: ['a', '(none)'])
+    monkeypatch.setattr(service_module, 'get_lmstudio_rest_tool_models', lambda: ['tool-a'])
+    monkeypatch.setattr(service_module, 'get_lmstudio_rest_reasoning_models', lambda: ['reason-a'])
+    monkeypatch.setattr(service_module, 'get_lmstudio_rest_model_capabilities_map', lambda: {'a': {'vision': True}})
+    monkeypatch.setattr(service_module, 'get_openai_models', lambda: ['gpt-test'])
+    monkeypatch.setattr(service_module, 'get_openai_tool_models', lambda: [])
+    monkeypatch.setattr(service_module, 'get_openai_reasoning_models', lambda: [])
+    monkeypatch.setattr(service_module, 'get_openai_model_capabilities_map', lambda: {})
+    monkeypatch.setattr(service_module, 'get_native_models', lambda: ['clip-a'])
+
+    models = service_module.get_llm_models()
+
+    assert models['models'][service_module.LMSTUDIO_REST_KEY] == ['a']
+    assert models['tool_models'][service_module.LMSTUDIO_REST_KEY] == ['tool-a']
+    assert models['reasoning_models'][service_module.LMSTUDIO_REST_KEY] == ['reason-a']
+    assert models['capabilities'][service_module.LMSTUDIO_REST_KEY] == {'a': {'vision': True}}
+    assert models['status'][service_module._status_key(service_module.LMSTUDIO_REST_KEY)] is True
+    assert models['status'][service_module._status_key(service_module.OLLAMA_REST_KEY)] is False
+
+
+def test_get_llm_vision_models_returns_provider_vision_models_and_status(monkeypatch, service_module):
+    monkeypatch.setattr(service_module, 'ensure_llm_initialized', lambda force=False: True)
+    monkeypatch.setattr(service_module, 'is_lmstudio_rest_enabled', lambda: True)
+    monkeypatch.setattr(service_module, 'is_ollama_rest_enabled', lambda: False)
+    monkeypatch.setattr(service_module, 'is_openai_enabled', lambda: True)
+
+    service_module.LMSTUDIO_REST_AVAILABLE = True
+    service_module.OLLAMA_REST_AVAILABLE = True
+    service_module.OPENAI_AVAILABLE = True
+
+    monkeypatch.setattr(service_module, 'get_lmstudio_rest_vision_models', lambda: ['a', '(none)'])
+    monkeypatch.setattr(service_module, 'get_lmstudio_rest_tool_models', lambda: ['tool-a'])
+    monkeypatch.setattr(service_module, 'get_lmstudio_rest_reasoning_models', lambda: ['reason-a'])
+    monkeypatch.setattr(service_module, 'get_lmstudio_rest_model_capabilities_map', lambda: {'a': {'vision': True}})
+    monkeypatch.setattr(service_module, 'get_openai_vision_models', lambda: ['gpt-test'])
+    monkeypatch.setattr(service_module, 'get_openai_tool_models', lambda: [])
+    monkeypatch.setattr(service_module, 'get_openai_reasoning_models', lambda: [])
+    monkeypatch.setattr(service_module, 'get_openai_model_capabilities_map', lambda: {})
+
+    models = service_module.get_llm_vision_models()
+
+    assert models['models'][service_module.LMSTUDIO_REST_KEY] == ['a']
+    assert models['status'][service_module._status_key(service_module.LMSTUDIO_REST_KEY)] is True
+    assert models['status'][service_module._status_key(service_module.NATIVE_KEY)] is False
 
 
 def test_init_updates_registry_and_legacy_globals(monkeypatch, service_module):

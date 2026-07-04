@@ -16,7 +16,7 @@ logger = get_logger('routes.notes')
 _route_list = []
 
 
-def _validate_notes_path(path_manager, filename):
+def _validate_notes_path(path_manager, filename) -> tuple[bool, Path | None, str | None]:
     """
     Validates that a filename is safe and within the notes directory.
     
@@ -113,6 +113,8 @@ def register_routes(routes_instance):
             is_valid, notes_file_path, error_msg = _validate_notes_path(path_manager, filename)
             if not is_valid:
                 return error_response(error_msg, status=400)
+            if notes_file_path is None:
+                return error_response("Invalid file path", status=400)
             
             if not notes_file_path.exists() or not notes_file_path.is_file():
                 return error_response(f"File '{filename}' not found", status=404)
@@ -162,6 +164,8 @@ def register_routes(routes_instance):
             is_valid, notes_file_path, error_msg = _validate_notes_path(path_manager, filename)
             if not is_valid:
                 return web.Response(text=error_msg, status=400)
+            if notes_file_path is None:
+                return web.Response(text="Invalid file path", status=400)
             
             if not notes_file_path.exists() or not notes_file_path.is_file():
                 return web.Response(text=f"File '{filename}' not found", status=404)
@@ -239,6 +243,8 @@ def register_routes(routes_instance):
             is_valid, notes_file_path, error_msg = _validate_notes_path(path_manager, filename)
             if not is_valid:
                 return error_response(error_msg, status=400)
+            if notes_file_path is None:
+                return error_response("Invalid file path", status=400)
             
             # Ensure notes directory exists
             path_manager.notes_path.mkdir(parents=True, exist_ok=True)
@@ -277,6 +283,8 @@ def register_routes(routes_instance):
             is_valid, notes_file_path, error_msg = _validate_notes_path(path_manager, filename)
             if not is_valid:
                 return error_response(error_msg, status=400)
+            if notes_file_path is None:
+                return error_response("Invalid file path", status=400)
             
             if not notes_file_path.exists() or not notes_file_path.is_file():
                 return error_response(f"File '{filename}' not found", status=404)
