@@ -570,61 +570,45 @@ def register_routes(routes_instance):
         try:
             _clear_last_llm_error()
             data = await request.json()
-            
-            # Validate generation input
-            is_valid, error_msg = routes_helpers.validate_generation_data(data)
+
+            is_valid, error_msg, payload = routes_helpers.parse_generation_request(data)
             if not is_valid:
                 return _error_response_with_metadata(error_msg, status=400, error_code='LLM_VALIDATION_ERROR')
-            
-            provider = routes_helpers.normalize_provider(data["provider"])
-            model = data["model"]
-            prompt = data["prompt"]
-            system_prompt = data.get("system_prompt", "")
-            is_valid, error_msg = routes_helpers.validate_generation_payload_options(provider, data)
-            if not is_valid:
-                return _error_response_with_metadata(error_msg, status=400, error_code='LLM_VALIDATION_ERROR')
-            options = routes_helpers.build_generation_payload_options(provider, data)
-            
-            # Recheck the provider because the user is actively generating
+
+            provider = payload['provider']
+            model = payload['model']
+            prompt = payload['prompt']
+            system_prompt = payload['system_prompt']
+            options = payload['options']
+
             llm.ensure_llm_initialized(force=True)
 
-            # Generate response based on provider
-            response_text = ""
+            is_available, error_msg, error_code, status_code = routes_helpers.get_provider_availability_error(
+                provider,
+                'generate',
+            )
+            if not is_available:
+                return _error_response_with_metadata(
+                    error_msg,
+                    status=status_code,
+                    error_code=error_code,
+                    provider=provider,
+                    operation='generate',
+                )
 
-            if provider == LMSTUDIO_REST_KEY and not llm.LMSTUDIO_REST_AVAILABLE:
+            is_native_valid, native_msg, native_code, native_status = routes_helpers.validate_native_model_availability(
+                provider,
+                model,
+                'generate',
+            )
+            if not is_native_valid:
                 return _error_response_with_metadata(
-                    'LM Studio REST is not available',
-                    status=503,
-                    error_code='LLM_PROVIDER_UNAVAILABLE',
-                    provider=LMSTUDIO_REST_KEY,
+                    native_msg,
+                    status=native_status,
+                    error_code=native_code,
+                    provider=provider,
                     operation='generate',
                 )
-            if provider == OLLAMA_REST_KEY and not llm.OLLAMA_REST_AVAILABLE:
-                return _error_response_with_metadata(
-                    'Ollama REST is not available',
-                    status=503,
-                    error_code='LLM_PROVIDER_UNAVAILABLE',
-                    provider=OLLAMA_REST_KEY,
-                    operation='generate',
-                )
-            if provider == OPENAI_KEY and not llm.OPENAI_AVAILABLE:
-                return _error_response_with_metadata(
-                    'OpenAI provider is not available',
-                    status=503,
-                    error_code='LLM_PROVIDER_UNAVAILABLE',
-                    provider=OPENAI_KEY,
-                    operation='generate',
-                )
-            if provider == NATIVE_KEY:
-                available_native = llm.get_native_models()
-                if model not in available_native:
-                    return _error_response_with_metadata(
-                        f"Native CLIP model '{model}' is not available",
-                        status=404,
-                        error_code='LLM_MODEL_NOT_FOUND',
-                        provider=NATIVE_KEY,
-                        operation='generate',
-                    )
 
             response_text = llm.generate(
                 provider,
@@ -681,84 +665,37 @@ def register_routes(routes_instance):
         try:
             _clear_last_llm_error()
             data = await request.json()
-            
-            # Validate required fields
-            required = ["provider", "model", "prompt"]
-            missing = [f for f in required if f not in data]
-            if missing:
-                return _error_response_with_metadata(
-                    f"Missing required fields: {', '.join(missing)}",
-                    status=400,
-                    error_code='LLM_VALIDATION_ERROR',
-                )
-            
-            provider = routes_helpers.normalize_provider(data["provider"])
-            model = data["model"]
-            prompt = data["prompt"]
-            system_prompt = data.get("system_prompt", "")
-            is_valid, error_msg = routes_helpers.validate_generation_payload_options(provider, data)
+
+            is_valid, error_msg, payload = routes_helpers.parse_generation_request(data)
             if not is_valid:
                 return _error_response_with_metadata(error_msg, status=400, error_code='LLM_VALIDATION_ERROR')
-            options = routes_helpers.build_generation_payload_options(provider, data)
-            
-            # Validate provider
-            if provider not in ROUTE_PROVIDER_KEYS:
-                return _error_response_with_metadata(
-                    f"Invalid provider: {provider}. Must be 'lmstudio', 'ollama', 'openai', or 'native'",
-                    status=400,
-                    error_code='LLM_VALIDATION_ERROR',
-                )
-            
-            # Initialize LLM services for active streaming use
-            llm.ensure_llm_initialized(force=True)
-            
+
+            provider = payload['provider']
+            model = payload['model']
+            prompt = payload['prompt']
+            system_prompt = payload['system_prompt']
+            options = payload['options']
+
             response = await routes_helpers.prepare_sse_response(request)
 
             try:
-                if provider == LMSTUDIO_REST_KEY and not llm.LMSTUDIO_REST_AVAILABLE:
-                    error_chunk = routes_helpers.format_sse_error_chunk(
-                        'LM Studio REST is not available',
-                        error_code='LLM_PROVIDER_UNAVAILABLE',
-                        provider=LMSTUDIO_REST_KEY,
-                        operation='generate_stream',
-                    )
-                    await response.write(error_chunk.encode('utf-8'))
-                    await response.write_eof()
-                    return response
-
-                if provider == OLLAMA_REST_KEY and not llm.OLLAMA_REST_AVAILABLE:
-                    error_chunk = routes_helpers.format_sse_error_chunk(
-                        'Ollama REST is not available',
-                        error_code='LLM_PROVIDER_UNAVAILABLE',
-                        provider=OLLAMA_REST_KEY,
-                        operation='generate_stream',
-                    )
-                    await response.write(error_chunk.encode('utf-8'))
-                    await response.write_eof()
-                    return response
-
-                if provider == OPENAI_KEY and not llm.OPENAI_AVAILABLE:
-                    error_chunk = routes_helpers.format_sse_error_chunk(
-                        'OpenAI provider is not available',
-                        error_code='LLM_PROVIDER_UNAVAILABLE',
-                        provider=OPENAI_KEY,
-                        operation='generate_stream',
-                    )
-                    await response.write(error_chunk.encode('utf-8'))
-                    await response.write_eof()
+                if await routes_helpers.write_provider_availability_error_if_unavailable(
+                    response,
+                    provider,
+                    'generate_stream',
+                ):
                     return response
 
                 if provider == NATIVE_KEY:
-                    available_native = llm.get_native_models()
-                    if model not in available_native:
-                        error_chunk = routes_helpers.format_sse_error_chunk(
-                            f"Native CLIP model '{model}' is not available",
+                    is_valid_native, native_error = routes_helpers.validate_native_model_availability(provider, model)
+                    if not is_valid_native:
+                        await routes_helpers.write_sse_error_and_close(
+                            response,
+                            native_error,
                             error_code='LLM_MODEL_NOT_FOUND',
                             provider=NATIVE_KEY,
                             operation='generate_stream',
                         )
-                        await response.write(error_chunk.encode('utf-8'))
-                        await response.write_eof()
                         return response
 
                 await routes_helpers.stream_sse_chunks(
@@ -827,15 +764,18 @@ def register_routes(routes_instance):
         try:
             _clear_last_llm_error()
             data = await request.json()
-            
-            # Validate vision input
-            is_valid, error_msg = routes_helpers.validate_vision_data(data)
+
+            is_valid, error_msg, payload = routes_helpers.parse_vision_generation_request(data)
             if not is_valid:
                 return _error_response_with_metadata(error_msg, status=400, error_code='LLM_VALIDATION_ERROR')
-            
-            provider = routes_helpers.normalize_provider(data["provider"])
-            model = data["model"]
-            
+
+            provider = payload['provider']
+            model = payload['model']
+            prompt = payload['prompt']
+            images_data = payload['images']
+            system_prompt = payload['system_prompt']
+            options = payload['options']
+
             if provider == NATIVE_KEY:
                 return _error_response_with_metadata(
                     'Native provider does not support vision generation',
@@ -844,7 +784,6 @@ def register_routes(routes_instance):
                     provider=NATIVE_KEY,
                 )
 
-            # Check vision capability before attempting dispatch
             can_do_vision, capability_error = routes_helpers.check_model_vision_capability(provider, model)
             if not can_do_vision:
                 return _error_response_with_metadata(
@@ -853,40 +792,19 @@ def register_routes(routes_instance):
                     error_code='LLM_MODEL_CAPABILITY_ERROR',
                     provider=provider,
                 )
-            
-            prompt = data["prompt"]
-            images_data = data["images"]
-            system_prompt = data.get("system_prompt", "")
-            is_valid, error_msg = routes_helpers.validate_generation_payload_options(provider, data)
-            if not is_valid:
-                return _error_response_with_metadata(error_msg, status=400, error_code='LLM_VALIDATION_ERROR')
-            options = routes_helpers.build_generation_payload_options(provider, data)
-            
-            # Initialize LLM services for active vision generation use
+
             llm.ensure_llm_initialized(force=True)
-            
-            if provider == LMSTUDIO_REST_KEY and not llm.LMSTUDIO_REST_AVAILABLE:
+
+            is_available, error_msg, error_code, status_code = routes_helpers.get_provider_availability_error(
+                provider,
+                'vision_generate',
+            )
+            if not is_available:
                 return _error_response_with_metadata(
-                    'LM Studio REST is not available',
-                    status=503,
-                    error_code='LLM_PROVIDER_UNAVAILABLE',
-                    provider=LMSTUDIO_REST_KEY,
-                    operation='vision_generate',
-                )
-            if provider == OLLAMA_REST_KEY and not llm.OLLAMA_REST_AVAILABLE:
-                return _error_response_with_metadata(
-                    'Ollama REST is not available',
-                    status=503,
-                    error_code='LLM_PROVIDER_UNAVAILABLE',
-                    provider=OLLAMA_REST_KEY,
-                    operation='vision_generate',
-                )
-            if provider == OPENAI_KEY and not llm.OPENAI_AVAILABLE:
-                return _error_response_with_metadata(
-                    'OpenAI provider is not available',
-                    status=503,
-                    error_code='LLM_PROVIDER_UNAVAILABLE',
-                    provider=OPENAI_KEY,
+                    error_msg,
+                    status=status_code,
+                    error_code=error_code,
+                    provider=provider,
                     operation='vision_generate',
                 )
 
@@ -939,16 +857,18 @@ def register_routes(routes_instance):
         try:
             _clear_last_llm_error()
             data = await request.json()
-            
-            # Validate vision input
-            is_valid, error_msg = routes_helpers.validate_vision_data(data)
+
+            is_valid, error_msg, payload = routes_helpers.parse_vision_generation_request(data)
             if not is_valid:
                 return _error_response_with_metadata(error_msg, status=400, error_code='LLM_VALIDATION_ERROR')
-            
-            provider = routes_helpers.normalize_provider(data["provider"])
-            model = data["model"]
-            
-            # Check vision capability before attempting dispatch
+
+            provider = payload['provider']
+            model = payload['model']
+            prompt = payload['prompt']
+            images_data = payload['images']
+            system_prompt = payload['system_prompt']
+            options = payload['options']
+
             can_do_vision, capability_error = routes_helpers.check_model_vision_capability(provider, model)
             if not can_do_vision:
                 return _error_response_with_metadata(
@@ -957,50 +877,17 @@ def register_routes(routes_instance):
                     error_code='LLM_MODEL_CAPABILITY_ERROR',
                     provider=provider,
                 )
-            
-            prompt = data["prompt"]
-            images_data = data["images"]
-            system_prompt = data.get("system_prompt", "")
-            is_valid, error_msg = routes_helpers.validate_generation_payload_options(provider, data)
-            if not is_valid:
-                return _error_response_with_metadata(error_msg, status=400, error_code='LLM_VALIDATION_ERROR')
-            options = routes_helpers.build_generation_payload_options(provider, data)
-            
-            # Ensure the provider is rechecked before active vision streaming use
+
             llm.ensure_llm_initialized(force=True)
             
             response = await routes_helpers.prepare_sse_response(request)
 
             try:
-                if provider == LMSTUDIO_REST_KEY and not llm.LMSTUDIO_REST_AVAILABLE:
-                    error_chunk = routes_helpers.format_sse_error_chunk(
-                        'LM Studio REST is not available',
-                        error_code='LLM_PROVIDER_UNAVAILABLE',
-                        provider=LMSTUDIO_REST_KEY,
-                        operation='vision_generate_stream',
-                    )
-                    await response.write(error_chunk.encode('utf-8'))
-                    await response.write_eof()
-                    return response
-                if provider == OLLAMA_REST_KEY and not llm.OLLAMA_REST_AVAILABLE:
-                    error_chunk = routes_helpers.format_sse_error_chunk(
-                        'Ollama REST is not available',
-                        error_code='LLM_PROVIDER_UNAVAILABLE',
-                        provider=OLLAMA_REST_KEY,
-                        operation='vision_generate_stream',
-                    )
-                    await response.write(error_chunk.encode('utf-8'))
-                    await response.write_eof()
-                    return response
-                if provider == OPENAI_KEY and not llm.OPENAI_AVAILABLE:
-                    error_chunk = routes_helpers.format_sse_error_chunk(
-                        'OpenAI provider is not available',
-                        error_code='LLM_PROVIDER_UNAVAILABLE',
-                        provider=OPENAI_KEY,
-                        operation='vision_generate_stream',
-                    )
-                    await response.write(error_chunk.encode('utf-8'))
-                    await response.write_eof()
+                if await routes_helpers.write_provider_availability_error_if_unavailable(
+                    response,
+                    provider,
+                    'vision_generate_stream',
+                ):
                     return response
 
                 await routes_helpers.stream_sse_chunks(
@@ -1089,17 +976,18 @@ def register_routes(routes_instance):
         """
         try:
             data = await request.json()
-            
-            prompt_id = data.get('id')
-            name = data.get('name')
-            content = data.get('content')
-            description = data.get('description', '')
-            
-            if not prompt_id or not name or not content:
-                return error_response("Missing required fields: id, name, content", status=400)
 
-            system_prompts.save_system_prompt(prompt_id, name, content, description)
-            return success_response({"id": prompt_id, "name": name})
+            is_valid, error_msg, payload = routes_helpers.parse_system_prompt_save_request(data)
+            if not is_valid:
+                return error_response(error_msg, status=400)
+
+            system_prompts.save_system_prompt(
+                payload['id'],
+                payload['name'],
+                payload['content'],
+                payload['description'],
+            )
+            return success_response({"id": payload['id'], "name": payload['name']})
             
         except ValueError as e:
             logger.error(f"Validation error saving system prompt: {str(e)}")
@@ -1125,16 +1013,16 @@ def register_routes(routes_instance):
         """
         try:
             data = await request.json()
-            prompt_id = data.get('id')
-            
-            if not prompt_id:
-                return error_response("Missing prompt id", status=400)
 
-            deleted = system_prompts.delete_system_prompt(prompt_id)
+            is_valid, error_msg, payload = routes_helpers.parse_system_prompt_delete_request(data)
+            if not is_valid:
+                return error_response(error_msg, status=400)
+
+            deleted = system_prompts.delete_system_prompt(payload['id'])
             if not deleted:
-                return error_response(f"System prompt '{prompt_id}' not found", status=404)
+                return error_response(f"System prompt '{payload['id']}' not found", status=404)
 
-            return success_response({"deleted": prompt_id})
+            return success_response({"deleted": payload['id']})
             
         except Exception as e:
             logger.error(f"Error deleting system prompt: {str(e)}")
@@ -1215,14 +1103,13 @@ def register_routes(routes_instance):
         """
         try:
             data = await request.json()
-            preset_id = data.get('id')
-            preset_data = data.get('preset')
-            
-            if not preset_id or not preset_data:
-                return error_response("Missing required fields: id, preset", status=400)
 
-            saved_preset = presets.save_preset(preset_id, preset_data)
-            return success_response({"id": preset_id, "preset": saved_preset})
+            is_valid, error_msg, payload = routes_helpers.parse_preset_save_request(data)
+            if not is_valid:
+                return error_response(error_msg, status=400)
+
+            saved_preset = presets.save_preset(payload['id'], payload['preset'])
+            return success_response({"id": payload['id'], "preset": saved_preset})
             
         except ValueError as e:
             logger.error(f"Validation error saving preset: {str(e)}")
@@ -1248,16 +1135,16 @@ def register_routes(routes_instance):
         """
         try:
             data = await request.json()
-            preset_id = data.get('id')
-            
-            if not preset_id:
-                return error_response("Missing preset id", status=400)
 
-            deleted = presets.delete_preset(preset_id)
+            is_valid, error_msg, payload = routes_helpers.parse_preset_delete_request(data)
+            if not is_valid:
+                return error_response(error_msg, status=400)
+
+            deleted = presets.delete_preset(payload['id'])
             if not deleted:
-                return error_response(f"Preset '{preset_id}' not found", status=404)
+                return error_response(f"Preset '{payload['id']}' not found", status=404)
 
-            return success_response({"deleted": preset_id})
+            return success_response({"deleted": payload['id']})
             
         except Exception as e:
             logger.error(f"Error deleting preset: {str(e)}")
@@ -1336,17 +1223,15 @@ def register_routes(routes_instance):
         try:
             data = await request.json()
             
-            preset_id = data.get('preset_id')
-            images_data = data.get('images', [])
-            prompt_override = data.get('prompt_override')
-            system_prompt_override = data.get('system_prompt_override')
-            settings_override = data.get('settings_override', {})
-            
-            if not preset_id:
-                return error_response("Missing required field: preset_id", status=400)
-            
-            if not images_data or not isinstance(images_data, list):
-                return error_response("Images must be a non-empty array", status=400)
+            is_valid, error_msg, payload = routes_helpers.parse_preset_image_generation_request(data)
+            if not is_valid:
+                return error_response(error_msg, status=400)
+
+            preset_id = payload['preset_id']
+            images_data = payload['images']
+            prompt_override = payload['prompt_override']
+            system_prompt_override = payload['system_prompt_override']
+            settings_override = payload['settings_override']
             
             try:
                 preset = presets.load_preset(preset_id)
@@ -1358,103 +1243,58 @@ def register_routes(routes_instance):
             
             if not model:
                 return error_response(f"Preset '{preset_id}' does not specify a model", status=400)
-            
-            # Build prompt
-            prompt_text = prompt_override
-            
-            if not prompt_text and preset.get('promptTemplate'):
-                # Load prompt from template
-                template_path = preset['promptTemplate']  # e.g., "description/Descriptive Prompt"
-                if '/' in template_path:
-                    category, template_name = template_path.split('/', 1)
-                    
-                    # Find template in llm_prompts
-                    for key, template in llm_prompts.get('base', {}).items():
-                        if template.get('category') == category and template.get('name') == template_name:
-                            prompt_text = template.get('prompt', '')
-                            break
-            
+
+            # Resolve prompt and system prompt text
+            prompt_text = routes_helpers.resolve_preset_prompt_text(preset, prompt_override)
             if not prompt_text:
                 prompt_text = "Describe this image in detail."
-            
-            # Get system prompt
-            system_prompt_text = system_prompt_override
-            if not system_prompt_text and preset.get('systemPrompt'):
-                system_prompt_text = system_prompts.get_system_prompt_text(preset['systemPrompt'])
-            
-            # Merge settings
-            settings = preset.get('settings', {})
-            settings.update(settings_override)
-            
-            # Build options for LLM
-            options = {
-                'temperature': settings.get('temperature', 0.7),
-                'seed': settings.get('seed', -1)
-            }
-            
-            # Add provider-specific options
-            if provider == OLLAMA_REST_KEY:
-                if 'top_k' in settings:
-                    options['top_k'] = settings['top_k']
-                if 'top_p' in settings:
-                    options['top_p'] = settings['top_p']
-                if 'repeat_penalty' in settings:
-                    options['repeat_penalty'] = settings['repeat_penalty']
-            
+
+            system_prompt_text = routes_helpers.resolve_preset_system_prompt_text(
+                preset,
+                system_prompt_override,
+            )
+
+            # Merge settings and build options for LLM
+            options = routes_helpers.build_preset_generation_options(
+                provider,
+                preset.get('settings', {}),
+                settings_override,
+            )
+
+            # Validate provider availability before generation
+            is_available, error_msg, error_code, status_code = routes_helpers.get_provider_availability_error(
+                provider,
+                'preset_generate_with_image',
+            )
+            if not is_available:
+                return _error_response_with_metadata(
+                    error_msg,
+                    status=status_code,
+                    error_code=error_code,
+                    provider=provider,
+                    operation='preset_generate_with_image',
+                )
+
             # Initialize LLM services for active preset generation
             llm.ensure_llm_initialized(force=True)
-            
-            # Generate response
-            response_text = ""
-            
-            if provider == LMSTUDIO_REST_KEY:
-                if not llm.LMSTUDIO_REST_AVAILABLE:
-                    return error_response("LM Studio REST is not available", status=503)
 
-                response_text = llm.lmstudio_rest_generate_vision(
-                    model=model,
-                    prompt=prompt_text,
-                    keep_alive=int(settings.get('keepAlive', 0) or 0),
-                    images=images_data,
-                    options=options,
-                    system_prompt=system_prompt_text,
-                )
+            response_text = llm.generate_vision(
+                provider,
+                model=model,
+                prompt=prompt_text,
+                images=images_data,
+                options=options,
+                system_prompt=system_prompt_text,
+                keep_alive=settings.get('keepAlive'),
+            )
 
-            elif provider == OLLAMA_REST_KEY:
-                if not llm.OLLAMA_REST_AVAILABLE:
-                    return error_response("Ollama REST is not available", status=503)
-
-                response_text = llm.ollama_rest_generate_vision(
-                    model=model,
-                    prompt=prompt_text,
-                    images=images_data,
-                    options=options,
-                    system_prompt=system_prompt_text,
-                    keep_alive=str(settings.get('keepAlive', '5m') or '5m'),
-                )
-
-            elif provider == OPENAI_KEY:
-                if not llm.OPENAI_AVAILABLE:
-                    return error_response("OpenAI provider is not available", status=503)
-
-                response_text = llm.openai_generate_vision(
-                    model=model,
-                    prompt=prompt_text,
-                    images=images_data,
-                    options=options,
-                    system_prompt=system_prompt_text,
-                )
-
-            else:
-                return error_response(f"Unsupported preset provider: {provider}", status=400)
-            
             return success_response({
                 "response": response_text,
                 "preset_used": preset_id,
                 "provider": provider,
-                "model": model
+                "model": model,
             })
-            
+
         except ValueError as e:
             logger.error(f"Validation error in preset generation: {str(e)}")
             return error_response(str(e), status=400)
@@ -1463,7 +1303,7 @@ def register_routes(routes_instance):
             import traceback
             traceback.print_exc()
             return error_response(f"Failed to generate with preset: {str(e)}", status=500)
-    
+
     _route_list.append({
         "method": "POST",
         "path": "/sage_llm/presets/generate_with_image",
@@ -1503,36 +1343,32 @@ def register_routes(routes_instance):
             _clear_last_llm_error()
             data = await request.json()
 
-            provider = routes_helpers.normalize_provider(str(data.get("provider", "")))
-            model = str(data.get("model", ""))
-            keep_alive = data.get("keep_alive", 60)
+            is_valid, error_msg, payload = routes_helpers.parse_load_model_request(data)
+            if not is_valid:
+                return _error_response_with_metadata(error_msg, status=400, error_code='LLM_VALIDATION_ERROR')
 
-            if not provider or provider not in ROUTE_PROVIDER_KEYS:
-                return _error_response_with_metadata(
-                    f"Invalid or missing provider: {provider!r}. Must be 'lmstudio', 'ollama', 'openai', or 'native'",
-                    status=400,
-                    error_code='LLM_VALIDATION_ERROR',
-                )
-            if not model:
-                return _error_response_with_metadata(
-                    "Missing required field: model",
-                    status=400,
-                    error_code='LLM_VALIDATION_ERROR',
-                )
+            provider = payload['provider']
+            model = payload['model']
+            keep_alive = payload['keep_alive']
 
             from ..utils.llm import service as llm
 
             llm.ensure_llm_initialized(force=True)
 
+            is_available, error_msg, error_code, status_code = routes_helpers.get_provider_availability_error(
+                provider,
+                'load_model',
+            )
+            if not is_available:
+                return _error_response_with_metadata(
+                    error_msg,
+                    status=status_code,
+                    error_code=error_code,
+                    provider=provider,
+                    operation='load_model',
+                )
+
             if provider == LMSTUDIO_REST_KEY:
-                if not llm.LMSTUDIO_REST_AVAILABLE:
-                    return _error_response_with_metadata(
-                        'LM Studio REST is not available',
-                        status=503,
-                        error_code='LLM_PROVIDER_UNAVAILABLE',
-                        provider=LMSTUDIO_REST_KEY,
-                        operation='load_model',
-                    )
                 # LM Studio REST can return load failures even when the model is already
                 # resident/usable. Treat preload as a readiness check here and let
                 # generation endpoints perform the real request path.
@@ -1546,41 +1382,20 @@ def register_routes(routes_instance):
                         operation='load_model',
                     )
 
-            elif provider == OLLAMA_REST_KEY:
-                if not llm.OLLAMA_REST_AVAILABLE:
+            if provider == NATIVE_KEY:
+                is_native_valid, native_msg, native_code, native_status = routes_helpers.validate_native_model_availability(
+                    provider,
+                    model,
+                    'load_model',
+                )
+                if not is_native_valid:
                     return _error_response_with_metadata(
-                        'Ollama REST is not available',
-                        status=503,
-                        error_code='LLM_PROVIDER_UNAVAILABLE',
-                        provider=OLLAMA_REST_KEY,
+                        native_msg,
+                        status=native_status,
+                        error_code=native_code,
+                        provider=provider,
                         operation='load_model',
                     )
-                # No dedicated preload endpoint in Ollama REST mode here.
-                # Keep behavior consistent with native/openai by validating selection.
-
-            elif provider == OPENAI_KEY:
-                if not llm.OPENAI_AVAILABLE:
-                    return _error_response_with_metadata(
-                        'OpenAI provider is not available',
-                        status=503,
-                        error_code='LLM_PROVIDER_UNAVAILABLE',
-                        provider=OPENAI_KEY,
-                        operation='load_model',
-                    )
-                # OpenAI-compatible providers do not expose a standard load API.
-                # Treat this as a successful readiness check.
-
-            elif provider == NATIVE_KEY:
-                available_native = llm_native.get_native_models()
-                if model not in available_native:
-                    return _error_response_with_metadata(
-                        f"Native CLIP model '{model}' is not available",
-                        status=404,
-                        error_code='LLM_MODEL_NOT_FOUND',
-                        provider=NATIVE_KEY,
-                        operation='load_model',
-                    )
-                # Native models are loaded on demand for generation; this validates selection.
 
             return success_response(data={
                 "loaded": True,
@@ -1635,16 +1450,16 @@ def register_routes(routes_instance):
             _clear_last_llm_error()
             data = await request.json()
 
-            is_valid, error_msg = routes_helpers.validate_generation_data(data)
+            is_valid, error_msg, payload = routes_helpers.parse_generation_request(data)
             if not is_valid:
                 return _error_response_with_metadata(error_msg, status=400, error_code='LLM_VALIDATION_ERROR')
 
-            provider = routes_helpers.normalize_provider(data["provider"])
-            model = data["model"]
-            prompt = data["prompt"]
-            system_prompt = data.get("system_prompt", "")
-            keep_alive = data.get("keep_alive", 0)
-            options = data.get("options", {})
+            provider = payload['provider']
+            model = payload['model']
+            prompt = payload['prompt']
+            system_prompt = payload['system_prompt']
+            options = payload['options']
+            keep_alive = data.get('keep_alive', 0)
 
             from ..utils.llm import service as llm
 
@@ -1652,24 +1467,32 @@ def register_routes(routes_instance):
 
             response_text = ""
 
-            if provider == LMSTUDIO_REST_KEY and not llm.LMSTUDIO_REST_AVAILABLE:
+            is_available, error_msg, error_code, status_code = routes_helpers.get_provider_availability_error(
+                provider,
+                'generate_only',
+            )
+            if not is_available:
                 return _error_response_with_metadata(
-                    'LM Studio REST is not available',
-                    status=503,
-                    error_code='LLM_PROVIDER_UNAVAILABLE',
-                    provider=LMSTUDIO_REST_KEY,
+                    error_msg,
+                    status=status_code,
+                    error_code=error_code,
+                    provider=provider,
                     operation='generate_only',
                 )
-            if provider == NATIVE_KEY:
-                available_native = llm.get_native_models()
-                if model not in available_native:
-                    return _error_response_with_metadata(
-                        f"Native CLIP model '{model}' is not available",
-                        status=404,
-                        error_code='LLM_MODEL_NOT_FOUND',
-                        provider=NATIVE_KEY,
-                        operation='generate_only',
-                    )
+
+            is_native_valid, native_msg, native_code, native_status = routes_helpers.validate_native_model_availability(
+                provider,
+                model,
+                'generate_only',
+            )
+            if not is_native_valid:
+                return _error_response_with_metadata(
+                    native_msg,
+                    status=native_status,
+                    error_code=native_code,
+                    provider=provider,
+                    operation='generate_only',
+                )
             response_text = llm.generate(
                 provider,
                 model=model,

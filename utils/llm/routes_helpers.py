@@ -10,7 +10,8 @@ from typing import Any, Optional
 from ..logger import get_logger
 from aiohttp import web
 from ..settings import get_setting
-from . import llm_raise, presets, system_prompts
+from ..config_manager import llm_prompts
+from . import llm_raise, presets, service as llm, system_prompts
 from .provider_keys import (
     LMSTUDIO_REST_KEY,
     NATIVE_KEY,
@@ -353,6 +354,47 @@ def build_llm_options(provider: str, settings: dict[str, Any]) -> dict[str, Any]
     return options
 
 
+def resolve_preset_prompt_text(preset: dict[str, Any], prompt_override: str | None = None) -> str:
+    """Resolve a preset prompt text from override or prompt template metadata."""
+    if prompt_override:
+        return prompt_override
+
+    template_path = preset.get('promptTemplate')
+    if not template_path or '/' not in str(template_path):
+        return ''
+
+    category, template_name = str(template_path).split('/', 1)
+    for template in llm_prompts.get('base', {}).values():
+        if template.get('category') == category and template.get('name') == template_name:
+            return template.get('prompt', '') or ''
+
+    return ''
+
+
+def resolve_preset_system_prompt_text(preset: dict[str, Any], system_prompt_override: str | None = None) -> str:
+    """Resolve a preset system prompt from override or preset metadata."""
+    if system_prompt_override:
+        return system_prompt_override
+
+    system_prompt_id = preset.get('systemPrompt')
+    if not system_prompt_id:
+        return ''
+
+    return get_system_prompt_text(system_prompt_id)
+
+
+def build_preset_generation_options(
+    provider: str,
+    preset_settings: dict[str, Any],
+    settings_override: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Build options for a preset generation request."""
+    merged_settings = dict(preset_settings or {})
+    if isinstance(settings_override, dict):
+        merged_settings.update(settings_override)
+    return build_llm_options(provider, merged_settings)
+
+
 def build_generation_payload_options(provider: str, data: dict[str, Any]) -> dict[str, Any]:
     """Build request options from incoming route payload with provider-specific normalization."""
     provider = normalize_provider(provider)
@@ -481,6 +523,152 @@ def validate_generation_payload_options(provider: str, data: dict[str, Any]) -> 
     )
 
 
+def parse_generation_request(
+    data: dict[str, Any],
+    request_context: str = 'generation',
+) -> tuple[bool, Optional[str], dict[str, Any]]:
+    """Parse and validate a generic generation request payload."""
+    is_valid, error_msg = validate_generation_data(data)
+    if not is_valid:
+        return False, error_msg, {}
+
+    provider = normalize_provider(data['provider'])
+    is_valid, error_msg = validate_generation_payload_options(provider, data)
+    if not is_valid:
+        return False, error_msg, {}
+
+    payload = {
+        'provider': provider,
+        'model': data['model'],
+        'prompt': data['prompt'],
+        'system_prompt': data.get('system_prompt', ''),
+        'options': build_generation_payload_options(provider, data),
+    }
+    return True, None, payload
+
+
+def parse_vision_generation_request(
+    data: dict[str, Any],
+    request_context: str = 'vision',
+) -> tuple[bool, Optional[str], dict[str, Any]]:
+    """Parse and validate a vision generation request payload."""
+    is_valid, error_msg = validate_vision_data(data)
+    if not is_valid:
+        return False, error_msg, {}
+
+    provider = normalize_provider(data['provider'])
+    is_valid, error_msg = validate_generation_payload_options(provider, data)
+    if not is_valid:
+        return False, error_msg, {}
+
+    payload = {
+        'provider': provider,
+        'model': data['model'],
+        'prompt': data['prompt'],
+        'images': data['images'],
+        'system_prompt': data.get('system_prompt', ''),
+        'options': build_generation_payload_options(provider, data),
+    }
+    return True, None, payload
+
+
+def parse_load_model_request(
+    data: dict[str, Any],
+) -> tuple[bool, Optional[str], dict[str, Any]]:
+    """Parse and validate a load-model request payload."""
+    is_valid, error_msg = validate_request_fields(data, ['provider', 'model'], 'load model request')
+    if not is_valid:
+        return False, error_msg, {}
+
+    provider = normalize_provider(data['provider'])
+    is_valid, error_msg = validate_provider(provider)
+    if not is_valid:
+        return False, error_msg, {}
+
+    payload = {
+        'provider': provider,
+        'model': data['model'],
+        'keep_alive': data.get('keep_alive', 60),
+    }
+    return True, None, payload
+
+
+def parse_system_prompt_save_request(
+    data: dict[str, Any],
+) -> tuple[bool, Optional[str], dict[str, Any]]:
+    """Parse and validate a system prompt save request payload."""
+    is_valid, error_msg = validate_request_fields(data, ['id', 'name', 'content'], 'system prompt save request')
+    if not is_valid:
+        return False, error_msg, {}
+
+    payload = {
+        'id': data['id'],
+        'name': data['name'],
+        'content': data['content'],
+        'description': data.get('description', ''),
+    }
+    return True, None, payload
+
+
+def parse_system_prompt_delete_request(
+    data: dict[str, Any],
+) -> tuple[bool, Optional[str], dict[str, Any]]:
+    """Parse and validate a system prompt delete request payload."""
+    is_valid, error_msg = validate_request_fields(data, ['id'], 'system prompt delete request')
+    if not is_valid:
+        return False, error_msg, {}
+
+    return True, None, {'id': data['id']}
+
+
+def parse_preset_save_request(
+    data: dict[str, Any],
+) -> tuple[bool, Optional[str], dict[str, Any]]:
+    """Parse and validate a preset save request payload."""
+    is_valid, error_msg = validate_request_fields(data, ['id', 'preset'], 'preset save request')
+    if not is_valid:
+        return False, error_msg, {}
+
+    payload = {
+        'id': data['id'],
+        'preset': data['preset'],
+    }
+    return True, None, payload
+
+
+def parse_preset_delete_request(
+    data: dict[str, Any],
+) -> tuple[bool, Optional[str], dict[str, Any]]:
+    """Parse and validate a preset delete request payload."""
+    is_valid, error_msg = validate_request_fields(data, ['id'], 'preset delete request')
+    if not is_valid:
+        return False, error_msg, {}
+
+    return True, None, {'id': data['id']}
+
+
+def parse_preset_image_generation_request(
+    data: dict[str, Any],
+) -> tuple[bool, Optional[str], dict[str, Any]]:
+    """Parse and validate an image preset generation request payload."""
+    is_valid, error_msg = validate_request_fields(data, ['preset_id', 'images'], 'preset generation request')
+    if not is_valid:
+        return False, error_msg, {}
+
+    images = data['images']
+    if not isinstance(images, list) or not images:
+        return False, 'Images must be a non-empty array', {}
+
+    payload = {
+        'preset_id': data['preset_id'],
+        'images': images,
+        'prompt_override': data.get('prompt_override'),
+        'system_prompt_override': data.get('system_prompt_override'),
+        'settings_override': data.get('settings_override', {}),
+    }
+    return True, None, payload
+
+
 def get_system_prompt_text(
     system_prompt_id: Optional[str],
 ) -> str:
@@ -530,6 +718,41 @@ def validate_provider(provider: str) -> tuple[bool, Optional[str]]:
     return True, None
 
 
+def get_provider_availability_error(
+    provider: str,
+    operation: str,
+) -> tuple[bool, Optional[str], Optional[str], Optional[int]]:
+    """Return a standardized provider availability error tuple if unavailable."""
+    provider = normalize_provider(provider)
+
+    if provider == LMSTUDIO_REST_KEY and not llm.LMSTUDIO_REST_AVAILABLE:
+        return False, 'LM Studio REST is not available', 'LLM_PROVIDER_UNAVAILABLE', 503
+
+    if provider == OLLAMA_REST_KEY and not llm.OLLAMA_REST_AVAILABLE:
+        return False, 'Ollama REST is not available', 'LLM_PROVIDER_UNAVAILABLE', 503
+
+    if provider == OPENAI_KEY and not llm.OPENAI_AVAILABLE:
+        return False, 'OpenAI provider is not available', 'LLM_PROVIDER_UNAVAILABLE', 503
+
+    return True, None, None, None
+
+
+def validate_native_model_availability(
+    provider: str,
+    model: str,
+    operation: str | None = None,
+) -> tuple[bool, Optional[str], Optional[str], Optional[int]]:
+    """Validate that a native CLIP model is available."""
+    provider = normalize_provider(provider)
+    if provider != NATIVE_KEY:
+        return True, None, None, None
+
+    available_native = llm.get_native_models()
+    if model not in available_native:
+        return False, f"Native CLIP model '{model}' is not available", 'LLM_MODEL_NOT_FOUND', 404
+    return True, None, None, None
+
+
 def format_sse_chunk(chunk_data: dict[str, Any]) -> str:
     """Format a data chunk as Server-Sent Events (SSE) format."""
     return f"data: {json.dumps(chunk_data)}\n\n"
@@ -556,6 +779,67 @@ def format_sse_error_chunk(
     if cause:
         payload['cause'] = cause
     return format_sse_chunk(payload)
+
+
+async def write_sse_error_and_close(
+    response: web.StreamResponse,
+    message: str,
+    *,
+    error_code: str = 'LLM_STREAM_ERROR',
+    provider: str | None = None,
+    operation: str | None = None,
+    cause: str | None = None,
+) -> None:
+    """Write an SSE error chunk and close the stream."""
+    await response.write(format_sse_error_chunk(
+        message,
+        error_code=error_code,
+        provider=provider,
+        operation=operation,
+        cause=cause,
+    ).encode('utf-8'))
+    await response.write_eof()
+
+
+async def write_provider_availability_error_if_unavailable(
+    response: web.StreamResponse,
+    provider: str,
+    operation: str,
+) -> bool:
+    """Write a provider availability SSE error and return True if unavailable."""
+    provider = normalize_provider(provider)
+
+    if provider == LMSTUDIO_REST_KEY and not llm.LMSTUDIO_REST_AVAILABLE:
+        await write_sse_error_and_close(
+            response,
+            'LM Studio REST is not available',
+            error_code='LLM_PROVIDER_UNAVAILABLE',
+            provider=LMSTUDIO_REST_KEY,
+            operation=operation,
+        )
+        return True
+
+    if provider == OLLAMA_REST_KEY and not llm.OLLAMA_REST_AVAILABLE:
+        await write_sse_error_and_close(
+            response,
+            'Ollama REST is not available',
+            error_code='LLM_PROVIDER_UNAVAILABLE',
+            provider=OLLAMA_REST_KEY,
+            operation=operation,
+        )
+        return True
+
+    if provider == OPENAI_KEY and not llm.OPENAI_AVAILABLE:
+        await write_sse_error_and_close(
+            response,
+            'OpenAI provider is not available',
+            error_code='LLM_PROVIDER_UNAVAILABLE',
+            provider=OPENAI_KEY,
+            operation=operation,
+        )
+        return True
+
+    return False
 
 
 async def prepare_sse_response(request: web.Request) -> web.StreamResponse:
