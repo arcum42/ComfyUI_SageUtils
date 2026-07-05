@@ -797,13 +797,10 @@ async function createLLMTabVanilla(container) {
         
         const validFiles = files.filter(Boolean);
         if (validFiles.length > 0) {
-            const result = await handleFileUpload(state, visionSection, validFiles);
-            
-            if (result.added > 0) {
-                const msg = result.added === 1 ? 'Added 1 image from gallery' : `Added ${result.added} images from gallery`;
-                showNotification(msg, 'success');
-            }
-            
+            const result = await handleFileUpload(state, visionSection, validFiles, { source: data.source || 'gallery' });
+            const msg = result.added === 1 ? 'Added 1 image from gallery' : `Added ${result.added} images from gallery`;
+            showNotification(msg, 'success');
+
             if (result.errors.length > 0) {
                 result.errors.forEach(err => {
                     showNotification(`${err.file}: ${err.error}`, 'error');

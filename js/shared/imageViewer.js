@@ -155,6 +155,10 @@ export async function showFullImage(imageInput, imagesOrOptions = null) {
         img.style.cursor = zoomLevel > 1 ? (isDragging ? 'grabbing' : 'grab') : 'default';
     };
 
+    const getDisplayName = (image, imagePath) => {
+        return image.filename || image.name || imagePath?.split?.('/').pop() || 'Unknown Image';
+    };
+
     const zoom = (factor) => {
         const newZoom = Math.max(0.1, Math.min(5, zoomLevel * factor));
         if (newZoom !== zoomLevel) {
@@ -178,7 +182,7 @@ export async function showFullImage(imageInput, imagesOrOptions = null) {
         const currentImage = images[activeIndex];
         if (!currentImage) return;
 
-        const imageName = currentImage.name || currentImage.path?.split('/').pop() || 'Unknown';
+        const imageName = getDisplayName(currentImage, currentImage.path || currentImage.relative_path || currentImage.preview || currentImage.name);
         try {
             const imageUrl = await loadFullImage(currentImage);
             img.src = imageUrl;

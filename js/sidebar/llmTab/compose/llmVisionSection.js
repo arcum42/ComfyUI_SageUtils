@@ -132,7 +132,7 @@ export function validateImageFile(file) {
  * @param {HTMLElement} visionSection - Vision section element
  * @param {File} file - Image file
  */
-export async function addImageToPreview(state, visionSection, file) {
+export async function addImageToPreview(state, visionSection, file, source = null) {
     const previewGrid = visionSection.querySelector('.llm-image-preview-grid');
     const imageCount = visionSection.querySelector('.llm-image-count');
     const clearAllBtn = visionSection.querySelector('.llm-clear-all-images-btn');
@@ -144,7 +144,13 @@ export async function addImageToPreview(state, visionSection, file) {
     const base64 = await fileToBase64(file);
     
     // Add to state
-    const imageData = { file, preview: previewUrl, base64 };
+    const imageData = {
+        file,
+        preview: previewUrl,
+        base64,
+        source,
+        name: file.name
+    };
     state.images.push(imageData);
     
     // Create preview item
@@ -164,6 +170,23 @@ export async function addImageToPreview(state, visionSection, file) {
         removeImageFromPreview(state, visionSection, imageData, previewItem);
     });
     
+    if (source) {
+        const sourceBadge = document.createElement('div');
+        sourceBadge.className = 'llm-image-source-badge';
+        sourceBadge.textContent = source === 'gallery' ? 'Gallery' : source;
+        previewItem.appendChild(sourceBadge);
+    }
+
+    previewItem.addEventListener('click', async (e) => {
+        if (e.target === removeBtn) return;
+        try {
+            const { showFullImage } = await import('../../../shared/imageViewer.js');
+            await showFullImage(imageData, { images: state.images });
+        } catch (error) {
+            console.error('[LLM Vision] Failed to open image viewer:', error);
+        }
+    });
+
     previewItem.appendChild(img);
     previewItem.appendChild(removeBtn);
     previewGrid.appendChild(previewItem);
@@ -251,10 +274,11 @@ export function updateImageUI(state, visionSection) {
  * @param {File[]} files - Files to upload
  * @returns {Promise<Object>} - Upload result { added: number, errors: Array }
  */
-export async function handleFileUpload(state, visionSection, files) {
+export async function handleFileUpload(state, visionSection, files, options = {}) {
     const MAX_IMAGES = 10;
     const validFiles = [];
     const errors = [];
+    const source = options.source || null;
     
     // Validate each file
     for (const file of files) {
@@ -290,7 +314,7 @@ export async function handleFileUpload(state, visionSection, files) {
     
     // Add each valid image to preview
     for (const file of validFiles) {
-        await addImageToPreview(state, visionSection, file);
+        await addImageToPreview(state, visionSection, file, source);
     }
     
     return { added: validFiles.length, errors };

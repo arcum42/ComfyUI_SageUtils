@@ -12,12 +12,31 @@ import { API_ENDPOINTS } from './config.js';
  * @returns {Promise<string>} Promise that resolves to a blob URL
  */
 export async function loadFullImage(imageInput) {
+    if (typeof imageInput === 'string' && imageInput.startsWith('data:')) {
+        return imageInput;
+    }
+
+    if (typeof imageInput === 'object' && imageInput !== null) {
+        if (imageInput.preview && typeof imageInput.preview === 'string' &&
+            (imageInput.preview.startsWith('data:') || imageInput.preview.startsWith('blob:'))) {
+            return imageInput.preview;
+        }
+
+        if (imageInput.file instanceof Blob) {
+            return URL.createObjectURL(imageInput.file);
+        }
+    }
+
     const imagePath = typeof imageInput === 'string'
         ? imageInput
         : (imageInput.path || imageInput.relative_path || imageInput.name);
 
     if (!imagePath) {
         throw new Error('No valid image path provided');
+    }
+
+    if (typeof imagePath === 'string' && imagePath.startsWith('data:')) {
+        return imagePath;
     }
 
     try {
