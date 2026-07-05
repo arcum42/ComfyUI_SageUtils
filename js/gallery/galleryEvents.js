@@ -9,10 +9,14 @@ import { actions, selectors } from '../shared/stateManager.js';
 import { copyImageToClipboard, browseFolder, loadImagesFromFolder } from '../shared/imageUtils.js';
 import { handleDatasetText } from '../shared/datasetTextManager.js';
 import { getImageMetadataHtml } from '../shared/api/galleryApi.js';
-import { loadFullImage, openImageInNewTab as openImageInNewTabUtil, loadImageDataUrl } from '../shared/imageLoader.js';
+import { showFullImage } from '../shared/imageViewer.js';
+import { openImageInNewTab as openImageInNewTabUtil, loadImageDataUrl } from '../shared/imageLoader.js';
+import { createDialog } from '../components/dialogManager.js';
 import { CONTEXT_MENU_WIDTH, CONTEXT_MENU_ITEM_HEIGHT } from '../shared/constants.js';
 import { notifications } from '../shared/notifications.js';
 import { API_ENDPOINTS } from '../shared/config.js';
+
+export { showFullImage, showImageMetadata };
 
 /**
  * Shows a native OS folder picker dialog
@@ -395,522 +399,54 @@ async function showImageMetadata(image) {
  * @param {Object|null} metadata - Raw metadata object for parameter extraction
  */
 function showMetadataModal(image, metadataHtml, hasErrors = false, metadata = null) {
-    // Remove any existing metadata modal
-    const existingModal = document.querySelector('.metadata-modal');
-    if (existingModal) {
-        existingModal.remove();
-    }
+    const dialog = createDialog({
+        title: hasErrors ? '⚠️ Image Metadata' : '📄 Image Metadata',
+        width: '900px',
+        height: 'auto',
+        showCloseButton: true,
+        showFooter: false,
+        closeOnOverlayClick: true,
+        closable: true
+    });
 
-    // Create modal overlay
-    const modal = document.createElement('div');
-    modal.className = 'metadata-modal';
-
-    // Create modal content container
-    const modalContent = document.createElement('div');
-    modalContent.className = 'metadata-modal-content';
-
-    // Create header
-    const header = document.createElement('div');
-    header.className = 'metadata-modal-header';
-
-    const title = document.createElement('div');
-    title.className = 'metadata-modal-title';
-    
-    const statusIcon = hasErrors ? '⚠️' : '📄';
-    const statusText = hasErrors ? 'Image Metadata (with warnings)' : 'Image Metadata';
-    title.innerHTML = `${statusIcon} ${statusText}`;
-
-    const closeBtn = document.createElement('button');
-    closeBtn.innerHTML = '✕';
-    closeBtn.className = 'metadata-close-button';
-
-    header.appendChild(title);
-    header.appendChild(closeBtn);
-
-    // Create content area
     const content = document.createElement('div');
-    content.className = 'metadata-content-area';
-
-    // Add filename info at the top
-    const filenameInfo = document.createElement('div');
-    filenameInfo.className = 'metadata-filename-info';
-    filenameInfo.innerHTML = `
-        <div class="metadata-filename-title">📁 File Information</div>
-        <div><strong>Name:</strong> ${image.filename || image.name || 'Unknown'}</div>
-        <div class="metadata-filename-path">
-            ${image.path || image.relative_path || 'No path available'}
-        </div>
+    content.style.cssText = `
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        max-height: 70vh;
+        overflow-y: auto;
+        padding-right: 4px;
+        color: #f5f5f5;
     `;
 
-    content.appendChild(filenameInfo);
+    const filenameInfo = document.createElement('div');
+    filenameInfo.style.cssText = `
+        padding: 14px;
+        background: rgba(255,255,255,0.05);
+        border-radius: 8px;
+        font-size: 14px;
+    `;
+    filenameInfo.innerHTML = `
+        <div style="font-weight: 700; margin-bottom: 8px;">📁 File Information</div>
+        <div><strong>Name:</strong> ${image.filename || image.name || 'Unknown'}</div>
+        <div><strong>Path:</strong> ${image.path || image.relative_path || 'No path available'}</div>
+        ${image.modified ? `<div><strong>Modified:</strong> ${new Date(image.modified).toLocaleString()}</div>` : ''}
+    `;
 
-    // Add the metadata content
     const metadataDiv = document.createElement('div');
+    metadataDiv.style.cssText = `
+        font-size: 13px;
+        line-height: 1.5;
+        white-space: pre-wrap;
+    `;
     metadataDiv.innerHTML = metadataHtml;
+
+    content.appendChild(filenameInfo);
     content.appendChild(metadataDiv);
 
-    // Add copy button for generation parameters if they exist
-    if (metadata && metadata.generation_params && Object.keys(metadata.generation_params).length > 0) {
-        // Find the generation parameters section and add the button
-        const genParamsHeaders = metadataDiv.querySelectorAll('div');
-        let genParamsHeader = null;
-        
-        for (const header of genParamsHeaders) {
-            if (header.textContent && header.textContent.includes('🎨 Generation Parameters')) {
-                genParamsHeader = header;
-                break;
-            }
-        }
-        
-        if (genParamsHeader) {
-            // Create a container for the header and button
-            const headerContainer = document.createElement('div');
-            headerContainer.className = 'metadata-header-container';
-            
-            // Create the copy button
-            const copyBtn = document.createElement('button');
-            copyBtn.innerHTML = '📋';
-            copyBtn.title = 'Copy generation parameters to clipboard';
-            copyBtn.className = 'metadata-copy-button';
-            
-            copyBtn.addEventListener('click', async () => {
-                try {
-                    const genParams = metadata.generation_params;
-                    let textToCopy = '';
-                    
-                    // Format generation parameters as readable text
-                    Object.entries(genParams).forEach(([key, value]) => {
-                        if (typeof value === 'object') {
-                            textToCopy += `${key}:\n${JSON.stringify(value, null, 2)}\n\n`;
-                        } else {
-                            textToCopy += `${key}: ${value}\n`;
-                        }
-                    });
-                    
-                    // Try modern clipboard API first
-                    if (navigator.clipboard && navigator.clipboard.writeText) {
-                        await navigator.clipboard.writeText(textToCopy.trim());
-                    } else {
-                        // Fallback for older browsers
-                        const textArea = document.createElement('textarea');
-                        textArea.value = textToCopy.trim();
-                        textArea.style.position = 'fixed';
-                        textArea.style.left = '-999999px';
-                        textArea.style.top = '-999999px';
-                        document.body.appendChild(textArea);
-                        textArea.focus();
-                        textArea.select();
-                        document.execCommand('copy');
-                        document.body.removeChild(textArea);
-                    }
-                    
-                    // Show success feedback
-                    const originalText = copyBtn.innerHTML;
-                    const originalBg = copyBtn.style.backgroundColor;
-                    copyBtn.innerHTML = '✅';
-                    copyBtn.style.backgroundColor = '#2196F3';
-                    copyBtn.style.cursor = 'default';
-                    copyBtn.disabled = true;
-                    
-                    setTimeout(() => {
-                        copyBtn.innerHTML = originalText;
-                        copyBtn.style.backgroundColor = originalBg;
-                        copyBtn.style.cursor = 'pointer';
-                        copyBtn.disabled = false;
-                    }, 1500);
-                    
-                } catch (error) {
-                    console.error('Error copying to clipboard:', error);
-                    
-                    // Show error feedback
-                    const originalText = copyBtn.innerHTML;
-                    const originalBg = copyBtn.style.backgroundColor;
-                    copyBtn.innerHTML = '❌';
-                    copyBtn.style.backgroundColor = '#f44336';
-                    copyBtn.style.cursor = 'default';
-                    copyBtn.disabled = true;
-                    
-                    setTimeout(() => {
-                        copyBtn.innerHTML = originalText;
-                        copyBtn.style.backgroundColor = originalBg;
-                        copyBtn.style.cursor = 'pointer';
-                        copyBtn.disabled = false;
-                    }, 1500);
-                }
-            });
-            
-            // Move the original header styling to a new div
-            const headerText = document.createElement('div');
-            headerText.style.cssText = genParamsHeader.style.cssText;
-            headerText.innerHTML = genParamsHeader.innerHTML;
-            
-            // Replace the original header with the container
-            headerContainer.appendChild(headerText);
-            headerContainer.appendChild(copyBtn);
-            genParamsHeader.parentNode.replaceChild(headerContainer, genParamsHeader);
-        }
-    }
-
-    // Assemble modal
-    modalContent.appendChild(header);
-    modalContent.appendChild(content);
-    modal.appendChild(modalContent);
-
-    // Event handlers
-    closeBtn.addEventListener('click', () => {
-        document.body.removeChild(modal);
-    });
-
-    modal.addEventListener('click', (e) => {
-        if (e.target === modal) {
-            document.body.removeChild(modal);
-        }
-    });
-
-    // Keyboard handling
-    const handleKeyDown = (e) => {
-        if (e.key === 'Escape') {
-            document.body.removeChild(modal);
-            document.removeEventListener('keydown', handleKeyDown);
-        }
-    };
-    document.addEventListener('keydown', handleKeyDown);
-
-    // Show modal
-    document.body.appendChild(modal);
-}
-
-/**
- * Shows full image in modal viewer
- * @param {Object|string} imageInput - Image object or image path string
- * @param {Array} images - Optional array of all images for navigation
- */
-export async function showFullImage(imageInput, images) {
-    // Handle both image object and path string inputs
-    let imagePath;
-    let image;
-    
-    if (typeof imageInput === 'string') {
-        // Legacy: path string provided
-        imagePath = imageInput;
-        if (!images) {
-            images = selectors.galleryImages() || [];
-        }
-        image = images.find(img => 
-            img.path === imagePath || 
-            img.relative_path === imagePath ||
-            img.name === imagePath.split('/').pop()
-        );
-    } else {
-        // New: image object provided
-        image = imageInput;
-        imagePath = image.path || image.relative_path || image.name;
-    }
-    
-    // Get current images if not provided
-    if (!images) {
-        images = selectors.galleryImages() || [];
-    }
-    
-    const currentIndex = images.findIndex(img => 
-        img.path === imagePath || 
-        img.relative_path === imagePath ||
-        img.name === (imagePath.includes('/') ? imagePath.split('/').pop() : imagePath)
-    );
-    
-    if (currentIndex === -1) {
-        console.warn('Image not found in current set:', imagePath);
-        return;
-    }
-    
-    let activeIndex = currentIndex;
-    let zoomLevel = 1;
-    let isDragging = false;
-    let startX, startY, translateX = 0, translateY = 0;
-    
-    // Create modal overlay
-    const modal = document.createElement('div');
-    modal.className = 'fullimage-modal';
-    
-    // Create image container
-    const imageContainer = document.createElement('div');
-    imageContainer.className = 'fullimage-image-container';
-    
-    // Create the main image element
-    const img = document.createElement('img');
-    img.className = 'fullimage-img';
-    
-    // Create controls container
-    const controls = document.createElement('div');
-    controls.className = 'fullimage-controls';
-    
-    // Close button
-    const closeBtn = document.createElement('button');
-    closeBtn.innerHTML = '✕';
-    closeBtn.title = 'Close (Esc)';
-    closeBtn.className = 'fullimage-button';
-    
-    // Zoom controls
-    const zoomInBtn = document.createElement('button');
-    zoomInBtn.innerHTML = '+';
-    zoomInBtn.title = 'Zoom In (+)';
-    zoomInBtn.className = 'fullimage-button';
-    
-    const zoomOutBtn = document.createElement('button');
-    zoomOutBtn.innerHTML = '−';
-    zoomOutBtn.title = 'Zoom Out (-)';
-    zoomOutBtn.className = 'fullimage-button';
-    
-    const resetZoomBtn = document.createElement('button');
-    resetZoomBtn.innerHTML = '1:1';
-    resetZoomBtn.title = 'Reset Zoom (0)';
-    resetZoomBtn.className = 'fullimage-button';
-    resetZoomBtn.style.fontSize = '12px';
-    
-    // Navigation arrows (only show if multiple images)
-    let prevBtn, nextBtn;
-    if (images.length > 1) {
-        prevBtn = document.createElement('button');
-        prevBtn.innerHTML = '◀';
-        prevBtn.title = 'Previous Image (←)';
-        prevBtn.className = 'fullimage-nav-button';
-        prevBtn.style.left = '20px';
-        prevBtn.style.top = '50%';
-        prevBtn.style.transform = 'translateY(-50%)';
-        
-        nextBtn = document.createElement('button');
-        nextBtn.innerHTML = '▶';
-        nextBtn.title = 'Next Image (→)';
-        nextBtn.className = 'fullimage-nav-button';
-        nextBtn.style.left = 'auto';
-        nextBtn.style.right = '20px';
-    }
-    
-    // Image info overlay
-    const infoOverlay = document.createElement('div');
-    infoOverlay.className = 'fullimage-info-overlay';
-    
-    // Function to update image display
-    async function updateImage() {
-        const currentImage = images[activeIndex];
-        if (!currentImage) return;
-        
-        const imageName = currentImage.name || currentImage.path?.split('/').pop() || 'Unknown';
-        
-        try {
-            // Use centralized image loader
-            const imageUrl = await loadFullImage(currentImage);
-            img.src = imageUrl;
-        } catch (error) {
-            console.error('Error loading full image:', error);
-            img.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300"><rect width="400" height="300" fill="%23333"/><text x="200" y="150" text-anchor="middle" font-size="16" fill="%23999">Error loading image</text></svg>';
-        }
-        
-        // Update info overlay
-        const sizeInfo = currentImage.width && currentImage.height 
-            ? ` (${currentImage.width}×${currentImage.height})`
-            : '';
-        const indexInfo = images.length > 1 ? ` [${activeIndex + 1}/${images.length}]` : '';
-        infoOverlay.textContent = `${imageName}${sizeInfo}${indexInfo}`;
-        
-        // Update navigation button states
-        if (prevBtn) prevBtn.style.opacity = activeIndex > 0 ? '1' : '0.5';
-        if (nextBtn) nextBtn.style.opacity = activeIndex < images.length - 1 ? '1' : '0.5';
-    }
-    
-    // Function to update zoom transform
-    function updateTransform() {
-        img.style.transform = `scale(${zoomLevel}) translate(${translateX}px, ${translateY}px)`;
-        modal.style.cursor = zoomLevel > 1 ? (isDragging ? 'grabbing' : 'grab') : 'default';
-    }
-    
-    // Mouse wheel zoom
-    function handleWheel(e) {
-        e.preventDefault();
-        const delta = e.deltaY > 0 ? 0.9 : 1.1;
-        const newZoom = Math.max(0.1, Math.min(5, zoomLevel * delta));
-        
-        if (newZoom !== zoomLevel) {
-            zoomLevel = newZoom;
-            
-            // Reset pan when zooming out to 1x or below
-            if (zoomLevel <= 1) {
-                translateX = 0;
-                translateY = 0;
-            }
-            
-            updateTransform();
-        }
-    }
-    
-    // Mouse drag panning (only when zoomed in)
-    function handleMouseDown(e) {
-        if (zoomLevel <= 1) return;
-        
-        isDragging = true;
-        startX = e.clientX - translateX;
-        startY = e.clientY - translateY;
-        modal.style.cursor = 'grabbing';
-        e.preventDefault();
-    }
-    
-    function handleMouseMove(e) {
-        if (!isDragging || zoomLevel <= 1) return;
-        
-        translateX = e.clientX - startX;
-        translateY = e.clientY - startY;
-        updateTransform();
-        e.preventDefault();
-    }
-    
-    function handleMouseUp() {
-        if (!isDragging) return;
-        isDragging = false;
-        modal.style.cursor = zoomLevel > 1 ? 'grab' : 'default';
-    }
-    
-    // Keyboard navigation
-    async function handleKeyDown(e) {
-        switch(e.key) {
-            case 'Escape':
-                closeModal();
-                break;
-            case 'ArrowLeft':
-                if (images.length > 1 && activeIndex > 0) {
-                    activeIndex--;
-                    await updateImage();
-                    resetZoom();
-                }
-                e.preventDefault();
-                break;
-            case 'ArrowRight':
-                if (images.length > 1 && activeIndex < images.length - 1) {
-                    activeIndex++;
-                    await updateImage();
-                    resetZoom();
-                }
-                e.preventDefault();
-                break;
-            case '+':
-            case '=':
-                zoom(1.2);
-                e.preventDefault();
-                break;
-            case '-':
-                zoom(0.8);
-                e.preventDefault();
-                break;
-            case '0':
-                resetZoom();
-                e.preventDefault();
-                break;
-            case ' ':
-                // Spacebar to toggle between fit and 100% zoom
-                if (zoomLevel === 1) {
-                    zoom(2);
-                } else {
-                    resetZoom();
-                }
-                e.preventDefault();
-                break;
-        }
-    }
-    
-    // Zoom functions
-    function zoom(factor) {
-        const newZoom = Math.max(0.1, Math.min(5, zoomLevel * factor));
-        if (newZoom !== zoomLevel) {
-            zoomLevel = newZoom;
-            
-            // Reset pan when zooming out to 1x or below
-            if (zoomLevel <= 1) {
-                translateX = 0;
-                translateY = 0;
-            }
-            
-            updateTransform();
-        }
-    }
-    
-    function resetZoom() {
-        zoomLevel = 1;
-        translateX = 0;
-        translateY = 0;
-        updateTransform();
-    }
-    
-    // Navigation functions
-    async function navigatePrev() {
-        if (images.length > 1 && activeIndex > 0) {
-            activeIndex--;
-            await updateImage();
-            resetZoom();
-        }
-    }
-    
-    async function navigateNext() {
-        if (images.length > 1 && activeIndex < images.length - 1) {
-            activeIndex++;
-            await updateImage();
-            resetZoom();
-        }
-    }
-    
-    // Close modal function
-    function closeModal() {
-        document.body.removeChild(modal);
-        document.removeEventListener('keydown', handleKeyDown);
-    }
-    
-    // Event listeners
-    closeBtn.addEventListener('click', closeModal);
-    zoomInBtn.addEventListener('click', () => zoom(1.2));
-    zoomOutBtn.addEventListener('click', () => zoom(0.8));
-    resetZoomBtn.addEventListener('click', resetZoom);
-    
-    if (prevBtn) prevBtn.addEventListener('click', navigatePrev);
-    if (nextBtn) nextBtn.addEventListener('click', navigateNext);
-    
-    modal.addEventListener('click', (e) => {
-        if (e.target === modal) closeModal();
-    });
-    
-    modal.addEventListener('wheel', handleWheel);
-    modal.addEventListener('mousedown', handleMouseDown);
-    modal.addEventListener('mousemove', handleMouseMove);
-    modal.addEventListener('mouseup', handleMouseUp);
-    modal.addEventListener('mouseleave', handleMouseUp);
-    
-    document.addEventListener('keydown', handleKeyDown);
-    
-    // Assemble modal - Close button moved to far right for convention
-    controls.appendChild(zoomInBtn);
-    controls.appendChild(zoomOutBtn);
-    controls.appendChild(resetZoomBtn);
-    controls.appendChild(closeBtn);
-    
-    imageContainer.appendChild(img);
-    imageContainer.appendChild(controls);
-    imageContainer.appendChild(infoOverlay);
-    
-    if (prevBtn) imageContainer.appendChild(prevBtn);
-    if (nextBtn) imageContainer.appendChild(nextBtn);
-    
-    modal.appendChild(imageContainer);
-    document.body.appendChild(modal);
-    
-    // Initialize display
-    await updateImage();
-    
-    // Prevent body scrolling while modal is open
-    document.body.style.overflow = 'hidden';
-    
-    // Restore body scrolling when modal closes
-    const originalCloseModal = closeModal;
-    closeModal = function() {
-        document.body.style.overflow = '';
-        originalCloseModal();
-    };
+    dialog.setContent(content);
+    dialog.show();
 }
 
 /**
@@ -946,7 +482,7 @@ export function showImageContextMenu(event, image) {
             // Menu items - organized by function
             const menuItems = [
                 // Viewing group
-                { text: '👁️ View Full Size', action: () => showFullImage(image) },
+                { text: '👁️ View Full Size', action: () => showFullImage(image, { showMetadata: showImageMetadata }) },
                 { text: '🔍 Show Details', action: () => showImageMetadata(image) },
                 { text: '---', action: null }, // Separator
                 
@@ -998,7 +534,7 @@ export function showImageContextMenu(event, image) {
             // Fallback without rate limiting
             const menuItems = [
                 // Viewing group
-                { text: '👁️ View Full Size', action: () => showFullImage(image) },
+                { text: '👁️ View Full Size', action: () => showFullImage(image, { showMetadata: showImageMetadata }) },
                 { text: '🔍 Show Details', action: () => showImageMetadata(image) },
                 { text: '---', action: null },
                 

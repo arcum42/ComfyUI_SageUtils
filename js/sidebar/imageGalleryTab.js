@@ -23,7 +23,7 @@ import {
 import { DataCache, CacheKeys } from "../shared/dataCache.js";
 
 // Import gallery event handlers
-import { showFullImage, showImageContextMenu, browseCustomFolder, toggleViewMode } from '../gallery/galleryEvents.js';
+import { showImageContextMenu, showImageMetadata as showImageMetadataModal, browseCustomFolder, toggleViewMode } from '../gallery/galleryEvents.js';
 
 // Import configuration utilities
 import { getThumbnailSize } from "../shared/config.js";
@@ -182,7 +182,6 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
     
     // Extract gallery functions from parameters instead of global window
     const { 
-        showFullImage, 
         showImageContextMenu, 
         browseCustomFolder, 
         toggleViewMode,
@@ -601,7 +600,7 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
         } else {
             // Render all at once for small folders
             filteredImages.forEach(image => {
-                const imageItem = createImageItem(image, showFullImage, showImageContextMenu);
+                const imageItem = createImageItem(image, showImageContextMenu, showImageMetadataModal);
                 grid.gridContainer.appendChild(imageItem);
             });
         }
@@ -689,7 +688,7 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
             
             for (let i = 0; i < immediateCount; i++) {
                 const image = prioritizedImages[i];
-                const imageItem = createImageItem(image, showFullImage, showImageContextMenu);
+                const imageItem = createImageItem(image, showImageContextMenu, showImageMetadataModal);
                 
                 // If using skeletons, replace the first skeleton with actual content
                 if (useSkeletons) {
@@ -724,7 +723,7 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
                         }
                         
                         const image = prioritizedImages[i];
-                        const imageItem = createImageItem(image, showFullImage, showImageContextMenu);
+                        const imageItem = createImageItem(image, showImageContextMenu, showImageMetadataModal);
                         
                         // If using skeletons, replace skeleton with actual content
                         if (useSkeletons) {
@@ -781,7 +780,7 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
             console.warn('Gallery: Fallback render triggered, rendering first', fallbackCount, 'thumbnails');
             for (let i = 0; i < fallbackCount; i++) {
                 const image = images[i];
-                const imageItem = createImageItem(image, showFullImage, showImageContextMenu);
+                const imageItem = createImageItem(image, showImageContextMenu, showImageMetadataModal);
                 grid.gridContainer.appendChild(imageItem);
             }
         }
@@ -1116,7 +1115,6 @@ export async function createImageGalleryTab(container) {
 
     // Set up event handlers and provide necessary functions via parameters
     const galleryFunctions = {
-        showFullImage,
         showImageContextMenu, 
         browseCustomFolder,
         toggleViewMode,

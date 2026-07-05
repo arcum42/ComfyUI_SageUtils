@@ -8,15 +8,16 @@ import { getThumbnailSize } from "./config.js";
 import { formatFileSize } from "../reports/reportGenerator.js";
 import { actions, selectors } from "./stateManager.js";
 import { copyImageToClipboard, generateThumbnail } from "./imageUtils.js";
+import { showFullImage } from "./imageViewer.js";
 
 /**
  * Creates a thumbnail item for an image with hover effects and click handlers
  * @param {Object} image - Image object with path, filename, size, dimensions
- * @param {Function} showFullImage - Callback to show full image viewer
  * @param {Function} showImageContextMenu - Callback to show context menu
+ * @param {Function} showMetadata - Callback to show image metadata in the current UI
  * @returns {HTMLElement} Thumbnail item element
  */
-export function createImageItem(image, showFullImage, showImageContextMenu) {
+export function createImageItem(image, showImageContextMenu, showMetadata) {
     const item = document.createElement('div');
     item.className = 'gallery-image-item';
     item.style.cssText = `
@@ -163,7 +164,7 @@ export function createImageItem(image, showFullImage, showImageContextMenu) {
             copyImageToClipboard(image.path);
         } else {
             // Show full image on regular click
-            showFullImage(image);
+            showFullImage(image, { showMetadata });
         }
     });
     
