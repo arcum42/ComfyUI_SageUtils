@@ -30,6 +30,13 @@ The LLM tab handles:
 - prompt presets and system prompts,
 - cross-tab integration with Prompt Builder and Gallery.
 
+## Gallery integration
+
+- Gallery images are sent to the LLM tab through the shared cross-tab event bus.
+- Incoming gallery payloads can include base64 preview data, file objects, and source metadata.
+- The vision section renders gallery-sourced preview cards with source badges and supports opening them in the shared full-image viewer.
+- Metadata sent from the gallery is appended to the current LLM prompt or can be routed to Prompt Builder.
+
 ## Messages and data flow
 
 - Sends provider requests to backend `/sage_llm/` endpoints.

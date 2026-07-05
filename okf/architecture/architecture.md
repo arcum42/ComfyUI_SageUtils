@@ -38,6 +38,14 @@ Key repository areas:
 - `docs/` — legacy documentation and implementation notes
 - `okf/` — canonical structured knowledge bundle for project documentation
 
+## Gallery and LLM integration
+
+The frontend now includes a shared gallery/vision integration path:
+- `js/shared/imageLoader.js` centralizes raw image and thumbnail fetches.
+- `js/shared/imageViewer.js` provides the unified viewer for gallery and LLM preview items.
+- `js/sidebar/llmTab/compose/llmVisionSection.js` receives gallery handoff payloads and preserves source metadata.
+- Cross-tab messaging supports image, prompt, and metadata transfer among Gallery, Prompt Builder, and LLM.
+
 ## Frontend architecture
 
 The frontend is built as a ComfyUI extension. The sidebar uses tabs that are created once and hidden/shown to preserve state.

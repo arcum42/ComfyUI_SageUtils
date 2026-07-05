@@ -287,7 +287,7 @@ def get_reasoning_models(enabled: bool) -> list[str]:
     capabilities_map = get_model_capabilities_map(enabled)
     return sorted([name for name, capabilities in capabilities_map.items() if capabilities.reasoning])
 
-def load_model(enabled: bool, model: str, keep_alive: int = 0) -> bool:
+def load_model(enabled: bool, model: str, keep_alive: int = 0, options: dict[str, Any] | None = None) -> bool:
     """Ask LM Studio REST server to load a model."""
     raise_if_provider_unavailable(
         enabled,
@@ -298,8 +298,20 @@ def load_model(enabled: bool, model: str, keep_alive: int = 0) -> bool:
         operation='load_model',
     )
 
-    # keep_alive is not currently used by LM Studio REST.
     payload: dict[str, Any] = {'model': model}
+    if isinstance(options, dict):
+        if 'context_length' in options:
+            payload['context_length'] = options['context_length']
+        if 'eval_batch_size' in options:
+            payload['eval_batch_size'] = options['eval_batch_size']
+        if 'flash_attention' in options:
+            payload['flash_attention'] = options['flash_attention']
+        if 'num_experts' in options:
+            payload['num_experts'] = options['num_experts']
+        if 'offload_kv_cache_to_gpu' in options:
+            payload['offload_kv_cache_to_gpu'] = options['offload_kv_cache_to_gpu']
+        if 'echo_load_config' in options:
+            payload['echo_load_config'] = options['echo_load_config']
 
     try:
         lmstudio_request_json_load(payload)

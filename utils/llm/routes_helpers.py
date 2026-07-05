@@ -587,11 +587,33 @@ def parse_load_model_request(
     if not is_valid:
         return False, error_msg, {}
 
+    def _first_value(*keys: str):
+        for key in keys:
+            if key in data and data.get(key) is not None:
+                return data.get(key)
+        return None
+
     payload = {
         'provider': provider,
         'model': data['model'],
         'keep_alive': data.get('keep_alive', 60),
     }
+
+    options: dict[str, Any] = {}
+    context_length = _first_value('context_length', 'contextLength')
+    if context_length is not None:
+        options['context_length'] = context_length
+
+    num_ctx = _first_value('num_ctx', 'numCtx')
+    if num_ctx is not None:
+        options['num_ctx'] = num_ctx
+
+    if isinstance(data.get('options'), dict):
+        options.update(data['options'])
+
+    if options:
+        payload['options'] = options
+
     return True, None, payload
 
 

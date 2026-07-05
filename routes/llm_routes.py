@@ -687,6 +687,7 @@ def _register_load_routes(routes_instance):
             provider = payload['provider']
             model = payload['model']
             keep_alive = payload['keep_alive']
+            options = payload.get('options')
 
             from ..utils.llm import service as llm
 
@@ -707,7 +708,7 @@ def _register_load_routes(routes_instance):
                     operation='load_model',
                 )
 
-            load_success = llm.load_model(provider, model, keep_alive=keep_alive)
+            load_success = llm.load_model(provider, model, keep_alive=keep_alive, options=options)
             if not load_success:
                 return llm_error_response(
                     f"Model '{model}' could not be loaded for provider {provider}",

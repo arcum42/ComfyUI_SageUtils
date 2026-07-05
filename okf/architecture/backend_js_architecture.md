@@ -34,9 +34,19 @@ This concept documents the overall frontend JavaScript architecture of Sage Util
 - `js/llm/` — LLM API client, conversation state, provider management, presets, and settings.
 - `js/promptBuilder/` — prompt generation, saved prompts, and tag library.
 - `js/gallery/` — gallery components and transfer events.
+- `js/shared/` — shared image loading, viewer, cross-tab messaging, and browser utility helpers.
 - `js/reports/` — model report generation.
 - `js/nodes/` — node-specific frontend helpers.
 - `js/file/` — file management components.
+
+## Gallery and vision integration
+
+- `js/shared/imageLoader.js` centralizes raw gallery image and thumbnail fetch behavior behind `API_ENDPOINTS`.
+- `js/shared/imageViewer.js` provides the unified full-image modal used by both gallery thumbnails and LLM preview items.
+- `js/gallery/galleryEvents.js` and `js/sidebar/imageGalleryTab.js` now open images through the shared viewer instead of duplicate rendering logic.
+- `js/sidebar/llmTab/compose/llmVisionSection.js` receives gallery image transfer payloads, preserves source metadata, and renders preview items that can open in the shared viewer.
+- `js/sidebar/llmTab/llmTabShell.js` subscribes to gallery `IMAGE_TRANSFER` events and routes incoming images into the LLM vision upload flow.
+- Cross-tab messaging now supports richer handoff semantics for text, metadata, and images between Gallery, Prompt Builder, and LLM.
 
 ## Design notes
 

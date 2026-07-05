@@ -471,6 +471,7 @@ export async function urlToBase64(url) {
  * @param {string} params.provider - 'ollama', 'lmstudio', or 'native'
  * @param {string} params.model - Model name
  * @param {number} [params.keep_alive=60] - Seconds to keep model resident (default 60)
+ * @param {Object} [params.options] - Provider-specific load options
  * @returns {Promise<Object>} - { loaded: true, provider, model }
  */
 export async function loadModel(params) {

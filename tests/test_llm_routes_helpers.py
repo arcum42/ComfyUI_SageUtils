@@ -259,6 +259,36 @@ class TestOptions:
         assert options["num_ctx"] == 4096
         assert isinstance(options["tools"], list)
 
+    def test_parse_load_model_request_preserves_lmstudio_context_length(self):
+        """Load-model request parsing preserves LM Studio context length."""
+        data = {
+            "provider": "lmstudio",
+            "model": "gemma",
+            "contextLength": 8192,
+        }
+
+        is_valid, error_msg, payload = parse_load_model_request(data)
+        assert is_valid is True
+        assert error_msg is None
+        assert payload["provider"] == "lmstudio_rest"
+        assert payload["model"] == "gemma"
+        assert payload["options"]["context_length"] == 8192
+
+    def test_parse_load_model_request_preserves_ollama_num_ctx(self):
+        """Load-model request parsing preserves Ollama context size."""
+        data = {
+            "provider": "ollama",
+            "model": "atlas",
+            "numCtx": 4096,
+        }
+
+        is_valid, error_msg, payload = parse_load_model_request(data)
+        assert is_valid is True
+        assert error_msg is None
+        assert payload["provider"] == "ollama_rest"
+        assert payload["model"] == "atlas"
+        assert payload["options"]["num_ctx"] == 4096
+
     def test_build_generation_payload_options_ollama_tool_profile_resolution(self):
         """Ollama resolves tools from selected tool profile when tools are enabled."""
         data = {

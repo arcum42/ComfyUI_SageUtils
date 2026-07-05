@@ -138,13 +138,32 @@ export async function handleSend(state, textarea, responseSection, sendBtn, stop
     updatePhaseBadge(responseSection, 'loading-model', 'Loading model');
 
     try {
-        // Pre-load the model so the user sees the phase boundary
+        // Pre-load the model so the user sees the phase boundary.
+        // For providers like LM Studio and Ollama, include the selected
+        // context length so the preloaded handle matches generation settings.
         const keepAlive = state.settings?.keepAlive ?? 60;
-        await loadModel({
+        const loadModelPayload = {
             provider: state.provider,
             model: state.model,
             keep_alive: keepAlive,
-        });
+        };
+
+        const contextLength = state.settings?.contextLength ?? state.settings?.context_length;
+        const contextLengthEnabled = state.settings?.contextLengthEnabled ?? state.settings?.context_length_enabled ?? state.settings?.send_context_length;
+        const shouldSendContextLength = contextLengthEnabled !== false && contextLength !== undefined && contextLength !== null;
+
+        if (shouldSendContextLength) {
+            const numericContextLength = Number(contextLength);
+            if (!Number.isNaN(numericContextLength)) {
+                if (state.provider === 'lmstudio_rest') {
+                    loadModelPayload.options = { context_length: numericContextLength };
+                } else if (state.provider === 'ollama_rest') {
+                    loadModelPayload.options = { num_ctx: numericContextLength };
+                }
+            }
+        }
+
+        await loadModel(loadModelPayload);
     } catch (loadError) {
         // Preload is a readiness check; if it fails, stop here and surface the error.
         console.error('[LLM] Model preload failed:', loadError);

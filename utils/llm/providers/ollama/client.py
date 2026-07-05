@@ -302,7 +302,7 @@ def get_reasoning_models(enabled: bool) -> list[str]:
     capabilities_map = get_model_capabilities_map(enabled, model_names=get_models(enabled))
     return sorted([name for name, capabilities in capabilities_map.items() if capabilities.reasoning])
 
-def load_model(enabled: bool, model: str, keep_alive: int = 60) -> bool:
+def load_model(enabled: bool, model: str, keep_alive: int = 60, options: dict[str, Any] | None = None) -> bool:
     """Warm-load an Ollama model via /api/generate with an empty prompt."""
     raise_if_provider_unavailable(
         enabled,
@@ -324,6 +324,12 @@ def load_model(enabled: bool, model: str, keep_alive: int = 60) -> bool:
         'stream': False,
         'keep_alive': f'{keep_alive_seconds}s',
     }
+
+    if isinstance(options, dict):
+        _apply_top_level_controls(payload, options)
+        built_options = _build_options(options)
+        if built_options:
+            payload['options'] = built_options
 
     try:
         response = ollama_request_json_generate(payload, timeout=_get_request_timeout())

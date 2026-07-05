@@ -490,10 +490,11 @@ def _load_provider_model(
     model: str,
     *,
     keep_alive: int = 0,
+    options: dict[str, Any] | None = None,
 ) -> bool:
     provider = _provider_client(provider_key)
     enabled = _provider_enabled(provider_key)
-    return provider.load_model(enabled, model, keep_alive)
+    return provider.load_model(enabled, model, keep_alive, options=options)
 
 
 def _unload_provider_model(
@@ -510,6 +511,7 @@ def load_model(
     model: str,
     *,
     keep_alive: int = 0,
+    options: dict[str, Any] | None = None,
 ) -> bool:
     provider_key = normalize_provider_key(provider_key)
 
@@ -522,14 +524,14 @@ def load_model(
         enabled = _provider_enabled(provider_key)
         if _provider_client(provider_key).is_model_loaded(enabled, model):
             return True
-        return _load_provider_model(provider_key, model, keep_alive=keep_alive)
+        return _load_provider_model(provider_key, model, keep_alive=keep_alive, options=options)
 
     if provider_key == OLLAMA_REST_KEY:
         ensure_ollama_rest_initialized(force=True)
         enabled = _provider_enabled(provider_key)
         if _provider_client(provider_key).is_model_loaded(enabled, model):
             return True
-        return _load_provider_model(provider_key, model, keep_alive=keep_alive)
+        return _load_provider_model(provider_key, model, keep_alive=keep_alive, options=options)
 
     if provider_key == OPENAI_KEY:
         ensure_openai_initialized(force=True)
