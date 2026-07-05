@@ -449,6 +449,109 @@ function showMetadataModal(image, metadataHtml, hasErrors = false, metadata = nu
     dialog.show();
 }
 
+async function getImageMetadataText(image) {
+    const result = await getImageMetadataHtml(image);
+    const metadata = result.metadata || {};
+    const lines = [];
+    const imagePath = image.path || image.relative_path || image.name || 'Unknown';
+
+    lines.push(`Image metadata for: ${image.filename || imagePath}`);
+    lines.push(`Path: ${imagePath}`);
+
+    if (metadata.file_info) {
+        const fileInfo = metadata.file_info;
+        if (fileInfo.filename) lines.push(`Filename: ${fileInfo.filename}`);
+        if (fileInfo.dimensions) lines.push(`Dimensions: ${fileInfo.dimensions.width}×${fileInfo.dimensions.height}`);
+        if (fileInfo.size_human || fileInfo.size) lines.push(`Size: ${fileInfo.size_human || fileInfo.size}`);
+        if (fileInfo.format) lines.push(`Format: ${fileInfo.format}`);
+        if (fileInfo.modified) lines.push(`Modified: ${new Date(fileInfo.modified).toLocaleString()}`);
+    }
+
+    if (metadata.generation_params && Object.keys(metadata.generation_params).length > 0) {
+        lines.push('');
+        lines.push('Generation parameters:');
+        Object.entries(metadata.generation_params).forEach(([key, value]) => {
+            const displayValue = typeof value === 'object' ? JSON.stringify(value) : String(value);
+            lines.push(`${key}: ${displayValue}`);
+        });
+    }
+
+    if (metadata.exif && Object.keys(metadata.exif).length > 0) {
+        lines.push('');
+        lines.push('EXIF data:');
+        Object.entries(metadata.exif).forEach(([key, value]) => {
+            const displayValue = typeof value === 'object' ? JSON.stringify(value) : String(value);
+            lines.push(`${key}: ${displayValue}`);
+        });
+    }
+
+    if (lines.length === 2) {
+        lines.push('No metadata available.');
+    }
+
+    return lines.join('\n');
+}
+
+async function sendImageMetadataToLLM(image) {
+    const metadataText = await getImageMetadataText(image);
+    const { sendTextToLLM } = await import('../shared/crossTabMessaging.js');
+    const text = `\n\n${metadataText}`;
+    sendTextToLLM(text, { source: 'gallery-metadata', autoSwitch: true, append: true });
+    notifications.success('Metadata appended to LLM prompt');
+}
+
+async function sendImageAndMetadataToLLM(image) {
+    const metadataText = await getImageMetadataText(image);
+    const imagePath = image.path || image.relative_path || image.name;
+    const { sendTextToLLM, sendImagesToLLM } = await import('../shared/crossTabMessaging.js');
+
+    sendTextToLLM(`\n\n${metadataText}`, {
+        source: 'gallery-metadata',
+        autoSwitch: true,
+        append: true
+    });
+
+    try {
+        const base64DataUrl = await imageToBase64(imagePath);
+        sendImagesToLLM([{
+            file: null,
+            preview: base64DataUrl,
+            base64: base64DataUrl,
+            name: image.name || imagePath.split('/').pop()
+        }], {
+            source: 'gallery',
+            autoSwitch: true
+        });
+        notifications.success('Image and metadata sent to LLM tab');
+    } catch (error) {
+        console.error('Failed to send image and metadata to LLM:', error);
+        notifications.error('Failed to send image and metadata to LLM');
+    }
+}
+
+async function sendImageMetadataToPromptBuilder(image) {
+    const metadataText = await getImageMetadataText(image);
+    const { sendTextToPromptBuilder } = await import('../shared/crossTabMessaging.js');
+    sendTextToPromptBuilder(metadataText, { source: 'gallery-metadata', autoSwitch: true });
+    notifications.success('Metadata sent to Prompt Builder');
+}
+
+async function copyImageMetadataToSelectedNode(image) {
+    const metadataText = await getImageMetadataText(image);
+    const app = typeof window !== 'undefined' ? window.app : globalThis.app;
+    if (!app) {
+        notifications.error('Selected node feature is unavailable in this environment');
+        return;
+    }
+    const { copyTextToSelectedNode } = await import('../utils/textCopyUtils.js');
+    const success = copyTextToSelectedNode(app, metadataText);
+    if (success) {
+        notifications.success('Metadata copied to selected node');
+    } else {
+        notifications.error('Please select a valid text node first');
+    }
+}
+
 /**
  * Shows context menu for image operations
  */
@@ -485,7 +588,24 @@ export function showImageContextMenu(event, image) {
                 { text: '👁️ View Full Size', action: () => showFullImage(image, { showMetadata: showImageMetadata }) },
                 { text: '🔍 Show Details', action: () => showImageMetadata(image) },
                 { text: '---', action: null }, // Separator
-                
+
+                // Metadata send group
+                {
+                    text: '✉️ Send metadata...',
+                    submenu: [
+                        { text: 'LLM tab', action: () => sendImageMetadataToLLM(image) },
+                        { text: 'Prompt Builder', action: () => sendImageMetadataToPromptBuilder(image) },
+                        { text: 'Selected node', action: () => copyImageMetadataToSelectedNode(image) }
+                    ]
+                },
+                {
+                    text: '🖼️ Send image + metadata...',
+                    submenu: [
+                        { text: 'LLM tab', action: () => sendImageAndMetadataToLLM(image) }
+                    ]
+                },
+                { text: '---', action: null }, // Separator
+
                 // Actions group
                 { text: '🤖 Send to LLM Chat', action: async () => {
                     // Check rate limit
@@ -494,7 +614,7 @@ export function showImageContextMenu(event, image) {
                         showNotification(`Please wait ${waitTime}s before sending more images`, 'warning');
                         return;
                     }
-                    
+
                     try {
                         // Convert image to base64 (returns data URL like "data:image/jpeg;base64,...")
                         const base64DataUrl = await imageToBase64(imagePath);
@@ -513,11 +633,11 @@ export function showImageContextMenu(event, image) {
                         showNotification('Failed to send image to LLM', 'error');
                     }
                 }},
-                { text: '� Open in New Tab', action: () => openImageInNewTab(image) },
+                { text: '↗ Open in New Tab', action: () => openImageInNewTab(image) },
                 { text: '---', action: null }, // Separator
-                
+
                 // Copy group
-                { text: '� Copy to Clipboard', action: () => {
+                { text: '📋 Copy to Clipboard', action: () => {
                     const imagePath = image.path || image.relative_path || image.name;
                     copyImageToClipboard(imagePath);
                 }},
@@ -609,18 +729,39 @@ function renderContextMenuItems(contextMenu, menuItems) {
             contextMenu.appendChild(separator);
         } else {
             const menuItem = document.createElement('div');
-            menuItem.textContent = item.text;
             menuItem.className = 'image-context-menu-item';
-            
-            // Hover handled by CSS
-            
-            menuItem.addEventListener('click', () => {
-                if (item.action) {
-                    item.action();
-                }
-                contextMenu.remove();
-            });
-            
+
+            if (item.submenu && Array.isArray(item.submenu)) {
+                menuItem.classList.add('image-context-menu-parent');
+                const label = document.createElement('span');
+                label.textContent = item.text;
+                const arrow = document.createElement('span');
+                arrow.className = 'image-context-menu-arrow';
+                arrow.textContent = '▶';
+                menuItem.appendChild(label);
+                menuItem.appendChild(arrow);
+
+                const submenu = document.createElement('div');
+                submenu.className = 'image-context-submenu';
+                renderContextMenuItems(submenu, item.submenu);
+                menuItem.appendChild(submenu);
+
+                menuItem.addEventListener('mouseenter', () => {
+                    submenu.classList.add('open');
+                });
+                menuItem.addEventListener('mouseleave', () => {
+                    submenu.classList.remove('open');
+                });
+            } else {
+                menuItem.textContent = item.text;
+                menuItem.addEventListener('click', () => {
+                    if (item.action) {
+                        item.action();
+                    }
+                    contextMenu.remove();
+                });
+            }
+
             contextMenu.appendChild(menuItem);
         }
     });

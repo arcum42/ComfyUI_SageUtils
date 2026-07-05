@@ -64,6 +64,40 @@
   margin-top: 15px;
 }
 
+.gallery-item-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+  justify-content: flex-start;
+}
+
+.gallery-item-action-button {
+  background: rgba(255,255,255,0.12);
+  color: #fff;
+  border: 1px solid rgba(255,255,255,0.16);
+  border-radius: 4px;
+  padding: 4px 6px;
+  min-width: 28px;
+  min-height: 28px;
+  cursor: pointer;
+}
+
+.gallery-item-action-button:hover {
+  background: rgba(255,255,255,0.22);
+}
+
+.gallery-item-action-button-disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.gallery-item-hint {
+  margin-top: 6px;
+  font-size: 10px;
+  color: #bbb;
+  opacity: 0.85;
+}
+
 .gallery-folder-dropdown,
 .gallery-sort-select,
 .gallery-thumbnail-size-select,
@@ -539,6 +573,47 @@
   color: #e0e0e0;
   cursor: pointer;
   user-select: none;
+  position: relative;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.image-context-menu-parent {
+  padding-right: 24px;
+}
+
+.image-context-menu-arrow {
+  margin-left: 8px;
+  color: #ccc;
+  font-size: 12px;
+}
+
+.image-context-submenu {
+  position: absolute;
+  top: 0;
+  left: 100%;
+  margin-left: 4px;
+  min-width: 180px;
+  background: #2a2a2a;
+  border: 1px solid #555;
+  border-radius: 4px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateX(0px);
+  transition: opacity 0.15s ease, visibility 0.15s ease, transform 0.15s ease;
+  z-index: 10002;
+}
+
+.image-context-submenu.open {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(4px);
+}
+
+.image-context-menu-parent:hover > .image-context-menu-arrow {
+  color: #fff;
 }
 
 .thumbnail-info {

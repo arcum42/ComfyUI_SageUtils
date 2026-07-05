@@ -418,7 +418,7 @@ async function render() {
 This pattern appears in:
 - `llmAdvancedOptions.js` — 5 template loads
 - `llmModelSelection.js` — 2 template loads
-- `gallery.js` — multiple template loads
+- `galleryComponents.js` — multiple template loads
 - Various component files
 
 #### Problems:

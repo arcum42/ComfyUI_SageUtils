@@ -43,7 +43,7 @@ import {
     createMetadataPanel,
     assembleGalleryTabLayout,
     populateFolderDropdown
-} from "../gallery/galleryLayout.js";
+} from "../gallery/galleryTabLayout.js";
 
 // Import dataset text management
 import {

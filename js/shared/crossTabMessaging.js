@@ -85,7 +85,11 @@ export function sendImagesToLLM(images, options = {}) {
 export function sendTextToLLM(text, options = {}) {
     const bus = getEventBus();
     bus.publish(MessageTypes.TEXT_TO_LLM, {
-        text, target: options.target || 'main', source: options.source || 'unknown', autoSwitch: options.autoSwitch !== false
+        text,
+        target: options.target || 'main',
+        source: options.source || 'unknown',
+        autoSwitch: options.autoSwitch !== false,
+        append: options.append || false
     });
 }
 

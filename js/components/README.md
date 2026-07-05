@@ -462,7 +462,7 @@ const twoColumns = createGrid({
 - `ComfyWidgets` from ComfyUI core for base widget functionality
 - `renderMarkdown, ensureMarkdownStyles` from `shared/markdown.js` for markdown processing
 
-### gallery.js
+### galleryComponents.js
 
 **Purpose**: Reusable UI components for image gallery and media display  
 **Complexity**: High  

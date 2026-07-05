@@ -67,8 +67,6 @@ export function createImageItem(image, showImageContextMenu, showMetadata) {
         }
     };
 
-    item.appendChild(thumbnail);
-
     loadThumbnailUrl().then(thumbnailUrl => {
         if (thumbnailUrl) {
             thumbnail.src = thumbnailUrl;
@@ -125,7 +123,7 @@ export function createImageItem(image, showImageContextMenu, showMetadata) {
     const filename = document.createElement('div');
     filename.style.cssText = `
         font-weight: bold;
-        margin-bottom: 2px;
+        margin-bottom: 4px;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
@@ -136,17 +134,62 @@ export function createImageItem(image, showImageContextMenu, showMetadata) {
     info.style.cssText = `
         font-size: 10px;
         color: #ccc;
+        display: flex;
+        justify-content: space-between;
+        gap: 8px;
+        align-items: center;
     `;
     
     let infoText = '';
     if (image.dimensions) {
-        infoText += `${image.dimensions.width}×${image.dimensions.height} • `;
+        infoText += `${image.dimensions.width}×${image.dimensions.height}`;
     }
-    infoText += formatFileSize(image.size);
+    if (image.size) {
+        if (infoText) infoText += ' • ';
+        infoText += formatFileSize(image.size);
+    }
     info.textContent = infoText;
     
+    const actionsRow = document.createElement('div');
+    actionsRow.className = 'gallery-item-actions';
+
+    const createActionButton = (text, title, onClick, disabled = false) => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.textContent = text;
+        btn.title = title;
+        btn.className = 'gallery-item-action-button';
+        if (disabled) {
+            btn.disabled = true;
+            btn.classList.add('gallery-item-action-button-disabled');
+        }
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            onClick(e);
+        });
+        return btn;
+    };
+
+    const fullSizeButton = createActionButton('👁️', 'View full size', () => showFullImage(image, { showMetadata }));
+    const metadataButton = createActionButton('ℹ️', 'Show metadata', () => {
+        if (typeof showMetadata === 'function') {
+            showMetadata(image);
+        }
+    }, typeof showMetadata !== 'function');
+    const copyButton = createActionButton('📋', 'Copy image path', () => copyImageToClipboard(image.path || image.relative_path || image.name));
+
+    actionsRow.appendChild(fullSizeButton);
+    actionsRow.appendChild(metadataButton);
+    actionsRow.appendChild(copyButton);
+
+    const hintRow = document.createElement('div');
+    hintRow.className = 'gallery-item-hint';
+    hintRow.textContent = 'Shift+click copies path';
+
     overlay.appendChild(filename);
     overlay.appendChild(info);
+    overlay.appendChild(actionsRow);
+    overlay.appendChild(hintRow);
     
     // Show overlay on hover
     item.addEventListener('mouseenter', () => {
@@ -161,7 +204,7 @@ export function createImageItem(image, showImageContextMenu, showMetadata) {
     item.addEventListener('click', (e) => {
         if (e.shiftKey) {
             // Copy to clipboard on Shift+click
-            copyImageToClipboard(image.path);
+            copyImageToClipboard(image.path || image.relative_path || image.name);
         } else {
             // Show full image on regular click
             showFullImage(image, { showMetadata });

@@ -713,9 +713,14 @@ async function createLLMTabVanilla(container) {
     const handleIncomingPromptText = (data) => {
         const textarea = inputSection.querySelector('.llm-textarea');
         if (textarea && data.text) {
-            textarea.value = data.text;
+            const shouldAppend = data.append === true;
+            if (shouldAppend && textarea.value) {
+                textarea.value = `${textarea.value}\n\n${data.text}`;
+            } else {
+                textarea.value = data.text;
+            }
             textarea.dispatchEvent(new Event('input', { bubbles: true })); // Update character counter
-            showNotification('Prompt received from Prompt Builder', 'success');
+            showNotification(shouldAppend ? 'Prompt appended from Gallery' : 'Prompt received from Prompt Builder', 'success');
         }
     };
 

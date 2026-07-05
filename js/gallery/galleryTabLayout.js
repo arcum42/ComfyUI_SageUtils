@@ -6,7 +6,7 @@
 
 // Import required dependencies
 import { createHeader } from "../components/cacheUI.js";
-import { createThumbnailGrid } from "./gallery.js";
+import { createThumbnailGrid } from "./galleryComponents.js";
 import { selectors } from "../shared/stateManager.js";
 import {
     loadHtmlTemplate,
