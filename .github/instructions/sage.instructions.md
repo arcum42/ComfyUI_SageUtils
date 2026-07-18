@@ -53,6 +53,38 @@ This catches syntax errors, missing imports, and basic structural issues before 
 - Imports like `from comfy.comfy_types.node_typing import ComfyNodeABC` only work when loaded by ComfyUI
 - Don't attempt to fix import errors in test files - they require ComfyUI's runtime environment
 
+## Critical Environment Requirements
+
+### Virtual Environment Isolation
+- **ALWAYS activate ComfyUI's venv before running Python tests**: `source /home/ai/programs/comfyui/venv/bin/activate` (no dot — named `venv`, not `.venv`)
+- Never run Python scripts/tests directly from `comfyui_sageutils/` directory without activating parent comfyui venv
+- Missing dependencies will cause test failures even if code is correct
+- ComfyUI must be running in same directory as its venv to avoid library conflicts
+
+### Cache File Safety
+- User data at `/home/ai/programs/comfyui/user/default/SageUtils/` contains cache files (`sage_cache_info.json`, `sage_cache_hash.json`) that store model information
+- **Do NOT modify or delete these cache files during development work on the code**
+- If cache gets corrupted/wiped, restore from backup at `/home/ai/programs/comfyui/user/default/SageUtils/backup/`
+
+### JavaScript Error Debugging
+- Sidebar errors often lack clear indication of which file caused the problem
+- When sidebar fails to load or shows errors:
+  1. Check recent modifications (git diff, filesystem timestamps)
+  2. Look for syntax errors in modified JS files: `node -c path/to/file.js`
+  3. Trace import chains — broken imports often originate in parent files that cascade
+  4. Common culprits: missing semicolons, incorrect module paths, unbalanced brackets/braces
+- Use browser DevTools to identify error origins when possible
+
+### Python Syntax Validation
+- Before running tests or loading into ComfyUI, compile Python files to catch syntax errors early:
+  ```bash
+  python -m py_compile path/to/script.py
+  # Or for all .py files in a directory:
+  find . -name "*.py" -exec python -m py_compile {} \;
+  ```
+- This catches syntax errors without needing imports or dependencies
+- Run after making changes before testing in ComfyUI
+
 ## Documentation Updates
 - Update `README.md` for new features
 - Update `pyproject.toml` version for releases
