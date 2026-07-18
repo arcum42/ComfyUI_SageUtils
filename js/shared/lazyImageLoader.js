@@ -9,6 +9,12 @@
 
 import { loadThumbnail } from './imageLoader.js';
 
+function getImagePath(imageInput) {
+    if (!imageInput) return null;
+    if (typeof imageInput === 'string') return imageInput;
+    return imageInput.path || imageInput.relative_path || imageInput.name || null;
+}
+
 /**
  * Configuration for lazy loading and retry behavior
  */
@@ -79,9 +85,15 @@ export class LazyImageLoader {
      * @param {string} imagePath - Path to the image
      * @param {string} thumbnailSize - Size of thumbnail to load
      */
-    observe(img, imagePath, thumbnailSize = 'large') {
+    observe(img, imageInput, thumbnailSize = 'large') {
         if (!this.observer) {
             this.init();
+        }
+
+        const imagePath = getImagePath(imageInput);
+        if (!imagePath) {
+            console.warn('[LazyImageLoader] No image path available for lazy load', imageInput);
+            return;
         }
 
         // Store metadata on element
@@ -149,7 +161,7 @@ export class LazyImageLoader {
 
         try {
             // Attempt to load thumbnail
-            const thumbnailUrl = await loadThumbnail({ path: imagePath }, thumbnailSize);
+            const thumbnailUrl = await loadThumbnail(imagePath, thumbnailSize);
             
             // Set the image source
             img.src = thumbnailUrl;

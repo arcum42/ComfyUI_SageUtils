@@ -311,7 +311,27 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
             
             // Show loading indicator in grid with immediate count update
             grid.imageCountSpan.textContent = '(Loading...)';
+            let progressStarted = false;
             
+            const ensureProgressContainer = () => {
+                if (!progressContainer || !grid.gridContainer.contains(progressContainer)) {
+                    if (progressContainer && progressContainer.parentNode) {
+                        progressContainer.remove();
+                    }
+                    if (!progressStarted) {
+                        grid.gridContainer.innerHTML = '';
+                    }
+                    progressContainer = document.createElement('div');
+                    progressContainer.className = 'gallery-loading-progress';
+                    if (grid.gridContainer.firstChild) {
+                        grid.gridContainer.insertBefore(progressContainer, grid.gridContainer.firstChild);
+                    } else {
+                        grid.gridContainer.appendChild(progressContainer);
+                    }
+                    progressStarted = true;
+                }
+            };
+
             // Create a progress update function
             const updateProgress = async (current, total, message = '') => {
                 // Don't update if aborted
@@ -319,12 +339,7 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
                     return;
                 }
                 
-                if (!progressContainer) {
-                    grid.gridContainer.innerHTML = '';
-                    progressContainer = document.createElement('div');
-                    progressContainer.className = 'gallery-loading-progress';
-                    grid.gridContainer.appendChild(progressContainer);
-                }
+                ensureProgressContainer();
                 
                 const percentage = total > 0 ? Math.round((current / total) * 100) : 0;
                 
@@ -337,6 +352,7 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
                 const fill = progressContainer.querySelector('.gallery-progress-bar__fill');
                 if (fill) {
                     fill.style.setProperty('--fill-width', `${percentage}%`);
+                    fill.style.width = `${percentage}%`;
                 }
             };
             
@@ -396,6 +412,15 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
                         renderImageGrid(currentImages, currentFolders, loadImagesWrapper)
                             .catch(err => console.warn('Gallery: Final re-render after metadata completion failed:', err));
                     }
+
+                    // Remove any remaining loading banner after metadata completes
+                    if (progressContainer && progressContainer.parentNode) {
+                        setTimeout(() => {
+                            if (progressContainer && progressContainer.parentNode) {
+                                progressContainer.remove();
+                            }
+                        }, 300);
+                    }
                 }
             };
             
@@ -422,13 +447,13 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
             // Update UI immediately with actual counts
             grid.imageCountSpan.textContent = `${images.length} images / ${folders.length} folders`;
             
-            // Clear the progress container if it exists
+            // Render image grid with both images and folders immediately
+            await renderImageGrid(images, folders, loadImagesWrapper);
+
+            // Remove the gallery load progress banner after initial grid render
             if (progressContainer && progressContainer.parentNode) {
                 progressContainer.remove();
             }
-            
-            // Render image grid with both images and folders immediately
-            await renderImageGrid(images, folders, loadImagesWrapper);
             
             // Auto-show metadata for the first image if available
             if (images && images.length > 0) {
@@ -485,7 +510,11 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
         
         // Only clear if not doing incremental update
         if (!incremental) {
+            const loadingProgress = grid.gridContainer.querySelector('.gallery-loading-progress');
             grid.gridContainer.innerHTML = '';
+            if (loadingProgress) {
+                grid.gridContainer.appendChild(loadingProgress);
+            }
         }
         
         if (!images || (images.length === 0 && folders.length === 0)) {
@@ -611,6 +640,7 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
         const batchSize = 20; // Process 20 images at a time
         const totalImages = images.length;
         let processedCount = 0;
+        let renderedCount = incremental ? grid.gridContainer.querySelectorAll('.gallery-image-item').length : 0;
         
         // Find or create progress container
         let progressContainer = grid.gridContainer.querySelector('.gallery-progress-container');
@@ -640,13 +670,9 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
             const fill = progressContainer.querySelector('.gallery-thumbnail-progress__fill');
             if (fill) {
                 fill.style.setProperty('--fill-width', `${percentage}%`);
+                fill.style.width = `${percentage}%`;
             }
-        };
-        
-        await updateProgress();
-
-        // Track which images have been rendered (by index)
-        let renderedCount = incremental ? grid.gridContainer.querySelectorAll('.gallery-image-item').length : 0;
+        }
 
         // For large folders, show skeleton loaders first for better perceived performance
         const skeletonThreshold = 100; // Show skeletons for folders with 100+ images

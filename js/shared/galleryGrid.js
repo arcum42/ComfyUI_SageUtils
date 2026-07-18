@@ -7,7 +7,8 @@
 import { getThumbnailSize } from "./config.js";
 import { formatFileSize } from "../reports/reportGenerator.js";
 import { actions, selectors } from "./stateManager.js";
-import { copyImageToClipboard, generateThumbnail } from "./imageUtils.js";
+import { copyImageToClipboard } from "./imageUtils.js";
+import { getLazyLoader } from "./lazyImageLoader.js";
 import { showFullImage } from "./imageViewer.js";
 
 /**
@@ -52,58 +53,35 @@ export function createImageItem(image, showImageContextMenu, showMetadata) {
         background: #333;
     `;
     
-    // Set thumbnail source with error handling
+    // Set thumbnail source with lazy loader and error handling
     const thumbnailSizeConfig = getThumbnailSize(selectors.thumbnailSize());
-    
-    // Load thumbnail using centralized loader
-    const loadThumbnailUrl = async () => {
-        try {
-            const sizeName = thumbnailSizeConfig.width <= 120 ? 'small' : 
-                           thumbnailSizeConfig.width <= 200 ? 'medium' : 'large';
-            return await generateThumbnail(image, sizeName);
-        } catch (error) {
-            console.error('Error generating thumbnail:', error);
-            return null;
-        }
-    };
+    const sizeName = thumbnailSizeConfig.width <= 120 ? 'small' : 
+                     thumbnailSizeConfig.width <= 200 ? 'medium' : 'large';
 
-    loadThumbnailUrl().then(thumbnailUrl => {
-        if (thumbnailUrl) {
-            thumbnail.src = thumbnailUrl;
-        } else {
-            thumbnail.style.display = 'none';
-            const errorDiv = document.createElement('div');
-            errorDiv.style.cssText = `
-                width: 100%;
-                height: 150px;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                background: #333;
-                color: #999;
-                font-size: 12px;
-            `;
-            errorDiv.textContent = 'Thumbnail failed';
-            item.appendChild(errorDiv);
-        }
-    });
-    
+    const errorDiv = document.createElement('div');
+    errorDiv.style.cssText = `
+        width: 100%;
+        height: 150px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #333;
+        color: #999;
+        font-size: 12px;
+        position: absolute;
+        inset: 0;
+    `;
+    errorDiv.textContent = 'Thumbnail failed';
+    errorDiv.style.display = 'none';
+    item.appendChild(errorDiv);
+
     thumbnail.addEventListener('error', () => {
         thumbnail.style.display = 'none';
-        const errorDiv = document.createElement('div');
-        errorDiv.style.cssText = `
-            width: 100%;
-            height: 150px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: #333;
-            color: #888;
-            font-size: 12px;
-        `;
-        errorDiv.textContent = '❌ Thumbnail failed';
-        item.insertBefore(errorDiv, thumbnail.nextSibling);
+        errorDiv.style.display = 'flex';
     });
+
+    const lazyLoader = getLazyLoader();
+    lazyLoader.observe(thumbnail, image, sizeName);
     
     // Create overlay with filename and info
     const overlay = document.createElement('div');
