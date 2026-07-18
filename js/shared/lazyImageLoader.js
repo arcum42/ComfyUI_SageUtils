@@ -2,6 +2,9 @@
  * Lazy Image Loader with Retry Logic
  * Implements Intersection Observer for viewport-based lazy loading
  * and exponential backoff retry for failed thumbnail requests
+ * 
+ * Looks to currently be completely unused. Leaving while I decide whether to integrate it. DEAD CODE.
+ * 
  */
 
 import { loadThumbnail } from './imageLoader.js';

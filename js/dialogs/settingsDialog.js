@@ -128,6 +128,16 @@ function buildSettingsUI(container, settings, dialog) {
   dialog.addFooterButton('Reset to Defaults', async () => {
     if (confirm('Are you sure you want to reset all settings to their default values?')) {
       await resetSettings(dialog);
+      try {
+        const { reloadCacheSidebar } = await import('../sidebar/cacheSidebar.js');
+        await reloadCacheSidebar();
+        console.log('Sidebar reloaded after settings reset');
+      } catch (error) {
+        console.error('Failed to reload sidebar after settings reset:', error);
+        if (notifications && notifications.show) {
+          notifications.show('Settings reset but sidebar reload failed. Please refresh the page.', 'warning');
+        }
+      }
     }
   });
 
@@ -718,15 +728,6 @@ async function resetSettings(dialog) {
 
     if (!result.success) {
       throw new Error(result.error || 'Failed to reset settings');
-    }
-
-    // Reload the sidebar since tab visibility may have changed
-    try {
-      const { reloadCacheSidebar } = await import('../sidebar/cacheSidebar.js');
-      await reloadCacheSidebar();
-      console.log('Sidebar reloaded after settings reset');
-    } catch (error) {
-      console.error('Failed to reload sidebar:', error);
     }
 
     // Show success notification
