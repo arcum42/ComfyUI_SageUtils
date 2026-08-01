@@ -174,8 +174,11 @@ app.registerExtension({
         {
             id: "SageUtils.OpenAI.openai_api_key",
             name: "API Key",
-            type: "text",
             defaultValue: "",
+            attrs: {
+                type: 'password',
+                autocomplete: 'off'
+            },
             tooltip: "OpenAI API key (or leave blank to use OPENAI_API_KEY env var)",
             onChange: async (newVal, oldVal) => {
                 console.log('OpenAI API key changed');

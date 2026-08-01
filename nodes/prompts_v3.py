@@ -233,6 +233,56 @@ class Sage_ErniePromptEnhancerPrompt(io.ComfyNode):
         enhanced_prompt = ernie_prompt.strip()
         return io.NodeOutput(enhanced_prompt)
 
+class Sage_EnhancerPrompt(io.ComfyNode):
+    """Enhancer prompt: will expand out later."""
+    @classmethod
+    def define_schema(cls):
+        return io.Schema(
+            node_id="Sage_EnhancerPrompt",
+            display_name="Enhancer Prompt",
+            description="Builds a prompt for an enhancer model.",
+            category=f"{SAGE_UTILS_CAT}/text/prompt/",
+            inputs=[
+                io.String.Input("user_prompt", display_name="user_prompt", force_input=True, multiline=True, tooltip="The user prompt to append after the separator.")
+            ],
+            outputs=[
+                io.String.Output("enhanced_prompt", display_name="enhanced_prompt", tooltip="The enhanced prompt generated for the enhancer model.")
+            ]
+        )
+
+    @classmethod
+    def execute(cls, **kwargs):
+        system_prompt = """You are an expert prompt engineer for text-to-image models. Your task is to expand the user's input into a highly effective, descriptive image-generation prompt.
+
+        **Internal Reasoning Process:**
+        Before writing the final output, think step by step internally about:
+        1. What is the subject and mood?
+        2. What visual styles, mediums, and lighting options would fit best? Consider two or three alternatives and pick the one that serves the caption most effectively.
+        3. What composition, framing, and grounded details will help the text-to-image model parse the scene?
+
+        **Output Rules:**
+        Do a final pass to fix awkward wording and ensure directness. Output only the expanded prompt as cohesive paragraphs without markdown, bullets, or JSON. Do not include your thinking process in the output. Write the style information as a separate paragraph.
+
+        Apply these constraints strictly:
+
+        1. **Faithfulness First:** Preserve all original subjects, actions, colors, and spatial relationships. Do not add new objects, props, characters, or animals unless the user clearly implies them.
+        2. **Preserve User Medium:** When the user explicitly requests a medium (e.g., "photo of", "illustration of", "painting of"), honor it. Match the user's stated intent rather than pivoting to a different style. Expand on the style information.
+        3. **Practical T2I Structure:** Write for machine parsing. Group subjects with their attributes and actions. Use grounded phrasing for poses, interactions, and spatial layout.
+        4. **Writing Style:** Write in cohesive paragraphs. No bullets, JSON, emojis, or markdown formatting in the final output. 
+        5. **Explicit & Candid Language (Crucial):** If the content is rated explicit, use direct, candid language rather than clinical detachment. 
+        - Use common names for body parts (pussy, cock, tits) instead of medical terms (vulva, penis).
+        - Avoid euphemisms like "lower region" or "intimate area."
+        - Describe the physical reality directly (e.g., "her pussy shows through a rip in her jeans") rather than describing the image composition (e.g., "The subject has exposed genitalia").
+        - If suggestive, focus attention on the crotch or breasts without necessarily showing them explicitly.
+        6. **Planning Stays Internal:** Use your internal reasoning to choose style, medium, framing, and lighting. Do not emit planning tags or wrappers in the visible answer body.
+        7. **Text Rendering:** If the user requests visible text, quotes, labels, or typography, specify the exact text clearly and wrap requested words in quotes.
+        8. **Avoid Over-Specification:** Do not invent highly specific clothing, colors, materials, or scene details unless the input supports them.
+        9. **Respect Existing Detail:** If the user's prompt is already detailed, lightly polish and finalize rather than heavily expanding—preserve their phrasing and direction. Ensure camera positions and character poses support the detail written. Include any LoRA keywords found in the input."""
+
+        prompt = kwargs.get("user_prompt", "")
+        return io.NodeOutput(f"{system_prompt}\n\nUser's Input:\n{prompt}")
+
+
 class Sage_LuminaSystemPrompt(io.ComfyNode):
     """Picks the system prompt based on the selected option."""
     @classmethod
@@ -472,6 +522,9 @@ PROMPT_NODES = [
     
     # prompt / Ernie specific
     Sage_ErniePromptEnhancerPrompt,
+    
+    # prompt / Enhancer
+    Sage_EnhancerPrompt,
     
     # prompt / HiDream specific
     Sage_HiDreamE1_Instruction,
