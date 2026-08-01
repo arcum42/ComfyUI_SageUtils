@@ -75,7 +75,8 @@ import {
 import { loadSidebarStyle } from './sidebarStyles.js';
 import {
     loadHtmlTemplate,
-    renderHtmlTemplate
+    renderHtmlTemplate,
+    createElementFromTemplate
 } from '../utils/htmlTemplateLoader.js';
 
 let galleryPlaceholderTemplate = null;
@@ -144,12 +145,12 @@ async function renderGalleryError(message) {
 
 async function renderGalleryEmptyState() {
     const template = await getGalleryEmptyStateTemplate();
-    return renderHtmlTemplate(template, {});
+    return createElementFromTemplate(renderHtmlTemplate(template, {}));
 }
 
 async function renderGalleryMetadataFallback(imagePath) {
     const template = await loadHtmlTemplate('extensions/comfyui_sageutils/sidebar/partials/galleryMetadataFallback.html');
-    return renderHtmlTemplate(template, { imagePath });
+    return createElementFromTemplate(renderHtmlTemplate(template, { imagePath }));
 }
 
 // Debug toggle helper for gallery logs
