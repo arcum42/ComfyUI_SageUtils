@@ -25,6 +25,10 @@
     display: none !important;
 }
 
+.sageutils-sidebar-hidden {
+    display: none !important;
+}
+
 .sidebar-settings-indicator {
     position: absolute;
     right: 60px;

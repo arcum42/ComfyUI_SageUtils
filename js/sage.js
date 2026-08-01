@@ -11,6 +11,8 @@ import { _ID } from "./shared/utils.js";
 import { getTextFromNode } from "./utils/textCopyFromNode.js";
 import { copyTextToNode } from "./utils/textCopyUtils.js";
 import { getEventBus, MessageTypes, sendTextToLLM, sendTextToPromptBuilder, showNotification } from "./shared/crossTabMessaging.js";
+import { loadSidebarStyle } from "./sidebar/sidebarStyles.js";
+import { preloadHtmlTemplates } from "./utils/htmlTemplateLoader.js";
 
 // Import performance timing utilities
 import { 
@@ -199,6 +201,36 @@ app.registerExtension({
         console.log("[SageUtils] Starting background data preload...");
       }
       
+      // Preload sidebar styles and HTML templates early so tab renderers are warmed.
+      const sidebarAssets = [
+        { id: 'sageutils-sidebar-shell-styles', href: 'extensions/comfyui_sageutils/sidebar.css' },
+        { id: 'sageutils-civitai-search-styles', href: 'extensions/comfyui_sageutils/sidebar/civitaiSearchTab.css' },
+        { id: 'sageutils-files-tab-styles', href: 'extensions/comfyui_sageutils/sidebar/filesTab.css' },
+        { id: 'sageutils-gallery-tab-styles', href: 'extensions/comfyui_sageutils/sidebar/imageGalleryTab.css' },
+        { id: 'sageutils-models-tab-styles', href: 'extensions/comfyui_sageutils/sidebar/modelsTabV2.css' },
+        { id: 'sageutils-prompt-builder-tab-styles', href: 'extensions/comfyui_sageutils/sidebar/promptBuilder.css' },
+        { id: 'sageutils-llm-tab-styles', href: 'extensions/comfyui_sageutils/sidebar/llmTab/styles/llmStyles.css' }
+      ];
+      sidebarAssets.forEach(({ id, href }) => loadSidebarStyle(id, href));
+
+      const sidebarTemplatePaths = [
+        'extensions/comfyui_sageutils/sidebar/partials/galleryPlaceholder.html',
+        'extensions/comfyui_sageutils/sidebar/partials/galleryProgress.html',
+        'extensions/comfyui_sageutils/sidebar/partials/galleryThumbnailProgress.html',
+        'extensions/comfyui_sageutils/sidebar/partials/galleryError.html',
+        'extensions/comfyui_sageutils/sidebar/partials/galleryEmptyState.html',
+        'extensions/comfyui_sageutils/sidebar/partials/galleryMetadataFallback.html',
+        'extensions/comfyui_sageutils/sidebar/llmTab/partials/llmHeader.html',
+        'extensions/comfyui_sageutils/sidebar/llmTab/shared/llmModelSelection.html',
+        'extensions/comfyui_sageutils/sidebar/llmTab/partials/llmAdvancedOptions.html',
+        'extensions/comfyui_sageutils/sidebar/llmTab/partials/llmProviderOptionControl.html',
+        'extensions/comfyui_sageutils/sidebar/partials/modelsTabV2HeaderControls.html',
+        'extensions/comfyui_sageutils/sidebar/partials/modelsTabV2EmptyInfoPanel.html'
+      ];
+      preloadHtmlTemplates(sidebarTemplatePaths).catch((error) => {
+        console.warn('[SageUtils] Sidebar template preload failed:', error);
+      });
+
       // Enable debug mode for cache if query parameter or localStorage flag is set
       const shouldDebugCache = new URLSearchParams(window.location.search).get('sageutils_cache_debug') === '1';
       const shouldDebugCacheLS = (localStorage.getItem('sageutils_cache_debug') === 'true') || (localStorage.getItem('sageutils_debug') === 'true');

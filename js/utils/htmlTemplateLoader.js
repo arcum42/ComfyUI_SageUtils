@@ -88,6 +88,22 @@ export async function loadHtmlTemplate(templatePath) {
     throw lastError || new Error(`Unable to load HTML template: ${templatePath}`);
 }
 
+export async function preloadHtmlTemplates(templatePaths = []) {
+    if (!Array.isArray(templatePaths)) {
+        return;
+    }
+
+    const preloads = templatePaths.map(async (templatePath) => {
+        try {
+            await loadHtmlTemplate(templatePath);
+        } catch (error) {
+            console.warn(`Failed to preload HTML template: ${templatePath}`, error);
+        }
+    });
+
+    await Promise.all(preloads);
+}
+
 export function renderHtmlTemplate(templateString, data = {}) {
     return templateString
         .replace(/\{\{\{\s*([\w.]+)\s*\}\}\}/g, (_, key) => {

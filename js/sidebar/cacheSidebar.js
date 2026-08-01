@@ -67,8 +67,9 @@ console.log('[SageUtils] cacheSidebar.js imported');
 
 // Always use Models Tab V2
 
-// Track the current sidebar element for reloading
+// Track the current sidebar element and instance for reuse
 let currentSidebarElement = null;
+let currentSidebarInstance = null;
 
 // Global error handlers are shared across sidebar mounts; keep them attached
 // only while at least one sidebar instance is active.
@@ -488,7 +489,22 @@ export function createCacheSidebar(el) {
         console.error('[Sidebar] createCacheSidebar called with no container element');
         throw new Error('createCacheSidebar requires a valid container element');
     }
-    // Store reference for potential reload
+    // If an instance already exists, reuse it instead of rebuilding the sidebar.
+    if (currentSidebarInstance && !currentSidebarInstance.isDestroyed) {
+        logSidebarDebug('[Sidebar] Reusing existing sidebar instance');
+        if (currentSidebarElement !== el) {
+            if (currentSidebarInstance.sidebarRoot.parentNode) {
+                currentSidebarInstance.sidebarRoot.parentNode.removeChild(currentSidebarInstance.sidebarRoot);
+            }
+            el.appendChild(currentSidebarInstance.sidebarRoot);
+            currentSidebarElement = el;
+        }
+        currentSidebarInstance.isHidden = false;
+        currentSidebarInstance.sidebarRoot.classList.remove('sageutils-sidebar-hidden');
+        return currentSidebarInstance.sidebarRoot;
+    }
+
+    // Store reference for potential reload and reuse
     currentSidebarElement = el;
     const lifecycle = createCleanupRegistry();
     
@@ -837,6 +853,26 @@ export function createCacheSidebar(el) {
         }
     };
 
+    currentSidebarInstance = {
+        sidebarRoot: mainContainer,
+        tabManager,
+        lifecycle,
+        isDestroyed: false,
+        isHidden: false,
+        hide: () => {
+            if (mainContainer) {
+                mainContainer.classList.add('sageutils-sidebar-hidden');
+                currentSidebarInstance.isHidden = true;
+            }
+        },
+        destroy: () => {
+            if (mainContainer && mainContainer.parentNode) {
+                mainContainer.parentNode.removeChild(mainContainer);
+            }
+            currentSidebarInstance = null;
+        }
+    };
+
     if (typeof window !== 'undefined') {
         window.SageUtilsSidebarRegression = {
             run: (options = {}) => {
@@ -960,6 +996,16 @@ export async function reloadCacheSidebar() {
     
     logSidebarDebug('Reloading sidebar with updated settings...');
     
+    // Destroy the existing sidebar instance before recreating it.
+    if (currentSidebarInstance && !currentSidebarInstance.isDestroyed) {
+        try {
+            currentSidebarInstance.destroy();
+        } catch (error) {
+            console.warn('[Sidebar] Failed to destroy existing sidebar instance during reload:', error);
+        }
+        currentSidebarInstance = null;
+    }
+
     // Clear the current sidebar content
     currentSidebarElement.innerHTML = '';
     
@@ -967,4 +1013,17 @@ export async function reloadCacheSidebar() {
     await createCacheSidebar(currentSidebarElement);
     
     logSidebarDebug('Sidebar reloaded successfully');
+}
+
+export function hideCacheSidebar() {
+    if (currentSidebarInstance && !currentSidebarInstance.isDestroyed) {
+        currentSidebarInstance.hide();
+    }
+}
+
+export function showCacheSidebar() {
+    if (currentSidebarInstance && !currentSidebarInstance.isDestroyed) {
+        currentSidebarInstance.isHidden = false;
+        currentSidebarInstance.sidebarRoot.classList.remove('sageutils-sidebar-hidden');
+    }
 }
