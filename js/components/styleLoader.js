@@ -7,19 +7,22 @@ const STYLE_HREFS = [
     'extensions/comfyui_sageutils/components/gallery.css',
 ];
 
+let stylesLoaded = false;
+
 export function loadComponentStyles(moduleName = 'unknown') {
-    const debugPrefix = `[SageUtils] ${moduleName} loadComponentStyles`;
-    console.log(`${debugPrefix}: start`);
+    if (stylesLoaded) {
+        return;
+    }
 
     try {
         const existingLink = document.querySelector(STYLE_LINK_SELECTOR);
         if (existingLink) {
-            console.log(`${debugPrefix}: already loaded`);
+            stylesLoaded = true;
             return;
         }
 
         if (!document.head) {
-            console.warn(`${debugPrefix}: document.head is not ready`);
+            console.warn(`[SageUtils] ${moduleName} loadComponentStyles: document.head is not ready`);
             return;
         }
 
@@ -30,10 +33,10 @@ export function loadComponentStyles(moduleName = 'unknown') {
             link.href = href;
             link.dataset.sageComponentStyles = 'true';
             document.head.appendChild(link);
-            console.log(`${debugPrefix}: injected stylesheet ${href}`);
         });
+        stylesLoaded = true;
     } catch (err) {
-        console.error(`${debugPrefix} failed`, err);
+        console.error(`[SageUtils] ${moduleName} loadComponentStyles failed`, err);
         throw err;
     }
 }
