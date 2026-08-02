@@ -32,7 +32,7 @@ def request_json(
     path: str,
     payload: Optional[dict[str, Any]] = None,
     headers: Optional[dict[str, str]] = None,
-    timeout: float = 300.0,
+    timeout: Optional[float] = 300.0,
 ) -> Any:
     """Perform an HTTP JSON request and return decoded JSON response."""
     url = f"{base_url.rstrip('/')}/{path.lstrip('/')}"
@@ -73,7 +73,7 @@ def request_stream(
     path: str,
     payload: Optional[dict[str, Any]] = None,
     headers: Optional[dict[str, str]] = None,
-    timeout: float = 30.0,
+    timeout: Optional[float] = 30.0,
 ) -> Iterator[Any]:
     """Perform an HTTP request and yield an open response handle for streaming."""
     url = f"{base_url.rstrip('/')}/{path.lstrip('/')}"

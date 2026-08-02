@@ -3,10 +3,13 @@ Base utilities and shared functionality for SageUtils routes.
 Provides decorators, common utilities, and error handling patterns.
 """
 
-from ..utils.logger import get_logger
-from functools import wraps
-from aiohttp import web
+import asyncio
 import traceback
+from functools import wraps
+
+from aiohttp import web
+
+from ..utils.logger import get_logger
 
 logger = get_logger('routes.base')
 
@@ -17,6 +20,8 @@ def route_error_handler(func):
     async def wrapper(request):
         try:
             return await func(request)
+        except asyncio.CancelledError:
+            raise
         except Exception as e:
             error_details = traceback.format_exc()
             logger.error(f"Route error in {func.__name__}: {error_details}")

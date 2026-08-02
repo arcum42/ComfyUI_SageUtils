@@ -62,19 +62,19 @@ def lmstudio_request_json(
     method: str,
     path: str,
     payload: Optional[dict[str, Any]] = None,
-    timeout: float = 300.0,
+    timeout: Optional[float] = 300.0,
 ) -> Any:
     """Perform an HTTP JSON request to LM Studio REST and return decoded JSON response."""
     return request_json(method, _get_base_url(), path, payload=payload, headers=_get_headers(), timeout=timeout)
 
 
-def lmstudio_request_json_models(timeout: float = 300.0) -> Any:
+def lmstudio_request_json_models(timeout: Optional[float] = 300.0) -> Any:
     """Perform a models request to LM Studio REST and return decoded JSON response."""
     logger.debug('LM Studio models request')
     return lmstudio_request_json('GET', '/api/v1/models', timeout=timeout)
 
 
-def lmstudio_request_json_chat(payload: dict[str, Any], timeout: float = 300.0) -> Any:
+def lmstudio_request_json_chat(payload: dict[str, Any], timeout: Optional[float] = 300.0) -> Any:
     """Perform a chat request to LM Studio REST and return decoded JSON response."""
     logger.debug(f'LM Studio chat request with payload: {payload}')
     return lmstudio_request_json('POST', '/api/v1/chat', payload=payload, timeout=timeout)
@@ -98,13 +98,13 @@ def lmstudio_request_json_chat(payload: dict[str, Any], timeout: float = 300.0) 
 
 # echo_load_config: boolean (optional) - Whether to include the load config in the response. Defaults to false.
 
-def lmstudio_request_json_load(payload: dict[str, Any], timeout: float = 300.0) -> Any:
+def lmstudio_request_json_load(payload: dict[str, Any], timeout: Optional[float] = 300.0) -> Any:
     """Perform a model load request to LM Studio REST and return decoded JSON response."""
     logger.debug(f'LM Studio load request with payload: {payload}')
     return lmstudio_request_json('POST', '/api/v1/models/load', payload=payload, timeout=timeout)
 
 
-def lmstudio_request_json_unload(payload: dict[str, Any], timeout: float = 300.0) -> Any:
+def lmstudio_request_json_unload(payload: dict[str, Any], timeout: Optional[float] = 300.0) -> Any:
     """Perform a model unload request to LM Studio REST and return decoded JSON response."""
     logger.debug(f'LM Studio unload request with payload: {payload}')
     return lmstudio_request_json('POST', '/api/v1/models/unload', payload=payload, timeout=timeout)
@@ -120,7 +120,7 @@ def lmstudio_request_stream(
     return request_stream(method, _get_base_url(), path, payload=payload, headers=_get_headers(), timeout=timeout)
 
 
-def lmstudio_request_stream_chat(payload: dict[str, Any], timeout: float = 30.0) -> Any:
+def lmstudio_request_stream_chat(payload: dict[str, Any], timeout: Optional[float] = 30.0) -> Any:
     """Perform a streaming chat request to LM Studio REST and return an open response context."""
     logger.debug(f'LM Studio streaming chat request with payload: {payload}')
     return lmstudio_request_stream('POST', '/api/v1/chat', payload=payload, timeout=timeout)

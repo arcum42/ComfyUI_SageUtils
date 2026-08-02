@@ -137,44 +137,55 @@ export async function handleSend(state, textarea, responseSection, sendBtn, stop
     showStatus(responseSection, 'Loading model...', 'info');
     updatePhaseBadge(responseSection, 'loading-model', 'Loading model');
 
-    try {
-        // Pre-load the model so the user sees the phase boundary.
-        // For providers like LM Studio and Ollama, include the selected
-        // context length so the preloaded handle matches generation settings.
-        const keepAlive = state.settings?.keepAlive ?? 60;
-        const loadModelPayload = {
-            provider: state.provider,
-            model: state.model,
-            keep_alive: keepAlive,
-        };
+const loadModelController = new AbortController();
+        state.loadModelAbortController = loadModelController;
 
-        const contextLength = state.settings?.contextLength ?? state.settings?.context_length;
-        const contextLengthEnabled = state.settings?.contextLengthEnabled ?? state.settings?.context_length_enabled ?? state.settings?.send_context_length;
-        const shouldSendContextLength = contextLengthEnabled !== false && contextLength !== undefined && contextLength !== null;
+        try {
+            // Pre-load the model so the user sees the phase boundary.
+            // For providers like LM Studio and Ollama, include the selected
+            // context length so the preloaded handle matches generation settings.
+            const keepAlive = state.settings?.keepAlive ?? 60;
+            const loadModelPayload = {
+                provider: state.provider,
+                model: state.model,
+                keep_alive: keepAlive,
+            };
 
-        if (shouldSendContextLength) {
-            const numericContextLength = Number(contextLength);
-            if (!Number.isNaN(numericContextLength)) {
-                if (state.provider === 'lmstudio_rest') {
-                    loadModelPayload.options = { context_length: numericContextLength };
-                } else if (state.provider === 'ollama_rest') {
-                    loadModelPayload.options = { num_ctx: numericContextLength };
+            const contextLength = state.settings?.contextLength ?? state.settings?.context_length;
+            const contextLengthEnabled = state.settings?.contextLengthEnabled ?? state.settings?.context_length_enabled ?? state.settings?.send_context_length;
+            const shouldSendContextLength = contextLengthEnabled !== false && contextLength !== undefined && contextLength !== null;
+
+            if (shouldSendContextLength) {
+                const numericContextLength = Number(contextLength);
+                if (!Number.isNaN(numericContextLength)) {
+                    if (state.provider === 'lmstudio_rest') {
+                        loadModelPayload.options = { context_length: numericContextLength };
+                    } else if (state.provider === 'ollama_rest') {
+                        loadModelPayload.options = { num_ctx: numericContextLength };
+                    }
                 }
             }
-        }
 
-        await loadModel(loadModelPayload);
-    } catch (loadError) {
-        // Preload is a readiness check; if it fails, stop here and surface the error.
-        console.error('[LLM] Model preload failed:', loadError);
-        const baseMessage = loadError?.message || 'Model preload failed';
-        const preloadMessage = `Model preload failed before generation: ${baseMessage}`;
-        const wrappedError = new Error(preloadMessage);
-        if (loadError && typeof loadError === 'object') {
-            Object.assign(wrappedError, loadError);
-        }
-        onGenerationError(state, wrappedError, responseSection, sendBtn, stopBtn);
-        return;
+            await loadModel(loadModelPayload, loadModelController.signal);
+        } catch (loadError) {
+            if (loadError && loadError.name === 'AbortError') {
+                return;
+            }
+
+            // Preload is a readiness check; if it fails, stop here and surface the error.
+            console.error('[LLM] Model preload failed:', loadError);
+            const baseMessage = loadError?.message || 'Model preload failed';
+            const preloadMessage = `Model preload failed before generation: ${baseMessage}`;
+            const wrappedError = new Error(preloadMessage);
+            if (loadError && typeof loadError === 'object') {
+                Object.assign(wrappedError, loadError);
+            }
+            onGenerationError(state, wrappedError, responseSection, sendBtn, stopBtn);
+            return;
+        } finally {
+            if (state.loadModelAbortController === loadModelController) {
+                state.loadModelAbortController = null;
+            }
     }
 
     // Phase 2: switch to generation view
@@ -473,10 +484,17 @@ function updatePhaseBadge(responseSection, phase, label) {
  * @param {HTMLButtonElement} stopBtn - Stop button
  */
 export function handleStop(state, responseSection, sendBtn, stopBtn) {
+    if (state.loadModelAbortController) {
+        state.loadModelAbortController.abort();
+        state.loadModelAbortController = null;
+    }
+
     if (state.streamController) {
         state.streamController.stop();
         state.streamController = null;
     }
+    
+    clearLoadingOverlay(responseSection);
     
     state.generating = false;
     sendBtn.disabled = false;

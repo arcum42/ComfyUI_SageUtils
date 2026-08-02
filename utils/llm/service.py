@@ -494,6 +494,8 @@ def _load_provider_model(
 ) -> bool:
     provider = _provider_client(provider_key)
     enabled = _provider_enabled(provider_key)
+    if options is None:
+        return provider.load_model(enabled, model, keep_alive)
     return provider.load_model(enabled, model, keep_alive, options=options)
 
 
@@ -535,8 +537,7 @@ def load_model(
 
     if provider_key == OPENAI_KEY:
         ensure_openai_initialized(force=True)
-        compatible_models = _filter_compatible_models(get_openai_models())
-        return model in compatible_models
+        return _load_provider_model(provider_key, model, keep_alive=keep_alive, options=options)
 
     raise ValueError(f'Unsupported provider for load_model: {provider_key}')
 
@@ -559,6 +560,9 @@ def is_model_loaded(provider_key: str, model: str) -> bool:
 
     if provider_key == OPENAI_KEY:
         ensure_openai_initialized(force=True)
+        enabled = _provider_enabled(provider_key)
+        if _provider_client(provider_key).is_llamaswap_provider(enabled):
+            return _provider_client(provider_key).is_model_loaded(enabled, model)
         compatible_models = _filter_compatible_models(get_openai_models())
         return model in compatible_models
 
@@ -990,6 +994,21 @@ def get_llm_status(force: bool = False) -> dict[str, dict[str, bool]]:
     }
 
     return status
+
+
+def _get_openai_provider_details(enabled: bool) -> dict[str, object]:
+    provider = _provider_client(OPENAI_KEY)
+    if not enabled:
+        return {'is_llamaswap': False, 'running_models': []}
+
+    is_llamaswap = getattr(provider, 'is_llamaswap_provider', lambda enabled: False)(enabled)
+    if is_llamaswap:
+        running_models = getattr(provider, 'get_llamaswap_running_models', lambda enabled: [])(enabled)
+        return {
+            'is_llamaswap': True,
+            'running_models': running_models,
+        }
+    return {'is_llamaswap': False, 'running_models': []}
 
 
 def get_llm_models(force: bool = False) -> dict[str, object]:

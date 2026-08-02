@@ -314,7 +314,7 @@ def load_model(enabled: bool, model: str, keep_alive: int = 0, options: dict[str
             payload['echo_load_config'] = options['echo_load_config']
 
     try:
-        lmstudio_request_json_load(payload)
+        lmstudio_request_json_load(payload, timeout=None)
         return True
     except Exception as e:
         llm_raise(RuntimeError, f"Failed to load model '{model}' via LM Studio REST", provider=_PROVIDER_NAME, operation='load_model', cause=RuntimeError(llm_stringify(e)))

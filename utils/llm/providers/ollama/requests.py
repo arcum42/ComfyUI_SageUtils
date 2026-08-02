@@ -82,31 +82,31 @@ def ollama_request_json(
     method: str,
     path: str,
     payload: Optional[dict[str, Any]] = None,
-    timeout: float = 300.0,
+    timeout: Optional[float] = 300.0,
 ) -> Any:
     """Perform an HTTP JSON request to Ollama REST and return decoded JSON response."""
     return request_json(method, _get_base_url(), path, payload=payload, headers=_get_headers(), timeout=timeout)
 
 
-def ollama_request_json_chat(payload: dict[str, Any], timeout: float = 300.0) -> Any:
+def ollama_request_json_chat(payload: dict[str, Any], timeout: Optional[float] = 300.0) -> Any:
     """Perform a chat request to Ollama REST and return decoded JSON response."""
     logger.debug(f'Ollama chat request with payload: {payload}')
     return ollama_request_json('POST', '/api/chat', payload=payload, timeout=timeout)
 
 
-def ollama_request_json_show(payload: dict[str, Any], timeout: float = 300.0) -> Any:
+def ollama_request_json_show(payload: dict[str, Any], timeout: Optional[float] = 300.0) -> Any:
     """Perform a show request to Ollama REST and return decoded JSON response."""
     logger.debug(f'Ollama show request with payload: {payload}')
     return ollama_request_json('POST', '/api/show', payload=payload, timeout=timeout)
 
 
-def ollama_request_json_tags(timeout: float = 300.0) -> Any:
+def ollama_request_json_tags(timeout: Optional[float] = 300.0) -> Any:
     """Perform a tags request to Ollama REST and return decoded JSON response."""
     logger.debug('Ollama tags request')
     return ollama_request_json('GET', '/api/tags', timeout=timeout)
 
 
-def ollama_request_json_generate(payload: dict[str, Any], timeout: float = 300.0) -> Any:
+def ollama_request_json_generate(payload: dict[str, Any], timeout: Optional[float] = 300.0) -> Any:
     """Perform a generate request to Ollama REST and return decoded JSON response."""
     logger.debug(f'Ollama generate request with payload: {payload}')
     return ollama_request_json('POST', '/api/generate', payload=payload, timeout=timeout)
@@ -116,13 +116,13 @@ def ollama_request_stream(
     method: str,
     path: str,
     payload: Optional[dict[str, Any]] = None,
-    timeout: float = 30.0,
+    timeout: Optional[float] = 30.0,
 ) -> Any:
     """Perform an HTTP streaming request to Ollama REST and return an open response context."""
     return request_stream(method, _get_base_url(), path, payload=payload, headers=_get_headers(), timeout=timeout)
 
 
-def ollama_request_stream_chat(payload: dict[str, Any], timeout: float = 30.0) -> Any:
+def ollama_request_stream_chat(payload: dict[str, Any], timeout: Optional[float] = 30.0) -> Any:
     """Perform a streaming chat request to Ollama REST and return an open response context."""
     logger.debug(f'Ollama streaming chat request with payload: {payload}')
     return ollama_request_stream('POST', '/api/chat', payload=payload, timeout=timeout)

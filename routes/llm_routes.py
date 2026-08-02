@@ -7,6 +7,7 @@ Handles LLM chat endpoints for Ollama, LM Studio, and Native CLIP integration.
 # capability checks, model discovery, and validation to `utils/llm/service.py`
 # and `utils/llm/routes_helpers.py`.
 
+import asyncio
 import json
 from aiohttp import web
 from pathlib import Path
@@ -708,7 +709,14 @@ def _register_load_routes(routes_instance):
                     operation='load_model',
                 )
 
-            load_success = llm.load_model(provider, model, keep_alive=keep_alive, options=options)
+            try:
+                load_success = await asyncio.to_thread(
+                    lambda: llm.load_model(provider, model, keep_alive=keep_alive, options=options)
+                )
+            except asyncio.CancelledError:
+                logger.info(f"Load model request for {provider}/{model} was cancelled by the client")
+                raise
+
             if not load_success:
                 return llm_error_response(
                     f"Model '{model}' could not be loaded for provider {provider}",

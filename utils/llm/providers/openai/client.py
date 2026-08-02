@@ -9,6 +9,7 @@ from .extract import (
     _extract_stream_delta
 )
 
+import time
 from typing import Any, Optional
 
 from ...common import clean_response
@@ -98,6 +99,62 @@ def _build_options(options: Optional[dict[str, Any]]) -> dict[str, Any]:
             result[mapped_key] = input_options[key]
 
     return result
+
+
+def _extract_model_owner(model_obj: Any) -> Optional[str]:
+    if not isinstance(model_obj, dict):
+        return None
+
+    for owner_key in ('owned_by', 'ownedBy', 'owner'):
+        value = model_obj.get(owner_key)
+        if isinstance(value, str) and value.strip():
+            return value.strip().lower()
+
+    return None
+
+
+def _is_llamaswap_model(model_obj: dict[str, Any]) -> bool:
+    if _extract_model_owner(model_obj) == 'llama-swap':
+        return True
+
+    meta = model_obj.get('meta')
+    if isinstance(meta, dict):
+        llm_meta = meta.get('llamaswap')
+        if isinstance(llm_meta, dict) and llm_meta.get('type') == 'model':
+            return True
+
+    return False
+
+
+def _get_running_model_name(running_obj: Any) -> Optional[str]:
+    if not isinstance(running_obj, dict):
+        return None
+
+    for key in ('model', 'name', 'id'):
+        value = running_obj.get(key)
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+
+    return None
+
+
+def _get_running_model_status(running_obj: Any) -> Optional[str]:
+    if not isinstance(running_obj, dict):
+        return None
+
+    status_value = running_obj.get('status') or running_obj.get('state')
+    if isinstance(status_value, str) and status_value.strip():
+        return status_value.strip().lower()
+
+    return None
+
+
+def _running_model_matches(model: str, running_obj: Any) -> bool:
+    model_name = _get_running_model_name(running_obj)
+    if not model_name:
+        return False
+    return str(model_name).strip().lower() == str(model).strip().lower()
+
 
 def _build_generation_event_payload(event_type: str, token_count: int = 0) -> dict[str, Any]:
     """Build a progress event payload for OpenAI streaming.
@@ -229,6 +286,81 @@ def get_models(enabled: bool) -> list[str]:
         label='OpenAI models',
     )
 
+
+def get_models_payload(enabled: bool) -> list[dict[str, Any]]:
+    """Retrieve raw model payloads from the OpenAI-compatible endpoint."""
+    if is_provider_unavailable(enabled):
+        return []
+
+    try:
+        response = openai_request_json_models()
+        return _extract_models_payload(response)
+    except Exception as e:
+        llm_report(
+            'Error retrieving raw model payloads from OpenAI',
+            provider=_PROVIDER_NAME,
+            operation='get_models_payload',
+            cause=e,
+        )
+        return []
+
+
+def is_llamaswap_provider(enabled: bool) -> bool:
+    """Return whether this OpenAI-compatible endpoint is backed by llama-swap."""
+    if is_provider_unavailable(enabled):
+        return False
+
+    try:
+        return any(_is_llamaswap_model(model_obj) for model_obj in get_models_payload(enabled))
+    except Exception:
+        return False
+
+
+def get_llamaswap_running_models(enabled: bool) -> list[dict[str, Any]]:
+    """Retrieve llama-swap /running payload when supported."""
+    if is_provider_unavailable(enabled):
+        return []
+
+    if not is_llamaswap_provider(enabled):
+        return []
+
+    try:
+        response = openai_request_json_running(timeout=10.0)
+        running = []
+        if isinstance(response, dict):
+            items = response.get('running')
+            if isinstance(items, list):
+                running = items
+        return [item for item in running if isinstance(item, dict)]
+    except Exception as e:
+        logger.debug(f'Error retrieving llama-swap running models: {e}')
+        return []
+
+
+def _is_openai_model_loaded(enabled: bool, model: str) -> bool:
+    if is_provider_unavailable(enabled):
+        return False
+
+    if is_llamaswap_provider(enabled):
+        for running_obj in get_llamaswap_running_models(enabled):
+            if not _running_model_matches(model, running_obj):
+                continue
+            status = _get_running_model_status(running_obj)
+            return status in ('ready', 'starting')
+        return False
+
+    return model in get_models(enabled)
+
+
+def _wait_for_llamaswap_model_ready(enabled: bool, model: str, timeout: float = 360.0) -> bool:
+    start = time.monotonic()
+    while time.monotonic() - start < timeout:
+        if _is_openai_model_loaded(enabled, model):
+            return True
+        time.sleep(1.0)
+    return False
+
+
 def get_vision_models(enabled: bool) -> list[str]:
     """Retrieve a list of available vision models from the OpenAI-compatible endpoint."""
     if is_provider_unavailable(enabled):
@@ -284,6 +416,39 @@ def get_reasoning_models(enabled: bool) -> list[str]:
     capabilities_map = get_model_capabilities_map(enabled)
     return sorted([name for name, capabilities in capabilities_map.items() if capabilities.reasoning])
 
+def load_model(enabled: bool, model: str, keep_alive: int = 0, options: dict[str, Any] | None = None) -> bool:
+    """Load or validate an OpenAI-compatible model.
+
+    For llama-swap, this can warm the model via a chat request. For other
+    OpenAI-compatible providers, this is only a validation check.
+    """
+    if is_provider_unavailable(enabled):
+        return False
+
+    if not is_llamaswap_provider(enabled):
+        return model in get_models(enabled)
+
+    if _is_openai_model_loaded(enabled, model):
+        return True
+
+    payload: dict[str, Any] = {
+        'model': model,
+        'messages': [{'role': 'user', 'content': ' '}],
+        'stream': False,
+    }
+    payload.update(_build_options(options))
+
+    try:
+        response = openai_request_json_chat(payload, timeout=None)
+        if isinstance(response, dict) and response.get('error'):
+            llm_raise(RuntimeError, str(response.get('error')), provider=_PROVIDER_NAME, operation='load_model')
+    except Exception as e:
+        llm_report('Error loading model via OpenAI-compatible provider', provider=_PROVIDER_NAME, operation='load_model', cause=e)
+
+    # After warming the model, poll /running for up to 60 seconds to confirm it is ready.
+    return _wait_for_llamaswap_model_ready(enabled, model, timeout=60.0)
+
+
 def generate(enabled: bool, model: str, prompt: str, options=None, system_prompt: str = '') -> str:
     """Generate a response from an OpenAI-compatible model using /v1/chat/completions."""
     raise_if_provider_unavailable(
@@ -311,6 +476,18 @@ def generate(enabled: bool, model: str, prompt: str, options=None, system_prompt
     except Exception as e:
         llm_report('Error generating response from OpenAI', provider=_PROVIDER_NAME, operation='generate', cause=e)
         return ''
+
+def is_model_loaded(enabled: bool, model: str) -> bool:
+    """Return whether a model is already loaded for OpenAI-compatible provider."""
+    if is_provider_unavailable(enabled):
+        return False
+
+    if is_llamaswap_provider(enabled):
+        return _is_openai_model_loaded(enabled, model)
+
+    compatible_models = get_models(enabled)
+    return model in compatible_models
+
 
 def generate_vision(enabled: bool, model: str, prompt: str, images=None, options=None, system_prompt: str = '') -> str:
     """Generate a vision response from an OpenAI-compatible model."""

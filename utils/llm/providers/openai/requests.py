@@ -57,36 +57,42 @@ def openai_request_json(
     method: str,
     path: str,
     payload: Optional[dict[str, Any]] = None,
-    timeout: float = 300.0,
+    timeout: Optional[float] = 300.0,
 ) -> Any:
     """Perform an HTTP JSON request to an OpenAI-compatible endpoint and return decoded JSON response."""
     return request_json(method, _get_base_url(), path, payload=payload, headers=_get_headers(), timeout=timeout)
 
 
-def openai_request_json_models(timeout: float = 300.0) -> Any:
+def openai_request_json_models(timeout: Optional[float] = 300.0) -> Any:
     """Perform a models request to an OpenAI-compatible endpoint and return decoded JSON response."""
     logger.debug('OpenAI models request')
     return openai_request_json('GET', '/v1/models', timeout=timeout)
 
 
-def openai_request_json_chat(payload: dict[str, Any], timeout: float = 300.0) -> Any:
+def openai_request_json_chat(payload: dict[str, Any], timeout: Optional[float] = 300.0) -> Any:
     """Perform a chat completions request to an OpenAI-compatible endpoint and return decoded JSON response."""
     logger.debug(f'OpenAI chat request with payload: {payload}')
     return openai_request_json('POST', '/v1/chat/completions', payload=payload, timeout=timeout)
+
+
+def openai_request_json_running(timeout: Optional[float] = 300.0) -> Any:
+    """Perform a llama-swap /running request and return decoded JSON response."""
+    logger.debug('OpenAI-compatible running request')
+    return openai_request_json('GET', '/running', timeout=timeout)
 
 
 def openai_request_stream(
     method: str,
     path: str,
     payload: Optional[dict[str, Any]] = None,
-    timeout: float = 30.0,
+    timeout: Optional[float] = 30.0,
 ) -> Any:
     """Perform an HTTP streaming request to an OpenAI-compatible endpoint and return an open response context."""
     return request_stream(method, _get_base_url(), path, payload=payload, headers=_get_headers(), timeout=timeout)
 
 
 
-def openai_request_stream_chat(payload: dict[str, Any], timeout: float = 30.0) -> Any:
+def openai_request_stream_chat(payload: dict[str, Any], timeout: Optional[float] = 30.0) -> Any:
     """Perform a streaming chat completions request and return an open response context."""
     logger.debug(f'OpenAI streaming chat request with payload: {payload}')
     return openai_request_stream('POST', '/v1/chat/completions', payload=payload, timeout=timeout)

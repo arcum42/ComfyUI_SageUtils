@@ -474,12 +474,13 @@ export async function urlToBase64(url) {
  * @param {Object} [params.options] - Provider-specific load options
  * @returns {Promise<Object>} - { loaded: true, provider, model }
  */
-export async function loadModel(params) {
+export async function loadModel(params, signal = null) {
     try {
         const response = await fetch(`${BASE_URL}/load_model`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(params),
+            signal: signal || undefined,
         });
 
         if (!response.ok) {

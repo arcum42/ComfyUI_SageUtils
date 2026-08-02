@@ -221,7 +221,7 @@ app.registerExtension({
         'extensions/comfyui_sageutils/sidebar/partials/galleryEmptyState.html',
         'extensions/comfyui_sageutils/sidebar/partials/galleryMetadataFallback.html',
         'extensions/comfyui_sageutils/sidebar/llmTab/partials/llmHeader.html',
-        'extensions/comfyui_sageutils/sidebar/llmTab/shared/llmModelSelection.html',
+        'extensions/comfyui_sageutils/sidebar/llmTab/partials/llmModelSelection.html',
         'extensions/comfyui_sageutils/sidebar/llmTab/partials/llmAdvancedOptions.html',
         'extensions/comfyui_sageutils/sidebar/llmTab/partials/llmProviderOptionControl.html',
         'extensions/comfyui_sageutils/sidebar/partials/modelsTabV2HeaderControls.html',

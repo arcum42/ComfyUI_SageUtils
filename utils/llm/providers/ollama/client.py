@@ -332,7 +332,7 @@ def load_model(enabled: bool, model: str, keep_alive: int = 60, options: dict[st
             payload['options'] = built_options
 
     try:
-        response = ollama_request_json_generate(payload, timeout=_get_request_timeout())
+        response = ollama_request_json_generate(payload, timeout=None)
         if isinstance(response, dict) and response.get('error'):
             llm_raise(RuntimeError, str(response.get('error')), provider=_PROVIDER_NAME, operation='load_model')
         return True
