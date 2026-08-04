@@ -19,19 +19,101 @@ function getTemplateValue(key, data) {
     }, data);
 }
 
+function isTemplateLoaderDebugEnabled() {
+    if (typeof window === 'undefined') {
+        return false;
+    }
+
+    try {
+        if (new URLSearchParams(window.location.search).get('sageutils_template_debug') === '1') {
+            return true;
+        }
+    } catch {
+        // ignore malformed URL search
+    }
+
+    try {
+        return window.localStorage?.getItem('sageutils_template_debug') === 'true';
+    } catch {
+        return false;
+    }
+}
+
+let extensionBasePathCache = null;
+
+function getExtensionBasePath() {
+    if (extensionBasePathCache !== null) {
+        return extensionBasePathCache;
+    }
+
+    if (typeof document === 'undefined') {
+        extensionBasePathCache = null;
+        return null;
+    }
+
+    const script = document.currentScript || Array.from(document.scripts || []).find((scriptEl) => {
+        return scriptEl.src && scriptEl.src.includes('/extensions/') && scriptEl.src.endsWith('/utils/htmlTemplateLoader.js');
+    });
+
+    if (!script || !script.src) {
+        extensionBasePathCache = null;
+        return null;
+    }
+
+    try {
+        const url = new URL(script.src, window.location.origin);
+        const parts = url.pathname.split('/').filter(Boolean);
+        const extIndex = parts.indexOf('extensions');
+        if (extIndex !== -1 && parts.length > extIndex + 1) {
+            extensionBasePathCache = '/' + parts.slice(0, extIndex + 2).join('/');
+            return extensionBasePathCache;
+        }
+    } catch (error) {
+        // ignore - fallback below
+    }
+
+    extensionBasePathCache = null;
+    return null;
+}
+
 function resolveTemplateFetchPaths(templatePath) {
     if (templatePath.startsWith('/') || templatePath.startsWith('http://') || templatePath.startsWith('https://')) {
-        return [templatePath];
+        const paths = [templatePath];
+        if (isTemplateLoaderDebugEnabled()) {
+            console.debug('[htmlTemplateLoader] resolveTemplateFetchPaths', templatePath, paths);
+        }
+        return paths;
     }
 
     if (templatePath.startsWith('extensions/')) {
-        return ['/' + templatePath];
+        const defaultPath = '/' + templatePath;
+        const paths = [defaultPath];
+        const basePath = getExtensionBasePath();
+        if (basePath) {
+            const pathRest = templatePath.split('/').slice(2).join('/');
+            const altPath = `${basePath}/${pathRest}`;
+            if (altPath !== defaultPath) {
+                paths.push(altPath);
+            }
+        }
+        if (isTemplateLoaderDebugEnabled()) {
+            console.debug('[htmlTemplateLoader] resolveTemplateFetchPaths', templatePath, paths, { basePath });
+        }
+        return paths;
     }
 
-    return [new URL(templatePath, window.location.origin + '/').href];
+    const href = new URL(templatePath, window.location.origin + '/').href;
+    if (isTemplateLoaderDebugEnabled()) {
+        console.debug('[htmlTemplateLoader] resolveTemplateFetchPaths', templatePath, [href]);
+    }
+    return [href];
 }
 
 async function tryFetchTemplate(templatePath, fetchPath) {
+    if (isTemplateLoaderDebugEnabled()) {
+        console.debug('[htmlTemplateLoader] tryFetchTemplate', { templatePath, fetchPath });
+    }
+
     const response = await fetch(fetchPath, {
         cache: 'no-store',
         credentials: 'same-origin'
@@ -70,6 +152,10 @@ export async function loadHtmlTemplate(templatePath) {
     }
 
     const fetchPaths = resolveTemplateFetchPaths(templatePath);
+    if (isTemplateLoaderDebugEnabled()) {
+        console.debug('[htmlTemplateLoader] loadHtmlTemplate', { templatePath, fetchPaths });
+    }
+
     let lastError = null;
 
     for (const path of fetchPaths) {
