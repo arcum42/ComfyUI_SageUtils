@@ -190,3 +190,96 @@ export async function scanModelFolders(folderTypes = ['all']) {
         throw error;
     }
 }
+
+/**
+ * Reconcile cached model paths with the local filesystem without changing cache data.
+ * @returns {Promise<Object>} Path status lists and counts
+ */
+export async function reconcileCache() {
+    try {
+        const response = await api.fetchApi('/sage_cache/reconcile');
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const result = await response.json();
+        if (!result.success) {
+            throw new Error(result.error || 'Unable to reconcile model cache');
+        }
+
+        return result;
+    } catch (error) {
+        console.error('Error reconciling model cache:', error);
+        throw error;
+    }
+}
+
+/**
+ * Fetch recent durable scan summaries.
+ * @returns {Promise<Array>} Scan history entries
+ */
+export async function fetchScanHistory() {
+    const response = await api.fetchApi('/sage_cache/scan_history');
+    if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    const result = await response.json();
+    if (!result.success) {
+        throw new Error(result.error || 'Unable to load scan history');
+    }
+    return result.history || [];
+}
+
+export async function previewScan(categories, scanMode = 'all', force = false, includeCached = true) {
+    const response = await api.fetchApi('/sage_cache/scan_preview', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            categories,
+            scan_mode: scanMode,
+            force,
+            include_cached: includeCached
+        })
+    });
+    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+    const result = await response.json();
+    if (!result.success) throw new Error(result.error || 'Unable to preview scan');
+    return result.preview;
+}
+
+/**
+ * Fetch live registered model files joined with cached metadata.
+ * @returns {Promise<Object>} Inventory records and counts
+ */
+export async function fetchModelInventory() {
+    const response = await api.fetchApi('/sage_cache/inventory');
+    if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    const result = await response.json();
+    if (!result.success) {
+        throw new Error(result.error || 'Unable to load model inventory');
+    }
+    return result;
+}
+
+/**
+ * Remove explicitly confirmed missing cache paths while preserving metadata.
+ * @param {Array<string>} paths - Paths from a reconciliation preview
+ * @returns {Promise<Object>} Cleanup result
+ */
+export async function cleanupMissingCachePaths(paths) {
+    const response = await api.fetchApi('/sage_cache/cleanup_missing', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ paths, confirm: true })
+    });
+    if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    const result = await response.json();
+    if (!result.success) {
+        throw new Error(result.error || 'Unable to clean missing cache paths');
+    }
+    return result;
+}

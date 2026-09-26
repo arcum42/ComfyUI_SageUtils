@@ -23,7 +23,7 @@ import { handleError } from "../shared/errorHandler.js";
 import { selectors, actions } from "../shared/stateManager.js";
 
 // Import API functions
-import { pullMetadata, updateCacheInfo } from "../shared/api/cacheApi.js";
+import { pullMetadata, updateCacheInfo, reconcileCache, fetchModelInventory, fetchScanHistory, cleanupMissingCachePaths } from "../shared/api/cacheApi.js";
 
 // Import utilities
 import { escapeHtml, generateHtmlContent, openHtmlReport } from "../reports/reportGenerator.js";
@@ -130,7 +130,7 @@ async function renderModelsTabV2SingleModelActions() {
  * @param {Function} onReport - Report button callback
  * @returns {Object} Header section and all control references
  */
-async function createHeaderAndControls(onRefresh, onScan, onReport) {
+async function createHeaderAndControls(onRefresh, onCleanup, onHistory, onScan, onReport) {
     const section = createSection('Model Browser', null, {
         collapsible: false,
         padding: '12px',  // Control the content padding
@@ -156,6 +156,9 @@ async function createHeaderAndControls(onRefresh, onScan, onReport) {
         folderOptions: buildSelectOptions(FILTER_OPTIONS.folderType, ''),
         lastUsedOptions: buildSelectOptions(FILTER_OPTIONS.lastUsed, ''),
         updatesOptions: buildSelectOptions(FILTER_OPTIONS.updates, ''),
+        filesystemStatusOptions: buildSelectOptions(FILTER_OPTIONS.filesystemStatus, ''),
+        civitaiStatusOptions: buildSelectOptions(FILTER_OPTIONS.civitaiStatus, ''),
+        metadataStatusOptions: buildSelectOptions(FILTER_OPTIONS.metadataStatus, ''),
         sortOptions: buildSelectOptions([
             { value: 'name', text: 'Name' },
             { value: 'lastused', text: 'Last Used' },
@@ -170,10 +173,15 @@ async function createHeaderAndControls(onRefresh, onScan, onReport) {
     const folderSelect = section.querySelector('#models-v2-folder-select');
     const lastUsedSelect = section.querySelector('#models-v2-last-used-select');
     const updatesSelect = section.querySelector('#models-v2-updates-select');
+    const filesystemStatusSelect = section.querySelector('#models-v2-filesystem-status-select');
+    const civitaiStatusSelect = section.querySelector('#models-v2-civitai-status-select');
+    const metadataStatusSelect = section.querySelector('#models-v2-metadata-status-select');
     const sortSelect = section.querySelector('#models-v2-sort-select');
     const sortOrderButton = section.querySelector('#models-v2-sort-order-btn');
     const searchInput = section.querySelector('#models-v2-search-input');
     const refreshButton = section.querySelector('#models-v2-refresh-btn');
+    const cleanupButton = section.querySelector('#models-v2-cleanup-btn');
+    const historyButton = section.querySelector('#models-v2-history-btn');
     const scanButton = section.querySelector('#models-v2-scan-btn');
     const reportButton = section.querySelector('#models-v2-report-btn');
 
@@ -186,6 +194,8 @@ async function createHeaderAndControls(onRefresh, onScan, onReport) {
     });
 
     refreshButton.addEventListener('click', onRefresh);
+    cleanupButton.addEventListener('click', onCleanup);
+    historyButton.addEventListener('click', onHistory);
     scanButton.addEventListener('click', onScan);
     reportButton.addEventListener('click', onReport);
 
@@ -200,6 +210,15 @@ async function createHeaderAndControls(onRefresh, onScan, onReport) {
         }
         if (savedFilters.updates) {
             updatesSelect.value = savedFilters.updates;
+        }
+        if (savedFilters.filesystemStatus) {
+            filesystemStatusSelect.value = savedFilters.filesystemStatus;
+        }
+        if (savedFilters.civitaiStatus) {
+            civitaiStatusSelect.value = savedFilters.civitaiStatus;
+        }
+        if (savedFilters.metadataStatus) {
+            metadataStatusSelect.value = savedFilters.metadataStatus;
         }
         if (savedFilters.search) {
             searchInput.value = savedFilters.search;
@@ -218,10 +237,15 @@ async function createHeaderAndControls(onRefresh, onScan, onReport) {
         folderSelect,
         lastUsedSelect,
         updatesSelect,
+        filesystemStatusSelect,
+        civitaiStatusSelect,
+        metadataStatusSelect,
         sortSelect,
         sortOrderButton,
         searchInput,
         refreshButton,
+        cleanupButton,
+        historyButton,
         scanButton,
         reportButton
     };
@@ -536,19 +560,62 @@ async function openEditDialog(modelHash, modelInfo, filePath, onSave) {
 /**
  * Opens the model scan dialog
  */
-async function openScanDialog() {
+async function openScanDialog(onScanComplete) {
     try {
         const { ModelScanDialog } = await import('../dialogs/modelScanDialog.js');
         const scanDialog = new ModelScanDialog({
-            onScanComplete: () => {
-                // Dialog will handle its own refresh
-            }
+            onScanComplete
         });
         
         await scanDialog.show();
     } catch (error) {
         console.error('Error opening scan dialog:', error);
         notifications.error('Failed to open scan dialog', error.message);
+    }
+}
+
+async function showScanHistory() {
+    try {
+        const history = await fetchScanHistory();
+        const content = document.createElement('div');
+        content.className = 'scan-history-content';
+
+        if (history.length === 0) {
+            content.textContent = 'No completed scans yet.';
+        } else {
+            history.slice().reverse().forEach((summary) => {
+                const entry = document.createElement('div');
+                entry.className = 'scan-history-entry';
+                const started = summary.started_at ? new Date(summary.started_at * 1000).toLocaleString() : 'Unknown time';
+                const counts = `${summary.processed || 0} processed, ${summary.matched || 0} matched, ${summary.unmatched || 0} unmatched, ${summary.errors || 0} errors`;
+                entry.textContent = `${started} - ${summary.status}: ${counts}`;
+                const options = document.createElement('div');
+                options.className = 'scan-history-options';
+                options.textContent = `Options: ${JSON.stringify(summary.options || {})}`;
+                entry.appendChild(options);
+                if (summary.error_details?.length) {
+                    const errors = document.createElement('div');
+                    errors.className = 'scan-history-errors';
+                    errors.textContent = summary.error_details
+                        .map((detail) => `${detail.phase || 'scan'}: ${detail.file}: ${detail.error}`)
+                        .join('\n');
+                    entry.appendChild(errors);
+                }
+                content.appendChild(entry);
+            });
+        }
+
+        const dialog = createDialog({
+            title: 'Scan History',
+            content,
+            width: '700px',
+            height: 'auto'
+        });
+        dialog.addFooterButton('Close', () => dialog.close(), { backgroundColor: '#666' });
+        dialog.show();
+    } catch (error) {
+        console.error('Error loading scan history:', error);
+        notifications.error('Failed to load scan history', error.message);
     }
 }
 
@@ -584,16 +651,50 @@ export async function createModelsTabV2(container) {
     let selectedModelHash = null;
     let currentFilters = selectors.modelFilters() || {};
     let showNsfw = currentFilters.showNsfw !== undefined ? currentFilters.showNsfw : false;
+    let filesystemStatuses = {};
+    let reconciliationResult = { statuses: {} };
+    let liveInventory = null;
     
     // Create unified header with filters and actions
     const headerControls = await createHeaderAndControls(
         // Refresh handler
         async () => {
-            await loadModels();
+            await reconcileAndLoadModels();
+        },
+        async () => {
+            const missingPaths = [
+                ...(reconciliationResult.statuses?.missing || []),
+                ...(reconciliationResult.statuses?.unreadable || [])
+            ];
+            if (missingPaths.length === 0) {
+                notifications.info('No missing or unreadable cache paths found.');
+                return;
+            }
+            const confirmed = await confirmDialog(
+                `Remove ${missingPaths.length} missing or unreadable path mappings from the cache? Metadata will be preserved.`,
+                'Clean Missing Models'
+            );
+            if (!confirmed) return;
+            await cleanupMissingCachePaths(missingPaths);
+            await reconcileAndLoadModels();
+        },
+        async () => {
+            await showScanHistory();
         },
         // Scan handler
         async () => {
-            await openScanDialog();
+            await openScanDialog(async () => {
+                await reconcileAndLoadModels();
+
+                if (selectedModelHash) {
+                    const modelData = modelBrowser.filteredModels.find(
+                        (model) => model.hash === selectedModelHash
+                    );
+                    if (modelData) {
+                        await updateInfoDisplay(selectedModelHash, modelData);
+                    }
+                }
+            });
         },
         // Report handler
         async () => {
@@ -620,6 +721,10 @@ export async function createModelsTabV2(container) {
                     break;
                 case 'pull':
                     await pullModelMetadata(hash);
+                    break;
+                case 'retry':
+                    await pullModelMetadata(hash, true);
+                    await reconcileAndLoadModels();
                     break;
                 case 'edit':
                     await editModelInfo(hash);
@@ -660,6 +765,18 @@ export async function createModelsTabV2(container) {
             
             // Convert cache data to model array and deduplicate by hash
             // This handles cases where symbolic links create multiple paths to the same file
+            if (liveInventory) {
+                modelBrowser.updateModels(liveInventory.map((model) => ({
+                    ...model,
+                    actualHash: model.hash,
+                    hash: `path:${model.path}`,
+                    registeredTypes: model.registered_types || [],
+                    metadataStatus: model.metadata_status || 'unknown'
+                })));
+                applyCurrentFilters();
+                return;
+            }
+
             const modelsByHash = new Map();
             
             Object.keys(cacheData.hash).forEach(filePath => {
@@ -670,7 +787,9 @@ export async function createModelsTabV2(container) {
                     modelsByHash.set(hash, {
                         hash: hash,
                         path: filePath,
-                        info: cacheData.info[hash] || {}
+                        info: cacheData.info[hash] || {},
+                        filesystemStatus: filesystemStatuses[filePath] || 'unknown',
+                        civitaiStatus: cacheData.info[hash]?._sageutils_civitai_status || 'unknown'
                     });
                 } else {
                     // Optional: prefer shorter paths or non-symlink paths
@@ -680,7 +799,9 @@ export async function createModelsTabV2(container) {
                         modelsByHash.set(hash, {
                             hash: hash,
                             path: filePath,
-                            info: cacheData.info[hash] || {}
+                            info: cacheData.info[hash] || {},
+                            filesystemStatus: filesystemStatuses[filePath] || 'unknown',
+                            civitaiStatus: cacheData.info[hash]?._sageutils_civitai_status || 'unknown'
                         });
                     }
                 }
@@ -697,6 +818,31 @@ export async function createModelsTabV2(container) {
             notifications.error('Failed to load models', error.message);
         }
     }
+
+    async function reconcileAndLoadModels() {
+        try {
+            const [result, inventoryResult] = await Promise.all([
+                reconcileCache(),
+                fetchModelInventory()
+            ]);
+            reconciliationResult = result;
+            liveInventory = inventoryResult.models || [];
+            modelBrowser.setInventoryCounts(inventoryResult.counts || null);
+            filesystemStatuses = {};
+            Object.entries(result.statuses || {}).forEach(([status, paths]) => {
+                paths.forEach((filePath) => {
+                    filesystemStatuses[filePath] = status;
+                });
+            });
+        } catch (error) {
+            console.warn('[ModelsTabV2] Filesystem reconciliation failed:', error);
+            filesystemStatuses = {};
+            liveInventory = null;
+            modelBrowser.setInventoryCounts(null);
+        }
+
+        await loadModels();
+    }
     
     /**
      * Applies current filters to the model browser
@@ -710,6 +856,9 @@ export async function createModelsTabV2(container) {
             type: headerControls.folderSelect.value,
             lastUsed: headerControls.lastUsedSelect.value,
             updates: headerControls.updatesSelect.value,
+            filesystemStatus: headerControls.filesystemStatusSelect.value,
+            civitaiStatus: headerControls.civitaiStatusSelect.value,
+            metadataStatus: headerControls.metadataStatusSelect.value,
             sort: isDescending ? `${sortValue}-desc` : sortValue
         };
         
@@ -749,8 +898,9 @@ export async function createModelsTabV2(container) {
         }
         
         try {
+            const actualHash = modelData.actualHash || hash;
             const infoPanel = await createModelInfoPanel(
-                hash,
+                actualHash,
                 modelData.info,
                 modelData.path,
                 showNsfw,
@@ -785,10 +935,12 @@ export async function createModelsTabV2(container) {
     /**
      * Pulls metadata for a model from Civitai
      */
-    async function pullModelMetadata(hash) {
+    async function pullModelMetadata(hash, force = false) {
         try {
             const cacheData = selectors.cacheData();
-            const filePath = Object.keys(cacheData.hash).find(path => cacheData.hash[path] === hash);
+            const inventoryModel = modelBrowser.models.find(model => model.hash === hash);
+            const filePath = Object.keys(cacheData.hash).find(path => cacheData.hash[path] === hash)
+                || inventoryModel?.path;
             
             if (!filePath) {
                 alertDialog('Could not find file path for selected model.', 'Error');
@@ -811,10 +963,10 @@ export async function createModelsTabV2(container) {
             await new Promise(resolve => setTimeout(resolve, 200));
             
             progressBar.updateProgress(50, 'Fetching model metadata...');
-            await pullMetadata(filePath, false);
+            await pullMetadata(filePath, force);
             
             progressBar.updateProgress(75, 'Refreshing cache...');
-            await loadModels();
+            await reconcileAndLoadModels();
             
             progressBar.updateProgress(100, 'Metadata updated successfully!');
             
@@ -838,16 +990,19 @@ export async function createModelsTabV2(container) {
      */
     async function editModelInfo(hash) {
         const cacheData = selectors.cacheData();
-        const modelInfo = cacheData.info[hash] || {};
-        const filePath = Object.keys(cacheData.hash).find(path => cacheData.hash[path] === hash);
+        const inventoryModel = modelBrowser.models.find(model => model.hash === hash);
+        const actualHash = inventoryModel?.actualHash || hash;
+        const modelInfo = cacheData.info[actualHash] || inventoryModel?.info || {};
+        const filePath = Object.keys(cacheData.hash).find(path => cacheData.hash[path] === hash)
+            || inventoryModel?.path;
         
         if (!filePath) {
             alertDialog('Could not find file path for selected model.', 'Error');
             return;
         }
         
-        await openEditDialog(hash, modelInfo, filePath, async () => {
-            await loadModels();
+        await openEditDialog(actualHash, modelInfo, filePath, async () => {
+            await reconcileAndLoadModels();
             
             // Re-select the model to update display
             const modelData = modelBrowser.filteredModels.find(m => m.hash === hash);
@@ -935,6 +1090,18 @@ export async function createModelsTabV2(container) {
     headerControls.updatesSelect.addEventListener('change', () => {
         applyCurrentFilters();
     });
+
+    headerControls.filesystemStatusSelect.addEventListener('change', () => {
+        applyCurrentFilters();
+    });
+
+    headerControls.civitaiStatusSelect.addEventListener('change', () => {
+        applyCurrentFilters();
+    });
+
+    headerControls.metadataStatusSelect.addEventListener('change', () => {
+        applyCurrentFilters();
+    });
     
     headerControls.sortSelect.addEventListener('change', () => {
         applyCurrentFilters();
@@ -951,7 +1118,7 @@ export async function createModelsTabV2(container) {
     // ==================== Initialize ====================
     
     // Load initial data
-    loadModels();
+    reconcileAndLoadModels();
     
     // Store references for cleanup
     container._modelsTabV2 = {

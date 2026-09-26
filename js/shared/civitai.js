@@ -131,7 +131,7 @@ export function getDownloadUrl(versionId, apiToken = null) {
  * @returns {boolean} - True if update is available
  */
 export function hasUpdateAvailable(modelInfo) {
-    return !!(modelInfo && modelInfo.update_available);
+    return !!(modelInfo && (modelInfo.has_update ?? modelInfo.update_available));
 }
 
 /**

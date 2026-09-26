@@ -636,10 +636,19 @@
 }
 
 .progress-bar-container {
+  margin-bottom: 12px;
+}
+
+.progress-bar-label {
+  color: var(--descrip-text);
+  font-size: 12px;
+  margin-bottom: 4px;
+}
+
+.progress-bar-row {
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-bottom: 12px;
 }
 
 .progress-bar {

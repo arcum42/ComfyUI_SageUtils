@@ -50,6 +50,9 @@ if 'comfy_aimdo' not in sys.modules:
 if 'nodes' not in sys.modules:
     sys.modules['nodes'] = types.ModuleType('nodes')
 
+if not hasattr(sys.modules['nodes'], 'MAX_RESOLUTION'):
+    sys.modules['nodes'].MAX_RESOLUTION = 16384
+
 if 'comfy' not in sys.modules:
     comfy_module = types.ModuleType('comfy')
     comfy_module.__path__ = []
@@ -63,7 +66,7 @@ if 'comfy' not in sys.modules:
 
 if 'comfy.cli_args' not in sys.modules:
     cli_args_module = types.ModuleType('comfy.cli_args')
-    cli_args_module.args = types.SimpleNamespace(base_directory=None)
+    cli_args_module.args = types.SimpleNamespace(base_directory=None, models_directory=None)
     sys.modules['comfy.cli_args'] = cli_args_module
 
 if 'comfy_execution' not in sys.modules:

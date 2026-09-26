@@ -12,5 +12,6 @@ This folder contains planning, migration, refactoring, and phase completion docu
 - [Refactoring Analysis](Refactoring_Analysis.md)
 - [Refactoring Plan](Refactoring_Plan.md)
 - [V3 Migration Status](V3_MIGRATION_STATUS.md)
+- [Models inventory and scan assessment](models_inventory_and_scan_assessment.md)
 - [Node documentation tool plan](node_documentation_tool_plan.md)
 - [Node/docs coverage report](node_doc_coverage_report.md)

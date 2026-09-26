@@ -1,3 +1,28 @@
+.scan-history-content {
+    max-height: 500px;
+    overflow-y: auto;
+}
+
+.scan-history-entry {
+    padding: 10px;
+    margin-bottom: 8px;
+    white-space: pre-wrap;
+    border: 1px solid #444;
+    background: #252525;
+}
+
+.scan-history-errors {
+    margin-top: 6px;
+    color: #ff9b9b;
+    font-family: monospace;
+    font-size: 11px;
+}
+
+.scan-history-options {
+    margin-top: 4px;
+    color: #aaa;
+    font-size: 11px;
+}
 .models-v2-header-controls {
     display: flex;
     flex-direction: column;

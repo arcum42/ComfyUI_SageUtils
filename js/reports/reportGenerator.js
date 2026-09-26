@@ -280,7 +280,7 @@ export async function generateTableRows(models, options = {}) {
         const modelId = (info && info.modelId) || 'Unknown';
         const civitaiUrl = getModelUrl(modelId);
         const updateAvailable = hasUpdateAvailable(info);
-        const lastUsed = (info && (info.lastUsed || info.last_accessed)) || 'Never';
+        const lastUsed = (info && (info.last_used || info.lastUsed || info.last_accessed)) || 'Never';
         
         // Improved file size handling with caching and better fallback logic
         let fileSizeRaw = null;
@@ -471,7 +471,7 @@ export async function generateTableRowsWithProgress(models, options = {}) {
             const modelId = (info && info.modelId) || 'Unknown';
             const civitaiUrl = getModelUrl(modelId);
             const updateAvailable = hasUpdateAvailable(info);
-            const lastUsed = (info && (info.lastUsed || info.last_accessed)) || 'Never';
+            const lastUsed = (info && (info.last_used || info.lastUsed || info.last_accessed)) || 'Never';
             
             // Improved file size handling with caching and better fallback logic
             let fileSizeRaw = null;

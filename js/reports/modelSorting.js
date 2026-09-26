@@ -7,6 +7,14 @@ import {
     hasUpdateAvailable
 } from '../shared/civitai.js';
 
+function getLastUsed(info = {}) {
+    return info.last_used || info.lastUsed || info.last_accessed || '';
+}
+
+function getFileSize(info = {}) {
+    return info.file_size || info.fileSize || info.size || 0;
+}
+
 /**
  * Sort models array based on the specified criteria
  * @param {Array} models - Array of model objects
@@ -30,23 +38,23 @@ export function sortModels(models, sortBy) {
                 return nameB.localeCompare(nameA);
             }
             case 'lastused': {
-                const lastUsedA = (infoA.lastUsed || infoA.last_accessed) ? new Date(infoA.lastUsed || infoA.last_accessed) : new Date(0);
-                const lastUsedB = (infoB.lastUsed || infoB.last_accessed) ? new Date(infoB.lastUsed || infoB.last_accessed) : new Date(0);
+                const lastUsedA = getLastUsed(infoA) ? new Date(getLastUsed(infoA)) : new Date(0);
+                const lastUsedB = getLastUsed(infoB) ? new Date(getLastUsed(infoB)) : new Date(0);
                 return lastUsedB - lastUsedA; // Recent first
             }
             case 'lastused-desc': {
-                const lastUsedA = (infoA.lastUsed || infoA.last_accessed) ? new Date(infoA.lastUsed || infoA.last_accessed) : new Date(0);
-                const lastUsedB = (infoB.lastUsed || infoB.last_accessed) ? new Date(infoB.lastUsed || infoB.last_accessed) : new Date(0);
+                const lastUsedA = getLastUsed(infoA) ? new Date(getLastUsed(infoA)) : new Date(0);
+                const lastUsedB = getLastUsed(infoB) ? new Date(getLastUsed(infoB)) : new Date(0);
                 return lastUsedA - lastUsedB; // Oldest first
             }
             case 'size': {
-                const sizeA = infoA.file_size || 0;
-                const sizeB = infoB.file_size || 0;
+                const sizeA = getFileSize(infoA);
+                const sizeB = getFileSize(infoB);
                 return sizeA - sizeB; // Small to large
             }
             case 'size-desc': {
-                const sizeA = infoA.file_size || 0;
-                const sizeB = infoB.file_size || 0;
+                const sizeA = getFileSize(infoA);
+                const sizeB = getFileSize(infoB);
                 return sizeB - sizeA; // Large to small
             }
             case 'type': {

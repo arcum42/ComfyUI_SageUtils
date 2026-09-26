@@ -287,9 +287,18 @@ export class ModelBrowser {
         `;
         count.textContent = '0 models';
         this.countElement = count;
+
+        const inventorySummary = document.createElement('span');
+        inventorySummary.className = 'model-inventory-summary';
+        inventorySummary.style.cssText = `
+            color: #888;
+            font-size: 11px;
+        `;
+        this.inventorySummaryElement = inventorySummary;
         
         rightSection.appendChild(expandCollapseBtn);
         rightSection.appendChild(count);
+        rightSection.appendChild(inventorySummary);
         
         header.appendChild(leftSection);
         header.appendChild(rightSection);
@@ -376,7 +385,7 @@ export class ModelBrowser {
         
         // Quick actions (if enabled)
         if (this.options.allowQuickActions) {
-            const quickActions = this.createQuickActions(hash);
+            const quickActions = this.createQuickActions(hash, modelData);
             item.appendChild(quickActions);
         }
         
@@ -460,6 +469,27 @@ export class ModelBrowser {
             const metaBadge = this.createBadge('✨', '#4CAF50', 'Has metadata');
             topRow.appendChild(metaBadge);
         }
+
+        const filesystemStatus = modelData.filesystemStatus || 'unknown';
+        const statusStyles = {
+            present: ['OK', '#4CAF50', 'File present and matches its stored fingerprint'],
+            changed: ['Changed', '#FF9800', 'File size or modification time changed'],
+            missing: ['Missing', '#F44336', 'File is no longer present at this path'],
+            unreadable: ['Unreadable', '#F44336', 'File cannot be read or is not a regular file'],
+            unknown: ['Not verified', '#9E9E9E', 'No filesystem fingerprint is stored yet']
+        };
+        const [statusLabel, statusColor, statusTitle] = statusStyles[filesystemStatus] || statusStyles.unknown;
+        topRow.appendChild(this.createBadge(statusLabel, statusColor, statusTitle));
+
+        const civitaiStatus = modelData.civitaiStatus || 'unknown';
+        const civitaiStyles = {
+            matched: ['Civitai', '#4CAF50', 'Matched to a Civitai model version'],
+            not_found_or_unpublished: ['No match', '#FF9800', 'No published Civitai file match was found'],
+            temporary_error: ['Retry', '#F44336', 'Civitai lookup failed temporarily'],
+            unknown: ['Unchecked', '#9E9E9E', 'Civitai metadata has not been checked']
+        };
+        const [civitaiLabel, civitaiColor, civitaiTitle] = civitaiStyles[civitaiStatus] || civitaiStyles.unknown;
+        topRow.appendChild(this.createBadge(civitaiLabel, civitaiColor, civitaiTitle));
         
         content.appendChild(topRow);
         
@@ -490,21 +520,23 @@ export class ModelBrowser {
             `;
             
             // File size
-            if (this.options.showFileSize && info?.file_size) {
+            const fileSize = this.getFileSize(info);
+            const lastUsed = this.getLastUsed(info);
+            if (this.options.showFileSize && fileSize) {
                 const sizeSpan = document.createElement('span');
-                sizeSpan.textContent = `📊 ${this.formatFileSize(info.file_size)}`;
+                sizeSpan.textContent = `📊 ${this.formatFileSize(fileSize)}`;
                 metaRow.appendChild(sizeSpan);
             }
             
             // Last used
-            if (this.options.showLastUsed && info?.last_used) {
+            if (this.options.showLastUsed && lastUsed) {
                 const lastUsedSpan = document.createElement('span');
-                lastUsedSpan.textContent = `🕐 ${this.formatLastUsed(info.last_used)}`;
+                lastUsedSpan.textContent = `🕐 ${this.formatLastUsed(lastUsed)}`;
                 metaRow.appendChild(lastUsedSpan);
             }
             
             // Has updates badge
-            if (info?.has_update) {
+            if (this.hasUpdate(info)) {
                 const updateBadge = this.createBadge('🆕', '#FF9800', 'Update available');
                 metaRow.appendChild(updateBadge);
             }
@@ -522,7 +554,7 @@ export class ModelBrowser {
      * @param {string} hash - Model hash
      * @returns {HTMLElement} Quick actions container
      */
-    createQuickActions(hash) {
+    createQuickActions(hash, modelData) {
         const container = document.createElement('div');
         container.className = 'model-quick-actions';
         container.style.cssText = `
@@ -544,7 +576,7 @@ export class ModelBrowser {
             variant: BUTTON_VARIANTS.SECONDARY,
             title: 'Copy hash to clipboard',
             onClick: () => {
-                copyToClipboard(hash, 'Model hash copied!');
+                copyToClipboard(modelData.actualHash || hash, 'Model hash copied!');
                 this.callbacks.onQuickAction('copyHash', hash);
             },
             style: {
@@ -571,6 +603,23 @@ export class ModelBrowser {
             }
         });
         container.appendChild(pullBtn);
+
+        if (modelData.civitaiStatus === 'temporary_error') {
+            const retryBtn = createButton('↻', {
+                variant: BUTTON_VARIANTS.SECONDARY,
+                title: 'Retry Civitai metadata lookup',
+                onClick: () => {
+                    this.callbacks.onQuickAction('retry', hash);
+                },
+                style: {
+                    padding: '4px 8px',
+                    fontSize: '12px',
+                    minWidth: '30px',
+                    height: '26px'
+                }
+            });
+            container.appendChild(retryBtn);
+        }
         
         // Edit button
         const editBtn = createButton('✏️', {
@@ -791,6 +840,26 @@ export class ModelBrowser {
         this.models = models;
         this.applyFilters(this.currentFilters);
     }
+
+    /**
+     * Displays live inventory counts without changing the filtered model count.
+     * @param {Object} counts - Inventory status counts
+     */
+    setInventoryCounts(counts = null) {
+        if (!this.inventorySummaryElement) return;
+        if (!counts) {
+            this.inventorySummaryElement.textContent = '';
+            return;
+        }
+        const installed = counts.installed || 0;
+        const stale = counts.stale || 0;
+        const changed = counts.changed || 0;
+        this.inventorySummaryElement.textContent = `Live: ${installed} installed, ${changed} changed, ${stale} stale`;
+        const categorySummary = Object.entries(counts.categories || {})
+            .map(([category, count]) => `${category}: ${count}`)
+            .join(', ');
+        this.inventorySummaryElement.title = `Missing: ${counts.missing || 0}, unreadable: ${counts.unreadable || 0}, not verified: ${counts.unknown || 0}${categorySummary ? `; categories: ${categorySummary}` : ''}`;
+    }
     
     /**
      * Applies filters and sorting to the model list
@@ -818,7 +887,9 @@ export class ModelBrowser {
         // Apply folder type filter
         if (filters.type && filters.type !== 'all') {
             filtered = filtered.filter(model => {
-                const folderType = this.getFolderType(model.path);
+                const folderType = model.registeredTypes?.includes(filters.type)
+                    ? filters.type
+                    : this.getFolderType(model.path);
                 return folderType === filters.type;
             });
         }
@@ -828,7 +899,7 @@ export class ModelBrowser {
             const now = Date.now();
             filtered = filtered.filter(model => {
                 // Check both lastUsed and last_accessed properties (matches V1 behavior)
-                const lastUsedValue = model.info?.lastUsed || model.info?.last_accessed;
+                const lastUsedValue = this.getLastUsed(model.info);
                 
                 if (filters.lastUsed === 'never') {
                     // Show models that have never been used
@@ -858,7 +929,7 @@ export class ModelBrowser {
         if (filters.updates && filters.updates !== 'all') {
             filtered = filtered.filter(model => {
                 // Use update_available property (matches V1 behavior)
-                const hasUpdate = model.info?.update_available || false;
+                const hasUpdate = this.hasUpdate(model.info);
                 
                 if (filters.updates === 'available') {
                     // Show only models with updates available
@@ -869,6 +940,24 @@ export class ModelBrowser {
                 }
                 return true;
             });
+        }
+
+        if (filters.filesystemStatus && filters.filesystemStatus !== 'all') {
+            filtered = filtered.filter(model => (
+                model.filesystemStatus || 'unknown'
+            ) === filters.filesystemStatus);
+        }
+
+        if (filters.civitaiStatus && filters.civitaiStatus !== 'all') {
+            filtered = filtered.filter(model => (
+                model.civitaiStatus || 'unknown'
+            ) === filters.civitaiStatus);
+        }
+
+        if (filters.metadataStatus && filters.metadataStatus !== 'all') {
+            filtered = filtered.filter(model => (
+                model.metadataStatus || 'unknown'
+            ) === filters.metadataStatus);
         }
         
         // Apply sorting
@@ -887,14 +976,14 @@ export class ModelBrowser {
                     
                 case 'lastused':
                     // Check both lastUsed and last_accessed properties (matches V1 behavior)
-                    const lastUsedA = (a.info?.lastUsed || a.info?.last_accessed) ? new Date(a.info.lastUsed || a.info.last_accessed).getTime() : 0;
-                    const lastUsedB = (b.info?.lastUsed || b.info?.last_accessed) ? new Date(b.info.lastUsed || b.info.last_accessed).getTime() : 0;
+                    const lastUsedA = this.getLastUsed(a.info) ? new Date(this.getLastUsed(a.info)).getTime() : 0;
+                    const lastUsedB = this.getLastUsed(b.info) ? new Date(this.getLastUsed(b.info)).getTime() : 0;
                     comparison = lastUsedB - lastUsedA; // Most recent first
                     break;
                     
                 case 'size':
-                    const sizeA = a.info?.file_size || 0;
-                    const sizeB = b.info?.file_size || 0;
+                    const sizeA = this.getFileSize(a.info);
+                    const sizeB = this.getFileSize(b.info);
                     comparison = sizeB - sizeA; // Largest first
                     break;
                     
@@ -1341,11 +1430,39 @@ export class ModelBrowser {
             return 'vae';
         } else if (pathLower.includes('/controlnet/') || pathLower.includes('\\controlnet\\')) {
             return 'controlnet';
+        } else if (pathLower.includes('/text_encoders/') || pathLower.includes('\\text_encoders\\') || pathLower.includes('/clip/')) {
+            return 'text_encoders';
+        } else if (pathLower.includes('/unet/') || pathLower.includes('\\unet\\') || pathLower.includes('/diffusion_models/')) {
+            return 'diffusion_models';
+        } else if (pathLower.includes('/clip_vision/') || pathLower.includes('\\clip_vision\\')) {
+            return 'clip_vision';
+        } else if (pathLower.includes('/style_models/') || pathLower.includes('\\style_models\\')) {
+            return 'style_models';
+        } else if (pathLower.includes('/upscale_models/') || pathLower.includes('\\upscale_models\\')) {
+            return 'upscale_models';
+        } else if (pathLower.includes('/hypernetworks/') || pathLower.includes('\\hypernetworks\\')) {
+            return 'hypernetworks';
+        } else if (pathLower.includes('/photomaker/') || pathLower.includes('\\photomaker\\')) {
+            return 'photomaker';
+        } else if (pathLower.includes('/gligen/') || pathLower.includes('\\gligen\\')) {
+            return 'gligen';
         }
         
         return 'other';
     }
     
+    getLastUsed(info = {}) {
+        return info.last_used || info.lastUsed || info.last_accessed || '';
+    }
+
+    hasUpdate(info = {}) {
+        return Boolean(info.has_update ?? info.update_available);
+    }
+
+    getFileSize(info = {}) {
+        return info.file_size || info.fileSize || info.size || 0;
+    }
+
     /**
      * Formats file size for display
      * @param {number} bytes - File size in bytes

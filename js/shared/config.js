@@ -57,11 +57,14 @@ export const FILTER_OPTIONS = {
         { value: 'vae', text: 'VAE Models' },
         { value: 'text_encoders', text: 'Text Encoders' },
         { value: 'diffusion_models', text: 'Diffusion Models' },
-        // Additional folder types that might be wanted later:
-        // { value: 'embeddings', text: 'Embeddings' },
-        // { value: 'clip_vision', text: 'CLIP Vision' },
-        // { value: 'style_models', text: 'Style Models' },
-        // { value: 'controlnet', text: 'ControlNet' }
+        { value: 'embeddings', text: 'Embeddings' },
+        { value: 'clip_vision', text: 'CLIP Vision' },
+        { value: 'style_models', text: 'Style Models' },
+        { value: 'controlnet', text: 'ControlNet' },
+        { value: 'upscale_models', text: 'Upscale Models' },
+        { value: 'hypernetworks', text: 'Hypernetworks' },
+        { value: 'photomaker', text: 'PhotoMaker' },
+        { value: 'gligen', text: 'GLIGEN' }
     ],
     
     lastUsed: [
@@ -76,6 +79,32 @@ export const FILTER_OPTIONS = {
         { value: 'all', text: 'All Models' },
         { value: 'available', text: 'Updates Available' },
         { value: 'none', text: 'No Updates Available' }
+    ],
+
+    filesystemStatus: [
+        { value: 'all', text: 'Any File Status' },
+        { value: 'present', text: 'Present' },
+        { value: 'changed', text: 'Changed' },
+        { value: 'missing', text: 'Missing' },
+        { value: 'unreadable', text: 'Unreadable' },
+        { value: 'unknown', text: 'Not Verified' }
+    ],
+
+    civitaiStatus: [
+        { value: 'all', text: 'Any Civitai Status' },
+        { value: 'matched', text: 'Matched' },
+        { value: 'not_found_or_unpublished', text: 'Not Found / Unpublished' },
+        { value: 'temporary_error', text: 'Temporary Error' },
+        { value: 'unknown', text: 'Not Checked' }
+    ],
+
+    metadataStatus: [
+        { value: 'all', text: 'Any Metadata Status' },
+        { value: 'not_scanned', text: 'Not Scanned' },
+        { value: 'matched', text: 'Matched' },
+        { value: 'not_found_or_unpublished', text: 'Not Found / Unpublished' },
+        { value: 'temporary_error', text: 'Temporary Error' },
+        { value: 'unknown', text: 'Unknown' }
     ],
     
     sort: [

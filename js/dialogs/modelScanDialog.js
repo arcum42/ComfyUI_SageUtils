@@ -13,6 +13,7 @@ import { createDialog } from '../components/dialogManager.js';
 import { createInput } from '../components/formElements.js';
 import { notifications } from '../shared/notifications.js';
 import { selectors } from '../shared/stateManager.js';
+import { previewScan } from '../shared/api/cacheApi.js';
 
 class ModelScanDialog {
     constructor(options = {}) {
@@ -23,13 +24,19 @@ class ModelScanDialog {
         this.cancelRequested = false;
         this.currentRequest = null;
         this.progressInterval = null;
-        this.scanResults = {
-            totalFiles: 0,
-            processed: 0,
-            errors: 0,
-            startTime: null,
-            completed: false
-        };
+        this.loggedErrorCount = 0;
+        this.loggedStatusKey = null;
+            this.scanResults = {
+                totalFiles: 0,
+                processed: 0,
+                errors: 0,
+                matched: 0,
+                unmatched: 0,
+                temporaryErrors: 0,
+                errorDetails: [],
+                startTime: null,
+                completed: false
+            };
         this.onScanComplete = options.onScanComplete || null;
     }
 
@@ -92,6 +99,10 @@ class ModelScanDialog {
             }
         }, { background: '#666', id: 'cancelBtn' });
 
+        this.dialogObj.addFooterButton('Preview', () => {
+            this.previewScan();
+        }, { background: '#555', id: 'previewScanBtn' });
+
         this.dialogObj.addFooterButton('Start Scan', () => {
             this.startScan();
         }, { background: '#007acc', id: 'startScanBtn' });
@@ -110,6 +121,30 @@ class ModelScanDialog {
         // Folder selection
         const folderGroup = this.createFolderSelectionGroup();
         section.appendChild(folderGroup);
+
+        const profileGroup = document.createElement('div');
+        profileGroup.className = 'option-group';
+        const profileLabel = document.createElement('label');
+        profileLabel.htmlFor = 'scanProfile';
+        profileLabel.className = 'option-label';
+        profileLabel.textContent = 'Scan Profile:';
+        const profileSelect = document.createElement('select');
+        profileSelect.id = 'scanProfile';
+        profileSelect.className = 'settings-input';
+        [
+            ['all', 'All selected files'],
+            ['new_changed', 'New or changed files'],
+            ['unmatched', 'Unmatched Civitai files'],
+            ['failed', 'Retry temporary failures']
+        ].forEach(([value, label]) => {
+            const option = document.createElement('option');
+            option.value = value;
+            option.textContent = label;
+            profileSelect.appendChild(option);
+        });
+        profileGroup.appendChild(profileLabel);
+        profileGroup.appendChild(profileSelect);
+        section.appendChild(profileGroup);
 
         // Force refresh checkbox
         const forceRefreshGroup = this.createCheckboxOption(
@@ -268,27 +303,10 @@ class ModelScanDialog {
         progressInfo.appendChild(progressStats);
         progressInfo.appendChild(progressTime);
 
-        // Progress bar container
-        const progressBarContainer = document.createElement('div');
-        progressBarContainer.className = 'progress-bar-container';
-
-        const progressBar = document.createElement('div');
-        progressBar.id = 'progressBar';
-        progressBar.className = 'progress-bar';
-
-        const progressFill = document.createElement('div');
-        progressFill.id = 'progressFill';
-        progressFill.className = 'progress-fill';
-
-        progressBar.appendChild(progressFill);
-
-        const progressPercentage = document.createElement('div');
-        progressPercentage.id = 'progressPercentage';
-        progressPercentage.className = 'progress-percentage';
-        progressPercentage.textContent = '0%';
-
-        progressBarContainer.appendChild(progressBar);
-        progressBarContainer.appendChild(progressPercentage);
+        const progressBars = document.createElement('div');
+        progressBars.className = 'scan-progress-bars';
+        progressBars.appendChild(this.createProgressBar('totalProgress', 'Total scan'));
+        progressBars.appendChild(this.createProgressBar('fileProgress', 'Current file'));
 
         // Scan log
         const scanLog = document.createElement('div');
@@ -296,10 +314,42 @@ class ModelScanDialog {
         scanLog.className = 'scan-log';
 
         section.appendChild(progressInfo);
-        section.appendChild(progressBarContainer);
+        section.appendChild(progressBars);
         section.appendChild(scanLog);
 
         return section;
+    }
+
+    createProgressBar(idPrefix, labelText) {
+        const container = document.createElement('div');
+        container.className = 'progress-bar-container';
+
+        const label = document.createElement('div');
+        label.className = 'progress-bar-label';
+        label.textContent = labelText;
+
+        const row = document.createElement('div');
+        row.className = 'progress-bar-row';
+
+        const progressBar = document.createElement('div');
+        progressBar.id = `${idPrefix}Bar`;
+        progressBar.className = 'progress-bar';
+
+        const progressFill = document.createElement('div');
+        progressFill.id = `${idPrefix}Fill`;
+        progressFill.className = 'progress-fill';
+        progressBar.appendChild(progressFill);
+
+        const percentage = document.createElement('div');
+        percentage.id = `${idPrefix}Percentage`;
+        percentage.className = 'progress-percentage';
+        percentage.textContent = '0%';
+
+        row.appendChild(progressBar);
+        row.appendChild(percentage);
+        container.appendChild(label);
+        container.appendChild(row);
+        return container;
     }
 
     /**
@@ -369,7 +419,8 @@ class ModelScanDialog {
         folderList.innerHTML = folders.map(folder => `
             <div class="folder-item">
                 <input type="checkbox" id="folder_${folder.name.replace(/[^a-zA-Z0-9]/g, '_')}" 
-                       value="${JSON.stringify(folder.paths || [folder.path]).replace(/"/g, '&quot;')}" 
+                       value="${folder.name}"
+                      data-folder-paths="${JSON.stringify(folder.paths || [folder.path]).replace(/"/g, '&quot;')}"
                        checked class="sage-checkbox-input" />
                 <label for="folder_${folder.name.replace(/[^a-zA-Z0-9]/g, '_')}" 
                        class="folder-name">
@@ -403,17 +454,10 @@ class ModelScanDialog {
             return;
         }
         
+        const selectedCategories = Array.from(this.contentArea.querySelectorAll('.folder-item input:checked'))
+            .map(checkbox => checkbox.value);
         const selectedFolders = Array.from(this.contentArea.querySelectorAll('.folder-item input:checked'))
-            .map(checkbox => {
-                try {
-                    // Try to parse as JSON array (new format)
-                    return JSON.parse(checkbox.value);
-                } catch {
-                    // Fallback to single path (old format)
-                    return [checkbox.value];
-                }
-            })
-            .flat(); // Flatten array of arrays into single array of paths
+            .flatMap(checkbox => JSON.parse(checkbox.dataset.folderPaths || '[]'));
         
         const selectedFolderData = allFolders.filter(folder => {
             // Check if any of this folder's paths are selected
@@ -429,7 +473,7 @@ class ModelScanDialog {
             const filePaths = Object.keys(cache.hash || {});
 
             // Build a lookup of selected base paths for quick startsWith checks
-            const selectedPaths = new Set(selectedFolders);
+                const selectedPaths = new Set(selectedFolders);
 
             const hasModelExtension = (p) => {
                 const lower = p.toLowerCase();
@@ -475,30 +519,46 @@ class ModelScanDialog {
             console.error('Cannot get scan options: dialog not initialized');
             return {
                 folders: [],
+                categories: [],
+                scanProfile: 'all',
                 forceRefresh: false,
                 includeCached: true,
                 rateLimitDelay: 1000
             };
         }
         
+        const selectedCategories = Array.from(this.contentArea.querySelectorAll('.folder-item input:checked'))
+            .map(checkbox => checkbox.value);
         const selectedFolders = Array.from(this.contentArea.querySelectorAll('.folder-item input:checked'))
-            .map(checkbox => {
-                try {
-                    // Try to parse as JSON array (new format)
-                    return JSON.parse(checkbox.value);
-                } catch {
-                    // Fallback to single path (old format)
-                    return [checkbox.value];
-                }
-            })
-            .flat(); // Flatten array of arrays into single array of paths
+            .flatMap(checkbox => JSON.parse(checkbox.dataset.folderPaths || '[]'));
         
         return {
-            folders: selectedFolders,
+            categories: selectedCategories,
+            folders: [],
+            scanProfile: this.contentArea.querySelector('#scanProfile').value,
             forceRefresh: this.contentArea.querySelector('#forceRefresh').checked,
             includeCached: this.contentArea.querySelector('#includeCached').checked,
             rateLimitDelay: parseInt(this.contentArea.querySelector('#rateLimitDelay').value, 10)
         };
+    }
+
+    async previewScan() {
+        try {
+            const options = this.getScanOptions();
+            const preview = await previewScan(
+                options.categories,
+                options.scanProfile,
+                options.forceRefresh,
+                options.includeCached
+            );
+            const bytes = preview.estimated_hash_bytes || 0;
+            const size = bytes > 1024 ** 3 ? `${(bytes / 1024 ** 3).toFixed(2)} GB` : `${(bytes / 1024 ** 2).toFixed(1)} MB`;
+            notifications.info(
+                `Preview: ${preview.selected_files} files, ${preview.full_hashes} full hashes, ${preview.bulk_requests} bulk requests, approximately ${size} to hash.`
+            );
+        } catch (error) {
+            notifications.error('Scan preview failed', error.message);
+        }
     }
 
     /**
@@ -507,7 +567,7 @@ class ModelScanDialog {
     async startScan() {
         const options = this.getScanOptions();
         
-        if (!options.folders.length) {
+        if (!options.categories.length) {
             notifications.error('Please select at least one folder to scan');
             return;
         }
@@ -518,8 +578,14 @@ class ModelScanDialog {
             totalFiles: 0,
             processed: 0,
             errors: 0,
+            matched: 0,
+            unmatched: 0,
+            temporaryErrors: 0,
+            errorDetails: [],
             startTime: Date.now()
         };
+        this.loggedErrorCount = 0;
+        this.loggedStatusKey = null;
 
         // Update UI for scanning state
         this.updateScanUI(true);
@@ -549,8 +615,11 @@ class ModelScanDialog {
         // Call the new POST endpoint to start the scan
         const scanData = {
             folders: options.folders,
+            categories: options.categories,
+            scan_mode: options.scanProfile,
             force: options.forceRefresh,
-            include_cached: options.includeCached
+            include_cached: options.includeCached,
+            rate_limit_delay: options.rateLimitDelay
         };
 
         try {
@@ -603,16 +672,24 @@ class ModelScanDialog {
 
                     const progress = data.progress;
                     console.log('Received progress data:', progress);
+
+                    this.scanResults.discovered = progress.discovered || 0;
+                    this.scanResults.skipped = progress.skipped || 0;
+                    this.scanResults.errors = progress.errors || 0;
+                    this.scanResults.matched = progress.matched || 0;
+                    this.scanResults.unmatched = progress.unmatched || 0;
+                    this.scanResults.temporaryErrors = progress.temporary_errors || 0;
                     
                     // Update UI based on progress
                     if (progress.active) {
-                        // Calculate percentage
+                                this.logScanErrors(progress.error_details);
                         const percentage = progress.total > 0 ? (progress.current / progress.total) * 100 : 0;
                         
                         // Update progress display
                         const statusText = progress.current_file || progress.status || 'Processing...';
                         console.log(`Updating progress: ${statusText}, ${percentage}%`);
-                        this.updateProgress(statusText, percentage);
+                        const filePercentage = progress.current_file_progress ?? 0;
+                        this.updateProgress(statusText, percentage, filePercentage);
                         
                         // Update scan results for stats display
                         this.scanResults.totalFiles = progress.total;
@@ -624,12 +701,17 @@ class ModelScanDialog {
                         } else if (progress.status === 'scanning_files') {
                             this.addLogEntry(`Found ${progress.total} files to process`, 'info');
                         } else if (progress.status === 'hashing' && progress.current_file) {
-                            // Always log when hashing begins as it can take a while
-                            this.addLogEntry(`Calculating hash for ${progress.current_file}...`, 'info');
+                            const statusKey = `${progress.status}:${progress.current_file}`;
+                            if (this.loggedStatusKey !== statusKey) {
+                                this.addLogEntry(`Calculating hash for ${progress.current_file}...`, 'info');
+                                this.loggedStatusKey = statusKey;
+                            }
                         } else if (progress.status === 'processing_metadata' && progress.current_file) {
                             // Only log every 10th file to avoid spam
-                            if (progress.current % 10 === 0 || progress.current === progress.total) {
+                            const statusKey = `${progress.status}:${progress.current_file}`;
+                            if ((progress.current % 10 === 0 || progress.current === progress.total) && this.loggedStatusKey !== statusKey) {
                                 this.addLogEntry(`Processing: ${progress.current_file}`, 'success');
+                                this.loggedStatusKey = statusKey;
                             }
                         }
                         
@@ -638,23 +720,24 @@ class ModelScanDialog {
                         clearInterval(pollInterval);
                         
                         if (progress.status === 'completed') {
-                            this.updateProgress('Scan completed successfully', 100);
+                            this.updateProgress('Scan completed successfully', 100, 100);
                             this.addLogEntry(`Scan completed: ${progress.current}/${progress.total} files processed`, 'success');
-                            this.showScanComplete();
+                            this.showScanComplete(progress);
                             resolve();
                         } else if (progress.status === 'cancelled') {
-                            this.updateProgress('Scan cancelled', progress.total > 0 ? (progress.current / progress.total) * 100 : 0);
+                            this.updateProgress('Scan cancelled', progress.total > 0 ? (progress.current / progress.total) * 100 : 0, 0);
                             this.addLogEntry('Scan cancelled by user', 'info');
+                            this.showScanCancelled(progress);
                             resolve();
                         } else if (progress.status === 'error') {
-                            this.updateProgress('Scan failed', 0);
+                            this.updateProgress('Scan failed', 0, 0);
                             this.addLogEntry(`Scan failed: ${progress.error}`, 'error');
                             reject(new Error(progress.error || 'Scan failed'));
                         } else {
                             // Unknown status, assume completion
-                            this.updateProgress('Scan completed', 100);
+                            this.updateProgress('Scan completed', 100, 100);
                             this.addLogEntry('Scan completed', 'success');
-                            this.showScanComplete();
+                            this.showScanComplete(progress);
                             resolve();
                         }
                     }
@@ -749,11 +832,21 @@ class ModelScanDialog {
                 }
                 
                 // Show file processing stats if available
-                const { processed, totalFiles, errors } = this.scanResults;
+                const {
+                    processed,
+                    totalFiles,
+                    errors,
+                    matched,
+                    unmatched,
+                    temporaryErrors
+                } = this.scanResults;
                 let statsText = 'Scanning model folders...';
                 
                 if (totalFiles > 0) {
-                    statsText = `${processed}/${totalFiles} processed`;
+                    statsText = `${processed}/${totalFiles} processed, ${matched} matched, ${unmatched} unmatched`;
+                    if (temporaryErrors > 0) {
+                        statsText += `, ${temporaryErrors} temporary errors`;
+                    }
                     if (errors > 0) {
                         statsText += `, ${errors} errors`;
                     }
@@ -780,35 +873,26 @@ class ModelScanDialog {
     /**
      * Update progress display
      */
-    updateProgress(text, percentage) {
-        console.log(`UpdateProgress called: ${text}, ${percentage}%`);
-        
-        const progressFill = this.contentArea.querySelector('#progressFill');
+    updateProgress(text, totalPercentage, filePercentage = 0) {
+        console.log(`UpdateProgress called: ${text}, total ${totalPercentage}%, file ${filePercentage}%`);
+
+        const totalFill = this.contentArea.querySelector('#totalProgressFill');
+        const totalPercentageElement = this.contentArea.querySelector('#totalProgressPercentage');
+        const fileFill = this.contentArea.querySelector('#fileProgressFill');
+        const filePercentageElement = this.contentArea.querySelector('#fileProgressPercentage');
         const progressText = this.contentArea.querySelector('#progressText');
-        const progressPercentage = this.contentArea.querySelector('#progressPercentage');
         
         if (progressText) {
             progressText.textContent = text;
         }
         
-        if (progressFill) {
-            const width = `${Math.max(0, Math.min(100, percentage))}%`;
-            console.log(`Setting progress bar width to: ${width}`);
-            
-            // Set the width
-            progressFill.style.width = width;
-            
-            // Force a repaint to ensure the change is applied
-            progressFill.offsetHeight;
-            
-            console.log('After setting width - computed style:', window.getComputedStyle(progressFill));
-        } else {
-            console.error('Progress fill element not found!');
-        }
-        
-        if (progressPercentage) {
-            progressPercentage.textContent = `${Math.round(percentage)}%`;
-        }
+        const setProgress = (fill, percentageElement, value) => {
+            const bounded = Math.max(0, Math.min(100, value));
+            if (fill) fill.style.width = `${bounded}%`;
+            if (percentageElement) percentageElement.textContent = `${Math.round(bounded)}%`;
+        };
+        setProgress(totalFill, totalPercentageElement, totalPercentage);
+        setProgress(fileFill, filePercentageElement, filePercentage);
     }
 
     /**
@@ -831,20 +915,47 @@ class ModelScanDialog {
     }
 
     /**
+     * Add the bounded server-side error details to the scan log once.
+     */
+    logScanErrors(errorDetails = []) {
+        errorDetails.slice(this.loggedErrorCount).forEach((detail) => {
+            this.addLogEntry(`${detail.phase || 'scan'}: ${detail.file}: ${detail.error}`, 'error');
+        });
+        this.loggedErrorCount = Math.max(this.loggedErrorCount, errorDetails.length);
+    }
+
+    /**
      * Show scan completion summary
      */
-    showScanComplete() {
+    showScanComplete(progress = {}) {
         // This method is called from the polling system when scan completes
         // The progress and log messages are already updated in pollScanProgress
         this.scanResults.completed = true;
+        this.scanResults.result = progress;
         notifications.success('Model scan completed successfully');
         
         // Call the completion callback if provided
         if (this.onScanComplete && typeof this.onScanComplete === 'function') {
             try {
-                this.onScanComplete();
+                this.onScanComplete(progress);
             } catch (error) {
                 console.error('Error in scan completion callback:', error);
+            }
+        }
+    }
+
+    /**
+     * Notify consumers that a scan was cancelled after saving its partial work.
+     */
+    showScanCancelled(progress = {}) {
+        this.scanResults.completed = false;
+        this.scanResults.result = progress;
+
+        if (this.onScanComplete && typeof this.onScanComplete === 'function') {
+            try {
+                this.onScanComplete(progress);
+            } catch (error) {
+                console.error('Error in scan cancellation callback:', error);
             }
         }
     }

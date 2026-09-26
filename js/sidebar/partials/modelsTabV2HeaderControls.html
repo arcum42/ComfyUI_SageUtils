@@ -12,6 +12,18 @@
             <label class="models-v2-labeled-select-label" for="models-v2-updates-select">Updates:</label>
             <select id="models-v2-updates-select" class="models-v2-labeled-select">{{{updatesOptions}}}</select>
         </div>
+        <div class="models-v2-labeled-select">
+            <label class="models-v2-labeled-select-label" for="models-v2-filesystem-status-select">File Status:</label>
+            <select id="models-v2-filesystem-status-select" class="models-v2-labeled-select">{{{filesystemStatusOptions}}}</select>
+        </div>
+        <div class="models-v2-labeled-select">
+            <label class="models-v2-labeled-select-label" for="models-v2-civitai-status-select">Civitai:</label>
+            <select id="models-v2-civitai-status-select" class="models-v2-labeled-select">{{{civitaiStatusOptions}}}</select>
+        </div>
+        <div class="models-v2-labeled-select">
+            <label class="models-v2-labeled-select-label" for="models-v2-metadata-status-select">Metadata:</label>
+            <select id="models-v2-metadata-status-select" class="models-v2-labeled-select">{{{metadataStatusOptions}}}</select>
+        </div>
     </div>
 
     <div class="models-v2-sort-row">
@@ -26,6 +38,8 @@
 
     <div class="models-v2-button-row">
         <button id="models-v2-refresh-btn" class="models-v2-button models-v2-button-secondary">Refresh</button>
+        <button id="models-v2-cleanup-btn" class="models-v2-button models-v2-button-secondary">Clean Missing</button>
+        <button id="models-v2-history-btn" class="models-v2-button models-v2-button-secondary">History</button>
         <button id="models-v2-scan-btn" class="models-v2-button models-v2-button-secondary">Scan</button>
         <button id="models-v2-report-btn" class="models-v2-button models-v2-button-primary">Report</button>
     </div>

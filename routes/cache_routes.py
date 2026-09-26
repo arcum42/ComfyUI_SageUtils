@@ -44,10 +44,15 @@ def register_routes(routes_instance):
                 sys.path.insert(0, comfyui_path)
             
             from ..utils.model_cache import cache
+            from ..utils.model_metadata import normalize_model_info
             
             # Ensure cache is loaded
             cache.load()
-            return web.json_response(cache.info)
+            normalized_info = {
+                file_hash: normalize_model_info(info)
+                for file_hash, info in cache.info.items()
+            }
+            return web.json_response(normalized_info)
             
         except Exception as e:
             logger.error(f"Cache info error: {e}")

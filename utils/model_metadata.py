@@ -1,5 +1,6 @@
 """Model metadata/cache maintenance helpers extracted from helpers facade."""
 
+import copy
 import datetime
 
 from .helpers_civitai import (
@@ -9,13 +10,108 @@ from .helpers_civitai import (
 )
 from .logger import get_logger
 from .model_cache import cache
-from .file_utils import days_since_last_used, get_file_modification_date, get_file_sha256
+from .file_utils import (
+    days_since_last_used,
+    get_file_fingerprint,
+    get_file_modification_date,
+    get_file_sha256,
+)
 from .type_utils import str_to_bool
 
 logger = get_logger('model.metadata')
 
+FILE_STATE_KEY = '_sageutils_file_state'
+FULL_SHA256_KEY = '_sageutils_full_sha256'
+PROVIDER_STATUS_KEY = '_sageutils_civitai_status'
+SCHEMA_VERSION_KEY = '_sageutils_schema_version'
+CURRENT_SCHEMA_VERSION = 1
+LOCAL_METADATA_FIELDS = {
+    'notes',
+    'favorite',
+    'is_favorite',
+    'blacklist',
+    'trainedWords',
+}
+AMBIGUOUS_METADATA_FIELDS = {'name', 'baseModel', 'model'}
+PROVIDER_METADATA_FIELDS = {
+    'civitai',
+    'civitai_failed_count',
+    'id',
+    'modelId',
+    'update_available',
+    'update_version_id',
+    'downloadUrl',
+    'hashes',
+}
 
-def update_cache_from_civitai_json(file_path, json_data, timestamp=True):
+
+def normalize_model_info(info):
+    """Return compatibility aliases without modifying the stored record."""
+    if not isinstance(info, dict):
+        return {}
+
+    normalized = copy.deepcopy(info)
+    if 'last_used' not in normalized:
+        last_used = normalized.get('lastUsed', normalized.get('last_accessed'))
+        if last_used is not None:
+            normalized['last_used'] = last_used
+    if 'has_update' not in normalized and 'update_available' in normalized:
+        normalized['has_update'] = bool(normalized['update_available'])
+    if 'file_size' not in normalized:
+        for legacy_key in ('fileSize', 'size'):
+            if legacy_key in normalized:
+                normalized['file_size'] = normalized[legacy_key]
+                break
+    normalized.setdefault('_sageutils_schema_version', 1)
+    return normalized
+
+
+def merge_civitai_metadata(existing, provider_fields):
+    """Merge provider fields without overwriting local or unknown metadata."""
+    merged = dict(existing)
+
+    for field, value in provider_fields.items():
+        if field in LOCAL_METADATA_FIELDS or field in AMBIGUOUS_METADATA_FIELDS:
+            if field not in merged:
+                merged[field] = value
+            continue
+        if field not in PROVIDER_METADATA_FIELDS and field in merged:
+            continue
+        merged[field] = value
+
+    if isinstance(provider_fields.get('model'), dict) and isinstance(merged.get('model'), dict):
+        provider_model = provider_fields['model']
+        existing_model = merged['model']
+        merged['model'] = {
+            **provider_model,
+            **existing_model,
+        }
+
+    return merged
+
+
+def record_file_fingerprint(file_path, file_cache=None):
+    """Record cheap per-path filesystem state without replacing metadata."""
+    if file_cache is None:
+        file_cache = cache.by_path(file_path)
+
+    try:
+        fingerprint = get_file_fingerprint(file_path)
+    except (OSError, ValueError):
+        return False
+
+    file_states = file_cache.setdefault(FILE_STATE_KEY, {})
+    file_states[str(file_path)] = fingerprint
+    return True
+
+
+def update_cache_from_civitai_json(
+    file_path,
+    json_data,
+    timestamp=True,
+    check_latest=True,
+    cache_instance=None,
+):
     """Update cache entry from a successful CivitAI model-version payload."""
     the_files = json_data.get("files", [])
     hashes = {}
@@ -25,7 +121,7 @@ def update_cache_from_civitai_json(file_path, json_data, timestamp=True):
     update_available = True
 
     latest_model = None
-    if json_data.get("modelId", None) is not None:
+    if check_latest and json_data.get("modelId", None) is not None:
         latest_model = get_latest_model_version(json_data["modelId"])
         if latest_model == json_data["id"] or latest_model is None:
             update_available = False
@@ -33,9 +129,12 @@ def update_cache_from_civitai_json(file_path, json_data, timestamp=True):
     if latest_model is None:
         latest_model = ""
 
-    file_cache = cache.by_path(file_path)
-    file_cache.update({
+    target_cache = cache_instance or cache
+    file_cache = target_cache.by_path(file_path)
+    provider_fields = {
         'civitai': "True",
+        SCHEMA_VERSION_KEY: CURRENT_SCHEMA_VERSION,
+        PROVIDER_STATUS_KEY: 'matched',
         'civitai_failed_count': 0,
         'model': json_data.get("model", {}),
         'name': json_data.get("name", ""),
@@ -47,19 +146,23 @@ def update_cache_from_civitai_json(file_path, json_data, timestamp=True):
         'trainedWords': json_data.get("trainedWords", []),
         'downloadUrl': json_data.get("downloadUrl", ""),
         'hashes': hashes,
-    })
+    }
+    merged_cache = merge_civitai_metadata(file_cache, provider_fields)
+    file_cache.clear()
+    file_cache.update(merged_cache)
     if timestamp:
         logger.info("Updating timestamp.")
-        cache.update_last_used_by_path(file_path)
+        target_cache.update_last_used_by_path(file_path)
 
     logger.info("Successfully pulled metadata.")
 
 
-def update_cache_without_civitai_json(file_path, hash_value, timestamp=True):
+def update_cache_without_civitai_json(file_path, hash_value, timestamp=True, status='not_found_or_unpublished'):
     """Update cache entry when CivitAI metadata is unavailable."""
     file_cache = cache.by_path(file_path)
     logger.info("Unable to find metadata on CivitAI.")
     file_cache['civitai'] = "False"
+    file_cache[PROVIDER_STATUS_KEY] = status
     file_cache['civitai_failed_count'] = file_cache.get('civitai_failed_count', 0) + 1
     file_cache['hash'] = hash_value
     if timestamp:
@@ -83,7 +186,10 @@ def add_file_to_cache(file_path, hash_value=None):
             'update_version_id': "",
             'hash': hash_value,
             'lastUsed': datetime.datetime.now().isoformat(),
+            SCHEMA_VERSION_KEY: CURRENT_SCHEMA_VERSION,
         }
+
+    record_file_fingerprint(file_path, cache.info[hash_value])
 
     logger.info(f"Added {file_path} to cache with hash {hash_value}.")
     return hash_value
@@ -212,7 +318,12 @@ def pull_metadata(file_paths, timestamp=True, force_all=False, pbar=None, model_
                     logger.info("Unable to find metadata on CivitAI.")
                     file_cache['civitai'] = "False"
                     file_cache['civitai_failed_count'] = file_cache.get('civitai_failed_count', 0) + 1
-                    update_cache_without_civitai_json(file_path, hash_value, timestamp=timestamp)
+                    update_cache_without_civitai_json(
+                        file_path,
+                        hash_value,
+                        timestamp=timestamp,
+                        status='not_found_or_unpublished' if dead_model else 'temporary_error',
+                    )
 
             if 'error' not in json_data:
                 update_cache_from_civitai_json(file_path, json_data, timestamp=timestamp)
@@ -224,6 +335,8 @@ def pull_metadata(file_paths, timestamp=True, force_all=False, pbar=None, model_
         cache.info[hash_value] = file_cache
         if model_type is not None:
             file_cache['model_type'] = model_type
+
+        record_file_fingerprint(file_path, file_cache)
 
         if pbar is not None:
             pbar.update(1)

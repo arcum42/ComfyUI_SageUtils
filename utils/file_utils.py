@@ -45,6 +45,31 @@ def is_model_file(path: str) -> bool:
     return has_model_extension(path)
 
 
+def get_file_fingerprint(path):
+    """Return cheap filesystem identity data without reading file contents."""
+    file_stat = pathlib.Path(path).stat()
+    return {
+        'size': file_stat.st_size,
+        'mtime_ns': file_stat.st_mtime_ns,
+    }
+
+
+def file_fingerprint_matches(path, fingerprint):
+    """Return whether a stored fingerprint still describes the local file."""
+    if not isinstance(fingerprint, dict):
+        return False
+
+    try:
+        current = get_file_fingerprint(path)
+    except (OSError, ValueError):
+        return False
+
+    return (
+        current.get('size') == fingerprint.get('size')
+        and current.get('mtime_ns') == fingerprint.get('mtime_ns')
+    )
+
+
 # fast_hash_threshold=100*1024*1024  # 100MB threshold
 def get_file_sha256(path, fast_hash_threshold=0):  # Full hashing by default
     """Calculate SHA256 hash of a file with optimizations for large files."""
@@ -94,6 +119,23 @@ def get_file_sha256(path, fast_hash_threshold=0):  # Full hashing by default
     full_hash = m.hexdigest()
     logger.debug(f'Calculated hash: {full_hash[:10]}')
     return full_hash[:10]
+
+
+def get_file_sha256_full(path, progress_callback=None):
+    """Calculate and return the complete SHA-256 digest for a file."""
+    logger.debug(f'Calculating full SHA-256 for {path}')
+    digest = hashlib.sha256()
+    file_size = os.path.getsize(path)
+    bytes_read = 0
+
+    with open(path, 'rb') as file_obj:
+        for chunk in iter(lambda: file_obj.read(65536), b''):
+            digest.update(chunk)
+            bytes_read += len(chunk)
+            if progress_callback is not None and file_size:
+                progress_callback(bytes_read / file_size)
+
+    return digest.hexdigest()
 
 
 def get_files_in_dir(input_dirs=None, extensions=None):
