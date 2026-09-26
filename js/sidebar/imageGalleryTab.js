@@ -1133,7 +1133,7 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
 
 export async function createImageGalleryTab(container) {
     const debugGallery = isDebugGalleryEnabled();
-    loadSidebarStyle('image-gallery-tab-styles', 'extensions/comfyui_sageutils/sidebar/imageGalleryTab.css');
+    loadSidebarStyle('image-gallery-tab-styles', 'sidebar/imageGalleryTab.css');
     // Create all components
     const header = createGalleryHeader();
     const folderAndControls = createFolderSelectorAndControls(); // Combined section

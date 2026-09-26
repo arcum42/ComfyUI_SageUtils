@@ -39,7 +39,7 @@ const SEARCH_CONFIG = {
 export async function createCivitaiSearchTab(container) {
     container.innerHTML = '';
     
-    loadSidebarStyle('civitai-search-styles', 'extensions/comfyui_sageutils/sidebar/civitaiSearchTab.css');
+    loadSidebarStyle('civitai-search-styles', 'sidebar/civitaiSearchTab.css');
     
     // Create main layout
     const searchContainer = document.createElement('div');

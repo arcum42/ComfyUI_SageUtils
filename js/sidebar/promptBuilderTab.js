@@ -45,7 +45,7 @@ export function createPromptBuilderTab(container) {
     container.appendChild(wrapper);
 
     // Load external prompt builder styles
-    loadSidebarStyle('prompt-builder-styles', 'extensions/comfyui_sageutils/sidebar/promptBuilder.css');
+    loadSidebarStyle('prompt-builder-styles', 'sidebar/promptBuilder.css');
     
     // Return utility object like other tabs
     return {

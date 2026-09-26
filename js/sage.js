@@ -11,6 +11,7 @@ import { _ID } from "./shared/utils.js";
 import { getTextFromNode } from "./utils/textCopyFromNode.js";
 import { copyTextToNode } from "./utils/textCopyUtils.js";
 import { getEventBus, MessageTypes, sendTextToLLM, sendTextToPromptBuilder, showNotification } from "./shared/crossTabMessaging.js";
+import { BASE_URLS } from "./shared/constants.js";
 import { loadSidebarStyle } from "./sidebar/sidebarStyles.js";
 import { preloadHtmlTemplates } from "./utils/htmlTemplateLoader.js";
 
@@ -201,33 +202,31 @@ app.registerExtension({
         console.log("[SageUtils] Starting background data preload...");
       }
       
-      const url_base = 'extensions/comfyui_sageutils/';
-      
       // Preload sidebar styles and HTML templates early so tab renderers are warmed.
       const sidebarAssets = [
-        { id: 'sageutils-sidebar-shell-styles', href: url_base + 'sidebar.css' },
-        { id: 'sageutils-civitai-search-styles', href: url_base + 'sidebar/civitaiSearchTab.css' },
-        { id: 'sageutils-files-tab-styles', href: url_base + 'sidebar/filesTab.css' },
-        { id: 'sageutils-gallery-tab-styles', href: url_base + 'sidebar/imageGalleryTab.css' },
-        { id: 'sageutils-models-tab-styles', href: url_base + 'sidebar/modelsTabV2.css' },
-        { id: 'sageutils-prompt-builder-tab-styles', href: url_base + 'sidebar/promptBuilder.css' },
-        { id: 'sageutils-llm-tab-styles', href: url_base + 'sidebar/llmTab/styles/llmStyles.css' }
+        { id: 'sageutils-sidebar-shell-styles', href: 'sidebar.css' },
+        { id: 'sageutils-civitai-search-styles', href: 'sidebar/civitaiSearchTab.css' },
+        { id: 'sageutils-files-tab-styles', href: 'sidebar/filesTab.css' },
+        { id: 'sageutils-gallery-tab-styles', href: 'sidebar/imageGalleryTab.css' },
+        { id: 'sageutils-models-tab-styles', href: 'sidebar/modelsTabV2.css' },
+        { id: 'sageutils-prompt-builder-tab-styles', href: 'sidebar/promptBuilder.css' },
+        { id: 'sageutils-llm-tab-styles', href: 'sidebar/llmTab/styles/llmStyles.css' }
       ];
       sidebarAssets.forEach(({ id, href }) => loadSidebarStyle(id, href));
 
       const sidebarTemplatePaths = [
-        url_base + 'sidebar/partials/galleryPlaceholder.html',
-        url_base + 'sidebar/partials/galleryProgress.html',
-        url_base + 'sidebar/partials/galleryThumbnailProgress.html',
-        url_base + 'sidebar/partials/galleryError.html',
-        url_base + 'sidebar/partials/galleryEmptyState.html',
-        url_base + 'sidebar/partials/galleryMetadataFallback.html',
-        url_base + 'sidebar/llmTab/partials/llmHeader.html',
-        url_base + 'sidebar/llmTab/partials/llmModelSelection.html',
-        url_base + 'sidebar/llmTab/partials/llmAdvancedOptions.html',
-        url_base + 'sidebar/llmTab/partials/llmProviderOptionControl.html',
-        url_base + 'sidebar/partials/modelsTabV2HeaderControls.html',
-        url_base + 'sidebar/partials/modelsTabV2EmptyInfoPanel.html'
+        BASE_URLS[0] + 'sidebar/partials/galleryPlaceholder.html',
+        BASE_URLS[0] + 'sidebar/partials/galleryProgress.html',
+        BASE_URLS[0] + 'sidebar/partials/galleryThumbnailProgress.html',
+        BASE_URLS[0] + 'sidebar/partials/galleryError.html',
+        BASE_URLS[0] + 'sidebar/partials/galleryEmptyState.html',
+        BASE_URLS[0] + 'sidebar/partials/galleryMetadataFallback.html',
+        BASE_URLS[0] + 'sidebar/llmTab/partials/llmHeader.html',
+        BASE_URLS[0] + 'sidebar/llmTab/partials/llmModelSelection.html',
+        BASE_URLS[0] + 'sidebar/llmTab/partials/llmAdvancedOptions.html',
+        BASE_URLS[0] + 'sidebar/llmTab/partials/llmProviderOptionControl.html',
+        BASE_URLS[0] + 'sidebar/partials/modelsTabV2HeaderControls.html',
+        BASE_URLS[0] + 'sidebar/partials/modelsTabV2EmptyInfoPanel.html'
       ];
       preloadHtmlTemplates(sidebarTemplatePaths).catch((error) => {
         console.warn('[SageUtils] Sidebar template preload failed:', error);

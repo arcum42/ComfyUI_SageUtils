@@ -121,7 +121,7 @@ function createStatusDisplay() {
 export function createFilesTab(container) {
     // Clear container
     container.innerHTML = '';
-    loadSidebarStyle('files-tab-styles', 'extensions/comfyui_sageutils/sidebar/filesTab.css');
+    loadSidebarStyle('files-tab-styles', 'sidebar/filesTab.css');
 
     // Create header
     const header = createNotesHeader();

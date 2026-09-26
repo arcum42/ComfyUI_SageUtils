@@ -59,6 +59,8 @@ export const REPORT_COLUMN_CONFIG = [
     { name: 'Full Path', width: '250px', visible: false, sortable: true, key: 'path' } // Hidden by default
 ];
 
+export const BASE_URLS = ['extensions/ComfyUI_SageUtils/', 'extensions/comfyui_sageutils/'];
+
 /**
  * Check if a file path has a model extension
  * @param {string} filePath - The file path to check

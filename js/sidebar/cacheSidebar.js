@@ -110,7 +110,7 @@ function logSidebarInfo(...args) {
 }
 
 function ensureSidebarShellStyles() {
-    loadSidebarStyle(SIDEBAR_SHELL_STYLE_ID, 'extensions/comfyui_sageutils/sidebar.css');
+    loadSidebarStyle(SIDEBAR_SHELL_STYLE_ID, 'sidebar.css');
 }
 
 function acquireGlobalErrorHandlers() {
