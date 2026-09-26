@@ -201,31 +201,33 @@ app.registerExtension({
         console.log("[SageUtils] Starting background data preload...");
       }
       
+      const url_base = 'extensions/comfyui_sageutils/';
+      
       // Preload sidebar styles and HTML templates early so tab renderers are warmed.
       const sidebarAssets = [
-        { id: 'sageutils-sidebar-shell-styles', href: 'extensions/comfyui_sageutils/sidebar.css' },
-        { id: 'sageutils-civitai-search-styles', href: 'extensions/comfyui_sageutils/sidebar/civitaiSearchTab.css' },
-        { id: 'sageutils-files-tab-styles', href: 'extensions/comfyui_sageutils/sidebar/filesTab.css' },
-        { id: 'sageutils-gallery-tab-styles', href: 'extensions/comfyui_sageutils/sidebar/imageGalleryTab.css' },
-        { id: 'sageutils-models-tab-styles', href: 'extensions/comfyui_sageutils/sidebar/modelsTabV2.css' },
-        { id: 'sageutils-prompt-builder-tab-styles', href: 'extensions/comfyui_sageutils/sidebar/promptBuilder.css' },
-        { id: 'sageutils-llm-tab-styles', href: 'extensions/comfyui_sageutils/sidebar/llmTab/styles/llmStyles.css' }
+        { id: 'sageutils-sidebar-shell-styles', href: url_base + 'sidebar.css' },
+        { id: 'sageutils-civitai-search-styles', href: url_base + 'sidebar/civitaiSearchTab.css' },
+        { id: 'sageutils-files-tab-styles', href: url_base + 'sidebar/filesTab.css' },
+        { id: 'sageutils-gallery-tab-styles', href: url_base + 'sidebar/imageGalleryTab.css' },
+        { id: 'sageutils-models-tab-styles', href: url_base + 'sidebar/modelsTabV2.css' },
+        { id: 'sageutils-prompt-builder-tab-styles', href: url_base + 'sidebar/promptBuilder.css' },
+        { id: 'sageutils-llm-tab-styles', href: url_base + 'sidebar/llmTab/styles/llmStyles.css' }
       ];
       sidebarAssets.forEach(({ id, href }) => loadSidebarStyle(id, href));
 
       const sidebarTemplatePaths = [
-        'extensions/comfyui_sageutils/sidebar/partials/galleryPlaceholder.html',
-        'extensions/comfyui_sageutils/sidebar/partials/galleryProgress.html',
-        'extensions/comfyui_sageutils/sidebar/partials/galleryThumbnailProgress.html',
-        'extensions/comfyui_sageutils/sidebar/partials/galleryError.html',
-        'extensions/comfyui_sageutils/sidebar/partials/galleryEmptyState.html',
-        'extensions/comfyui_sageutils/sidebar/partials/galleryMetadataFallback.html',
-        'extensions/comfyui_sageutils/sidebar/llmTab/partials/llmHeader.html',
-        'extensions/comfyui_sageutils/sidebar/llmTab/partials/llmModelSelection.html',
-        'extensions/comfyui_sageutils/sidebar/llmTab/partials/llmAdvancedOptions.html',
-        'extensions/comfyui_sageutils/sidebar/llmTab/partials/llmProviderOptionControl.html',
-        'extensions/comfyui_sageutils/sidebar/partials/modelsTabV2HeaderControls.html',
-        'extensions/comfyui_sageutils/sidebar/partials/modelsTabV2EmptyInfoPanel.html'
+        url_base + 'sidebar/partials/galleryPlaceholder.html',
+        url_base + 'sidebar/partials/galleryProgress.html',
+        url_base + 'sidebar/partials/galleryThumbnailProgress.html',
+        url_base + 'sidebar/partials/galleryError.html',
+        url_base + 'sidebar/partials/galleryEmptyState.html',
+        url_base + 'sidebar/partials/galleryMetadataFallback.html',
+        url_base + 'sidebar/llmTab/partials/llmHeader.html',
+        url_base + 'sidebar/llmTab/partials/llmModelSelection.html',
+        url_base + 'sidebar/llmTab/partials/llmAdvancedOptions.html',
+        url_base + 'sidebar/llmTab/partials/llmProviderOptionControl.html',
+        url_base + 'sidebar/partials/modelsTabV2HeaderControls.html',
+        url_base + 'sidebar/partials/modelsTabV2EmptyInfoPanel.html'
       ];
       preloadHtmlTemplates(sidebarTemplatePaths).catch((error) => {
         console.warn('[SageUtils] Sidebar template preload failed:', error);
