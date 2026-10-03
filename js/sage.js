@@ -11,7 +11,7 @@ import { _ID } from "./shared/utils.js";
 import { getTextFromNode } from "./utils/textCopyFromNode.js";
 import { copyTextToNode } from "./utils/textCopyUtils.js";
 import { getEventBus, MessageTypes, sendTextToLLM, sendTextToPromptBuilder, showNotification } from "./shared/crossTabMessaging.js";
-import { BASE_URLS } from "./shared/constants.js";
+import { resolveExtensionAssetPath } from "./shared/extensionPaths.js";
 import { loadSidebarStyle } from "./sidebar/sidebarStyles.js";
 import { preloadHtmlTemplates } from "./utils/htmlTemplateLoader.js";
 
@@ -204,7 +204,7 @@ app.registerExtension({
       
       // Preload sidebar styles and HTML templates early so tab renderers are warmed.
       const sidebarAssets = [
-        { id: 'sageutils-sidebar-shell-styles', href: 'sidebar.css' },
+        { id: 'sageutils-sidebar-shell-styles', href: 'sidebar/sidebar.css' },
         { id: 'sageutils-civitai-search-styles', href: 'sidebar/civitaiSearchTab.css' },
         { id: 'sageutils-files-tab-styles', href: 'sidebar/filesTab.css' },
         { id: 'sageutils-gallery-tab-styles', href: 'sidebar/imageGalleryTab.css' },
@@ -215,22 +215,24 @@ app.registerExtension({
       sidebarAssets.forEach(({ id, href }) => loadSidebarStyle(id, href));
 
       const sidebarTemplatePaths = [
-        BASE_URLS[0] + 'sidebar/partials/galleryPlaceholder.html',
-        BASE_URLS[0] + 'sidebar/partials/galleryProgress.html',
-        BASE_URLS[0] + 'sidebar/partials/galleryThumbnailProgress.html',
-        BASE_URLS[0] + 'sidebar/partials/galleryError.html',
-        BASE_URLS[0] + 'sidebar/partials/galleryEmptyState.html',
-        BASE_URLS[0] + 'sidebar/partials/galleryMetadataFallback.html',
-        BASE_URLS[0] + 'sidebar/llmTab/partials/llmHeader.html',
-        BASE_URLS[0] + 'sidebar/llmTab/partials/llmModelSelection.html',
-        BASE_URLS[0] + 'sidebar/llmTab/partials/llmAdvancedOptions.html',
-        BASE_URLS[0] + 'sidebar/llmTab/partials/llmProviderOptionControl.html',
-        BASE_URLS[0] + 'sidebar/partials/modelsTabV2HeaderControls.html',
-        BASE_URLS[0] + 'sidebar/partials/modelsTabV2EmptyInfoPanel.html'
+        'sidebar/partials/galleryPlaceholder.html',
+        'sidebar/partials/galleryProgress.html',
+        'sidebar/partials/galleryThumbnailProgress.html',
+        'sidebar/partials/galleryError.html',
+        'sidebar/partials/galleryEmptyState.html',
+        'sidebar/partials/galleryMetadataFallback.html',
+        'sidebar/llmTab/partials/llmHeader.html',
+        'sidebar/llmTab/partials/llmModelSelection.html',
+        'sidebar/llmTab/partials/llmAdvancedOptions.html',
+        'sidebar/llmTab/partials/llmProviderOptionControl.html',
+        'sidebar/partials/modelsTabV2HeaderControls.html',
+        'sidebar/partials/modelsTabV2EmptyInfoPanel.html'
       ];
-      preloadHtmlTemplates(sidebarTemplatePaths).catch((error) => {
-        console.warn('[SageUtils] Sidebar template preload failed:', error);
-      });
+      Promise.all(sidebarTemplatePaths.map(resolveExtensionAssetPath))
+        .then(preloadHtmlTemplates)
+        .catch((error) => {
+          console.warn('[SageUtils] Sidebar template preload failed:', error);
+        });
 
       // Enable debug mode for cache if query parameter or localStorage flag is set
       const shouldDebugCache = new URLSearchParams(window.location.search).get('sageutils_cache_debug') === '1';

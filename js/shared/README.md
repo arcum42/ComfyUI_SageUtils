@@ -45,6 +45,15 @@ All modules are designed to be independently testable while maintaining tight in
 
 **Usage**: Import specific constants or utility functions as needed. Provides single source of truth for all configuration values.
 
+### extensionPaths.js
+
+**Purpose**: Resolve SageUtils asset URLs using the extension path registered by ComfyUI.
+
+**Key Functions:**
+
+- `getExtensionBasePath()`: Finds and caches the installed extension path from `/extensions/`.
+- `resolveExtensionAssetPath(path)`: Resolves extension-relative or legacy extension-prefixed paths to the installed path.
+
 ### 2. stateManager.js
 
 **Purpose**: Centralized state management with reactive updates  

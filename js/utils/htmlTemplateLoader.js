@@ -1,3 +1,5 @@
+import { resolveExtensionAssetPath } from '../shared/extensionPaths.js';
+
 const htmlTemplateCache = new Map();
 
 function escapeHtml(value) {
@@ -39,74 +41,16 @@ function isTemplateLoaderDebugEnabled() {
     }
 }
 
-let extensionBasePathCache = null;
-
-function getExtensionBasePath() {
-    if (extensionBasePathCache !== null) {
-        return extensionBasePathCache;
+async function resolveTemplateFetchPaths(templatePath) {
+    if (templatePath.startsWith('extensions/') || templatePath.startsWith('/extensions/')) {
+        return [await resolveExtensionAssetPath(templatePath)];
     }
 
-    if (typeof document === 'undefined') {
-        extensionBasePathCache = null;
-        return null;
-    }
-
-    const script = document.currentScript || Array.from(document.scripts || []).find((scriptEl) => {
-        return scriptEl.src && scriptEl.src.includes('/extensions/') && scriptEl.src.endsWith('/utils/htmlTemplateLoader.js');
-    });
-
-    if (!script || !script.src) {
-        extensionBasePathCache = null;
-        return null;
-    }
-
-    try {
-        const url = new URL(script.src, window.location.origin);
-        const parts = url.pathname.split('/').filter(Boolean);
-        const extIndex = parts.indexOf('extensions');
-        if (extIndex !== -1 && parts.length > extIndex + 1) {
-            extensionBasePathCache = '/' + parts.slice(0, extIndex + 2).join('/');
-            return extensionBasePathCache;
-        }
-    } catch (error) {
-        // ignore - fallback below
-    }
-
-    extensionBasePathCache = null;
-    return null;
-}
-
-function resolveTemplateFetchPaths(templatePath) {
     if (templatePath.startsWith('/') || templatePath.startsWith('http://') || templatePath.startsWith('https://')) {
-        const paths = [templatePath];
-        if (isTemplateLoaderDebugEnabled()) {
-            console.debug('[htmlTemplateLoader] resolveTemplateFetchPaths', templatePath, paths);
-        }
-        return paths;
+        return [templatePath];
     }
 
-    if (templatePath.startsWith('extensions/')) {
-        const defaultPath = '/' + templatePath;
-        const paths = [defaultPath];
-        const basePath = getExtensionBasePath();
-        if (basePath) {
-            const pathRest = templatePath.split('/').slice(2).join('/');
-            const altPath = `${basePath}/${pathRest}`;
-            if (altPath !== defaultPath) {
-                paths.push(altPath);
-            }
-        }
-        if (isTemplateLoaderDebugEnabled()) {
-            console.debug('[htmlTemplateLoader] resolveTemplateFetchPaths', templatePath, paths, { basePath });
-        }
-        return paths;
-    }
-
-    const href = new URL(templatePath, window.location.origin + '/').href;
-    if (isTemplateLoaderDebugEnabled()) {
-        console.debug('[htmlTemplateLoader] resolveTemplateFetchPaths', templatePath, [href]);
-    }
-    return [href];
+    return [new URL(templatePath, window.location.origin + '/').href];
 }
 
 async function tryFetchTemplate(templatePath, fetchPath) {
@@ -151,7 +95,7 @@ export async function loadHtmlTemplate(templatePath) {
         return htmlTemplateCache.get(templatePath);
     }
 
-    const fetchPaths = resolveTemplateFetchPaths(templatePath);
+    const fetchPaths = await resolveTemplateFetchPaths(templatePath);
     if (isTemplateLoaderDebugEnabled()) {
         console.debug('[htmlTemplateLoader] loadHtmlTemplate', { templatePath, fetchPaths });
     }

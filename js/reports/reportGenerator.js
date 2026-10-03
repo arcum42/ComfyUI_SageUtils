@@ -11,6 +11,7 @@ import {
 } from '../shared/civitai.js';
 
 import { notifications } from '../shared/notifications.js';
+import { resolveExtensionAssetPath } from '../shared/extensionPaths.js';
 
 import {
     DEFAULT_THUMBNAIL_WIDTH,
@@ -763,7 +764,7 @@ export async function generateHtmlContentWithProgress(options) {
         progressCallback(15, 'Building HTML structure...');
     }
 
-    const cssHref = `${window.location.origin}/extensions/comfyui_sageutils/reports/reportStyles.css`;
+    const cssHref = `${window.location.origin}${await resolveExtensionAssetPath('reports/reportStyles.css')}`;
     const clientJs = generateClientSideJs(sortBy);
     const htmlStart = await generateHtmlDocumentStart(currentDateTime, clientJs, cssHref);
     
