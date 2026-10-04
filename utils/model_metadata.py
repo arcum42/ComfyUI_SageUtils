@@ -62,6 +62,23 @@ def normalize_model_info(info):
             if legacy_key in normalized:
                 normalized['file_size'] = normalized[legacy_key]
                 break
+    if 'metadata_status' not in normalized:
+        metadata_status = (
+            normalized.get('metadata_status')
+            or normalized.get('provider_status')
+            or normalized.get(PROVIDER_STATUS_KEY)
+            or normalized.get('civitai_status')
+        )
+        if metadata_status is not None:
+            normalized['metadata_status'] = metadata_status
+    if 'provider_status' not in normalized:
+        provider_status = (
+            normalized.get('provider_status')
+            or normalized.get(PROVIDER_STATUS_KEY)
+            or normalized.get('civitai_status')
+        )
+        if provider_status is not None:
+            normalized['provider_status'] = provider_status
     normalized.setdefault('_sageutils_schema_version', 1)
     return normalized
 

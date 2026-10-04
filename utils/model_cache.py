@@ -271,6 +271,24 @@ class SageCache:
             return True, copy.deepcopy(current_data)
         return False, last_data
 
+    def _save_json(self, path: pathlib.Path, data: Any, label: str) -> None:
+        """Save data to a JSON file atomically, backing up and pruning old backups on error."""
+        try:
+            self._atomic_write_json(path, data)
+        except Exception as e:
+            logger.error(f"Unable to save {label} to {path}: {e}")
+            current_date = datetime.datetime.now().strftime("%Y-%m-%dT%H-%M-%S")
+            if path.is_file():
+                error_prefix = f"{path.stem}-save-error"
+                error_backup_path = path_manager.get_backup_file_path(f"{error_prefix}-{current_date}.json")
+                try:
+                    with path.open("r") as src_file, error_backup_path.open("w") as dst_file:
+                        dst_file.write(src_file.read())
+                    logger.info(f"Backed up problematic file to {error_backup_path}")
+                except Exception as backup_e:
+                    logger.error(f"Unable to backup error file {path} to {error_backup_path}: {backup_e}")
+            raise
+
     def _perform_save_pass(self) -> bool:
         """Run one save pass for all cache sections and return whether anything was saved."""
         saved = False
@@ -301,22 +319,19 @@ class SageCache:
 
         return saved
 
-    def _save_json(self, path: pathlib.Path, data: Any, label: str) -> None:
-        """Save data to a JSON file atomically, backing up and pruning old backups on error."""
+    def _save_json_pair(self, hash_data: Dict[str, Any], info_data: Dict[str, Any]) -> None:
+        """Write hash and info together with a backup-safe pair update."""
+        hash_backup = copy.deepcopy(self.hash)
+        info_backup = copy.deepcopy(self.info)
         try:
-            self._atomic_write_json(path, data)
-        except Exception as e:
-            logger.error(f"Unable to save {label} to {path}: {e}")
-            current_date = datetime.datetime.now().strftime("%Y-%m-%dT%H-%M-%S")
-            if path.is_file():
-                error_prefix = f"{path.stem}-save-error"
-                error_backup_path = path_manager.get_backup_file_path(f"{error_prefix}-{current_date}.json")
-                try:
-                    with path.open("r") as src_file, error_backup_path.open("w") as dst_file:
-                        dst_file.write(src_file.read())
-                    logger.info(f"Backed up problematic file to {error_backup_path}")
-                except Exception as backup_e:
-                    logger.error(f"Unable to backup error file {path} to {error_backup_path}: {backup_e}")
+            self._atomic_write_json(self.hash_path, hash_data)
+            self._atomic_write_json(self.info_path, info_data)
+            self.last_hash = copy.deepcopy(hash_data)
+            self.last_info = copy.deepcopy(info_data)
+        except Exception:
+            self.hash = hash_backup
+            self.info = info_backup
+            raise
 
     def backup_json(self, backup_prefix: str, data: Any, current_date: str) -> None:
         """
@@ -488,6 +503,19 @@ class SageCache:
         # Skip save if in batch mode
         if self.batch_mode:
             return
+
+        if self.hash != self.last_hash or self.info != self.last_info:
+            try:
+                self._save_json_pair(self.hash, self.info)
+                self.last_hash = copy.deepcopy(self.hash)
+                self.last_info = copy.deepcopy(self.info)
+                self.save_count_since_backup += 1
+                logger.info("Saved cache to disk.")
+                return
+            except Exception:
+                self.hash = copy.deepcopy(self.last_hash)
+                self.info = copy.deepcopy(self.last_info)
+                raise
 
         saved = self._perform_save_pass()
         if saved:

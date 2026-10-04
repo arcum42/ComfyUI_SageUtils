@@ -12,6 +12,7 @@ from requests.exceptions import HTTPError
 
 from .model_cache import cache
 from .logger import get_logger
+from .path_manager import path_manager, file_manager
 
 logger = get_logger('helpers.civitai')
 
@@ -21,7 +22,9 @@ CIVITAI_MAX_RETRIES = 3
 CIVITAI_BACKOFF_SECONDS = 1
 CIVITAI_CACHE_TTL_SECONDS = 300
 CIVITAI_CACHE_MAX_ENTRIES = 512
+CIVITAI_CACHE_PATH = path_manager.get_user_file_path('civitai_response_cache.json')
 _civitai_response_cache: dict[str, tuple[float, Any]] = {}
+_persistent_cache_loaded = False
 _request_gate_lock = threading.Lock()
 _request_interval_seconds = 0.0
 _last_request_at = None
@@ -29,8 +32,10 @@ _last_request_at = None
 
 def configure_civitai_request_interval(delay_ms):
     """Configure the minimum interval between uncached Civitai requests."""
-    global _request_interval_seconds
+    global _request_interval_seconds, _last_request_at
     _request_interval_seconds = max(0.0, float(delay_ms) / 1000)
+    if _request_interval_seconds <= 0:
+        _last_request_at = None
 
 
 def _wait_for_request_gate():
@@ -46,29 +51,68 @@ def _wait_for_request_gate():
 
 
 def _cached_response(cache_key):
+    _load_persistent_cache()
     cached = _civitai_response_cache.get(cache_key)
     if cached is None:
         return None
     expires_at, payload = cached
     if expires_at <= time.monotonic():
         _civitai_response_cache.pop(cache_key, None)
+        _save_persistent_cache()
         return None
     return copy.deepcopy(payload)
 
 
 def _store_cached_response(cache_key, payload):
+    if 'error' in payload:
+        return
     if len(_civitai_response_cache) >= CIVITAI_CACHE_MAX_ENTRIES:
         oldest_key = min(_civitai_response_cache, key=lambda key: _civitai_response_cache[key][0])
         _civitai_response_cache.pop(oldest_key, None)
-    _civitai_response_cache[cache_key] = (
-        time.monotonic() + CIVITAI_CACHE_TTL_SECONDS,
-        copy.deepcopy(payload),
-    )
+    expires_at = time.monotonic() + CIVITAI_CACHE_TTL_SECONDS
+    _civitai_response_cache[cache_key] = (expires_at, copy.deepcopy(payload))
+    _save_persistent_cache()
+
+
+def _load_persistent_cache():
+    """Load the on-disk Civitai response cache into the process-local cache."""
+    global _persistent_cache_loaded
+    if _persistent_cache_loaded:
+        return
+    _persistent_cache_loaded = True
+    if not CIVITAI_CACHE_PATH.is_file():
+        return
+    payload = file_manager.load_json_file(CIVITAI_CACHE_PATH, 'Civitai response cache')
+    if not isinstance(payload, dict):
+        return
+    now = time.monotonic()
+    for cache_key, entry in list(payload.items()):
+        if not isinstance(entry, dict):
+            continue
+        expires_at = entry.get('expires_at')
+        cached_value = entry.get('payload')
+        if expires_at is None or cached_value is None:
+            continue
+        if float(expires_at) > now:
+            _civitai_response_cache[cache_key] = (float(expires_at), copy.deepcopy(cached_value))
+
+
+def _save_persistent_cache():
+    """Persist successful entries to the user-level cache file."""
+    serializable = {
+        key: {'expires_at': expires_at, 'payload': payload}
+        for key, (expires_at, payload) in _civitai_response_cache.items()
+    }
+    file_manager.atomic_write_json(CIVITAI_CACHE_PATH, serializable)
 
 
 def clear_civitai_response_cache():
-    """Clear the process-local Civitai response cache."""
+    """Clear the process-local and on-disk Civitai response cache."""
+    global _last_request_at
     _civitai_response_cache.clear()
+    _last_request_at = None
+    if CIVITAI_CACHE_PATH.exists():
+        CIVITAI_CACHE_PATH.unlink()
 
 
 def _retry_delay(response, attempt):
