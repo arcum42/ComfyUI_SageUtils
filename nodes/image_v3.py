@@ -139,7 +139,7 @@ class Sage_EmptyLatentImagePassthrough(io.ComfyNode):
                 io.Int.Input("width", display_name="width", default=1024, tooltip="The width of the empty latent image."),
                 io.Int.Input("height", display_name="height", default=1024, tooltip="The height of the empty latent image."),
                 io.Int.Input("batch_size", display_name="batch_size", default=1, tooltip="The number of latent images in the batch."),
-                io.Combo.Input("type", display_name="type", default="4_channel", options=["4_channel", "16_channel", "radiance"], tooltip="The type of latent to create. 4_channel is for standard latent diffusion models, 16_channel is for SD3 models, and radiance is for Chroma Radiance models."),
+                io.Combo.Input("type", display_name="type", default="4_channel", options=["4_channel", "16_channel", "radiance","flux 2"], tooltip="The type of latent to create. 4_channel is for standard latent diffusion models, 16_channel is for SD3 models, radiance is for Chroma Radiance models, and flux 2 is for Flux 2 models."),
             ],
             outputs=[
                 io.Latent.Output("latent", display_name="latent", tooltip="The generated empty latent image tensor."),
@@ -164,6 +164,8 @@ class Sage_EmptyLatentImagePassthrough(io.ComfyNode):
             latent = torch.zeros([batch_size, 16, height // 8, width // 8], device=device, dtype=dtype)
         elif latent_type == "radiance":
             latent = torch.zeros([batch_size, 3, height, width], device=device, dtype=dtype)
+        elif latent_type == "flux 2":
+            latent = torch.zeros([batch_size, 128, height // 16, width // 16], device=device, dtype=dtype)
         else:
             logger.info(f"Unknown latent type '{latent_type}', defaulting to 4_channel.")
             latent = torch.zeros([batch_size, 4, height // 8, width // 8], device=device, dtype=dtype)
