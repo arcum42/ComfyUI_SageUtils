@@ -3,14 +3,16 @@ type: Assessment
 title: Sidebar GUI Implementation and Improvement Assessment
 description: Code-based overview of the Sage Utils sidebar architecture, current implementation issues, and improvement opportunities.
 tags: [ui, sidebar, architecture, assessment]
-timestamp: 2026-11-06T17:44:19Z
+timestamp: 2026-11-06T20:00:00Z
 ---
 
 # Sidebar GUI Implementation and Improvement Assessment
 
 ## Scope
 
-This assessment covers the ComfyUI sidebar registration, the shared tab manager, the six registered tabs, their styling approach, and the related lifecycle and cross-tab behavior. It is based on the current source, not a live visual or assistive-technology test.
+This assessment covers the ComfyUI sidebar registration, the shared tab manager, the six registered tabs, their styling approach, and the related lifecycle and cross-tab behavior. It was written from the source before any changes; it has since been updated to record what the modernization work (Phases 0-6 of the plan) resolved and what remains. Findings were checked in a headless browser against the running ComfyUI page, but there has been no screen-reader test.
+
+**Status (2026-11-06):** Phases 0-4 and 6 are complete, and Phase 5A (shared workflow items) is implemented. Phase 5B (per-tab feature additions) is mostly not started. See the "Status against the recommended sequence" section at the end and the [plan](sidebar_implementation_plan.md) for details.
 
 For the phased fix and implementation roadmap, see the [Sidebar GUI modernization plan](sidebar_implementation_plan.md).
 
@@ -18,7 +20,7 @@ For the phased fix and implementation roadmap, see the [Sidebar GUI modernizatio
 
 Sage Utils registers one ComfyUI sidebar extension and renders a custom six-tab workspace inside it. The implementation already has useful foundations: lazy tab creation, shared UI components, persistent tab visibility settings, shared data caching, background warming, and cross-tab handoff between features.
 
-The main weakness is that the sidebar has grown as a collection of separately styled feature interfaces rather than one consistently designed product surface. More urgently, the sidebar reload path removes the old DOM without invoking the cleanup routine that owns its timers, subscriptions, and global handlers. The Files tab also adds a document-level keyboard listener without removing it. Fixing lifecycle ownership and establishing shared interaction and visual patterns should precede a large visual rewrite.
+The original main weaknesses were that the sidebar had grown as a collection of separately styled feature interfaces rather than one consistently designed product surface, and that the reload path removed the old DOM without invoking the cleanup routine that owns its timers, subscriptions, and global handlers (the Files tab also leaked a document-level keyboard listener). Both are now addressed: lifecycle ownership is fixed, the shell and tabs use shared `--sage-*` tokens and interaction patterns, and a command palette, recents/favorites and a handoff flow were added. The remaining gaps are mainly the per-tab feature additions in Phase 5B and a few unmeasured scenarios (listed at the end).
 
 ## How it is implemented
 
@@ -68,16 +70,20 @@ This arrangement allows tabs to evolve independently, but it also means that vis
 | Resolved (Phase 1) | **Civitai image overlays previously leaked the document Escape handler when clicked to close.** Overlay open/close is now scoped to Search, and teardown removes every overlay and its key listener. Search requests are aborted on replacement or tab teardown ([`civitaiSearchTab.js`](../../js/sidebar/civitaiSearchTab.js)). |
 | Resolved (Phase 1) | **Gallery previously had no mount-level cleanup contract.** It now returns cleanup that cancels delayed auto-load, aborts the active folder request, and guards pending timeouts/render callbacks ([`imageGalleryTab.js`](../../js/sidebar/imageGalleryTab.js)). |
 | Resolved (Phase 1) | **Late tab mount failures previously had no retry action and interpolated error text into HTML.** TabManager now renders errors with DOM text nodes, exposes Retry, ignores failure UI after destroy, and avoids starting another tab while tearing down ([`tabs.js`](../../js/components/tabs.js)). |
-| Resolved (Phase 2) | **Settings could become inaccessible in a narrow header.** The settings button is hidden when a width estimate says the tabs and button will not fit; the estimate uses a fixed 50px button width ([`cacheSidebar.js`](../../js/sidebar/cacheSidebar.js#L316)). The tab bar itself scrolls horizontally ([`layout.css`](../../js/components/layout.css#L947)), but there is no alternate settings entry point in this header. Prefer a menu or overflow control that remains reachable. |
-| Resolved (Phase 2) | **Tab semantics and keyboard behavior were incomplete.** `TabManager` creates native buttons and changes CSS classes on click ([`tabs.js`](../../js/components/tabs.js#L361)), but the generated controls do not establish tab roles, selected state, or tab-panel relationships, and the manager does not implement arrow-key tab navigation. Add appropriate ARIA semantics and predictable keyboard behavior, or use a tab pattern already provided by ComfyUI. |
-| Resolved (Phase 3-4) | **The feature surfaces previously did not share a clear visual system.** All tab and shell stylesheets now use `--sage-*` tokens from `components/tokens.css`; file manager, browser, preview, editor and model browser inline styles moved to `components/fileManager.css`. Original finding: The shared tab bar uses a green active state, while feature styles mix literal green, blue, gray, and gradients; the Prompt Builder uses variables in some places while other tabs hard-code colors. File-manager tabs and layout also style themselves inline. This makes later theme adaptation, contrast tuning, and consistent polish harder. |
-| Resolved (Phase 4) | **Responsive behavior was uneven.** Grids use `min(100%, N px)` columns and rows wrap; verified at 400 and 240 px (a few small residual clips are tracked in the plan). Original finding: The Search form uses fixed 150px filter columns ([`civitaiSearchTab.css`](../../js/sidebar/civitaiSearchTab.css)); responsive media rules are concentrated in the Prompt Builder and LLM styles rather than consistently defined across tab surfaces. Narrow sidebar widths can force dense or awkward layouts. Test and define behavior at supported sidebar widths rather than relying on desktop-sized controls. |
-| Low | **Stylesheet loading is asynchronous and failure-tolerant but not observable to the UI.** [`sidebarStyles.js`](../../js/sidebar/sidebarStyles.js) appends stylesheets after resolving their asset paths and catches failures by logging a warning. A tab can render before its stylesheet arrives, and a failed stylesheet leaves the UI degraded without a recovery affordance. |
-| Trade-off | **Startup optimization duplicates some work.** Tabs are lazy-loaded, but other tabs are then proactively preloaded during idle time and gallery data is fetched shortly afterward. This can improve first-switch latency, but may also consume network and CPU for tabs a user never opens. Measure startup cost and use interaction data or a preference to tune warming. The Phase 0 browser session could not provide cold-mount timings because background preloading may already have initialized tabs. |
+| Resolved (Phase 2) | **Settings could become inaccessible in a narrow header.** The settings button was hidden by a width estimate. The shell now keeps settings reachable at narrow widths, and the tab bar scrolls so the active tab stays visible ([`cacheSidebar.js`](../../js/sidebar/cacheSidebar.js), [`layout.css`](../../js/components/layout.css)). |
+| Resolved (Phase 2) | **Tab semantics and keyboard behavior were incomplete.** `TabManager` now renders a labelled `tablist` with `role=tab` buttons (`aria-selected`, `aria-controls`, roving `tabindex`) and `role=tabpanel` panels; Arrow keys, Home and End move between visible tabs ([`tabs.js`](../../js/components/tabs.js)). |
+| Resolved (Phase 3-4) | **The feature surfaces previously did not share a clear visual system.** All tab and shell stylesheets now use `--sage-*` tokens from `components/tokens.css`; file manager, browser, preview, editor and model browser inline styles moved to `components/fileManager.css`. |
+| Resolved (Phase 4) | **Responsive behavior was uneven.** Grids use `min(100%, N px)` columns and rows wrap. Verified at 400, 300, 240 and 200 px; the only remaining overflow is the intentionally scrolling tab and category strips, plus a ~13 px Models overflow measured at 200 px before the later wrap fixes (not re-measured). |
+| Resolved (gap closure) | **Dialogs lacked focus management and some interpolated message text into HTML.** `modalA11y.js` provides a focus trap, topmost-only Escape and focus restore, used by shared dialogs, LLM dialogs and the Gallery folder browser; image lightboxes have dialog roles. `confirmDialog`, `alertDialog` and `promptDialog` now render messages as plain text. Document-level listeners act only while their tab is displayed. |
+| Resolved (Phase 5) | **Handoff to a disabled tab silently held the text.** Held handoffs are now discarded with a warning toast when the destination tab is turned off (not tested end to end in a browser). |
+| Resolved (Phase 2) | **Stylesheet loading was not observable to the UI.** [`sidebarStyles.js`](../../js/sidebar/sidebarStyles.js) now shares one promise per stylesheet, records failures, and `retryFailedStyles` retries them. A mounted tab stays hidden and `aria-busy` until styles settle (4 s cap); on failure content shows with a warning banner and Retry. |
+| Resolved (Phase 6) | **Startup optimization duplicated some work.** Measured: idle warmup removes a 0.25-1 s first-use cost and is kept; it now mounts one tab at a time instead of all at once, and `updateState` uses structural sharing instead of deep JSON clones. Warm-cache long tasks in the first 6 s fell from ~1.9 s to ~0.7 s; a cold run still shows one ~950 ms task (likely the first Models mount). No duplicate per-tab data fetches. Reload cycles show bounded growth (~+2 MB heap, +2 listeners per cycle after the first). Offline and slow-provider scenarios were not tested. |
 
-The initial all-visible tab state prevents a blank sidebar while settings load, but can briefly show tabs that the user has hidden. A neutral shell/loading state could preserve availability without showing a flash of the default configuration.
+The initial all-visible tab state used to flash hidden tabs while settings loaded. Last-known visibility is now cached in `localStorage` and applied at startup; defaults apply when there is no cache or the settings request fails.
 
 ## Appearance and interaction improvements
+
+**Status:** items 1-7 below were implemented in Phases 2-4 (tokens in `components/tokens.css`, shared patterns in `components/patterns.css`, `statusBanner.js` and `taskStatus.js`, inline styles moved to `fileManager.css`). Reduced-motion and 200% zoom were checked at the layout level; contrast measured 9.6:1 (dark) and 16:1 (light). A screen-reader pass has not been done.
 
 Aim for a compact, calm interface that feels native to ComfyUI rather than introducing a second competing theme:
 
@@ -91,34 +97,42 @@ Aim for a compact, calm interface that feels native to ComfyUI rather than intro
 
 ## Functional opportunities across the sidebar
 
-| Area | Improvement opportunity |
-|---|---|
-| Sidebar-wide | Add a searchable command/action palette for common operations (find/select a model, open a folder, search Civitai, switch tabs, or create a prompt). Keep the existing tabs as the discoverable primary structure. |
-| Sidebar-wide | Add recent items and favorites for models, folders, images, and saved prompts, with clear actions to restore or remove them. |
-| Sidebar-wide | Make cross-tab handoffs explicit and reversible: preview what is being sent, preserve source context, and offer append/replace choices where content could be overwritten. |
-| Sidebar-wide | Provide a single, consistent notification and task-progress surface for long scans, downloads, gallery batch actions, and LLM generation, including cancellation when supported. |
-| Models | Improve large-library discovery with saved filters, recently selected items, clearer filter summaries, and an easier way to compare model details before applying actions. |
-| Files | Add filename search, sorting, dirty-edit indicators, unsaved-change confirmation, and clear create/rename/delete flows. Keep preview/editor state when switching folders where safe. |
-| Search | Preserve search/filter state, make download progress and failure recovery visible, and explain NSFW filtering and provider/network availability in context. |
-| Gallery | Add efficient multi-select and batch actions with selection counts, cancellable progress, and undo or confirmation for destructive file changes. Persist view mode and folder choice. |
-| Prompts | Make generated variations easy to compare, edit, copy, and save; show wildcard resolution and seed information so users can reproduce results. |
-| LLM | Make provider connection and model capability status visible before generation, and unify cancellation, retry, history, and prompt handoff behavior across Compose and Chat. |
+| Area | Improvement opportunity | Status |
+|---|---|---|
+| Sidebar-wide | Searchable command/action palette. | Done: header button and Ctrl+Shift+K; lists tab navigation, Settings, and per-tab commands from `commandRegistry.js` (Models, Gallery, Files, Prompts, LLM). |
+| Sidebar-wide | Recent items and favorites. | Partly done: models (recents/favorites), saved prompts (star and filter), Gallery custom folders (recents, plus folder favorites). Images are not covered; Files has only two fixed folders. |
+| Sidebar-wide | Explicit, reversible cross-tab handoffs. | Done for text handoffs (preview, append/replace, held until the destination mounts, warning if the destination tab is off). |
+| Sidebar-wide | Consistent notification and task-progress surface. | Partly done: `taskStatus.js` adopted in the model scan dialog (failure with Retry). Gallery, LLM generation and Civitai downloads were reviewed and left as is because they already have progress/error UI or hand off to the browser. |
+| Models | Saved filters, recents, filter summaries, detail comparison. | Recents/favorites done; saved filters, summaries and comparison not started. |
+| Files | Filename search, sorting, dirty indicators, unsaved-change confirmation, create/rename/delete flows. | Not started. |
+| Search | Preserve search/filter state, download progress, NSFW/provider explanation. | Not started (downloads open Civitai in a new tab, so progress cannot be tracked). |
+| Gallery | Multi-select and batch actions, persisted view mode and folder. | Not started (folder recents done). |
+| Prompts | Variation comparison, wildcard resolution and seed display. | Not started (starred/recent saved prompts done). |
+| LLM | Provider and capability status before generation; unified cancel/retry/history/handoff. | Not started. |
 
 These are opportunities, not claims that the current feature set lacks the underlying capability. Existing tab guides describe functionality such as model keyboard navigation, saved prompts, LLM history/vision, and gallery dataset-text operations; improvements should build on those rather than replace them.
 
 ## Recommended implementation sequence
 
-1. **Fix lifecycle correctness first.** Make sidebar destruction idempotently invoke the cleanup registry and `TabManager.destroy()`. Ensure every tab's listeners, observers, requests, and timers have an owner and are removed on unmount.
-2. **Establish interaction/accessibility patterns.** Define tab keyboard/ARIA behavior, focus handling, status and error conventions, and narrow-width navigation. Test against the ComfyUI host rather than only in isolation.
-3. **Introduce shared visual tokens and components.** Start with controls, section headers, cards, buttons, and empty/loading/error states; migrate high-traffic tabs without changing their feature behavior.
-4. **Polish responsiveness and feature workflows.** Prioritize Files and Search for compact layouts, then apply common patterns to Gallery, Models, Prompts, and LLM.
-5. **Measure before expanding startup work.** Compare initial render, first tab switch, background network activity, and memory after reload. Keep preloading only where the measured benefit justifies the cost.
+Status of each step (2026-11-06):
+
+1. **Fix lifecycle correctness first.** Done (Phase 1, plus gap closure for hidden-tab listeners and dialogs). Sidebar destruction is idempotent and invokes the cleanup registry and `TabManager.destroy()`; every tab owns and removes its listeners, requests and timers.
+2. **Establish interaction/accessibility patterns.** Done (Phase 2): tab ARIA and keyboard behavior, dialog focus handling, status/error conventions, narrow-width navigation, cached tab visibility.
+3. **Introduce shared visual tokens and components.** Done (Phase 3): `tokens.css`, `patterns.css`, shared status banner, task status and empty/loading/error states.
+4. **Polish responsiveness and feature workflows.** Responsiveness done (Phase 4, all six tabs); workflow features partly done (Phase 5A done, Phase 5B mostly open, see the table above).
+5. **Measure before expanding startup work.** Done (Phase 6): warmup kept but serialized, state updates made cheaper, reload leaks bounded. Not covered: offline and slow-provider scenarios, splitting the remaining cold first-mount task (~950 ms), and a detached-node heap snapshot.
 
 ### Suggested acceptance checks
 
-- Repeated settings-driven reloads leave exactly one active tab manager, one periodic refresh interval, and one set of global/message-bus handlers.
-- Mounting, hiding, reloading, and destroying Files does not leave document listeners or save the wrong editor.
-- Every tab can be reached and operated by keyboard; selected/disabled/loading states are announced and visible.
-- Settings remain accessible at the narrowest supported sidebar width; no horizontal clipping hides primary actions.
-- Shared buttons, fields, section headers, loading states, and errors use the same tokens and interaction states in all six tabs.
-- Feature behavior and cross-tab prompt/image handoffs remain intact after visual changes.
+- Repeated settings-driven reloads leave exactly one active tab manager, one periodic refresh interval, and one set of global/message-bus handlers. Verified for reload cycles (bounded growth).
+- Mounting, hiding, reloading, and destroying Files does not leave document listeners or save the wrong editor. Verified.
+- Every tab can be reached and operated by keyboard; selected/disabled/loading states are announced and visible. Verified in the browser; no screen-reader pass.
+- Settings remain accessible at the narrowest supported sidebar width; no horizontal clipping hides primary actions. Verified at 400, 300, 240 and 200 px.
+- Shared buttons, fields, section headers, loading states, and errors use the same tokens and interaction states in all six tabs. Done.
+- Feature behavior and cross-tab prompt/image handoffs remain intact after visual changes. Checked for the changed paths; the disabled-destination warning is not browser-tested.
+
+### Still open
+
+- Phase 5B feature additions (Models saved filters/compare, Files search and flows, Search state, Gallery multi-select, Prompts comparison, LLM provider status).
+- Manual checks: Settings-UI tab visibility reload and Search lightbox close.
+- Offline and slow-provider failure scenarios; screen-reader testing.
