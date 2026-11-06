@@ -15,6 +15,13 @@ All nodes are prefixed with the SageUtils identifier (`_ID` from `shared/utils.j
 
 ## Node Files
 
+### visualResolutionPicker.js
+
+**Purpose**: Draws the Visual Resolution Picker grid and updates its persisted
+relative width and height inputs when the user clicks, drags, or swaps the
+rectangle's sides. The preview also reflects the multiplier. See the
+[node guide](../../okf/nodes/sampler_ui_nodes.md#visual-resolution-picker).
+
 ### 1. textSubstitution.js
 
 **Purpose**: Advanced dynamic string input handling with substitution capabilities  

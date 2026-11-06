@@ -35,6 +35,7 @@ console.log('[SageUtils] sage.js module loaded');
 import { setupViewTextOrAnythingNode } from "./nodes/viewAnything.js";
 import { setupViewNotesNode } from "./nodes/viewNotes.js";
 import { setupModelInfoDisplayNode } from "./nodes/modelInfoDisplay.js";
+import { setupVisualResolutionPicker } from "./nodes/visualResolutionPicker.js";
 recordInitializationMilestone("NODE_SETUP_FUNCTIONS_IMPORTED");
 
 const SAGE_TEXT_NODE_TYPES = [
@@ -310,7 +311,8 @@ app.registerExtension({
       _ID + "ViewAnything",
       _ID + "ViewNotes",
       _ID + "ModelInfoDisplay",
-      _ID + "LoraStackInfoDisplay"
+      _ID + "LoraStackInfoDisplay",
+      _ID + "VisualResolutionPicker"
     ];
     
     if (needsSetup.includes(nodeData.name)) {
@@ -323,6 +325,8 @@ app.registerExtension({
           setupModelInfoDisplayNode(nodeType, nodeData, app);
         } else if (nodeData.name === _ID + "LoraStackInfoDisplay") {
           setupModelInfoDisplayNode(nodeType, nodeData, app);
+        } else if (nodeData.name === _ID + "VisualResolutionPicker") {
+          setupVisualResolutionPicker(nodeType);
         }
       });
     }

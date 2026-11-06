@@ -53,6 +53,11 @@ Seamless data flow between all components:
 
 ## Key Nodes
 
+- **Visual Resolution Picker**
+  Set a longest side and drag a rectangle on a grid to select the aspect ratio.
+  Scale the dimensions with a multiplier or swap their orientation with a button.
+  See the [node guide](okf/nodes/sampler_ui_nodes.md#visual-resolution-picker).
+
 - **Save Image w/ Added Metadata**  
   An enhanced Save Image node with extra inputs for `param_metadata` and `extra_metadata`, allowing you to embed custom metadata under `parameters` (A1111 style) and `extra`. Includes switches to control inclusion of standard ComfyUI metadata.
 

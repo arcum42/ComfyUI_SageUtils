@@ -17,6 +17,7 @@ This concept describes the major Sage Utils node families and how they map to co
   - Example nodes: `Load Checkpoint w/ Metadata`, `Load Diffusion Model w/ Metadata`, `LoRA Stack Loader`, `Model + LoRA Stack Loader`.
 - **Sampler/UI nodes** — Expose sampler settings, tiled decoding and audio decoder variants, and workflow-friendly wrapper nodes.
   - Example nodes: `Sampler Info`, `KSampler w/ Sampler Info`, `KSampler + Tiled Decoder`, `KSampler + Audio Decoder`, `Empty Latent Passthrough`.
+- **Image resolution nodes** — Select dimensions for image and latent workflows, including the [Visual Resolution Picker](sampler_ui_nodes.md#visual-resolution-picker).
 - **Utility nodes** — Support conditional logic, hashing, model cache analysis, and other developer-facing workflow helpers.
   - Example nodes: `Switch`, `Get Sha256 Hash`, `Cache Maintenance`, `Model Scan & Report`, `LoRA Stack → Keywords`, `Last LoRA Info`.
 

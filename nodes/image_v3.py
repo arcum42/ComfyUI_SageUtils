@@ -30,6 +30,7 @@ from comfy_execution.graph_utils import GraphBuilder
 
 from ..utils.constants import QUICK_ASPECT_RATIOS, MAX_RESOLUTION, SAGE_UTILS_CAT
 from ..utils.helpers_image import calc_padding, resize_needed, image_manipulate
+from .image_resolution_v3 import Sage_VisualResolutionPicker
 
 logger = get_logger('nodes.image')
 
@@ -528,6 +529,7 @@ IMAGE_NODES = [
     #resolution
     Sage_GuessResolutionByRatio,
     Sage_QuickResPicker,
+    Sage_VisualResolutionPicker,
     
     # latent
     Sage_EmptyLatentImagePassthrough,

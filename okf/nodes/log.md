@@ -6,6 +6,10 @@ tags: [log, okf, nodes]
 timestamp: 2026-07-01T00:00:00Z
 ---
 
+## 2026-11-06
+- Documented the Visual Resolution Picker, including its grid and rounding behavior.
+- Documented its resolution multiplier and width/height swap button.
+
 ## 2026-07-01
 - Created the `nodes` subbundle.
 - Added `index.md` and `log.md` for nodes documentation.
