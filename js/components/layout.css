@@ -930,8 +930,8 @@
 
 .sage-tabs-header {
   display: flex;
-  background: #1e1e1e;
-  border-bottom: 2px solid #333;
+  background: var(--sage-surface-0, #1e1e1e);
+  border-bottom: 2px solid var(--sage-border, #333);
   padding: 0 10px;
   gap: 2px;
   overflow-x: auto;
@@ -947,32 +947,29 @@
 .sage-tab-button {
   padding: 10px 20px;
   border: none;
-  background: #2a2a2a;
-  color: #ccc;
+  background: var(--sage-surface-1, #2a2a2a);
+  color: var(--sage-text-muted, #ccc);
   cursor: pointer;
   border-radius: 6px 6px 0 0;
   font-size: 13px;
   font-weight: normal;
-  transition: all 0.2s ease;
+  transition: background var(--sage-motion, 0.2s ease), color var(--sage-motion, 0.2s ease);
   border-bottom: 2px solid transparent;
   position: relative;
   top: 2px;
   flex-shrink: 0;
-  transform: translateY(0);
 }
 
 .sage-tab-button:hover:not(.active) {
-  background: #3a3a3a;
-  color: white;
-  transform: translateY(-1px);
+  background: var(--sage-surface-2, #3a3a3a);
+  color: var(--sage-text, white);
 }
 
 .sage-tab-button.active {
-  background: #4CAF50;
-  color: white;
+  background: var(--sage-accent, #2e7d32);
+  color: var(--sage-accent-text, white);
   font-weight: bold;
-  border-bottom: 2px solid #4CAF50;
-  transform: translateY(-1px);
+  border-bottom: 2px solid var(--sage-accent, #2e7d32);
 }
 
 .sage-tab-container {
@@ -983,6 +980,17 @@
 
 .sage-tab-container.active {
   display: block;
+}
+
+.sage-tab-button:focus-visible,
+.sidebar-settings-button:focus-visible,
+.sage-tab-error-retry:focus-visible {
+  outline: 2px solid var(--sage-focus, #8bc34a);
+  outline-offset: 2px;
+}
+
+.sage-tab-container[hidden] {
+  display: none !important;
 }
 
 .sage-tab-hidden {

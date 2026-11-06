@@ -6,9 +6,10 @@
  */
 
 // Import component libraries
+import { registerCommandProvider } from '../shared/commandRegistry.js';
 import { createButton, createConfigButton, BUTTON_VARIANTS } from "../components/buttons.js";
 import { createSection, createCard, createFlexContainer } from "../components/layout.js";
-import { createInlineProgressBar } from "../components/progressBar.js";
+import { createTaskStatus } from "../components/taskStatus.js";
 import { confirmDialog, alertDialog, createDialog } from "../components/dialogManager.js";
 import { createDetailedInfoDisplay } from "../components/infoDisplay.js";
 import { copyToClipboard } from "../components/clipboard.js";
@@ -21,6 +22,7 @@ import { FILTER_OPTIONS } from "../shared/config.js";
 import { notifications } from "../shared/notifications.js";
 import { handleError } from "../shared/errorHandler.js";
 import { selectors, actions } from "../shared/stateManager.js";
+import { getCollection } from "../shared/recents.js";
 
 // Import API functions
 import { pullMetadata, updateCacheInfo, reconcileCache, fetchModelInventory, fetchScanHistory, cleanupMissingCachePaths } from "../shared/api/cacheApi.js";
@@ -171,6 +173,7 @@ async function createHeaderAndControls(onRefresh, onCleanup, onHistory, onScan, 
     contentArea.appendChild(searchControlsSection);
 
     const folderSelect = section.querySelector('#models-v2-folder-select');
+    const collectionSelect = section.querySelector('#models-v2-collection-select');
     const lastUsedSelect = section.querySelector('#models-v2-last-used-select');
     const updatesSelect = section.querySelector('#models-v2-updates-select');
     const filesystemStatusSelect = section.querySelector('#models-v2-filesystem-status-select');
@@ -205,6 +208,9 @@ async function createHeaderAndControls(onRefresh, onCleanup, onHistory, onScan, 
         if (savedFilters.type) {
             folderSelect.value = savedFilters.type;
         }
+        if (savedFilters.collection) {
+            collectionSelect.value = savedFilters.collection;
+        }
         if (savedFilters.lastUsed) {
             lastUsedSelect.value = savedFilters.lastUsed;
         }
@@ -235,6 +241,7 @@ async function createHeaderAndControls(onRefresh, onCleanup, onHistory, onScan, 
     return {
         section,
         folderSelect,
+        collectionSelect,
         lastUsedSelect,
         updatesSelect,
         filesystemStatusSelect,
@@ -642,10 +649,7 @@ export async function createModelsTabV2(container) {
     loadSidebarStyle('models-v2-styles', 'sidebar/modelsTabV2.css');
     
     // Set up progress bar (initially hidden)
-    const progressBar = createInlineProgressBar({
-        title: 'Operation Progress',
-        initialMessage: 'Ready...'
-    });
+    const progressBar = createTaskStatus();
     
     // Track current state
     let selectedModelHash = null;
@@ -654,6 +658,7 @@ export async function createModelsTabV2(container) {
     let filesystemStatuses = {};
     let reconciliationResult = { statuses: {} };
     let liveInventory = null;
+    let isDestroyed = false;
     
     // Create unified header with filters and actions
     const headerControls = await createHeaderAndControls(
@@ -752,6 +757,10 @@ export async function createModelsTabV2(container) {
      * Loads models from cache and updates browser
      */
     async function loadModels() {
+        if (isDestroyed) {
+            return;
+        }
+
         try {
             const cacheData = selectors.cacheData();
             
@@ -814,6 +823,9 @@ export async function createModelsTabV2(container) {
             modelBrowser.updateModels(models);
             applyCurrentFilters();
         } catch (error) {
+            if (isDestroyed) {
+                return;
+            }
             console.error('[ModelsTabV2] Error loading models:', error);
             notifications.error('Failed to load models', error.message);
         }
@@ -825,6 +837,9 @@ export async function createModelsTabV2(container) {
                 reconcileCache(),
                 fetchModelInventory()
             ]);
+            if (isDestroyed) {
+                return;
+            }
             reconciliationResult = result;
             liveInventory = inventoryResult.models || [];
             modelBrowser.setInventoryCounts(inventoryResult.counts || null);
@@ -835,6 +850,9 @@ export async function createModelsTabV2(container) {
                 });
             });
         } catch (error) {
+            if (isDestroyed) {
+                return;
+            }
             console.warn('[ModelsTabV2] Filesystem reconciliation failed:', error);
             filesystemStatuses = {};
             liveInventory = null;
@@ -854,6 +872,7 @@ export async function createModelsTabV2(container) {
         const filters = {
             search: headerControls.searchInput.value,
             type: headerControls.folderSelect.value,
+            collection: headerControls.collectionSelect.value,
             lastUsed: headerControls.lastUsedSelect.value,
             updates: headerControls.updatesSelect.value,
             filesystemStatus: headerControls.filesystemStatusSelect.value,
@@ -878,6 +897,10 @@ export async function createModelsTabV2(container) {
      * @param {boolean} preserveScroll - Whether to preserve scroll position
      */
     async function updateInfoDisplay(hash, modelData, preserveScroll = false) {
+        if (isDestroyed) {
+            return;
+        }
+
         // Save scroll position if requested
         let scrollPosition = 0;
         let scrollContainer = null;
@@ -893,7 +916,10 @@ export async function createModelsTabV2(container) {
         infoDisplayContainer.innerHTML = '';
         
         if (!hash || !modelData) {
-            infoDisplayContainer.appendChild(await createEmptyInfoPanel());
+            const emptyPanel = await createEmptyInfoPanel();
+            if (!isDestroyed) {
+                infoDisplayContainer.appendChild(emptyPanel);
+            }
             return;
         }
         
@@ -915,6 +941,10 @@ export async function createModelsTabV2(container) {
                     }
                 }
             );
+
+            if (isDestroyed) {
+                return;
+            }
             
             infoDisplayContainer.appendChild(infoPanel);
             
@@ -922,20 +952,27 @@ export async function createModelsTabV2(container) {
             if (preserveScroll && scrollContainer && scrollPosition > 0) {
                 // Use setTimeout to ensure DOM is fully rendered
                 setTimeout(() => {
-                    scrollContainer.scrollTop = scrollPosition;
+                    if (!isDestroyed) {
+                        scrollContainer.scrollTop = scrollPosition;
+                    }
                 }, 0);
             }
         } catch (error) {
+            if (isDestroyed) {
+                return;
+            }
             console.error('Error updating info display:', error);
             const errorPanel = await renderModelsTabV2ErrorPanel(error.message);
-            infoDisplayContainer.appendChild(errorPanel);
+            if (!isDestroyed) {
+                infoDisplayContainer.appendChild(errorPanel);
+            }
         }
     }
     
     /**
      * Pulls metadata for a model from Civitai
      */
-    async function pullModelMetadata(hash, force = false) {
+    async function pullModelMetadata(hash, force = false, skipConfirm = false) {
         try {
             const cacheData = selectors.cacheData();
             const inventoryModel = modelBrowser.models.find(model => model.hash === hash);
@@ -948,27 +985,24 @@ export async function createModelsTabV2(container) {
             }
             
             const fileName = filePath.split('/').pop();
-            const confirmed = await confirmDialog(
+            const confirmed = skipConfirm || await confirmDialog(
                 `Pull latest metadata from Civitai for:\n${fileName}?`,
                 'Pull Metadata'
             );
             
             if (!confirmed) return;
             
-            progressBar.updateTitle('Pulling Metadata');
-            progressBar.reset();
-            progressBar.show();
+            progressBar.start('Pulling Metadata');
             
-            progressBar.updateProgress(25, 'Connecting to Civitai...');
+            progressBar.update(25, 'Connecting to Civitai...');
             await new Promise(resolve => setTimeout(resolve, 200));
+            if (isDestroyed) return;
             
-            progressBar.updateProgress(50, 'Fetching model metadata...');
+            progressBar.update(50, 'Fetching model metadata...');
             await pullMetadata(filePath, force);
             
-            progressBar.updateProgress(75, 'Refreshing cache...');
+            progressBar.update(75, 'Refreshing cache...');
             await reconcileAndLoadModels();
-            
-            progressBar.updateProgress(100, 'Metadata updated successfully!');
             
             // Re-select the model to update display
             const modelData = modelBrowser.filteredModels.find(m => m.hash === hash);
@@ -976,12 +1010,13 @@ export async function createModelsTabV2(container) {
                 await updateInfoDisplay(hash, modelData);
             }
             
-            setTimeout(() => progressBar.hide(), 1500);
+            progressBar.succeed('Metadata updated successfully.');
             
         } catch (error) {
             console.error('Error pulling metadata:', error);
-            progressBar.hide();
-            alertDialog(`Failed to pull metadata: ${error.message}`, 'Error');
+            progressBar.fail(`Failed to pull metadata: ${error.message}`, {
+                onRetry: () => pullModelMetadata(hash, force, true)
+            });
         }
     }
     
@@ -1020,21 +1055,20 @@ export async function createModelsTabV2(container) {
             headerControls.reportButton.disabled = true;
             headerControls.reportButton.textContent = 'Generating...';
             
-            progressBar.updateTitle('Generating Report');
-            progressBar.reset();
-            progressBar.show();
+            progressBar.start('Generating Report');
             
             const cacheData = selectors.cacheData();
             const hashData = cacheData.hash;
             const infoData = cacheData.info;
             
             if (!hashData || Object.keys(hashData).length === 0) {
-                alertDialog('No model data available. Please refresh the cache first.', 'No Data');
+                progressBar.fail('No model data available. Refresh the cache first.', { onRetry: generateReport });
                 return;
             }
             
-            progressBar.updateProgress(10, 'Processing model data...');
+            progressBar.update(10, 'Processing model data...');
             await new Promise(resolve => setTimeout(resolve, 100));
+            if (isDestroyed) return;
             
             const models = Object.keys(hashData).map(filePath => ({
                 filePath: filePath,
@@ -1042,7 +1076,7 @@ export async function createModelsTabV2(container) {
                 info: infoData[hashData[filePath]] || {}
             }));
             
-            progressBar.updateProgress(20, `Processing ${models.length} models...`);
+            progressBar.update(20, `Processing ${models.length} models...`);
             
             const sortValue = headerControls.sortSelect.value;
             const isDescending = headerControls.sortOrderButton.textContent === '↓';
@@ -1055,31 +1089,46 @@ export async function createModelsTabV2(container) {
                 folderFilter: headerControls.folderSelect.value,
                 progressCallback: (progress, message) => {
                     const adjustedProgress = 40 + (progress * 0.55);
-                    progressBar.updateProgress(adjustedProgress, message);
+                    progressBar.update(adjustedProgress, message);
                 }
             });
             
-            progressBar.updateProgress(95, 'Opening report...');
+            progressBar.update(95, 'Opening report...');
             await new Promise(resolve => setTimeout(resolve, 100));
+            if (isDestroyed) return;
             
             openHtmlReport(htmlContent, 'SageUtils Model Cache Report');
             
-            progressBar.updateProgress(100, 'Report generated successfully!');
-            setTimeout(() => progressBar.hide(), 1500);
+            progressBar.succeed('Report generated and opened.');
             
         } catch (error) {
             console.error('Error generating report:', error);
-            progressBar.hide();
-            alertDialog(`Failed to generate report: ${error.message}`, 'Error');
+            progressBar.fail(`Failed to generate report: ${error.message}`, { onRetry: generateReport });
         } finally {
-            headerControls.reportButton.disabled = false;
-            headerControls.reportButton.textContent = 'Report';
+            if (!isDestroyed) {
+                headerControls.reportButton.disabled = false;
+                headerControls.reportButton.textContent = 'Report';
+            }
         }
     }
     
     // ==================== Filter Event Listeners ====================
     
     headerControls.folderSelect.addEventListener('change', () => {
+        applyCurrentFilters();
+    });
+    
+    const clearRecentsButton = headerControls.section.querySelector('#models-v2-clear-recents-btn');
+    const syncClearRecents = () => {
+        clearRecentsButton.hidden = headerControls.collectionSelect.value !== 'recent';
+    };
+    syncClearRecents();
+    clearRecentsButton.addEventListener('click', () => {
+        getCollection('model').clearRecents();
+        applyCurrentFilters();
+    });
+    headerControls.collectionSelect.addEventListener('change', () => {
+        syncClearRecents();
         applyCurrentFilters();
     });
     
@@ -1120,16 +1169,48 @@ export async function createModelsTabV2(container) {
     // Load initial data
     reconcileAndLoadModels();
     
+    const unregisterCommands = registerCommandProvider(() => {
+        const commands = [
+            { id: 'models-refresh', tab: 'models', label: 'Models: Refresh list', run: () => headerControls.refreshButton.click() },
+            { id: 'models-scan', tab: 'models', label: 'Models: Open scan dialog', run: () => headerControls.scanButton?.click() },
+            { id: 'models-report', tab: 'models', label: 'Models: Generate report', run: () => headerControls.reportButton?.click() }
+        ];
+        const collection = getCollection('model');
+        const shown = new Set(modelBrowser.filteredModels.map((model) => model.hash));
+        const add = (entries, prefix) => entries
+            .filter((entry) => shown.has(entry.id))
+            .slice(0, 10)
+            .forEach((entry) => commands.push({
+                id: `${prefix}-${entry.id}`,
+                tab: 'models',
+                label: `${prefix === 'model-fav' ? 'Starred' : 'Recent'} model: ${entry.name || entry.id}`,
+                run: () => modelBrowser.handleModelSelect(entry.id, false)
+            }));
+        add(collection.getFavorites(), 'model-fav');
+        add(collection.getRecents(), 'model-recent');
+        return commands;
+    });
+
     // Store references for cleanup
+    const destroy = () => {
+        if (isDestroyed) {
+            return;
+        }
+        isDestroyed = true;
+        unregisterCommands();
+        progressBar.destroy();
+        modelBrowser.destroy();
+        if (container._modelsTabV2?.destroy === destroy) {
+            delete container._modelsTabV2;
+        }
+    };
+
     container._modelsTabV2 = {
         modelBrowser,
         progressBar,
-        destroy: () => {
-            if (modelBrowser) {
-                modelBrowser.destroy();
-            }
-        }
+        destroy
     };
+    return destroy;
 }
 
 // Export for module compatibility

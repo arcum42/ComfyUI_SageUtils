@@ -1,14 +1,14 @@
 .folder-selector {
-    padding: 15px;
-    background: #2d2d2d;
-    border: 1px solid #3e3e42;
-    border-radius: 8px;
-    margin-bottom: 15px;
+    padding: 10px 12px;
+    background: var(--sage-surface-1);
+    border: 1px solid var(--sage-border);
+    border-radius: var(--sage-radius-lg);
+    margin-bottom: 10px;
 }
 
 .folder-selector-label {
     display: block;
-    color: #4CAF50;
+    color: var(--sage-accent-fg);
     font-size: 14px;
     font-weight: bold;
     margin-bottom: 8px;
@@ -18,50 +18,57 @@
 .folder-selector select.sage-select {
     width: 100%;
     padding: 8px 12px;
-    background: #333;
-    color: #fff;
-    border: 1px solid #555;
-    border-radius: 4px;
+    background: var(--sage-surface-2);
+    color: var(--sage-text);
+    border: 1px solid var(--sage-border);
+    border-radius: var(--sage-radius);
     font-size: 13px;
     cursor: pointer;
 }
 
+.folder-selector-dropdown:focus-visible,
+.folder-selector select.sage-select:focus-visible {
+    outline: 2px solid var(--sage-focus);
+    outline-offset: 2px;
+}
+
 .notes-header {
-    padding: 15px;
-    background: #2d2d2d;
-    border: 1px solid #3e3e42;
-    border-radius: 8px;
-    margin-bottom: 15px;
+    padding: 10px 12px;
+    background: var(--sage-surface-1);
+    border: 1px solid var(--sage-border);
+    border-radius: var(--sage-radius-lg);
+    margin-bottom: 10px;
 }
 
 .notes-header h3,
 .notes-title {
-    margin: 0 0 5px 0;
-    color: #569cd6;
-    font-size: 16px;
+    margin: 0 0 4px 0;
+    color: var(--sage-info-fg);
+    font-size: 15px;
 }
 
 .notes-header p,
 .notes-description {
     margin: 0;
-    color: #888;
+    color: var(--sage-text-muted);
     font-size: 13px;
 }
 
 .notes-status {
-    margin-bottom: 15px;
+    margin-bottom: 10px;
     padding: 8px 12px;
-    background: #2a2a2a;
-    border: 1px solid #444;
+    background: var(--sage-surface-1);
+    border: 1px solid var(--sage-border);
     border-radius: 4px;
-    color: #4CAF50;
+    color: var(--sage-accent-fg);
     font-size: 12px;
     min-height: 20px;
-    transition: all 0.3s ease;
+    transition: opacity var(--sage-motion);
 }
 
 .notes-status--error {
-    color: #f44336;
+    color: var(--sage-error-fg);
+    border-left: 4px solid var(--sage-error);
 }
 
 .notes-status--faded {

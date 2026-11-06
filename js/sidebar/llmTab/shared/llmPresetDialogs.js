@@ -4,6 +4,7 @@
  */
 
 import { createSelect } from '../../../components/formElements.js';
+import { showOverlayModal } from '../../../components/modalA11y.js';
 
 /**
  * Show save preset dialog
@@ -144,7 +145,7 @@ export async function showSavePresetDialog(state, modelSelection, loadPresets, s
     content.appendChild(title);
     content.appendChild(form);
     dialog.appendChild(content);
-    document.body.appendChild(dialog);
+    showOverlayModal(dialog, { label: 'Preset dialog' });
     
     // Focus name input
     setTimeout(() => {
@@ -236,7 +237,7 @@ export async function showManagePresetsDialog(state, modelSelection, advancedOpt
     content.appendChild(tabNav);
     content.appendChild(tabContent);
     dialog.appendChild(content);
-    document.body.appendChild(dialog);
+    showOverlayModal(dialog, { label: 'Preset dialog' });
     
     // Close on overlay click
     dialog.addEventListener('click', (e) => {
@@ -766,7 +767,7 @@ async function showPresetEditor(state, modelSelection, advancedOptions, inputSec
     
     modal.appendChild(form);
     dialog.appendChild(modal);
-    document.body.appendChild(dialog);
+    showOverlayModal(dialog, { label: 'Preset dialog' });
     
     // Focus first input
     const firstInput = form.querySelector('input:not([readonly])');
@@ -1030,7 +1031,7 @@ export async function showSystemPromptEditor(state, modelSelection, advancedOpti
     content.appendChild(title);
     content.appendChild(form);
     dialog.appendChild(content);
-    document.body.appendChild(dialog);
+    showOverlayModal(dialog, { label: 'Preset dialog' });
     
     // Focus name input
     setTimeout(() => {

@@ -1,0 +1,44 @@
+/*
+ * Sage Utils design tokens.
+ * Names are --sage-* so they cannot collide with ComfyUI or other nodes.
+ * Surfaces and text follow the ComfyUI theme where it exposes a variable;
+ * fallbacks match the previous dark appearance. Muted text and the focus ring
+ * are derived from the main text color so they keep contrast on any host palette.
+ */
+:root {
+  --sage-surface-0: var(--comfy-menu-bg, #1e1e1e);
+  --sage-surface-1: var(--comfy-input-bg, #2a2a2a);
+  --sage-surface-2: color-mix(in srgb, var(--sage-surface-1) 85%, var(--sage-text) 15%);
+  --sage-text: var(--input-text, #e0e0e0);
+  --sage-text-muted: color-mix(in srgb, var(--sage-text) 78%, var(--sage-surface-1));
+  --sage-border: var(--border-color, var(--border, #444444));
+  --sage-accent: #2e7d32;
+  --sage-accent-text: #ffffff;
+  --sage-focus: var(--ring, var(--sage-text));
+  --sage-success: #2e7d32;
+  --sage-warning: #9a5b00;
+  --sage-error: #c62828;
+  --sage-status-text: #ffffff;
+  --sage-info: #1565c0;
+
+  /* Foreground variants for colored text on surfaces (headings, links, status text). */
+  --sage-accent-fg: color-mix(in srgb, var(--sage-accent) 45%, var(--sage-text));
+  --sage-info-fg: color-mix(in srgb, var(--sage-info) 45%, var(--sage-text));
+  --sage-warning-fg: color-mix(in srgb, var(--sage-warning) 45%, var(--sage-text));
+  --sage-error-fg: color-mix(in srgb, var(--sage-error) 45%, var(--sage-text));
+
+  --sage-space-1: 4px;
+  --sage-space-2: 8px;
+  --sage-space-3: 12px;
+  --sage-space-4: 16px;
+  --sage-control-height: 32px;
+  --sage-radius: 4px;
+  --sage-radius-lg: 6px;
+  --sage-motion: 0.2s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --sage-motion: 0s;
+  }
+}

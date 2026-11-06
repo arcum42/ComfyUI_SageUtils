@@ -479,15 +479,20 @@ function showExportMenu(conversation, button) {
     
     document.body.appendChild(menu);
     
-    // Close menu when clicking outside
+    // Close on outside click or Escape; also cleans up if the menu is removed elsewhere
+    const closeMenu = (e) => {
+        if (e && e.type === 'click' && menu.contains(e.target)) return;
+        menu.remove();
+        document.removeEventListener('click', closeMenu);
+        document.removeEventListener('keydown', onKey);
+    };
+    const onKey = (e) => {
+        if (e.key === 'Escape') closeMenu();
+    };
     setTimeout(() => {
-        const closeMenu = (e) => {
-            if (!menu.contains(e.target)) {
-                menu.remove();
-                document.removeEventListener('click', closeMenu);
-            }
-        };
+        if (!menu.isConnected) return;
         document.addEventListener('click', closeMenu);
+        document.addEventListener('keydown', onKey);
     }, 100);
 }
 

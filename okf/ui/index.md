@@ -25,3 +25,5 @@ This subbundle gathers UI guides and component documentation for Sage Utils.
 - [Common UI component architecture](common_ui_components.md) — shared UI component structure and reusable utilities.
 - [Models tab V2 guide](models_tab_v2.md) — browsing, filtering, and keyboard navigation for model selection.
 - [Loading external files](external_files.md) — guidance for loading CSS and other frontend assets in sidebar tabs.
+- [Sidebar GUI assessment](sidebar_assessment.md) — current sidebar architecture, implementation issues, and visual and functional improvement opportunities.
+- [Sidebar GUI modernization plan](sidebar_implementation_plan.md) — phased implementation sequence, acceptance checks, and rollout guidance for addressing the assessment.

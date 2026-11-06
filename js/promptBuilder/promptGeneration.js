@@ -9,6 +9,7 @@ import { copyTextToSelectedNode } from '../utils/textCopyUtils.js';
 import { copyTextFromSelectedNode } from '../utils/textCopyFromNode.js';
 import { app } from '../../../scripts/app.js';
 import { ensurePromptBuilderStyles } from './promptBuilderStyles.js';
+import { applyIncomingText } from '../shared/handoff.js';
 
 /**
  * Prompt Generation Component
@@ -103,30 +104,26 @@ export const promptGenerationComponent = {
             
             // Handle text transfers to Prompt Builder
             const unsubscribe = bus.subscribe(MessageTypes.TEXT_TO_PROMPT_BUILDER, (message) => {
-                const { text, source, autoSwitch, append } = message.data;
+                const { source, autoSwitch } = message.data;
                 
                 if (!this.elements.positiveTextarea) {
                     console.warn('[PromptBuilder] Positive textarea not initialized');
                     return;
                 }
                 
-                // Set or append text to positive prompt textarea
-                if (append && this.elements.positiveTextarea.value) {
-                    this.elements.positiveTextarea.value += '\n' + text;
-                } else {
-                    this.elements.positiveTextarea.value = text;
-                }
-                
-                // Trigger input event to update state
-                this.elements.positiveTextarea.dispatchEvent(new Event('input', { bubbles: true }));
-                
-                // Show success message
-                this.showMessage(`Text received from ${source}`, 'success');
-                
-                // Auto-switch to Prompt Builder tab if requested
-                if (autoSwitch) {
-                    requestTabSwitch('prompts', { source: 'text-transfer' });
-                }
+                applyIncomingText(this.elements.positiveTextarea, message.data, {
+                    destination: 'Prompt Builder',
+                    separator: '\n'
+                }).then((mode) => {
+                    if (!mode) return;
+                    this.showMessage(
+                        `Text ${mode === 'append' ? 'appended' : 'received'} from ${source}`,
+                        'success'
+                    );
+                    if (autoSwitch) {
+                        requestTabSwitch('prompts', { source: 'text-transfer' });
+                    }
+                });
             });
             
             // Store unsubscribe function for cleanup

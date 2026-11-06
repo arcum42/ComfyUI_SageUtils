@@ -7,20 +7,20 @@
     padding: 10px;
     margin-bottom: 8px;
     white-space: pre-wrap;
-    border: 1px solid #444;
-    background: #252525;
+    border: 1px solid var(--sage-border);
+    background: var(--sage-surface-1);
 }
 
 .scan-history-errors {
     margin-top: 6px;
-    color: #ff9b9b;
+    color: var(--sage-error-fg);
     font-family: monospace;
     font-size: 11px;
 }
 
 .scan-history-options {
     margin-top: 4px;
-    color: #aaa;
+    color: var(--sage-text-muted);
     font-size: 11px;
 }
 .models-v2-header-controls {
@@ -52,7 +52,7 @@
 
 .models-v2-labeled-select-label {
     display: block;
-    color: #ccc;
+    color: var(--sage-text);
     font-size: 11px;
     margin-bottom: 4px;
 }
@@ -67,9 +67,9 @@
 .models-v2-search-input {
     padding: 8px 10px;
     border-radius: 4px;
-    border: 1px solid #444;
-    background: #1a1a1a;
-    color: #fff;
+    border: 1px solid var(--sage-border);
+    background: var(--sage-surface-0);
+    color: var(--sage-text);
 }
 
 .models-v2-button-row {
@@ -79,29 +79,30 @@
 .models-v2-button {
     padding: 8px 12px;
     border-radius: 4px;
-    border: 1px solid #444;
-    background: #333;
-    color: #fff;
+    border: 1px solid var(--sage-border);
+    background: var(--sage-surface-2);
+    color: var(--sage-text);
     cursor: pointer;
     transition: background 0.2s ease, border-color 0.2s ease;
 }
 
 .models-v2-button-primary {
-    background: #4CAF50;
-    border-color: #4CAF50;
+    background: var(--sage-accent);
+    border-color: var(--sage-accent);
+    color: var(--sage-accent-text);
 }
 
 .models-v2-button-secondary {
-    background: #2a2a2a;
-    border-color: #444;
+    background: var(--sage-surface-1);
+    border-color: var(--sage-border);
 }
 
 .models-v2-button:hover {
-    background: #505050;
+    background: var(--sage-surface-2);
 }
 
 .models-v2-sort-label {
-    color: #ccc;
+    color: var(--sage-text);
     font-size: 12px;
     min-width: 40px;
 }
@@ -122,7 +123,7 @@
 }
 
 .models-v2-nsfw-label {
-    color: #ccc;
+    color: var(--sage-text);
     font-size: 11px;
     cursor: pointer;
     user-select: none;
@@ -131,7 +132,7 @@
 .models-v2-nsfw-fallback {
     margin-bottom: 15px;
     padding: 10px;
-    background: #2a2a2a;
+    background: var(--sage-surface-1);
     border-radius: 4px;
 }
 
@@ -147,17 +148,17 @@
 }
 
 .models-v2-empty-message {
-    color: #888;
+    color: var(--sage-text-muted);
     font-size: 14px;
     font-style: italic;
 }
 
 .models-v2-error-block {
     padding: 20px;
-    background: #3a2a2a;
-    border: 1px solid #f44336;
+    background: color-mix(in srgb, var(--sage-error) 20%, var(--sage-surface-1));
+    border: 1px solid var(--sage-error-fg);
     border-radius: 4px;
-    color: #f44336;
+    color: var(--sage-error-fg);
 }
 
 .models-v2-edit-dialog-body {
@@ -167,12 +168,12 @@
 
 .models-v2-edit-dialog-title {
     margin: 0 0 15px 0;
-    color: #569cd6;
+    color: var(--sage-info-fg);
 }
 
 .models-v2-edit-dialog-subtitle {
     margin-bottom: 15px;
-    color: #888;
+    color: var(--sage-text-muted);
 }
 
 .models-v2-dialog-grid {
@@ -195,8 +196,8 @@
 .models-v2-dialog-field {
     width: 100%;
     padding: 8px;
-    background: #1a1a1a;
-    border: 1px solid #444;
+    background: var(--sage-surface-0);
+    border: 1px solid var(--sage-border);
     border-radius: 4px;
     color: white;
 }
@@ -212,5 +213,13 @@
 }
 
 .models-v2-error-text {
-    color: #f44336;
+    color: var(--sage-error-fg);
+}
+
+
+.models-v2-button:focus-visible,
+.models-v2-button-primary:focus-visible,
+.models-v2-button-secondary:focus-visible {
+    outline: 2px solid var(--sage-focus);
+    outline-offset: 2px;
 }

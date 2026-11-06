@@ -98,6 +98,8 @@ export function createPasteHandler(state, visionSection, handleFileUpload) {
 
         // Only handle paste when LLM tab is active and vision section is visible
         if (!visionSection || visionSection.classList.contains('llm-hidden')) return;
+        // Ignore pastes while the tab is not displayed (hidden tab or detached panel)
+        if (!visionSection.isConnected || visionSection.getClientRects().length === 0) return;
         
         const items = Array.from(pasteEvent.clipboardData.items);
         const imageItems = items.filter(item => item.type.startsWith('image/'));

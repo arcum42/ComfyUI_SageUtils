@@ -78,24 +78,31 @@ function createNotesHeader() {
 function createStatusDisplay() {
     const statusContainer = document.createElement('div');
     statusContainer.className = 'notes-status';
+    statusContainer.setAttribute('role', 'status');
+    statusContainer.setAttribute('aria-live', 'polite');
 
     let statusTimeout;
+    let fadeTimeout;
 
     function setStatus(message, isError = false) {
         statusContainer.textContent = message;
         statusContainer.classList.toggle('notes-status--error', isError);
+        statusContainer.setAttribute('role', isError ? 'alert' : 'status');
         statusContainer.classList.remove('notes-status--faded');
         
         // Clear previous timeout
         if (statusTimeout) {
             clearTimeout(statusTimeout);
         }
+        if (fadeTimeout) {
+            clearTimeout(fadeTimeout);
+        }
         
         // Auto-clear status after 3 seconds unless it's an error
         if (!isError && message) {
             statusTimeout = setTimeout(() => {
                 statusContainer.classList.add('notes-status--faded');
-                setTimeout(() => {
+                fadeTimeout = setTimeout(() => {
                     if (statusContainer.textContent === message) {
                         statusContainer.textContent = 'Ready';
                         statusContainer.classList.remove('notes-status--faded');
@@ -110,7 +117,11 @@ function createStatusDisplay() {
 
     return {
         container: statusContainer,
-        setStatus
+        setStatus,
+        destroy: () => {
+            clearTimeout(statusTimeout);
+            clearTimeout(fadeTimeout);
+        }
     };
 }
 
@@ -203,27 +214,55 @@ export function createFilesTab(container) {
     container._notesFileManager = fileManager;
 
     // Optional: Add keyboard shortcuts
-    document.addEventListener('keydown', (e) => {
+    const handleKeydown = (e) => {
         // Ctrl+S to save (when notes tab is active)
-        if (e.ctrlKey && e.key === 's' && container.offsetParent !== null) {
-            e.preventDefault();
-            if (fileManager.fileEditor && fileManager.fileEditor.getCurrentFile()) {
-                fileManager.fileEditor.saveFile();
-            }
+        if (!(e.ctrlKey || e.metaKey) || e.key.toLowerCase() !== 's' || container.offsetParent === null) {
+            return;
         }
-    });
+
+        const target = e.target;
+        const isEditable = target instanceof HTMLElement && (
+            target.isContentEditable
+            || target.matches('input, textarea, select')
+        );
+        const editor = fileManager.fileEditor;
+        if (isEditable && target !== editor?.textEditor) {
+            return;
+        }
+        if (!editor?.getCurrentFile()) {
+            return;
+        }
+
+        e.preventDefault();
+        editor.saveFile();
+    };
+    document.addEventListener('keydown', handleKeydown);
+
+    let isDestroyed = false;
+    const destroy = () => {
+        if (isDestroyed) {
+            return;
+        }
+        isDestroyed = true;
+        document.removeEventListener('keydown', handleKeydown);
+        status.destroy();
+        fileManager.destroy();
+        if (container._notesTabCleanup === destroy) {
+            delete container._notesTabCleanup;
+        }
+        if (container._notesFileManager === fileManager) {
+            delete container._notesFileManager;
+        }
+    };
+
+    container._notesTabCleanup = destroy;
 
     return {
         fileManager,
         folderSelector,
         header,
         status,
-        destroy: () => {
-            if (container._notesFileManager) {
-                container._notesFileManager.destroy();
-                delete container._notesFileManager;
-            }
-        }
+        destroy
     };
 }
 
@@ -232,7 +271,9 @@ export function createFilesTab(container) {
  * @param {HTMLElement} container - Container element
  */
 export function destroyNotesTab(container) {
-    if (container._notesFileManager) {
+    if (container._notesTabCleanup) {
+        container._notesTabCleanup();
+    } else if (container._notesFileManager) {
         container._notesFileManager.destroy();
         delete container._notesFileManager;
     }

@@ -5,7 +5,7 @@
 .sage-label {
   display: block;
   margin-bottom: 5px;
-  color: #ffffff;
+  color: var(--sage-text, #ffffff);
   font-size: 13px;
   font-weight: bold;
 }
@@ -17,10 +17,10 @@
   padding: 8px;
   min-height: 32px;
   line-height: 1.4;
-  background: #333;
-  color: #fff;
-  border: 1px solid #555;
-  border-radius: 4px;
+  background: var(--sage-surface-1, #333);
+  color: var(--sage-text, #fff);
+  border: 1px solid var(--sage-border, #555);
+  border-radius: var(--sage-radius, 4px);
   font-size: 12px;
   margin-bottom: 10px;
   box-sizing: border-box;

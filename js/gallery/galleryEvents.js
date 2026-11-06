@@ -4,6 +4,7 @@
  * Extracted from imageGalleryTab.js for better organization
  */
 
+import { getCollection } from '../shared/recents.js';
 import { api } from "../../../../scripts/api.js";
 import { actions, selectors } from '../shared/stateManager.js';
 import { copyImageToClipboard, browseFolder, loadImagesFromFolder } from '../shared/imageUtils.js';
@@ -12,6 +13,7 @@ import { getImageMetadataHtml } from '../shared/api/galleryApi.js';
 import { showFullImage } from '../shared/imageViewer.js';
 import { openImageInNewTab as openImageInNewTabUtil, loadImageDataUrl } from '../shared/imageLoader.js';
 import { createDialog } from '../components/dialogManager.js';
+import { showOverlayModal } from '../components/modalA11y.js';
 import { CONTEXT_MENU_WIDTH, CONTEXT_MENU_ITEM_HEIGHT } from '../shared/constants.js';
 import { notifications } from '../shared/notifications.js';
 import { API_ENDPOINTS } from '../shared/config.js';
@@ -368,7 +370,7 @@ async function showFolderBrowserDialog(callback) {
     document.addEventListener('keydown', handleKeyDown);
     
     // Show the dialog
-    document.body.appendChild(modal);
+    showOverlayModal(modal, { label: 'Select Folder' });
     
     // Load initial directory
     await loadDirectory(currentPath);
@@ -841,6 +843,7 @@ export async function browseCustomFolder(context) {
             
             // Update state first
             const customValue = `custom:${folderPath}`;
+            getCollection('galleryfolder').addRecent(folderPath, folderPath);
             actions.selectFolder(customValue);
             actions.setCurrentPath(folderPath);
             actions.setImages(images);

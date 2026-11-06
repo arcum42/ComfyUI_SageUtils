@@ -69,7 +69,7 @@ export async function createCivitaiSearchTab(container) {
     container.appendChild(searchContainer);
     
     // Set up search functionality
-    setupSearchHandlers(searchForm, resultsContainer);
+    return setupSearchHandlers(searchForm, resultsContainer);
 }
 
 /**
@@ -125,7 +125,7 @@ async function createSearchStatusPanel(options = {}) {
         extraClass = ''
     } = options;
 
-    return await loadAndCreateHtmlTemplate(
+    const panel = await loadAndCreateHtmlTemplate(
         'extensions/comfyui_sageutils/sidebar/partials/civitaiSearchStatus.html',
         {
             icon,
@@ -136,6 +136,8 @@ async function createSearchStatusPanel(options = {}) {
             extraClass
         }
     );
+    panel?.setAttribute?.('role', extraClass.includes('error') ? 'alert' : 'status');
+    return panel;
 }
 
 /**
@@ -155,9 +157,51 @@ function setupSearchHandlers(searchForm, resultsContainer) {
     let currentSearchParams = null;
     let currentMetadata = null;
     let currentResults = [];
+    let activeSearchController = null;
+    let isDestroyed = false;
+    const imageOverlays = new Map();
+
+    function showImageExpanded(imageUrl) {
+        if (isDestroyed) {
+            return;
+        }
+
+        const overlay = document.createElement('div');
+        overlay.className = 'civitai-image-overlay';
+        overlay.setAttribute('role', 'dialog');
+        overlay.setAttribute('aria-modal', 'true');
+        overlay.setAttribute('aria-label', 'Expanded image (press Escape to close)');
+
+        const img = document.createElement('img');
+        img.src = imageUrl;
+        img.className = 'civitai-image-expanded';
+
+        const handleEsc = (event) => {
+            if (event.key === 'Escape') {
+                closeOverlay();
+            }
+        };
+        const closeOverlay = () => {
+            if (!imageOverlays.delete(overlay)) {
+                return;
+            }
+            document.removeEventListener('keydown', handleEsc);
+            overlay.remove();
+        };
+
+        overlay.appendChild(img);
+        overlay.addEventListener('click', closeOverlay);
+        document.addEventListener('keydown', handleEsc);
+        imageOverlays.set(overlay, closeOverlay);
+        document.body.appendChild(overlay);
+    }
     
     // Pagination function
     async function performSearchWithPagination(cursor = null, isNewSearch = true) {
+        if (isDestroyed) {
+            return;
+        }
+
         const query = searchInput.value.trim();
         const modelType = typeFilter.value;
         const sort = sortFilter.value;
@@ -190,21 +234,30 @@ function setupSearchHandlers(searchForm, resultsContainer) {
         loadingButton.disabled = true;
         const originalText = loadingButton.textContent;
         loadingButton.textContent = cursor ? 'Loading...' : 'Searching...';
-        
-        if (isNewSearch) {
-            resultsContainer.innerHTML = '';
-            const searchStatus = await createSearchStatusPanel({
-                icon: '🔍',
-                title: 'Civitai Model Search',
-                messageLine1: 'Search for models on Civitai to discover and download new content.',
-                messageLine2: 'Use the search form above to find models by name, type, or creator.',
-                note: ''
-            });
-            resultsContainer.appendChild(searchStatus);
-        }
-        
+        activeSearchController?.abort();
+        const controller = new AbortController();
+        activeSearchController = controller;
+
         try {
-            const response = await searchCivitaiModels(searchParams);
+            if (isNewSearch) {
+                resultsContainer.innerHTML = '';
+                const searchStatus = await createSearchStatusPanel({
+                    icon: '🔍',
+                    title: 'Civitai Model Search',
+                    messageLine1: 'Search for models on Civitai to discover and download new content.',
+                    messageLine2: 'Use the search form above to find models by name, type, or creator.',
+                    note: ''
+                });
+                if (isDestroyed || controller.signal.aborted) {
+                    return;
+                }
+                resultsContainer.appendChild(searchStatus);
+            }
+
+            const response = await searchCivitaiModels(searchParams, { signal: controller.signal });
+            if (isDestroyed || controller.signal.aborted) {
+                return;
+            }
             
             if (isNewSearch) {
                 currentSearchParams = searchParams;
@@ -219,11 +272,19 @@ function setupSearchHandlers(searchForm, resultsContainer) {
             await displaySearchResults(resultsContainer, currentResults, { 
                 includeNsfw,
                 metadata: currentMetadata,
+                signal: controller.signal,
+                showImageExpanded,
                 onNextPage: currentMetadata && currentMetadata.nextCursor ? 
                     () => performSearchWithPagination(currentMetadata.nextCursor, false) : null
             });
+            if (isDestroyed || controller.signal.aborted) {
+                return;
+            }
             
         } catch (error) {
+            if (isDestroyed || controller.signal.aborted) {
+                return;
+            }
             console.error('Civitai search error:', error);
             resultsContainer.innerHTML = '';
             const errorStatus = await createSearchStatusPanel({
@@ -234,10 +295,17 @@ function setupSearchHandlers(searchForm, resultsContainer) {
                 note: 'Please check your internet connection and try again.',
                 extraClass: ' civitai-search-status-error'
             });
-            resultsContainer.appendChild(errorStatus);
+            if (!isDestroyed && !controller.signal.aborted) {
+                resultsContainer.appendChild(errorStatus);
+            }
         } finally {
-            loadingButton.disabled = false;
-            loadingButton.textContent = originalText;
+            if (activeSearchController === controller) {
+                activeSearchController = null;
+                if (!isDestroyed) {
+                    loadingButton.disabled = false;
+                    loadingButton.textContent = originalText;
+                }
+            }
         }
     }
     
@@ -254,7 +322,16 @@ function setupSearchHandlers(searchForm, resultsContainer) {
             performSearch();
         }
     });
-    
+
+    return () => {
+        if (isDestroyed) {
+            return;
+        }
+        isDestroyed = true;
+        activeSearchController?.abort();
+        activeSearchController = null;
+        imageOverlays.forEach((closeOverlay) => closeOverlay());
+    };
 }
 
 /**
@@ -262,7 +339,7 @@ function setupSearchHandlers(searchForm, resultsContainer) {
  * @param {Object} options - Search options
  * @returns {Promise<Object>} Response object with items and metadata
  */
-async function searchCivitaiModels(options) {
+async function searchCivitaiModels(options, { signal } = {}) {
     const {
         query = '',
         types = [],
@@ -291,7 +368,7 @@ async function searchCivitaiModels(options) {
     
     console.log('Searching Civitai:', apiUrl.toString());
     
-    const response = await fetch(apiUrl.toString());
+    const response = await fetch(apiUrl.toString(), { signal });
     
     if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -311,7 +388,17 @@ async function searchCivitaiModels(options) {
  * @param {Object} options - Display options
  */
 async function displaySearchResults(container, results, options = {}) {
-    const { includeNsfw = false, metadata = null, onNextPage = null } = options;
+    const {
+        includeNsfw = false,
+        metadata = null,
+        onNextPage = null,
+        signal,
+        showImageExpanded
+    } = options;
+
+    if (signal?.aborted) {
+        return;
+    }
 
     if (!results || results.length === 0) {
         container.innerHTML = '';
@@ -322,6 +409,9 @@ async function displaySearchResults(container, results, options = {}) {
             messageLine2: 'Try adjusting your search terms or filters.',
             note: ''
         });
+        if (signal?.aborted) {
+            return;
+        }
         container.appendChild(noResultsStatus);
         return;
     }
@@ -343,6 +433,9 @@ async function displaySearchResults(container, results, options = {}) {
             }
         );
 
+        if (signal?.aborted) {
+            return;
+        }
         header.appendChild(paginationInfo);
     }
 
@@ -350,7 +443,13 @@ async function displaySearchResults(container, results, options = {}) {
     resultsGrid.className = 'civitai-results-grid';
 
     for (const model of results) {
-        const modelCard = await createModelCard(model, { includeNsfw });
+        if (signal?.aborted) {
+            return;
+        }
+        const modelCard = await createModelCard(model, { includeNsfw, showImageExpanded });
+        if (signal?.aborted) {
+            return;
+        }
         resultsGrid.appendChild(modelCard);
     }
 
@@ -378,6 +477,9 @@ async function displaySearchResults(container, results, options = {}) {
         paginationControls.appendChild(endMessage);
     }
 
+    if (signal?.aborted) {
+        return;
+    }
     container.innerHTML = '';
     container.appendChild(header);
     container.appendChild(resultsGrid);
@@ -459,7 +561,7 @@ function createStatsContainer(stats) {
 }
 
 async function createModelCard(model, options = {}) {
-    const { includeNsfw = false } = options;
+    const { includeNsfw = false, showImageExpanded } = options;
 
     const modelName = model.name || 'Unknown Model';
     const creator = model.creator ? model.creator.username : 'Unknown';
@@ -546,7 +648,7 @@ async function createModelCard(model, options = {}) {
     if (detailsBtn) {
         detailsBtn.addEventListener('click', (e) => {
             e.stopPropagation();
-            showModelDetails(model, { includeNsfw });
+            showModelDetails(model, { includeNsfw, showImageExpanded });
         });
     }
 
@@ -563,7 +665,7 @@ async function createModelCard(model, options = {}) {
     if (contentArea) {
         const textElements = contentArea.querySelectorAll('h4, p');
         textElements.forEach(element => {
-            element.addEventListener('click', () => showModelDetails(model, { includeNsfw }));
+            element.addEventListener('click', () => showModelDetails(model, { includeNsfw, showImageExpanded }));
         });
     }
 
@@ -571,7 +673,7 @@ async function createModelCard(model, options = {}) {
 }
 
 async function showModelDetails(model, options = {}) {
-    const { includeNsfw = false } = options;
+    const { includeNsfw = false, showImageExpanded } = options;
 
     const modelName = model.name || 'Unknown Model';
     const creator = model.creator ? model.creator.username : 'Unknown';
@@ -608,7 +710,11 @@ async function showModelDetails(model, options = {}) {
 
         const versionList = versionsSection.querySelector('.civitai-version-list');
         for (const [index, version] of versions.entries()) {
-            const versionCard = await createVersionCard(version, model.id, { includeNsfw, isLatest: index === 0 });
+            const versionCard = await createVersionCard(version, model.id, {
+                includeNsfw,
+                isLatest: index === 0,
+                showImageExpanded
+            });
             versionList.appendChild(versionCard);
         }
     }
@@ -628,7 +734,7 @@ async function showModelDetails(model, options = {}) {
 }
 
 async function createVersionCard(version, modelId, options = {}) {
-    const { includeNsfw = false, isLatest = false } = options;
+    const { includeNsfw = false, isLatest = false, showImageExpanded } = options;
 
     const versionName = version.name || 'Unnamed Version';
     const createdAt = version.createdAt ? new Date(version.createdAt).toLocaleDateString() : 'Unknown date';
@@ -706,7 +812,16 @@ async function createVersionCard(version, modelId, options = {}) {
             imageElement.dataset.imageUrl = img.url;
             imageElement.alt = 'Example image';
             imageElement.loading = 'lazy';
-            imageElement.addEventListener('click', () => showImageExpanded(img.url));
+            imageElement.tabIndex = 0;
+            imageElement.setAttribute('role', 'button');
+            imageElement.setAttribute('aria-label', 'Expand example image');
+            imageElement.addEventListener('click', () => showImageExpanded?.(img.url));
+            imageElement.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    showImageExpanded?.(img.url);
+                }
+            });
             imagesContainer.appendChild(imageElement);
         });
     }
@@ -742,27 +857,6 @@ Save it to your ComfyUI models directory and refresh the cache to see it in the 
     }
 };
 
-window.showImageExpanded = function(imageUrl) {
-    const overlay = document.createElement('div');
-    overlay.className = 'civitai-image-overlay';
-
-    const img = document.createElement('img');
-    img.src = imageUrl;
-    img.className = 'civitai-image-expanded';
-
-    overlay.appendChild(img);
-    overlay.addEventListener('click', () => document.body.removeChild(overlay));
-
-    const handleEsc = (e) => {
-        if (e.key === 'Escape') {
-            document.body.removeChild(overlay);
-            document.removeEventListener('keydown', handleEsc);
-        }
-    };
-    document.addEventListener('keydown', handleEsc);
-
-    document.body.appendChild(overlay);
-};
 function stripHtml(html) {
     if (typeof html !== 'string') return '';
     const div = document.createElement('div');

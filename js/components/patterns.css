@@ -1,0 +1,198 @@
+/*
+ * Shared Sage Utils interaction patterns built on tokens.css:
+ * status banners, empty states, and shared control focus/disabled behavior.
+ * All selectors are .sage-* scoped.
+ */
+
+.sage-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sage-space-2);
+  padding: var(--sage-space-2) var(--sage-space-3);
+  margin: var(--sage-space-2) 0;
+  border-left: 4px solid var(--sage-banner-color, var(--sage-text-muted));
+  border-radius: var(--sage-radius);
+  background: var(--sage-surface-1);
+  color: var(--sage-text);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.sage-banner--info { --sage-banner-color: var(--sage-accent); }
+.sage-banner--success { --sage-banner-color: var(--sage-success); }
+.sage-banner--warning { --sage-banner-color: var(--sage-warning); }
+.sage-banner--error { --sage-banner-color: var(--sage-error); }
+
+.sage-banner__message {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.sage-banner__action {
+  flex-shrink: 0;
+}
+
+.sage-empty-state {
+  padding: var(--sage-space-4);
+  text-align: center;
+  color: var(--sage-text-muted);
+  font-size: 13px;
+}
+
+.sage-empty-state__title {
+  color: var(--sage-text);
+  font-weight: bold;
+  margin-bottom: var(--sage-space-1);
+}
+
+.sage-empty-state__action {
+  margin-top: var(--sage-space-3);
+}
+
+/* Content stays hidden until the tab's stylesheets settle, so unstyled markup never shows. */
+.sage-tab-container[data-sage-styles="pending"] > * {
+  visibility: hidden;
+}
+
+/* Shared control behavior: same focus ring and disabled treatment everywhere. */
+.sage-button:focus-visible,
+.sage-nav-button:focus-visible,
+.sage-select:focus-visible,
+.sage-input:focus-visible,
+.sage-textarea:focus-visible,
+.sage-banner button:focus-visible {
+  outline: 2px solid var(--sage-focus);
+  outline-offset: 2px;
+}
+
+.sage-select:disabled,
+.sage-input:disabled,
+.sage-textarea:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.sage-select[aria-invalid="true"],
+.sage-input[aria-invalid="true"],
+.sage-textarea[aria-invalid="true"] {
+  border-color: var(--sage-error);
+}
+
+/* Long-task status (taskStatus.js) */
+.sage-task-status {
+  --sage-task-color: var(--sage-accent);
+  margin: var(--sage-space-2) 0;
+  padding: var(--sage-space-2) var(--sage-space-3);
+  border-left: 4px solid var(--sage-task-color);
+  border-radius: var(--sage-radius);
+  background: var(--sage-surface-1);
+  color: var(--sage-text);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.sage-task-status[hidden] { display: none; }
+.sage-task-status[data-state="success"] { --sage-task-color: var(--sage-success); }
+.sage-task-status[data-state="error"] { --sage-task-color: var(--sage-error); }
+.sage-task-status[data-state="cancelled"] { --sage-task-color: var(--sage-warning); }
+
+.sage-task-status__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--sage-space-2);
+}
+
+.sage-task-status__title { font-weight: 600; min-width: 0; overflow-wrap: anywhere; }
+.sage-task-status__actions { display: flex; gap: var(--sage-space-2); flex-wrap: wrap; }
+.sage-task-status__actions:empty { display: none; }
+.sage-task-status__message { overflow-wrap: anywhere; color: var(--sage-text-muted); }
+
+.sage-task-status__bar {
+  height: 6px;
+  margin-top: var(--sage-space-2);
+  border-radius: 3px;
+  background: var(--sage-surface-2, var(--sage-surface-1));
+  overflow: hidden;
+}
+
+.sage-task-status__bar[hidden] { display: none; }
+
+.sage-task-status__fill {
+  height: 100%;
+  width: var(--sage-progress-width, 0%);
+  background: var(--sage-task-color);
+  transition: width 0.3s ease;
+}
+
+.sage-task-status__bar--indeterminate .sage-task-status__fill {
+  width: 35%;
+  animation: sage-task-indeterminate 1.2s ease-in-out infinite;
+}
+
+@keyframes sage-task-indeterminate {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(300%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sage-task-status__bar--indeterminate .sage-task-status__fill { animation: none; width: 100%; opacity: 0.5; }
+  .sage-task-status__fill { transition: none; }
+}
+
+/* Cross-tab handoff dialog (shared/handoff.js) */
+.sage-handoff-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10001;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--sage-space-3);
+  background: rgba(0, 0, 0, 0.6);
+}
+
+.sage-handoff-dialog {
+  box-sizing: border-box;
+  width: min(100%, 440px);
+  max-height: 90vh;
+  overflow: auto;
+  padding: var(--sage-space-4);
+  border-radius: var(--sage-radius);
+  background: var(--sage-surface-1);
+  color: var(--sage-text);
+  border: 1px solid var(--sage-surface-2);
+}
+
+.sage-handoff-title { margin: 0 0 var(--sage-space-2); font-size: 15px; }
+.sage-handoff-intro { margin: 0 0 var(--sage-space-2); font-size: 12px; color: var(--sage-text-muted); }
+
+.sage-handoff-preview {
+  margin: 0 0 var(--sage-space-3);
+  padding: var(--sage-space-2);
+  max-height: 160px;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 12px;
+  border-radius: var(--sage-radius);
+  background: var(--sage-surface-2);
+}
+
+.sage-handoff-buttons { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--sage-space-2); }
+.sage-handoff-preview:focus-visible { outline: 2px solid var(--sage-focus); outline-offset: 2px; }
+
+/* Shared buttons set display, which would otherwise defeat the hidden attribute */
+.sage-button[hidden] { display: none; }
+
+/* Command palette */
+.sage-palette-overlay { position: fixed; inset: 0; z-index: 10000; background: rgba(0, 0, 0, 0.5); display: flex; align-items: flex-start; justify-content: center; padding-top: 12vh; }
+.sage-palette { width: min(32rem, 92vw); background: var(--sage-surface, #2a2a2a); border: 1px solid var(--sage-border, #555); border-radius: 8px; overflow: hidden; }
+.sage-palette-input { width: 100%; box-sizing: border-box; padding: 0.75rem; border: 0; border-bottom: 1px solid var(--sage-border, #555); background: transparent; color: inherit; font-size: 1rem; }
+.sage-palette-list { list-style: none; margin: 0; padding: 0; max-height: 50vh; overflow-y: auto; }
+.sage-palette-item { display: flex; justify-content: space-between; padding: 0.5rem 0.75rem; cursor: pointer; }
+.sage-palette-item[aria-selected="true"], .sage-palette-item:hover { background: var(--sage-accent, #3a6ea5); color: var(--sage-accent-text, #fff); }
+.sage-palette-hint, .sage-palette-empty { opacity: 0.7; font-size: 0.85em; }
+.sage-palette-empty { padding: 0.75rem; }

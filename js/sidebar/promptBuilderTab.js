@@ -8,6 +8,9 @@ import { savedPromptsComponent } from '../promptBuilder/savedPrompts.js';
 import { copyToClipboard } from '../components/clipboard.js';
 import { loadSidebarStyle } from './sidebarStyles.js';
 
+let tagFeedbackTimeout = null;
+let tagFeedbackRemovalTimeout = null;
+
 /**
  * Creates the main Prompt Builder tab content
  * @param {HTMLElement} container - The container element for the tab
@@ -364,9 +367,11 @@ function showTagInsertionFeedback(tag, method = 'insert') {
     feedback.classList.add('tag-insertion-feedback');
     
     // Auto-hide after 2 seconds
-    setTimeout(() => {
+    clearTimeout(tagFeedbackTimeout);
+    clearTimeout(tagFeedbackRemovalTimeout);
+    tagFeedbackTimeout = setTimeout(() => {
         feedback.classList.add('tag-insertion-feedback--hidden');
-        setTimeout(() => {
+        tagFeedbackRemovalTimeout = setTimeout(() => {
             if (feedback.parentNode) {
                 feedback.parentNode.removeChild(feedback);
             }
@@ -380,6 +385,14 @@ function showTagInsertionFeedback(tag, method = 'insert') {
  * @param {HTMLElement} container - The container to clean up
  */
 export function destroyPromptBuilderTab(container) {
+    clearTimeout(tagFeedbackTimeout);
+    clearTimeout(tagFeedbackRemovalTimeout);
+    tagFeedbackTimeout = null;
+    tagFeedbackRemovalTimeout = null;
+
+    const feedback = document.querySelector('.tag-insertion-feedback');
+    feedback?.remove();
+
     // Remove styles
     const styles = document.getElementById('prompt-builder-styles');
     if (styles) {

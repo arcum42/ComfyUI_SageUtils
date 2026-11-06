@@ -14,6 +14,7 @@ import * as llmTemplateEvents from './llmTemplateEvents.js';
 import * as llmPresetEvents from './llmPresetEvents.js';
 import * as llmVisionEvents from './llmVisionEvents.js';
 import * as llmHistoryEvents from './llmHistoryEvents.js';
+import { showOverlayModal } from '../../../components/modalA11y.js';
 
 const LLM_LAST_PROVIDER_KEY = 'llm_last_selected_provider';
 
@@ -487,7 +488,7 @@ function showTemplateActionDialog(templateKey, templateContent, textarea, templa
 
     content.appendChild(buttonContainer);
     dialog.appendChild(content);
-    document.body.appendChild(dialog);
+    showOverlayModal(dialog, { label: 'Apply Template' });
 }
 
 /**

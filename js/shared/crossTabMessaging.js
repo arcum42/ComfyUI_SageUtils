@@ -9,10 +9,20 @@
 
 let eventBus = null;
 
+// Text handoffs published while the destination tab is not mounted are held briefly
+// and replayed to its first subscriber (tabs subscribe when they mount).
+const PENDING_TTL_MS = 30000;
+const PENDING_MAX = 10;
+const PENDING_SWITCH_TARGETS = {
+    'text-to-llm': 'llm',
+    'text-to-prompt-builder': 'prompts'
+};
+
 class CrossTabMessaging {
     constructor() {
         this.listeners = new Map();
         this.messageQueue = [];
+        this.pending = new Map();
         this.debug = false;
     }
 
@@ -21,6 +31,7 @@ class CrossTabMessaging {
             this.listeners.set(messageType, new Set());
         }
         this.listeners.get(messageType).add(callback);
+        this.replayPending(messageType, callback);
         return () => {
             const callbacks = this.listeners.get(messageType);
             if (callbacks) {
@@ -35,12 +46,47 @@ class CrossTabMessaging {
         this.messageQueue.push(message);
         if (this.messageQueue.length > 100) this.messageQueue.shift();
         const callbacks = this.listeners.get(messageType);
+        if ((!callbacks || callbacks.size === 0) && PENDING_SWITCH_TARGETS[messageType]) {
+            this.holdPending(messageType, message);
+            return;
+        }
         if (callbacks) {
             callbacks.forEach(cb => {
                 try { cb(message); }
                 catch (error) { console.error(`[CrossTab] Error in callback for "${messageType}":`, error); }
             });
         }
+    }
+
+    holdPending(messageType, message) {
+        const now = Date.now();
+        let queue = (this.pending.get(messageType) || []).filter(m => now - m.timestamp < PENDING_TTL_MS);
+        // An explicit replace supersedes everything held before it
+        if (message.data?.append === false) queue = [];
+        queue.push(message);
+        this.pending.set(messageType, queue.slice(-PENDING_MAX));
+        if (message.data?.autoSwitch !== false) {
+            this.publish(MessageTypes.TAB_SWITCH_REQUEST, {
+                tabId: PENDING_SWITCH_TARGETS[messageType],
+                source: message.data?.source || 'handoff',
+                preserveState: true
+            });
+        }
+    }
+
+    replayPending(messageType, callback) {
+        const queue = this.pending.get(messageType);
+        if (!queue) return;
+        this.pending.delete(messageType);
+        const now = Date.now();
+        const fresh = queue.filter(m => now - m.timestamp < PENDING_TTL_MS);
+        // Deliver after the subscriber finishes its own setup
+        setTimeout(() => {
+            fresh.forEach(m => {
+                try { callback(m); }
+                catch (error) { console.error(`[CrossTab] Error replaying "${messageType}":`, error); }
+            });
+        }, 0);
     }
 
     setDebug(enabled) { this.debug = enabled; }
@@ -81,6 +127,7 @@ export function sendImagesToLLM(images, options = {}) {
 
 /**
  * Helper: send text to LLM tab.
+ * options.append: true appends, false replaces, omitted asks the user when the prompt has text.
  */
 export function sendTextToLLM(text, options = {}) {
     const bus = getEventBus();
@@ -89,7 +136,7 @@ export function sendTextToLLM(text, options = {}) {
         target: options.target || 'main',
         source: options.source || 'unknown',
         autoSwitch: options.autoSwitch !== false,
-        append: options.append || false
+        append: options.append
     });
 }
 
@@ -99,7 +146,7 @@ export function sendTextToLLM(text, options = {}) {
 export function sendTextToPromptBuilder(text, options = {}) {
     const bus = getEventBus();
     bus.publish(MessageTypes.TEXT_TO_PROMPT_BUILDER, {
-        text, source: options.source || 'unknown', autoSwitch: options.autoSwitch !== false, append: options.append || false
+        text, source: options.source || 'unknown', autoSwitch: options.autoSwitch !== false, append: options.append
     });
 }
 

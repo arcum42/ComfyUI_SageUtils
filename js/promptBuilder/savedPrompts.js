@@ -3,6 +3,7 @@
  * Handles prompt storage, retrieval, and management
  */
 
+import { getCollection } from '../shared/recents.js';
 import { ensurePromptBuilderStyles } from './promptBuilderStyles.js';
 import {
     createElementFromTemplate,
@@ -184,7 +185,8 @@ export const savedPromptsComponent = {
         activeCategory: 'all',
         searchQuery: '',
         isLoading: false,
-        selectedPrompt: null
+        selectedPrompt: null,
+        collection: 'all'
     },
 
     // Component elements
@@ -265,7 +267,23 @@ export const savedPromptsComponent = {
         saveButton.className = 'save-prompt-btn primary-btn';
         saveButton.addEventListener('click', () => this.showSaveDialog());
 
+        // All / Starred / Recently loaded
+        const collectionSelect = document.createElement('select');
+        collectionSelect.className = 'category-filter';
+        collectionSelect.setAttribute('aria-label', 'Show prompts');
+        [['all', 'All prompts'], ['favorites', 'Starred'], ['recent', 'Recently loaded']].forEach(([value, text]) => {
+            const opt = document.createElement('option');
+            opt.value = value;
+            opt.textContent = text;
+            collectionSelect.appendChild(opt);
+        });
+        collectionSelect.addEventListener('change', () => {
+            this.state.collection = collectionSelect.value;
+            this.filterPrompts();
+        });
+
         header.appendChild(this.elements.searchInput);
+        header.appendChild(collectionSelect);
         header.appendChild(categoryContainer);
         header.appendChild(saveButton);
 
@@ -343,6 +361,17 @@ export const savedPromptsComponent = {
             );
         }
 
+        const collection = getCollection('prompt');
+        if (this.state.collection === 'favorites') {
+            const ids = new Set(collection.getFavorites().map(e => e.id));
+            filteredPrompts = filteredPrompts.filter(p => ids.has(String(p.id)));
+        } else if (this.state.collection === 'recent') {
+            const order = collection.getRecents().map(e => e.id);
+            filteredPrompts = order
+                .map(id => filteredPrompts.find(p => String(p.id) === id))
+                .filter(Boolean);
+        }
+
         this.elements.promptsList.innerHTML = '';
 
         if (filteredPrompts.length === 0) {
@@ -365,6 +394,27 @@ export const savedPromptsComponent = {
             e.stopPropagation();
             this.loadPrompt(prompt);
         });
+
+        const collection = getCollection('prompt');
+        const promptId = String(prompt.id);
+        const star = document.createElement('button');
+        star.type = 'button';
+        star.className = 'star-btn';
+        const syncStar = () => {
+            const on = collection.isFavorite(promptId);
+            star.textContent = on ? '\u2605' : '\u2606';
+            star.setAttribute('aria-pressed', String(on));
+            star.setAttribute('aria-label', on ? `Unstar ${prompt.name}` : `Star ${prompt.name}`);
+            star.title = on ? 'Remove from starred' : 'Add to starred';
+        };
+        syncStar();
+        star.addEventListener('click', (e) => {
+            e.stopPropagation();
+            collection.toggleFavorite(promptId, prompt.name);
+            syncStar();
+            if (this.state.collection === 'favorites') this.renderPrompts();
+        });
+        card.querySelector('.load-btn').insertAdjacentElement('beforebegin', star);
 
         card.querySelector('.delete-btn').addEventListener('click', (e) => {
             e.stopPropagation();
@@ -562,6 +612,8 @@ export const savedPromptsComponent = {
         // Trigger input events to update any bound data
         if (positiveInput) positiveInput.dispatchEvent(new Event('input', { bubbles: true }));
         if (negativeInput) negativeInput.dispatchEvent(new Event('input', { bubbles: true }));
+
+        getCollection('prompt').addRecent(String(prompt.id), prompt.name);
 
         // Update usage count
         try {

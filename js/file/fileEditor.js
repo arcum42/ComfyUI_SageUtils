@@ -5,6 +5,7 @@
 
 import { api } from "../../../../scripts/api.js";
 import { FILE_BROWSER_CONFIGS } from './fileBrowser.js';
+import { loadComponentStyles } from '../components/styleLoader.js';
 import { createButton, BUTTON_VARIANTS } from '../components/buttons.js';
 
 /**
@@ -45,16 +46,11 @@ export class GenericFileEditor {
      * @returns {Object} - Object containing references to created elements
      */
     render(parentContainer) {
+        loadComponentStyles('fileEditor');
+
         // Create main container
         this.container = document.createElement('div');
         this.container.className = 'generic-file-editor';
-        this.container.style.cssText = `
-            margin-bottom: 15px;
-            padding: 15px;
-            background: #2a2a2a;
-            border-radius: 6px;
-            border: 1px solid #444;
-        `;
 
         // Create header
         const header = this.createHeader();
@@ -85,46 +81,25 @@ export class GenericFileEditor {
      */
     createHeader() {
         const header = document.createElement('div');
-        header.className = 'file-editor-header';
-        header.style.cssText = `
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 10px;
-        `;
+        header.className = 'file-editor-header file-preview-toolbar';
 
         // Title with current file name
         const titleContainer = document.createElement('div');
-        titleContainer.style.cssText = `
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        `;
+        titleContainer.className = 'file-editor-title-group';
 
         const title = document.createElement('h4');
-        title.style.cssText = `
-            margin: 0;
-            color: #4CAF50;
-            font-size: 14px;
-        `;
+        title.className = 'file-preview-title';
         title.textContent = 'Editor';
 
         this.currentFileNameSpan = document.createElement('span');
-        this.currentFileNameSpan.style.cssText = `
-            color: #999;
-            font-weight: normal;
-            font-size: 12px;
-        `;
+        this.currentFileNameSpan.className = 'file-editor-filename';
 
         titleContainer.appendChild(title);
         titleContainer.appendChild(this.currentFileNameSpan);
 
         // Actions container
         const actions = document.createElement('div');
-        actions.style.cssText = `
-            display: flex;
-            gap: 8px;
-        `;
+        actions.className = 'file-preview-actions';
 
         // Copy from node button
         this.copyFromNodeButton = createButton('📥 From Node', {
@@ -188,20 +163,6 @@ export class GenericFileEditor {
     createTextEditor() {
         const textEditor = document.createElement('textarea');
         textEditor.className = 'file-editor-textarea';
-        textEditor.style.cssText = `
-            width: 100%;
-            height: 300px;
-            background: #333;
-            color: #fff;
-            border: 1px solid #555;
-            border-radius: 4px;
-            padding: 10px;
-            font-family: 'Courier New', monospace;
-            font-size: 13px;
-            line-height: 1.4;
-            resize: vertical;
-            box-sizing: border-box;
-        `;
         textEditor.placeholder = 'Select a file to edit or create a new one...';
 
         // Track modifications
@@ -235,6 +196,16 @@ export class GenericFileEditor {
     }
 
     /**
+     * Briefly tint the editor to confirm a copy attempt
+     * @param {'success'|'error'} kind
+     */
+    flashTextEditor(kind) {
+        const cls = `file-editor-textarea--${kind}`;
+        this.textEditor.classList.add(cls);
+        setTimeout(() => this.textEditor?.classList.remove(cls), 300);
+    }
+
+    /**
      * Copies text from selected node to editor
      */
     copyFromNode() {
@@ -245,23 +216,15 @@ export class GenericFileEditor {
             this.setModified(true);
             
             // Visual feedback
-            const originalBg = this.textEditor.style.backgroundColor;
-            this.textEditor.style.backgroundColor = '#9c27b033';
-            setTimeout(() => {
-                this.textEditor.style.backgroundColor = originalBg;
-            }, 300);
+            this.flashTextEditor('success');
             
             console.log(`[GenericFileEditor] Copied text from ${result.nodeType} node to editor`);
         } else {
             // Visual error feedback
-            const originalBg = this.textEditor.style.backgroundColor;
-            this.textEditor.style.backgroundColor = '#f4433633';
-            setTimeout(() => {
-                this.textEditor.style.backgroundColor = originalBg;
-            }, 300);
+            this.flashTextEditor('error');
             
             console.error(`[GenericFileEditor] Copy from node failed: ${result.error}`);
-            alert(`Failed to copy from node: ${result.error}`);
+            this.callbacks.onError(new Error(`Failed to copy from node: ${result.error}`));
         }
     }
 
@@ -395,12 +358,10 @@ export class GenericFileEditor {
         // Enable/disable buttons based on file selection
         if (this.saveButton) {
             this.saveButton.disabled = !filename;
-            this.saveButton.style.opacity = filename ? '1' : '0.5';
         }
 
         if (this.deleteButton) {
             this.deleteButton.disabled = !filename;
-            this.deleteButton.style.opacity = filename ? '1' : '0.5';
         }
     }
 

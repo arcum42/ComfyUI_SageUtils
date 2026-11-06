@@ -224,6 +224,15 @@
     justify-content: center;
 }
 
+.star-btn {
+    background: transparent;
+    border: none;
+    color: var(--sage-warning, #e6b800);
+    cursor: pointer;
+    font-size: 16px;
+    padding: 0 4px;
+}
+
 .prompt-preview {
     font-size: 12px;
     color: var(--text-secondary, #cccccc);

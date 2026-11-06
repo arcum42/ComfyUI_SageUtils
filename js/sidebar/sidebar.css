@@ -1,28 +1,29 @@
 .sidebar-settings-button {
-    position: absolute;
-    right: 10px;
-    top: 50%;
-    transform: translateY(-50%);
-    background: #2a2a2a;
-    border: 1px solid #444;
-    border-radius: 4px;
-    color: #ccc;
+    position: sticky;
+    right: 0;
+    margin-left: auto;
+    align-self: center;
+    background: var(--sage-surface-1, #2a2a2a);
+    border: 1px solid var(--sage-border, #444);
+    border-radius: var(--sage-radius, 4px);
+    color: var(--sage-text);
     padding: 6px 10px;
     cursor: pointer;
     font-size: 18px;
-    transition: all 0.2s ease;
+    transition: background var(--sage-motion, 0.2s ease), border-color var(--sage-motion, 0.2s ease);
     z-index: 10;
     flex-shrink: 0;
 }
 
 .sidebar-settings-button:hover {
-    background: #4CAF50;
-    border-color: #4CAF50;
-    transform: translateY(-50%) scale(1.1);
+    background: var(--sage-accent, #2e7d32);
+    border-color: var(--sage-accent, #2e7d32);
+    color: var(--sage-accent-text);
 }
 
-.sidebar-settings-button--hidden {
-    display: none !important;
+.sidebar-settings-button:focus-visible {
+    outline: 2px solid var(--sage-focus);
+    outline-offset: 2px;
 }
 
 .sageutils-sidebar-hidden {
@@ -30,16 +31,13 @@
 }
 
 .sidebar-settings-indicator {
-    position: absolute;
-    right: 60px;
-    top: 50%;
-    transform: translateY(-50%);
-    background: #2a2a2a;
-    border: 1px solid #444;
-    border-radius: 4px;
-    color: #ddd;
+    align-self: center;
+    flex-shrink: 0;
+    background: var(--sage-surface-1);
+    border: 1px solid var(--sage-border);
+    border-radius: var(--sage-radius);
+    color: var(--sage-text);
     padding: 4px 8px;
     font-size: 12px;
-    opacity: 0.9;
     z-index: 9;
 }

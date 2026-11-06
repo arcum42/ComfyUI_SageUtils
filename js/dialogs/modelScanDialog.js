@@ -13,6 +13,7 @@ import { createDialog } from '../components/dialogManager.js';
 import { createInput } from '../components/formElements.js';
 import { notifications } from '../shared/notifications.js';
 import { selectors } from '../shared/stateManager.js';
+import { createTaskStatus } from '../components/taskStatus.js';
 import { previewScan } from '../shared/api/cacheApi.js';
 
 class ModelScanDialog {
@@ -66,6 +67,10 @@ class ModelScanDialog {
         // Create scan options section
         const scanOptions = this.createScanOptionsSection();
         content.appendChild(scanOptions);
+
+        // Failure outcome with retry; progress itself is shown by the bars below
+        this.taskStatus = createTaskStatus({ autoHideMs: 0 });
+        content.appendChild(this.taskStatus.container);
 
         // Create progress section (hidden initially)
         const progressSection = this.createProgressSection();
@@ -574,6 +579,7 @@ class ModelScanDialog {
 
         this.isScanning = true;
         this.cancelRequested = false;
+        this.taskStatus?.hide();
         this.scanResults = {
             totalFiles: 0,
             processed: 0,
@@ -599,6 +605,9 @@ class ModelScanDialog {
             console.error('Scan error:', error);
             this.addLogEntry(`Scan failed: ${error.message}`, 'error');
             notifications.error('Scan failed', error.message);
+            this.taskStatus?.fail(`Scan failed: ${error.message}. Check the connection and try again.`, {
+                onRetry: () => this.startScan()
+            });
         } finally {
             this.isScanning = false;
             this.updateScanUI(false);
@@ -978,6 +987,8 @@ class ModelScanDialog {
             this.handleKeydown = null;
         }
         
+        this.taskStatus?.destroy();
+        this.taskStatus = null;
         this.dialogObj = null;
         this.dialog = null;
         this.contentArea = null;

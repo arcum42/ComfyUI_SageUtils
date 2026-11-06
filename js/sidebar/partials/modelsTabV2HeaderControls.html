@@ -5,6 +5,15 @@
             <select id="models-v2-folder-select" class="models-v2-labeled-select">{{{folderOptions}}}</select>
         </div>
         <div class="models-v2-labeled-select">
+            <label class="models-v2-labeled-select-label" for="models-v2-collection-select">Show:</label>
+            <select id="models-v2-collection-select" class="models-v2-labeled-select">
+                <option value="all">All models</option>
+                <option value="favorites">Starred</option>
+                <option value="recent">Recently selected</option>
+            </select>
+            <button type="button" id="models-v2-clear-recents-btn" class="sage-button sage-button--small sage-button--secondary" hidden>Clear recents</button>
+        </div>
+        <div class="models-v2-labeled-select">
             <label class="models-v2-labeled-select-label" for="models-v2-last-used-select">Last Used:</label>
             <select id="models-v2-last-used-select" class="models-v2-labeled-select">{{{lastUsedOptions}}}</select>
         </div>

@@ -4,10 +4,12 @@
  * Inspired by GenericFileBrowser but specialized for model cache display
  */
 
+import { loadComponentStyles } from "../components/styleLoader.js";
 import { createButton, BUTTON_VARIANTS } from "../components/buttons.js";
 import { createCard } from "../components/layout.js";
 import { copyToClipboard } from "../components/clipboard.js";
 import { createComponentLogger } from "../utils/logger.js";
+import { getCollection } from "../shared/recents.js";
 
 // Component logger
 const log = createComponentLogger('ModelBrowser');
@@ -103,6 +105,8 @@ export class ModelBrowser {
      * @returns {HTMLElement} The browser container element
      */
     render(parentContainer) {
+        loadComponentStyles('modelBrowser');
+
         // Create main container using layout component
         this.container = createCard({
             padding: '0',
@@ -119,24 +123,12 @@ export class ModelBrowser {
         // Create scrollable list container
         this.listContainer = document.createElement('div');
         this.listContainer.className = 'model-browser-list';
-        this.listContainer.style.cssText = `
-            max-height: ${this.options.maxHeight};
-            overflow-y: auto;
-            overflow-x: hidden;
-            background: #2a2a2a;
-            border-top: 1px solid #444;
-        `;
+        this.listContainer.style.maxHeight = this.options.maxHeight;
         
         // Create empty message (initially hidden)
         this.emptyMessage = document.createElement('div');
         this.emptyMessage.className = 'model-browser-empty';
-        this.emptyMessage.style.cssText = `
-            padding: 40px 20px;
-            text-align: center;
-            color: #888;
-            font-style: italic;
-            display: none;
-        `;
+        this.emptyMessage.hidden = true;
         this.emptyMessage.textContent = 'No models found';
         this.listContainer.appendChild(this.emptyMessage);
         
@@ -166,48 +158,21 @@ export class ModelBrowser {
      */
     createHeader() {
         const header = document.createElement('div');
-        header.className = 'model-browser-header';
-        header.style.cssText = `
-            padding: 12px 15px;
-            background: #333;
-            border-bottom: 1px solid #444;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 12px;
-        `;
+        header.className = 'model-browser-header model-browser-header-bar';
         
         const leftSection = document.createElement('div');
-        leftSection.style.cssText = `
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        `;
+        leftSection.className = 'model-browser-header-group';
         
         const title = document.createElement('h4');
-        title.style.cssText = `
-            margin: 0;
-            color: #4CAF50;
-            font-size: 14px;
-            font-weight: bold;
-        `;
+        title.className = 'model-browser-title';
         title.textContent = 'Model Browser';
         
         // View mode toggle button
         const viewToggle = document.createElement('button');
-        viewToggle.className = 'view-toggle-btn';
+        viewToggle.className = 'view-toggle-btn model-browser-tool-button';
+        viewToggle.type = 'button';
         viewToggle.textContent = this.showHierarchy ? '📁' : '📄';
         viewToggle.title = this.showHierarchy ? 'Switch to flat view' : 'Switch to folder view';
-        viewToggle.style.cssText = `
-            background: #444;
-            color: #ddd;
-            border: 1px solid #555;
-            border-radius: 4px;
-            padding: 4px 8px;
-            cursor: pointer;
-            font-size: 14px;
-            transition: all 0.2s;
-        `;
         
         viewToggle.addEventListener('click', () => {
             this.showHierarchy = !this.showHierarchy;
@@ -216,46 +181,25 @@ export class ModelBrowser {
             
             // Toggle expand/collapse button visibility
             if (this.expandCollapseBtn) {
-                this.expandCollapseBtn.style.display = this.showHierarchy ? 'block' : 'none';
+                this.expandCollapseBtn.hidden = !this.showHierarchy;
             }
             
             this.renderList();
         });
-        
-        viewToggle.addEventListener('mouseenter', () => {
-            viewToggle.style.background = '#555';
-        });
-        
-        viewToggle.addEventListener('mouseleave', () => {
-            viewToggle.style.background = '#444';
-        });
-        
+
         leftSection.appendChild(title);
         leftSection.appendChild(viewToggle);
         
         const rightSection = document.createElement('div');
-        rightSection.style.cssText = `
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        `;
+        rightSection.className = 'model-browser-header-group';
         
         // Expand/Collapse All button (only shown in hierarchy mode)
         const expandCollapseBtn = document.createElement('button');
-        expandCollapseBtn.className = 'expand-collapse-btn';
+        expandCollapseBtn.className = 'expand-collapse-btn model-browser-tool-button';
+        expandCollapseBtn.type = 'button';
         expandCollapseBtn.textContent = 'Expand All';
         expandCollapseBtn.title = 'Expand or collapse all folders';
-        expandCollapseBtn.style.cssText = `
-            background: #444;
-            color: #ddd;
-            border: 1px solid #555;
-            border-radius: 4px;
-            padding: 4px 8px;
-            cursor: pointer;
-            font-size: 11px;
-            transition: all 0.2s;
-            display: ${this.showHierarchy ? 'block' : 'none'};
-        `;
+        expandCollapseBtn.hidden = !this.showHierarchy;
         this.expandCollapseBtn = expandCollapseBtn;
         
         expandCollapseBtn.addEventListener('click', () => {
@@ -271,29 +215,15 @@ export class ModelBrowser {
             this.renderList();
         });
         
-        expandCollapseBtn.addEventListener('mouseenter', () => {
-            expandCollapseBtn.style.background = '#555';
-        });
         
-        expandCollapseBtn.addEventListener('mouseleave', () => {
-            expandCollapseBtn.style.background = '#444';
-        });
         
         const count = document.createElement('span');
-        count.className = 'model-count';
-        count.style.cssText = `
-            color: #888;
-            font-size: 12px;
-        `;
+        count.className = 'model-count model-browser-count';
         count.textContent = '0 models';
         this.countElement = count;
 
         const inventorySummary = document.createElement('span');
-        inventorySummary.className = 'model-inventory-summary';
-        inventorySummary.style.cssText = `
-            color: #888;
-            font-size: 11px;
-        `;
+        inventorySummary.className = 'model-inventory-summary model-browser-summary';
         this.inventorySummaryElement = inventorySummary;
         
         rightSection.appendChild(expandCollapseBtn);
@@ -330,53 +260,16 @@ export class ModelBrowser {
         const modelName = info?.model?.name || info?.name || path.split('/').pop();
         item.setAttribute('aria-label', `Model: ${modelName}`);
         
-        item.style.cssText = `
-            padding: 12px 15px;
-            padding-left: ${15 + (depth * 20)}px;
-            border-bottom: 1px solid #333;
-            cursor: pointer;
-            transition: all 0.15s ease;
-            background: ${isSelected ? '#2d5a2d' : isHighlighted ? '#353535' : '#2a2a2a'};
-            border-left: 4px solid ${isSelected ? '#4CAF50' : 'transparent'};
-            position: relative;
-            box-shadow: ${isSelected ? 'inset 0 0 10px rgba(76, 175, 80, 0.2)' : 'none'};
-        `;
-        
-        // Hover effects
+        item.style.paddingLeft = `${15 + (depth * 20)}px`;
+        item.classList.toggle('selected', isSelected);
+        item.classList.toggle('highlighted', isHighlighted);
+
         item.addEventListener('mouseenter', () => {
-            if (!isSelected) {
-                item.style.background = '#353535';
-            } else {
-                item.style.background = '#358a35';
-            }
             this.hoveredModel = hash;
-            
-            // Show quick actions if enabled
-            if (this.options.allowQuickActions) {
-                const quickActions = item.querySelector('.model-quick-actions');
-                if (quickActions) {
-                    quickActions.style.opacity = '1';
-                    quickActions.style.pointerEvents = 'auto';
-                }
-            }
         });
-        
+
         item.addEventListener('mouseleave', () => {
-            if (!isSelected) {
-                item.style.background = isHighlighted ? '#353535' : '#2a2a2a';
-            } else {
-                item.style.background = '#2d5a2d';
-            }
             this.hoveredModel = null;
-            
-            // Hide quick actions
-            if (this.options.allowQuickActions) {
-                const quickActions = item.querySelector('.model-quick-actions');
-                if (quickActions) {
-                    quickActions.style.opacity = '0';
-                    quickActions.style.pointerEvents = 'none';
-                }
-            }
         });
         
         // Main content
@@ -417,42 +310,22 @@ export class ModelBrowser {
         const { hash, path, info } = modelData;
         
         const content = document.createElement('div');
-        content.className = 'model-item-content';
-        content.style.cssText = `
-            display: flex;
-            flex-direction: column;
-            gap: 4px;
-        `;
+        content.className = 'model-item-content model-item-content-stack';
         
         // Top row: Icon + Name + Badges
         const topRow = document.createElement('div');
-        topRow.style.cssText = `
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        `;
+        topRow.className = 'model-item-row';
         
         // Model type icon
         const icon = this.getModelTypeIcon(info);
         const iconSpan = document.createElement('span');
-        iconSpan.style.cssText = `
-            font-size: 16px;
-            flex-shrink: 0;
-        `;
+        iconSpan.className = 'model-item-icon';
         iconSpan.textContent = icon;
         topRow.appendChild(iconSpan);
         
         // Model name (version name or filename)
         const name = document.createElement('div');
-        name.style.cssText = `
-            flex: 1;
-            color: #fff;
-            font-size: 13px;
-            font-weight: 500;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        `;
+        name.className = 'model-item-name';
         
         const modelName = info?.model?.name || '';
         const versionName = info?.name || '';
@@ -466,27 +339,27 @@ export class ModelBrowser {
         
         // Metadata badge (if has metadata)
         if (info && Object.keys(info).length > 0) {
-            const metaBadge = this.createBadge('✨', '#4CAF50', 'Has metadata');
+            const metaBadge = this.createBadge('✨', 'success', 'Has metadata');
             topRow.appendChild(metaBadge);
         }
 
         const filesystemStatus = modelData.filesystemStatus || 'unknown';
         const statusStyles = {
-            present: ['OK', '#4CAF50', 'File present and matches its stored fingerprint'],
-            changed: ['Changed', '#FF9800', 'File size or modification time changed'],
-            missing: ['Missing', '#F44336', 'File is no longer present at this path'],
-            unreadable: ['Unreadable', '#F44336', 'File cannot be read or is not a regular file'],
-            unknown: ['Not verified', '#9E9E9E', 'No filesystem fingerprint is stored yet']
+            present: ['OK', 'success', 'File present and matches its stored fingerprint'],
+            changed: ['Changed', 'warning', 'File size or modification time changed'],
+            missing: ['Missing', 'error', 'File is no longer present at this path'],
+            unreadable: ['Unreadable', 'error', 'File cannot be read or is not a regular file'],
+            unknown: ['Not verified', 'neutral', 'No filesystem fingerprint is stored yet']
         };
         const [statusLabel, statusColor, statusTitle] = statusStyles[filesystemStatus] || statusStyles.unknown;
         topRow.appendChild(this.createBadge(statusLabel, statusColor, statusTitle));
 
         const civitaiStatus = modelData.civitaiStatus || 'unknown';
         const civitaiStyles = {
-            matched: ['Civitai', '#4CAF50', 'Matched to a Civitai model version'],
-            not_found_or_unpublished: ['No match', '#FF9800', 'No published Civitai file match was found'],
-            temporary_error: ['Retry', '#F44336', 'Civitai lookup failed temporarily'],
-            unknown: ['Unchecked', '#9E9E9E', 'Civitai metadata has not been checked']
+            matched: ['Civitai', 'success', 'Matched to a Civitai model version'],
+            not_found_or_unpublished: ['No match', 'warning', 'No published Civitai file match was found'],
+            temporary_error: ['Retry', 'error', 'Civitai lookup failed temporarily'],
+            unknown: ['Unchecked', 'neutral', 'Civitai metadata has not been checked']
         };
         const [civitaiLabel, civitaiColor, civitaiTitle] = civitaiStyles[civitaiStatus] || civitaiStyles.unknown;
         topRow.appendChild(this.createBadge(civitaiLabel, civitaiColor, civitaiTitle));
@@ -495,14 +368,7 @@ export class ModelBrowser {
         
         // File path row
         const pathRow = document.createElement('div');
-        pathRow.style.cssText = `
-            color: #888;
-            font-size: 11px;
-            padding-left: 24px;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        `;
+        pathRow.className = 'model-item-path';
         pathRow.textContent = path;
         pathRow.title = path; // Show full path on hover
         content.appendChild(pathRow);
@@ -510,14 +376,7 @@ export class ModelBrowser {
         // Metadata row: File size, Last used, etc.
         if (this.options.showFileSize || this.options.showLastUsed) {
             const metaRow = document.createElement('div');
-            metaRow.style.cssText = `
-                display: flex;
-                gap: 12px;
-                color: #888;
-                font-size: 11px;
-                padding-left: 24px;
-                align-items: center;
-            `;
+            metaRow.className = 'model-item-meta';
             
             // File size
             const fileSize = this.getFileSize(info);
@@ -537,7 +396,7 @@ export class ModelBrowser {
             
             // Has updates badge
             if (this.hasUpdate(info)) {
-                const updateBadge = this.createBadge('🆕', '#FF9800', 'Update available');
+                const updateBadge = this.createBadge('🆕', 'warning', 'Update available');
                 metaRow.appendChild(updateBadge);
             }
             
@@ -557,19 +416,6 @@ export class ModelBrowser {
     createQuickActions(hash, modelData) {
         const container = document.createElement('div');
         container.className = 'model-quick-actions';
-        container.style.cssText = `
-            position: absolute;
-            right: 12px;
-            top: 50%;
-            transform: translateY(-50%);
-            display: flex;
-            gap: 6px;
-            opacity: 0;
-            pointer-events: none;
-            transition: opacity 0.15s ease;
-            background: linear-gradient(to left, #2a2a2a 70%, transparent);
-            padding-left: 20px;
-        `;
         
         // Copy hash button
         const copyHashBtn = createButton('📋', {
@@ -587,6 +433,32 @@ export class ModelBrowser {
             }
         });
         container.appendChild(copyHashBtn);
+        
+        // Star button
+        const models = getCollection('model');
+        const starBtn = createButton(models.isFavorite(hash) ? '★' : '☆', {
+            variant: BUTTON_VARIANTS.SECONDARY,
+            title: 'Star this model',
+            onClick: () => {
+                const name = modelData.info?.model?.name || modelData.info?.name || this.getFileNameFromPath(modelData.path);
+                const starred = models.toggleFavorite(hash, name);
+                starBtn.textContent = starred ? '★' : '☆';
+                starBtn.setAttribute('aria-pressed', String(starred));
+                starBtn.title = starred ? 'Remove star' : 'Star this model';
+                if (this.currentFilters?.collection === 'favorites') {
+                    this.applyFilters(this.currentFilters);
+                }
+            },
+            style: {
+                padding: '4px 8px',
+                fontSize: '12px',
+                minWidth: '30px',
+                height: '26px'
+            }
+        });
+        starBtn.setAttribute('aria-pressed', String(models.isFavorite(hash)));
+        starBtn.title = models.isFavorite(hash) ? 'Remove star' : 'Star this model';
+        container.appendChild(starBtn);
         
         // Pull metadata button
         const pullBtn = createButton('⬇️', {
@@ -643,24 +515,13 @@ export class ModelBrowser {
     /**
      * Creates a badge element
      * @param {string} text - Badge text
-     * @param {string} color - Badge color
+     * @param {string} color - Badge tone: success, warning, error, or neutral
      * @param {string} title - Tooltip text
      * @returns {HTMLElement} Badge element
      */
     createBadge(text, color, title) {
         const badge = document.createElement('span');
-        badge.style.cssText = `
-            display: inline-flex;
-            align-items: center;
-            padding: 2px 6px;
-            background: ${color}22;
-            color: ${color};
-            border: 1px solid ${color}44;
-            border-radius: 3px;
-            font-size: 10px;
-            font-weight: 500;
-            white-space: nowrap;
-        `;
+        badge.className = `model-badge model-badge--${color}`;
         badge.textContent = text;
         badge.title = title;
         return badge;
@@ -695,6 +556,12 @@ export class ModelBrowser {
         
         // Get model data
         const modelData = this.filteredModels.find(m => m.hash === hash);
+        if (modelData) {
+            getCollection('model').addRecent(
+                hash,
+                modelData.info?.model?.name || modelData.info?.name || this.getFileNameFromPath(modelData.path)
+            );
+        }
         
         // Trigger callback
         this.callbacks.onSelect(hash, modelData);
@@ -711,22 +578,12 @@ export class ModelBrowser {
             const index = parseInt(item.dataset.index);
             const isHighlighted = this.highlightedIndex === index;
             
-            // Update visual styling with more prominent selected state
-            item.style.background = isSelected ? '#2d5a2d' : isHighlighted ? '#353535' : '#2a2a2a';
-            item.style.borderLeftColor = isSelected ? '#4CAF50' : 'transparent';
-            item.style.borderLeftWidth = isSelected ? '4px' : '4px';
-            item.style.boxShadow = isSelected ? 'inset 0 0 10px rgba(76, 175, 80, 0.2)' : 'none';
+            item.classList.toggle('selected', isSelected);
+            item.classList.toggle('highlighted', isHighlighted);
             
             // Update ARIA attributes for accessibility
             item.setAttribute('aria-selected', isSelected.toString());
             
-            // Add focus indicator for highlighted item
-            if (isHighlighted) {
-                item.style.outline = '2px solid #4CAF50';
-                item.style.outlineOffset = '-2px';
-            } else {
-                item.style.outline = 'none';
-            }
         });
     }
     
@@ -884,6 +741,15 @@ export class ModelBrowser {
             });
         }
         
+        // Apply starred / recently selected collection filter
+        if (filters.collection === 'favorites' || filters.collection === 'recent') {
+            const entries = filters.collection === 'favorites'
+                ? getCollection('model').getFavorites()
+                : getCollection('model').getRecents();
+            const ids = new Set(entries.map(entry => entry.id));
+            filtered = filtered.filter(model => ids.has(model.hash));
+        }
+        
         // Apply folder type filter
         if (filters.type && filters.type !== 'all') {
             filtered = filtered.filter(model => {
@@ -1024,10 +890,10 @@ export class ModelBrowser {
         
         // Show empty message if no models
         if (this.filteredModels.length === 0) {
-            this.emptyMessage.style.display = 'block';
+            this.emptyMessage.hidden = false;
             return;
         } else {
-            this.emptyMessage.style.display = 'none';
+            this.emptyMessage.hidden = true;
         }
         
         if (this.showHierarchy) {
@@ -1202,55 +1068,27 @@ export class ModelBrowser {
         const item = document.createElement('div');
         item.className = 'model-folder-item';
         item.dataset.folderPath = fullPath;
-        item.style.cssText = `
-            padding: 8px 12px;
-            padding-left: ${12 + depth * 20}px;
-            background: #252525;
-            border-bottom: 1px solid #333;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            user-select: none;
-        `;
+        item.style.paddingLeft = `${12 + depth * 20}px`;
         
         // Expand/collapse icon
         const icon = document.createElement('span');
-        icon.className = 'folder-icon';
+        icon.className = 'folder-icon model-folder-toggle';
         icon.textContent = isExpanded ? '▼' : '▶';
-        icon.style.cssText = `
-            font-size: 10px;
-            color: #888;
-            width: 12px;
-            transition: transform 0.2s;
-        `;
         
         // Folder icon
         const folderIcon = document.createElement('span');
         folderIcon.textContent = isExpanded ? '📂' : '📁';
-        folderIcon.style.cssText = `
-            font-size: 14px;
-        `;
+        folderIcon.className = 'model-folder-icon';
         
         // Folder name
         const nameSpan = document.createElement('span');
         nameSpan.textContent = name;
-        nameSpan.style.cssText = `
-            flex: 1;
-            color: #ddd;
-            font-weight: 500;
-        `;
+        nameSpan.className = 'model-folder-name';
         
         // Model count badge
         const badge = document.createElement('span');
         badge.textContent = modelCount;
-        badge.style.cssText = `
-            background: #444;
-            color: #aaa;
-            padding: 2px 8px;
-            border-radius: 10px;
-            font-size: 11px;
-        `;
+        badge.className = 'model-folder-count';
         
         item.appendChild(icon);
         item.appendChild(folderIcon);
@@ -1262,14 +1100,6 @@ export class ModelBrowser {
             this.toggleFolder(fullPath);
         });
         
-        // Hover effects
-        item.addEventListener('mouseenter', () => {
-            item.style.background = '#2d2d2d';
-        });
-        
-        item.addEventListener('mouseleave', () => {
-            item.style.background = '#252525';
-        });
         
         return item;
     }

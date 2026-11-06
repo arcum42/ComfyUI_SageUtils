@@ -284,6 +284,8 @@ Behavior:
   - **Returns**: TabManager instance (chainable)
   - **Features**: Lazy loading support, lifecycle contract support, visibility control, custom styles
   
+- Accessibility: the header is a `role=tablist`; buttons are `role=tab` (`aria-selected`, `aria-controls`, roving `tabindex`) and panels are `role=tabpanel` (`aria-labelledby`, `hidden` when inactive). Arrow Left/Right, Home, and End move between visible tabs.
+
 - `switchTab(tabId)`: Switches to the specified tab, initializing if needed
   - **Parameters**: Tab ID to switch to
   - **Features**: Automatic lazy loading, state management, callback invocation
@@ -300,6 +302,8 @@ Behavior:
 #### Initialization Safety
 
 `TabManager` tracks in-progress initializations to prevent duplicate mounts when the same tab is switched rapidly while async mounting is still underway.
+
+Pending mount timers are canceled on destroy. If an async mount resolves after destruction, its returned `destroy`/`unmount` callback runs immediately. Mount failures render the error message as text and include a Retry button; retries do not run after destruction. `destroy()` is idempotent and removes tabs without activating another tab during teardown. Cleanup callbacks registered after destruction run immediately.
 
 #### Background Preloading
 
@@ -350,6 +354,15 @@ tabManager.updateVisibility({
 ```
 
 **See Also:** `docs/TAB_MANAGER_GUIDE.md` for complete API reference
+
+### Shared styles (tokens, patterns, statusBanner.js)
+
+- `tokens.css`: `--sage-*` design tokens (surfaces, text, accent, focus, status colors, spacing, radius, motion) mapped to ComfyUI theme variables with fallbacks.
+- `patterns.css`: shared `.sage-banner`, `.sage-empty-state`, and shared control focus/disabled states.
+- `statusBanner.js`: `createStatusBanner({ type, message, actionLabel, onAction })` and `createEmptyState({ title, message, actionLabel, onAction })`; text is set with `textContent`.
+- `styleLoader.js` / `../sidebar/sidebarStyles.js`: stylesheets load once, report failure (`getFailedStyles`, `retryFailedStyles`), and `TabManager` keeps a mounted tab hidden until its stylesheets settle, showing a Retry banner if any failed.
+
+See [Sidebar implementation plan](../../okf/ui/sidebar_implementation_plan.md).
 
 ### layout.js
 
@@ -512,9 +525,21 @@ const twoColumns = createGrid({
 - Standalone navigation button creation
 - Configurable size, style variants (gradient/flat), and label options
 
+### Cross-tab handoff (shared/handoff.js)
+
+`applyIncomingText(textarea, data, {destination, separator})` implements the append/replace contract for text sent between tabs and shows a preview dialog when the destination has text and `append` is omitted. Used by the LLM and Prompt Builder receivers.
+
+### taskStatus.js
+
+**Purpose**: Shared long-task status (`createTaskStatus()`): `start(title, {message, onCancel})`, `update(percent|null, message)`, `succeed(message)`, `fail(message, {onRetry})`, `cancelled()`, `hide()`, `destroy()`. Shows determinate or indeterminate progress, then an outcome with Retry/Dismiss. Only pass `onCancel` when the operation can truly be cancelled. Styles are in `patterns.css`. Used by the Models tab (pull metadata, report).
+
+### modalA11y.js
+
+**Purpose**: Shared modal accessibility. `activateModal(surface, opts)` adds `role=dialog`/`aria-modal`, traps Tab, handles Escape for the topmost modal only, and restores focus on release. `showOverlayModal(overlay, opts)` does the same for hand-rolled overlays and releases automatically when the overlay is removed. Use it for any new modal.
+
 ### dialogManager.js
 
-**Purpose**: Modal dialogs and overlay management  
+**Purpose**: Modal dialogs and overlay management (uses `modalA11y.js`; Escape honours `closable`)  
 **Complexity**: Medium  
 
 **Dependencies:**
@@ -847,3 +872,7 @@ The centralized component system provides:
 **Total Code Reduction (So Far)**: ~300+ lines eliminated across Phases 1 & 2
 
 This directory provides the foundation for rich content display within ComfyUI nodes, enabling sophisticated user interfaces while maintaining compatibility with the existing ComfyUI ecosystem.
+
+- `commandPalette.js` - `openCommandPalette(commands)`; searchable accessible list of safe sidebar actions.
+- `../shared/recents.js` - `getCollection(kind)` recents/favorites store in localStorage.
+- `../shared/commandRegistry.js` - `registerCommandProvider(fn)` lets a tab contribute command palette commands; call the returned unregister in destroy.

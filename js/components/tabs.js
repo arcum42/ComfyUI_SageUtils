@@ -8,6 +8,8 @@
  */
 
 import { loadComponentStyles as ensureComponentStyles } from './styleLoader.js';
+import { whenStylesSettled, getFailedStyles, retryFailedStyles } from '../sidebar/sidebarStyles.js';
+import { createStatusBanner } from './statusBanner.js';
 
 console.log('[SageUtils] tabs.js imported');
 
@@ -85,6 +87,8 @@ function applyCustomStyles(element, cssText) {
     });
 }
 
+let tabManagerCounter = 0;
+
 export class TabManager {
     /**
      * Create a TabManager
@@ -111,6 +115,7 @@ export class TabManager {
         
         // DOM elements
         this.tabHeader = null;
+        this.idPrefix = `sage-tabs-${++tabManagerCounter}`;
         this.tabContent = null;
         this.tabButtons = new Map(); // tabId -> button element
         this.tabContainers = new Map(); // tabId -> content container
@@ -192,6 +197,15 @@ export class TabManager {
      */
     registerCleanup(cleanup) {
         if (typeof cleanup !== 'function') {
+            return () => {};
+        }
+
+        if (this.isDestroyed) {
+            try {
+                cleanup();
+            } catch (error) {
+                console.warn('TabManager: late cleanup callback failed:', error);
+            }
             return () => {};
         }
 
@@ -289,6 +303,9 @@ export class TabManager {
         // Create tab header
         this.tabHeader = document.createElement('div');
         this.tabHeader.className = 'tab-header sage-tabs-header';
+        this.tabHeader.setAttribute('role', 'tablist');
+        this.tabHeader.setAttribute('aria-label', 'Sage Utils sections');
+        this.tabHeader.addEventListener('keydown', (event) => this.handleTabKeydown(event));
         if (this.customStyles.header) {
             applyCustomStyles(this.tabHeader, this.customStyles.header);
         }
@@ -365,6 +382,12 @@ export class TabManager {
         const button = document.createElement('button');
         button.className = 'tab-button sage-tab-button';
         button.dataset.tabId = tabId;
+        button.type = 'button';
+        button.id = `${this.idPrefix}-tab-${tabId}`;
+        button.setAttribute('role', 'tab');
+        button.setAttribute('aria-controls', `${this.idPrefix}-panel-${tabId}`);
+        button.setAttribute('aria-selected', 'false');
+        button.tabIndex = -1;
         
         const displayText = config.icon ? `${config.icon} ${config.label}` : config.label;
         button.textContent = displayText;
@@ -389,17 +412,58 @@ export class TabManager {
         const container = document.createElement('div');
         container.className = 'tab-container sage-tab-container';
         container.dataset.tabId = tabId;
+        container.id = `${this.idPrefix}-panel-${tabId}`;
+        container.setAttribute('role', 'tabpanel');
+        container.setAttribute('aria-labelledby', `${this.idPrefix}-tab-${tabId}`);
+        container.hidden = true;
         
         this.tabContainers.set(tabId, container);
         this.tabContent.appendChild(container);
     }
     
     /**
+     * Visible tab IDs in display order
+     * @returns {string[]}
+     */
+    getVisibleTabIds() {
+        return Array.from(this.tabs.keys()).filter(id => this.tabs.get(id).visible);
+    }
+
+    /**
+     * Arrow/Home/End keyboard navigation for the tablist
+     * @private
+     */
+    handleTabKeydown(event) {
+        const current = event.target.closest?.('[role="tab"]');
+        if (!current) return;
+        const ids = this.getVisibleTabIds();
+        const index = ids.indexOf(current.dataset.tabId);
+        if (index < 0 || ids.length === 0) return;
+
+        let next = null;
+        switch (event.key) {
+            case 'ArrowRight': next = ids[(index + 1) % ids.length]; break;
+            case 'ArrowLeft': next = ids[(index - 1 + ids.length) % ids.length]; break;
+            case 'Home': next = ids[0]; break;
+            case 'End': next = ids[ids.length - 1]; break;
+            default: return;
+        }
+        event.preventDefault();
+        if (this.switchTab(next)) {
+            this.tabButtons.get(next)?.focus();
+        }
+    }
+
+    /**
      * Switch to a specific tab
      * @param {string} tabId - ID of tab to activate
      * @returns {boolean} True if switch was successful
      */
     switchTab(tabId) {
+        if (this.isDestroyed) {
+            return false;
+        }
+
         const config = this.tabs.get(tabId);
         if (!config) {
             console.error(`TabManager: Unknown tab '${tabId}'`);
@@ -416,17 +480,21 @@ export class TabManager {
             this.tabButtons.forEach((button, id) => {
                 const isActive = id === tabId;
                 button.classList.toggle('active', isActive);
+                button.setAttribute('aria-selected', String(isActive));
+                button.tabIndex = isActive ? 0 : -1;
             });
             
             // Hide all containers
             this.tabContainers.forEach(container => {
                 container.classList.remove('active');
+                container.hidden = true;
             });
             
             // Show active container
             const container = this.tabContainers.get(tabId);
             if (container) {
                 container.classList.add('active');
+                container.hidden = false;
             }
             
             // Initialize tab content if needed (lazy loading)
@@ -458,6 +526,8 @@ export class TabManager {
      * @param {boolean} [showLoading=true] - Whether to show loading state
      */
     initializeTab(tabId, showLoading = true) {
+        if (this.isDestroyed) return;
+
         const config = this.tabs.get(tabId);
         const container = this.tabContainers.get(tabId);
         
@@ -483,7 +553,7 @@ export class TabManager {
             // Show loading state only if requested (skip for background preloading)
             if (showLoading) {
                 container.innerHTML = `
-                    <div class="sage-tab-loading">
+                    <div class="sage-tab-loading" role="status" aria-live="polite">
                         <div class="sage-tab-loading-heading">Loading ${config.label}...</div>
                         <div class="sage-tab-loading-message">Please wait</div>
                     </div>
@@ -503,6 +573,8 @@ export class TabManager {
 
                 try {
                     container.innerHTML = ''; // Clear loading message
+                    container.dataset.sageStyles = 'pending';
+                    container.setAttribute('aria-busy', 'true');
                     const mountResult = await config.lifecycle.mount(container, {
                         tabId,
                         tabManager: this,
@@ -532,6 +604,7 @@ export class TabManager {
 
                     this.initializedTabs.add(tabId);
                     logTabDebug(`TabManager: Tab '${tabId}' initialized successfully`);
+                    this.settleTabStyles(container);
                     
                     // Callback
                     if (this.onTabInit) {
@@ -539,12 +612,14 @@ export class TabManager {
                     }
                 } catch (error) {
                     console.error(`TabManager: Error initializing tab '${tabId}':`, error);
-                    container.innerHTML = `
-                        <div class="sage-tab-error">
-                            <div class="sage-tab-error-heading">Error loading ${config.label}</div>
-                            <div class="sage-tab-error-text">${error.message}</div>
-                        </div>
-                    `;
+                    if (!this.isDestroyed && this.tabs.has(tabId)) {
+                        this.renderTabError(container, config, error, () => {
+                            if (container.isConnected && !this.isDestroyed) {
+                                container.innerHTML = '';
+                                this.initializeTab(tabId, true);
+                            }
+                        });
+                    }
                 } finally {
                     this.initializingTabs.delete(tabId);
                 }
@@ -553,13 +628,71 @@ export class TabManager {
             this.pendingInitTimeouts.set(tabId, timeoutId);
         } catch (error) {
             console.error(`TabManager: Error setting up initialization for tab '${tabId}':`, error);
-            container.innerHTML = `
-                <div class="sage-tab-error">
-                    <div class="sage-tab-error-text">Error: ${error.message}</div>
-                </div>
-            `;
+            if (!this.isDestroyed && this.tabs.has(tabId)) {
+                this.renderTabError(container, config, error, () => {
+                    if (container.isConnected && !this.isDestroyed) {
+                        container.innerHTML = '';
+                        this.initializeTab(tabId, true);
+                    }
+                });
+            }
             this.initializingTabs.delete(tabId);
         }
+    }
+
+    /**
+     * Reveal a mounted tab once its stylesheets settle; if any failed, keep the
+     * (unstyled but usable) content visible with a retry banner.
+     * @private
+     */
+    async settleTabStyles(container) {
+        await whenStylesSettled();
+        if (this.isDestroyed || !container.isConnected) return;
+
+        delete container.dataset.sageStyles;
+        container.removeAttribute('aria-busy');
+        container.querySelector(':scope > .sage-style-warning')?.remove();
+
+        if (getFailedStyles().length === 0) return;
+
+        const banner = createStatusBanner({
+            type: 'warning',
+            message: 'Some styles failed to load, so this tab may look unstyled.',
+            actionLabel: 'Retry',
+            onAction: async () => {
+                const ok = await retryFailedStyles();
+                if (ok) banner.remove();
+            }
+        });
+        banner.classList.add('sage-style-warning');
+        container.prepend(banner);
+    }
+
+    /**
+     * Render a safe, retryable tab mount error.
+     * @private
+     */
+    renderTabError(container, config, error, onRetry) {
+        const panel = document.createElement('div');
+        panel.className = 'sage-tab-error';
+        panel.setAttribute('role', 'alert');
+
+        const heading = document.createElement('div');
+        heading.className = 'sage-tab-error-heading';
+        heading.textContent = `Error loading ${config.label}`;
+
+        const message = document.createElement('div');
+        message.className = 'sage-tab-error-text';
+        message.textContent = error instanceof Error ? error.message : String(error);
+
+        const retryButton = document.createElement('button');
+        retryButton.type = 'button';
+        retryButton.className = 'sage-tab-error-retry';
+        retryButton.textContent = 'Retry';
+        retryButton.addEventListener('click', onRetry, { once: true });
+
+        panel.append(heading, message, retryButton);
+        container.replaceChildren(panel);
     }
     
     /**
@@ -597,7 +730,7 @@ export class TabManager {
         this.initializingTabs.delete(tabId);
         
         // If active tab was removed, switch to first available
-        if (this.activeTabId === tabId) {
+        if (!this.isDestroyed && this.activeTabId === tabId) {
             const firstTab = Array.from(this.tabs.keys()).find(id => this.tabs.get(id).visible);
             if (firstTab) {
                 this.switchTab(firstTab);
@@ -633,6 +766,7 @@ export class TabManager {
         } else {
             const button = this.tabButtons.get(tabId);
             button.classList.remove('sage-tab-hidden');
+            button.hidden = false;
         }
         
         return true;
@@ -655,6 +789,7 @@ export class TabManager {
         const button = this.tabButtons.get(tabId);
         if (button) {
             button.classList.add('sage-tab-hidden');
+            button.hidden = true;
         }
         
         // If active tab is being hidden, switch to first visible
@@ -776,6 +911,20 @@ export class TabManager {
             }
         };
         
+        // Resolve once a background mount settles (bounded so a stuck mount cannot stall warmup)
+        const waitForMount = (tabId) => new Promise((resolve) => {
+            const startedAt = Date.now();
+            const check = () => {
+                if (session.cancelled || this.isDestroyed || !this.initializingTabs.has(tabId)
+                    || Date.now() - startedAt > 10000) {
+                    resolve();
+                    return;
+                }
+                session.timeoutId = setTimeout(check, 50);
+            };
+            check();
+        });
+
         // Use requestIdleCallback to initialize tabs during idle time
         const preloadNextTab = (index) => {
             if (session.cancelled || this.isDestroyed) {
@@ -818,8 +967,8 @@ export class TabManager {
                     logTabDebug(`[TabManager] Preloading tab '${tabId}' during idle time`);
                     this.initializeTab(tabId, false); // No loading message for background
                     
-                    // Schedule next tab
-                    preloadNextTab(index + 1);
+                    // Warm tabs one at a time so mounts do not stack up and block the UI
+                    waitForMount(tabId).then(() => preloadNextTab(index + 1));
                 }, { timeout });
             } else {
                 // Fallback for browsers without requestIdleCallback
@@ -835,7 +984,7 @@ export class TabManager {
                     if (!this.initializedTabs.has(tabId)) {
                         this.initializeTab(tabId, false); // No loading message for background
                     }
-                    preloadNextTab(index + 1);
+                    waitForMount(tabId).then(() => preloadNextTab(index + 1));
                 }, 100);
             }
         };
@@ -869,6 +1018,10 @@ export class TabManager {
      * Cleanup and destroy the tab manager
      */
     destroy() {
+        if (this.isDestroyed) {
+            return;
+        }
+
         this.isDestroyed = true;
         this.cancelScheduledPreloads();
         this.cancelAllPendingInits();

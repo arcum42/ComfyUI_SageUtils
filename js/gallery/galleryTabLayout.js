@@ -5,6 +5,7 @@
  */
 
 // Import required dependencies
+import { getCollection } from '../shared/recents.js';
 import { createHeader } from "../components/cacheUI.js";
 import { createThumbnailGrid } from "./galleryComponents.js";
 import { selectors } from "../shared/stateManager.js";
@@ -69,14 +70,18 @@ async function renderGalleryMetadataEmpty() {
 
 /**
  * Helper function to get folder favorites from localStorage
- * @returns {Array} Array of favorite folder paths
+ * @returns {Array<{label: string, path: string}>} Favorite folders
  */
 function getFolderFavorites() {
     try {
         const stored = localStorage.getItem('sageutils_folder_favorites');
         if (stored) {
             const favorites = JSON.parse(stored);
-            return Array.isArray(favorites) ? favorites : [];
+            if (!Array.isArray(favorites)) return [];
+            // The folder browser saves {label, path}; older data may be plain path strings
+            return favorites
+                .map(fav => (typeof fav === 'string' ? { label: '', path: fav } : fav))
+                .filter(fav => fav && typeof fav.path === 'string' && fav.path);
         }
     } catch (error) {
         console.error('Error loading folder favorites:', error);
@@ -134,7 +139,7 @@ export function populateFolderDropdown(dropdown, currentCustomPath = null) {
     const favorites = getFolderFavorites();
     // Ensure currentCustomPath is a string or null
     const validCustomPath = (currentCustomPath && typeof currentCustomPath === 'string') ? currentCustomPath : null;
-    const hasCustomFolders = favorites.length > 0 || validCustomPath;
+    const hasCustomFolders = favorites.length > 0 || validCustomPath || getCollection('galleryfolder').getRecents().length > 0;
     
     if (hasCustomFolders) {
         const separator = document.createElement('option');
@@ -144,7 +149,7 @@ export function populateFolderDropdown(dropdown, currentCustomPath = null) {
     }
     
     // Add current custom path if it exists and isn't in favorites
-    if (validCustomPath && !favorites.includes(validCustomPath)) {
+    if (validCustomPath && !favorites.some(fav => fav.path === validCustomPath)) {
         const opt = document.createElement('option');
         opt.value = `custom:${validCustomPath}`;
         opt.textContent = getCustomFolderDisplayName(validCustomPath);
@@ -152,11 +157,23 @@ export function populateFolderDropdown(dropdown, currentCustomPath = null) {
         dropdown.appendChild(opt);
     }
     
+    // Recently opened custom folders (not already listed above)
+    const listed = new Set([validCustomPath, ...favorites.map(fav => fav.path)].filter(Boolean));
+    const recents = getCollection('galleryfolder').getRecents().filter(e => !listed.has(e.id));
+    recents.slice(0, 5).forEach(entry => {
+        const opt = document.createElement('option');
+        opt.value = `custom:${entry.id}`;
+        opt.textContent = `\u{1F552} ${getCustomFolderDisplayName(entry.id)}`;
+        opt.dataset.customPath = entry.id;
+        dropdown.appendChild(opt);
+    });
+
     // Add favorite folders - filter out invalid entries
-    favorites.filter(favPath => favPath && typeof favPath === 'string').forEach(favPath => {
+    favorites.forEach(fav => {
+        const favPath = fav.path;
         const opt = document.createElement('option');
         opt.value = `custom:${favPath}`;
-        opt.textContent = getCustomFolderDisplayName(favPath);
+        opt.textContent = fav.label ? `\u2B50 ${fav.label}` : getCustomFolderDisplayName(favPath);
         opt.dataset.customPath = favPath;
         dropdown.appendChild(opt);
     });

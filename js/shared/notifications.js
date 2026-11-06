@@ -28,6 +28,10 @@ function ensureToastContainer() {
     if (!toastContainer) {
         toastContainer = document.createElement('div');
         toastContainer.id = 'sage-toast-container';
+        toastContainer.setAttribute('role', 'region');
+        toastContainer.setAttribute('aria-label', 'Notifications');
+        toastContainer.setAttribute('aria-live', 'polite');
+        toastContainer.setAttribute('aria-relevant', 'additions');
         toastContainer.style.cssText = `
             position: fixed;
             top: 20px;
@@ -109,17 +113,26 @@ export function showToast(message, type = NOTIFICATION_TYPES.INFO, duration = TO
     const toast = document.createElement('div');
     toast.id = toastId;
     toast.className = 'sage-toast';
+    if (type === NOTIFICATION_TYPES.ERROR) {
+        toast.setAttribute('role', 'alert');
+    }
     toast.style.cssText = getNotificationStyles(type) + `
         transform: translateX(100%);
         animation: slideIn 0.3s ease forwards;
     `;
 
     // Add close button
-    const closeButton = document.createElement('span');
+    const closeButton = document.createElement('button');
+    closeButton.type = 'button';
+    closeButton.setAttribute('aria-label', 'Dismiss notification');
     closeButton.innerHTML = '×';
     closeButton.style.cssText = `
         float: right;
         margin-left: 10px;
+        padding: 0;
+        border: none;
+        background: transparent;
+        color: inherit;
         font-size: 18px;
         font-weight: bold;
         cursor: pointer;
@@ -225,6 +238,10 @@ export function showConfirmation(message, title = 'Confirm') {
 
         // Create dialog
         const dialog = document.createElement('div');
+        dialog.setAttribute('role', 'dialog');
+        dialog.setAttribute('aria-modal', 'true');
+        dialog.setAttribute('aria-label', title);
+        dialog.tabIndex = -1;
         dialog.style.cssText = `
             background: white;
             padding: 24px;
@@ -288,9 +305,28 @@ export function showConfirmation(message, title = 'Confirm') {
         `;
 
         // Event handlers
+        const previousFocus = document.activeElement;
         const cleanup = () => {
+            document.removeEventListener('keydown', handleKeydown, true);
             if (backdrop.parentNode) {
                 backdrop.parentNode.removeChild(backdrop);
+            }
+            if (previousFocus instanceof HTMLElement && previousFocus.isConnected) {
+                previousFocus.focus();
+            }
+        };
+
+        const handleKeydown = (e) => {
+            if (e.key === 'Escape') {
+                e.preventDefault();
+                resolve(false);
+                cleanup();
+            } else if (e.key === 'Tab') {
+                const buttons = [cancelButton, confirmButton];
+                const index = buttons.indexOf(document.activeElement);
+                const next = e.shiftKey ? (index <= 0 ? 1 : index - 1) : (index === 1 ? 0 : index + 1);
+                e.preventDefault();
+                buttons[next].focus();
             }
         };
 
@@ -320,7 +356,7 @@ export function showConfirmation(message, title = 'Confirm') {
         backdrop.appendChild(dialog);
         document.body.appendChild(backdrop);
 
-        // Focus the confirm button
+        document.addEventListener('keydown', handleKeydown, true);
         confirmButton.focus();
     });
 }

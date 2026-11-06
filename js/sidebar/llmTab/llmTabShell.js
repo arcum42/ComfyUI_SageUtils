@@ -27,6 +27,7 @@ import { populateIntegrationProfileOptions } from './settings/llmAdvancedOptions
 // Generation and event handling
 import { applyPresetToUI } from './shared/llmPresetDialogs.js';
 import { setupEventHandlers, cleanupEventHandlers, showProviderOptions } from './shared/llmEventHandlers.js';
+import { applyIncomingText } from '../../shared/handoff.js';
 
 const LLM_TAB_PROMPT_KEY = 'llm_tab_prompt_text';
 const LLM_LAST_PROVIDER_KEY = 'llm_last_selected_provider';
@@ -710,18 +711,15 @@ async function createLLMTabVanilla(container) {
     logLlmDebug('[LLM Tab] Available MessageTypes:', MessageTypes);
     
     // Shared handler for incoming prompt text messages
-    const handleIncomingPromptText = (data) => {
+    const handleIncomingPromptText = async (data) => {
         const textarea = inputSection.querySelector('.llm-textarea');
-        if (textarea && data.text) {
-            const shouldAppend = data.append === true;
-            if (shouldAppend && textarea.value) {
-                textarea.value = `${textarea.value}\n\n${data.text}`;
-            } else {
-                textarea.value = data.text;
-            }
-            textarea.dispatchEvent(new Event('input', { bubbles: true })); // Update character counter
-            showNotification(shouldAppend ? 'Prompt appended from Gallery' : 'Prompt received from Prompt Builder', 'success');
-        }
+        const mode = await applyIncomingText(textarea, data, {
+            destination: 'LLM prompt',
+            separator: '\n\n'
+        });
+        if (!mode) return;
+        const from = data.source ? ` from ${data.source}` : '';
+        showNotification(`Prompt ${mode === 'append' ? 'appended' : 'received'}${from}`, 'success');
     };
 
     // Handle text from Prompt Builder via event bus

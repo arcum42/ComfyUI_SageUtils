@@ -37,7 +37,7 @@ export function createThumbnailGrid() {
         const minSize = sizeConfig.width;
         
         // Update responsive grid's min width
-        gridContainer.style.gridTemplateColumns = `repeat(auto-fill, minmax(${minSize}px, 1fr))`;
+        gridContainer.style.gridTemplateColumns = `repeat(auto-fill, minmax(min(100%, ${minSize}px), 1fr))`;
         
         // Update existing thumbnails
         const thumbnails = gridContainer.querySelectorAll('.thumbnail-item');

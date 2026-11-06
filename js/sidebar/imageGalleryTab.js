@@ -2,6 +2,7 @@
  * Image Gallery Tab - Handles image browsing, viewing, and management for multiple folders
  */
 
+import { getCollection } from '../shared/recents.js';
 import { api } from "../../../../scripts/api.js";
 
 import { 
@@ -180,6 +181,18 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
     
     // Track the current abort controller for folder loading operations
     let currentAbortController = null;
+    let isDestroyed = false;
+    const pendingTimeouts = new Set();
+    const scheduleTimeout = (callback, delay) => {
+        const timeoutId = setTimeout(() => {
+            pendingTimeouts.delete(timeoutId);
+            if (!isDestroyed) {
+                callback();
+            }
+        }, delay);
+        pendingTimeouts.add(timeoutId);
+        return timeoutId;
+    };
     
     // Extract gallery functions from parameters instead of global window
     const { 
@@ -192,6 +205,10 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
     } = galleryFunctions;
     // Helper function to update status
     function setStatus(message, isError = false) {
+        if (isDestroyed) {
+            return;
+        }
+
         console.log(isError ? `Gallery Error: ${message}` : `Gallery: ${message}`);
         
         // Update status in header if available
@@ -201,7 +218,7 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
             
             // Clear status after 3 seconds unless it's an error
             if (!isError) {
-                setTimeout(() => {
+                scheduleTimeout(() => {
                     if (header.statusDiv.textContent === message) {
                         header.statusDiv.textContent = '';
                     }
@@ -212,8 +229,13 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
 
     // Load images from selected folder - wrapper for imported API function
     async function loadImagesWrapper(folderType, customPath = null, forceReload = false) {
+        if (isDestroyed) {
+            return;
+        }
+
         // Keep track of progress container for cleanup
         let progressContainer = null;
+        let requestController = null;
         
         try {
             // Cancel any ongoing folder load operation
@@ -224,8 +246,9 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
             }
             
             // Create a new abort controller for this operation
-            currentAbortController = new AbortController();
-            const signal = currentAbortController.signal;
+            requestController = new AbortController();
+            currentAbortController = requestController;
+            const signal = requestController.signal;
             
             // Create cache key for DataCache (global cache)
             const globalCacheKey = customPath ? `galleryImages:custom:${customPath}` : `galleryImages:${folderType}`;
@@ -239,11 +262,8 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
                 const cached = DataCache.get(globalCacheKey);
                 
                 // Clear abort controller for cache loads since there's no async operation
-                const savedController = currentAbortController;
-                currentAbortController = null;
-                
                 // Check if we were aborted while setting up
-                if (savedController && savedController.signal.aborted) {
+                if (signal.aborted) {
                     if (debugGallery) console.log('Gallery: Cache load aborted before render');
                     return;
                 }
@@ -254,6 +274,7 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
                 // Update UI immediately from cache
                 grid.imageCountSpan.textContent = `${cached.images.length} images / ${cached.folders.length} folders`;
                 await renderImageGrid(cached.images, cached.folders, loadImagesWrapper);
+                if (signal.aborted) return;
                 
                 // Auto-show metadata for the first image if available
                 if (cached.images && cached.images.length > 0) {
@@ -267,6 +288,9 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
                 }
                 
                 setStatus('Loaded from global cache', false);
+                if (currentAbortController === requestController) {
+                    currentAbortController = null;
+                }
                 return;
             }
             
@@ -276,11 +300,8 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
                 const cached = folderCache.get(localCacheKey);
                 
                 // Clear abort controller for cache loads since there's no async operation
-                const savedController = currentAbortController;
-                currentAbortController = null;
-                
                 // Check if we were aborted while setting up
-                if (savedController && savedController.signal.aborted) {
+                if (signal.aborted) {
                     if (debugGallery) console.log('Gallery: Cache load aborted before render');
                     return;
                 }
@@ -288,6 +309,7 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
                 // Update UI immediately from cache
                 grid.imageCountSpan.textContent = `${cached.images.length} images / ${cached.folders.length} folders`;
                 await renderImageGrid(cached.images, cached.folders, loadImagesWrapper);
+                if (signal.aborted) return;
                 
                 // Auto-show metadata for the first image if available
                 if (cached.images && cached.images.length > 0) {
@@ -301,6 +323,9 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
                 }
                 
                 setStatus('Loaded from local cache', false);
+                if (currentAbortController === requestController) {
+                    currentAbortController = null;
+                }
                 return;
             }
             
@@ -416,7 +441,7 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
 
                     // Remove any remaining loading banner after metadata completes
                     if (progressContainer && progressContainer.parentNode) {
-                        setTimeout(() => {
+                        scheduleTimeout(() => {
                             if (progressContainer && progressContainer.parentNode) {
                                 progressContainer.remove();
                             }
@@ -450,6 +475,9 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
             
             // Render image grid with both images and folders immediately
             await renderImageGrid(images, folders, loadImagesWrapper);
+            if (signal.aborted) {
+                return;
+            }
 
             // Remove the gallery load progress banner after initial grid render
             if (progressContainer && progressContainer.parentNode) {
@@ -478,12 +506,24 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
             }
             
             // Clear abort controller after successful completion
-            currentAbortController = null;
+            if (currentAbortController === requestController) {
+                currentAbortController = null;
+            }
             
         } catch (error) {
+            if (isDestroyed || requestController?.signal.aborted) {
+                if (progressContainer?.parentNode) {
+                    progressContainer.remove();
+                }
+                return;
+            }
+
             // Check if this was an abort error (user switched folders)
-            if (error.name === 'AbortError' || error.message.includes('aborted')) {
+            if (error?.name === 'AbortError' || error?.message?.includes('aborted')) {
                 if (debugGallery) console.log('Gallery: Folder load was cancelled');
+                if (currentAbortController === requestController) {
+                    currentAbortController = null;
+                }
                 // Clean up progress container if it exists
                 if (progressContainer && progressContainer.parentNode) {
                     progressContainer.remove();
@@ -496,9 +536,15 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
             setStatus(`Error loading images: ${error.message}`, true);
             
             // Clear abort controller on error
-            currentAbortController = null;
+            if (currentAbortController === requestController) {
+                currentAbortController = null;
+            }
             
-            grid.gridContainer.innerHTML = await renderGalleryError(error.message);
+            const errorContent = await renderGalleryError(error.message);
+            if (isDestroyed) {
+                return;
+            }
+            grid.gridContainer.innerHTML = errorContent;
             
             grid.imageCountSpan.textContent = '(Error)';
         }
@@ -506,6 +552,10 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
 
     // Render image grid with actual images and folders
     async function renderImageGrid(images, folders = [], loadImagesCallback = null, options = {}) {
+        if (isDestroyed) {
+            return;
+        }
+
         // Options: incremental (don't clear existing items), skipImages (only render folders/nav)
         const { incremental = false, skipImages = false } = options;
         
@@ -520,6 +570,9 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
         
         if (!images || (images.length === 0 && folders.length === 0)) {
             const emptyState = await renderGalleryEmptyState();
+            if (isDestroyed) {
+                return;
+            }
             grid.gridContainer.appendChild(emptyState);
             return;
         }
@@ -740,6 +793,11 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
             let nextIndex = startIndex;
             return new Promise((resolve) => {
                 const renderNextBatch = (deadline) => {
+                    if (isDestroyed) {
+                        resolve();
+                        return;
+                    }
+
                     const endIndex = Math.min(nextIndex + batchSize, images.length);
                     
                     // Render items in this batch
@@ -813,7 +871,7 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
         }
         
         // Remove progress indicator when done
-        setTimeout(() => {
+        scheduleTimeout(() => {
             if (progressContainer.parentNode) {
                 progressContainer.remove();
             }
@@ -822,9 +880,16 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
     
     // Show full image viewer
     async function showImageMetadata(image, autoScroll = false) {
+        if (isDestroyed) {
+            return;
+        }
+
         try {
             metadata.metadataSection.classList.remove('gallery-metadata-section--hidden');
             const { html, hasErrors } = await getImageMetadataHtml(image, setStatus);
+            if (isDestroyed) {
+                return;
+            }
             metadata.metadataContent.innerHTML = html;
             
             if (setStatus) {
@@ -832,7 +897,7 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
             }
             
             if (autoScroll) {
-                setTimeout(() => {
+                scheduleTimeout(() => {
                     metadata.metadataSection.scrollIntoView({ 
                         behavior: 'smooth', 
                         block: 'start' 
@@ -841,9 +906,14 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
             }
             
         } catch (error) {
+            if (isDestroyed) {
+                return;
+            }
             console.error('Error in showImageMetadata wrapper:', error);
             const { html } = await getImageMetadataHtml(image, setStatus);
-            metadata.metadataContent.innerHTML = html;
+            if (!isDestroyed) {
+                metadata.metadataContent.innerHTML = html;
+            }
         }
     }
 
@@ -904,7 +974,7 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
             // For now, keep the previous selection
             const savedFolder = selectors.selectedFolder();
             if (savedFolder) {
-                setTimeout(() => {
+                scheduleTimeout(() => {
                     e.target.value = savedFolder;
                 }, 100);
             }
@@ -912,6 +982,8 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
             // User selected a custom folder from the list
             const customPath = selectedValue.substring(7); // Remove 'custom:' prefix
             
+            getCollection('galleryfolder').addRecent(customPath, customPath);
+
             // Update state
             actions.selectFolder(selectedValue);
             actions.setCurrentPath(customPath);
@@ -1127,7 +1199,17 @@ function setupGalleryEventHandlers(folderAndControls, unused, grid, metadata, he
         filterAndSortImages,
         updateGridLayout,
         updateThumbnailSizeUI,
-        renderImageGrid: (images, folders) => renderImageGrid(images, folders, loadImagesWrapper)
+        renderImageGrid: (images, folders) => renderImageGrid(images, folders, loadImagesWrapper),
+        destroy: () => {
+            if (isDestroyed) {
+                return;
+            }
+            isDestroyed = true;
+            pendingTimeouts.forEach((timeoutId) => clearTimeout(timeoutId));
+            pendingTimeouts.clear();
+            currentAbortController?.abort();
+            currentAbortController = null;
+        }
     };
 }
 
@@ -1174,7 +1256,7 @@ export async function createImageGalleryTab(container) {
     }
 
     // Auto-load from saved folder selection
-    setTimeout(() => {
+    const autoLoadTimeoutId = setTimeout(() => {
         try {
             // Get saved folder and ensure dropdown is synced
             const savedFolder = selectors.selectedFolder() || 'notes';
@@ -1244,6 +1326,16 @@ export async function createImageGalleryTab(container) {
             console.error('Error during gallery auto-initialization:', error);
         }
     }, 200);
+
+    let isDestroyed = false;
+    return () => {
+        if (isDestroyed) {
+            return;
+        }
+        isDestroyed = true;
+        clearTimeout(autoLoadTimeoutId);
+        eventHandlers.destroy();
+    };
 }
 
 // Default export for module compatibility

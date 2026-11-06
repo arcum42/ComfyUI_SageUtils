@@ -4,6 +4,7 @@
  */
 
 import { loadComponentStyles as ensureComponentStyles } from './styleLoader.js';
+import { activateModal, getFocusableElements } from './modalA11y.js';
 
 console.log('[SageUtils] dialogManager.js imported');
 
@@ -17,6 +18,8 @@ function loadComponentStyles() {
 function addDialogStyles() {
     loadComponentStyles();
 }
+
+let dialogIdCounter = 0;
 
 /**
  * Create a modal dialog
@@ -48,6 +51,9 @@ export function createDialog(options = {}) {
     // Create dialog container
     const dialog = document.createElement('div');
     dialog.className = 'dialog-container';
+    dialog.setAttribute('role', 'dialog');
+    dialog.setAttribute('aria-modal', 'true');
+    dialog.tabIndex = -1;
     dialog.style.setProperty('--dialog-width', width);
     dialog.style.setProperty('--dialog-height', height);
     
@@ -58,11 +64,15 @@ export function createDialog(options = {}) {
     const titleElement = document.createElement('h3');
     titleElement.className = 'dialog-title';
     titleElement.textContent = title;
+    titleElement.id = `sage-dialog-title-${++dialogIdCounter}`;
+    dialog.setAttribute('aria-labelledby', titleElement.id);
     header.appendChild(titleElement);
     
     if (showCloseButton) {
         const closeButton = document.createElement('button');
         closeButton.className = 'dialog-close';
+        closeButton.type = 'button';
+        closeButton.setAttribute('aria-label', 'Close dialog');
         closeButton.innerHTML = '×';
         header.appendChild(closeButton);
     }
@@ -90,17 +100,22 @@ export function createDialog(options = {}) {
     overlay.appendChild(dialog);
     
     // Event handlers
+    let isClosed = false;
+    let releaseModal = null;
+
     const closeDialog = () => {
+        if (isClosed) return;
+        isClosed = true;
         overlay.classList.add('closing');
-        document.removeEventListener('keydown', handleKeyDown);
         setTimeout(() => {
             if (overlay.parentNode) {
                 overlay.parentNode.removeChild(overlay);
             }
+            if (releaseModal) releaseModal();
             if (onClose) onClose();
         }, 200);
     };
-    
+
     if (effectiveShowCloseButton) {
         const closeButton = header.querySelector('.dialog-close');
         if (closeButton) {
@@ -116,15 +131,6 @@ export function createDialog(options = {}) {
         });
     }
     
-    // ESC key to close
-    const handleKeyDown = (e) => {
-        if (e.key === 'Escape') {
-            closeDialog();
-            document.removeEventListener('keydown', handleKeyDown);
-        }
-    };
-    document.addEventListener('keydown', handleKeyDown);
-    
     return {
         overlay,
         dialog,
@@ -133,7 +139,12 @@ export function createDialog(options = {}) {
         contentArea,
         footer,
         show() {
+            if (isClosed || releaseModal) return;
             document.body.appendChild(overlay);
+            releaseModal = activateModal(dialog, {
+                onEscape: closable ? closeDialog : null,
+                initialFocus: contentArea.querySelector('[autofocus]') || getFocusableElements(contentArea)[0] || null
+            });
         },
         close: closeDialog,
         setTitle(newTitle) {

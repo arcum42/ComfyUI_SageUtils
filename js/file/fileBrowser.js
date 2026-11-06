@@ -7,6 +7,7 @@
 import { api } from "../../../../scripts/api.js";
 
 // Import button components
+import { loadComponentStyles } from '../components/styleLoader.js';
 import { createButton, BUTTON_VARIANTS } from "../components/buttons.js";
 
 /**
@@ -64,6 +65,7 @@ export class GenericFileBrowser {
         this.container = null;
         this.fileListContainer = null;
         this.isLoading = false;
+        this.isDestroyed = false;
         this.currentPath = ''; // Current folder path for navigation
         this.pathHistory = []; // Navigation history
     }
@@ -74,16 +76,11 @@ export class GenericFileBrowser {
      * @returns {Object} - Object containing references to created elements
      */
     render(parentContainer) {
+        loadComponentStyles('fileBrowser');
+
         // Create main container
         this.container = document.createElement('div');
         this.container.className = 'generic-file-browser';
-        this.container.style.cssText = `
-            margin-bottom: 15px;
-            padding: 15px;
-            background: #2a2a2a;
-            border-radius: 6px;
-            border: 1px solid #444;
-        `;
 
         // Create header with actions
         const header = this.createHeader();
@@ -92,13 +89,8 @@ export class GenericFileBrowser {
         // Create file list container
         this.fileListContainer = document.createElement('div');
         this.fileListContainer.className = 'file-list-container';
-        this.fileListContainer.style.cssText = `
-            max-height: 300px;
-            overflow-y: auto;
-            border: 1px solid #555;
-            border-radius: 4px;
-            background: #333;
-        `;
+        this.fileListContainer.setAttribute('role', 'listbox');
+        this.fileListContainer.setAttribute('aria-label', `${this.config.title || 'Files'} list`);
 
         this.container.appendChild(this.fileListContainer);
 
@@ -123,29 +115,16 @@ export class GenericFileBrowser {
      */
     createHeader() {
         const header = document.createElement('div');
-        header.className = 'file-browser-header';
-        header.style.cssText = `
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 10px;
-        `;
+        header.className = 'file-browser-header file-preview-toolbar';
 
         // Title
         const title = document.createElement('h4');
-        title.style.cssText = `
-            margin: 0;
-            color: #4CAF50;
-            font-size: 14px;
-        `;
+        title.className = 'file-preview-title';
         title.textContent = 'Files';
 
         // Actions container
         const actions = document.createElement('div');
-        actions.style.cssText = `
-            display: flex;
-            gap: 8px;
-        `;
+        actions.className = 'file-preview-actions';
 
         // Create action buttons based on config
         if (this.config.allowCreate) {
@@ -207,7 +186,7 @@ export class GenericFileBrowser {
      * @param {string} path - Optional path to load (defaults to current path)
      */
     async loadFiles(path = null) {
-        if (this.isLoading) return;
+        if (this.isDestroyed || this.isLoading) return;
         
         if (path !== null) {
             this.currentPath = path;
@@ -225,16 +204,25 @@ export class GenericFileBrowser {
             }
             
             const response = await api.fetchApi(apiUrl);
+            if (this.isDestroyed) {
+                return;
+            }
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
 
             const result = await response.json();
+            if (this.isDestroyed) {
+                return;
+            }
             this.files = result.files || [];
             
             this.renderFileList();
             
         } catch (error) {
+            if (this.isDestroyed) {
+                return;
+            }
             this.callbacks.onError(error);
             this.showErrorState(error.message);
         } finally {
@@ -247,13 +235,8 @@ export class GenericFileBrowser {
      */
     showLoadingState() {
         this.fileListContainer.innerHTML = `
-            <div style="
-                padding: 20px;
-                text-align: center;
-                color: #888;
-                font-style: italic;
-            ">
-                <div style="margin-bottom: 10px;">🔄</div>
+            <div class="file-list-status" role="status">
+                <div class="file-preview-status-icon">🔄</div>
                 <div>Loading files...</div>
             </div>
         `;
@@ -265,17 +248,10 @@ export class GenericFileBrowser {
      */
     showErrorState(errorMessage) {
         this.fileListContainer.innerHTML = `
-            <div style="
-                padding: 20px;
-                text-align: center;
-                color: #f44336;
-                font-style: italic;
-            ">
-                <div style="margin-bottom: 10px;">❌</div>
+            <div class="file-list-status file-list-status--error" role="alert">
+                <div class="file-preview-status-icon">❌</div>
                 <div>Error loading files</div>
-                <div style="font-size: 11px; margin-top: 5px; color: #888;">
-                    ${this.escapeHtml(errorMessage)}
-                </div>
+                <div class="file-list-status-detail">${this.escapeHtml(errorMessage)}</div>
             </div>
         `;
     }
@@ -303,13 +279,8 @@ export class GenericFileBrowser {
      */
     showEmptyState() {
         this.fileListContainer.innerHTML = `
-            <div style="
-                padding: 20px;
-                text-align: center;
-                color: #888;
-                font-style: italic;
-            ">
-                <div style="margin-bottom: 10px;">${this.config.defaultIcon}</div>
+            <div class="file-list-status" role="status">
+                <div class="file-preview-status-icon">${this.config.defaultIcon}</div>
                 <div>${this.config.emptyMessage}</div>
             </div>
         `;
@@ -392,62 +363,49 @@ export class GenericFileBrowser {
         // Use full path for data attribute if available, fallback to filename
         const pathForSelection = fullPath || filename;
         fileItem.dataset.filename = pathForSelection;
-        fileItem.style.cssText = `
-            padding: 6px 12px;
-            cursor: pointer;
-            border-bottom: 1px solid #333;
-            transition: background-color 0.2s;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            min-height: ${this.config.fileItemHeight};
-        `;
+        fileItem.style.minHeight = this.config.fileItemHeight;
+        fileItem.setAttribute('role', 'option');
+        const isSelected = this.selectedFile === pathForSelection;
+        fileItem.classList.toggle('selected', isSelected);
+        fileItem.setAttribute('aria-selected', String(isSelected));
 
-        // File icon
         const icon = document.createElement('span');
-        icon.style.cssText = `
-            color: #4CAF50;
-            font-size: 14px;
-        `;
+        icon.className = 'file-item-icon';
         icon.textContent = this.getFileIcon(filename);
 
-        // File name
         const nameSpan = document.createElement('span');
-        nameSpan.style.cssText = `
-            flex: 1;
-            color: #fff;
-            font-size: 13px;
-        `;
+        nameSpan.className = 'file-item-name';
         nameSpan.textContent = filename;
-
-        // File info (size, etc.)
-        if (metadata.size) {
-            const sizeSpan = document.createElement('span');
-            sizeSpan.style.cssText = `
-                color: #888;
-                font-size: 11px;
-            `;
-            sizeSpan.textContent = this.formatFileSize(metadata.size);
-            fileItem.appendChild(sizeSpan);
-        }
 
         fileItem.appendChild(icon);
         fileItem.appendChild(nameSpan);
 
-        // Event handlers
-        fileItem.addEventListener('mouseenter', () => {
-            fileItem.style.backgroundColor = '#333';
-        });
+        if (metadata.size) {
+            const sizeSpan = document.createElement('span');
+            sizeSpan.className = 'file-item-size';
+            sizeSpan.textContent = this.formatFileSize(metadata.size);
+            fileItem.appendChild(sizeSpan);
+        }
 
-        fileItem.addEventListener('mouseleave', () => {
-            fileItem.style.backgroundColor = this.selectedFile === pathForSelection ? '#444' : 'transparent';
-        });
-
-        fileItem.addEventListener('click', () => {
-            this.selectFile(pathForSelection);
-        });
+        this.makeActivatable(fileItem, () => this.selectFile(pathForSelection));
 
         return fileItem;
+    }
+
+    /**
+     * Make a list row operable by click, Enter, and Space, and reachable by Tab
+     * @param {HTMLElement} element
+     * @param {Function} handler
+     */
+    makeActivatable(element, handler) {
+        element.tabIndex = 0;
+        element.addEventListener('click', handler);
+        element.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                handler();
+            }
+        });
     }
 
     /**
@@ -460,50 +418,22 @@ export class GenericFileBrowser {
         const folderItem = document.createElement('div');
         folderItem.className = 'folder-item';
         folderItem.dataset.foldername = folderName;
-        folderItem.style.cssText = `
-            padding: 6px 12px;
-            cursor: pointer;
-            border-bottom: 1px solid #333;
-            transition: background-color 0.2s;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            min-height: ${this.config.fileItemHeight};
-            font-weight: bold;
-        `;
+        folderItem.style.minHeight = this.config.fileItemHeight;
+        folderItem.setAttribute('role', 'button');
+        folderItem.setAttribute('aria-label', `Open folder ${folderName}`);
 
-        // Folder icon
         const icon = document.createElement('span');
-        icon.style.cssText = `
-            color: #4CAF50;
-            font-size: 14px;
-        `;
+        icon.className = 'file-item-icon';
         icon.textContent = '📁';
 
-        // Folder name
         const nameSpan = document.createElement('span');
-        nameSpan.style.cssText = `
-            flex: 1;
-            color: #fff;
-            font-size: 13px;
-        `;
+        nameSpan.className = 'file-item-name';
         nameSpan.textContent = folderName;
 
         folderItem.appendChild(icon);
         folderItem.appendChild(nameSpan);
 
-        // Event handlers
-        folderItem.addEventListener('mouseenter', () => {
-            folderItem.style.backgroundColor = '#333';
-        });
-
-        folderItem.addEventListener('mouseleave', () => {
-            folderItem.style.backgroundColor = 'transparent';
-        });
-
-        folderItem.addEventListener('click', () => {
-            this.navigateToFolder(folderName);
-        });
+        this.makeActivatable(folderItem, () => this.navigateToFolder(folderName));
 
         return folderItem;
     }
@@ -515,50 +445,22 @@ export class GenericFileBrowser {
     createBackNavigationItem() {
         const backItem = document.createElement('div');
         backItem.className = 'back-item';
-        backItem.style.cssText = `
-            padding: 6px 12px;
-            cursor: pointer;
-            border-bottom: 1px solid #333;
-            transition: background-color 0.2s;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            min-height: ${this.config.fileItemHeight};
-            font-style: italic;
-            color: #888;
-        `;
+        backItem.style.minHeight = this.config.fileItemHeight;
+        backItem.setAttribute('role', 'button');
+        backItem.setAttribute('aria-label', 'Back to parent folder');
 
-        // Back icon
         const icon = document.createElement('span');
-        icon.style.cssText = `
-            color: #888;
-            font-size: 14px;
-        `;
+        icon.className = 'file-item-icon';
         icon.textContent = '⬅️';
 
-        // Back text
         const nameSpan = document.createElement('span');
-        nameSpan.style.cssText = `
-            flex: 1;
-            font-size: 13px;
-        `;
+        nameSpan.className = 'file-item-name';
         nameSpan.textContent = '.. (Back)';
 
         backItem.appendChild(icon);
         backItem.appendChild(nameSpan);
 
-        // Event handlers
-        backItem.addEventListener('mouseenter', () => {
-            backItem.style.backgroundColor = '#333';
-        });
-
-        backItem.addEventListener('mouseleave', () => {
-            backItem.style.backgroundColor = 'transparent';
-        });
-
-        backItem.addEventListener('click', () => {
-            this.navigateBack();
-        });
+        this.makeActivatable(backItem, () => this.navigateBack());
 
         return backItem;
     }
@@ -665,13 +567,10 @@ export class GenericFileBrowser {
     selectFile(filename) {
         // Update visual selection
         this.fileListContainer.querySelectorAll('.file-item').forEach(item => {
-            item.style.backgroundColor = 'transparent';
+            const isSelected = item.dataset.filename === filename;
+            item.classList.toggle('selected', isSelected);
+            item.setAttribute('aria-selected', String(isSelected));
         });
-
-        const selectedItem = this.fileListContainer.querySelector(`[data-filename="${filename}"]`);
-        if (selectedItem) {
-            selectedItem.style.backgroundColor = '#444';
-        }
 
         this.selectedFile = filename;
         this.callbacks.onFileSelect(filename);
@@ -730,6 +629,10 @@ export class GenericFileBrowser {
      * Destroys the file browser and cleans up
      */
     destroy() {
+        if (this.isDestroyed) {
+            return;
+        }
+        this.isDestroyed = true;
         if (this.container && this.container.parentNode) {
             this.container.parentNode.removeChild(this.container);
         }

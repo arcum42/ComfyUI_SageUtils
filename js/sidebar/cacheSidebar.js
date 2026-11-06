@@ -7,6 +7,7 @@
  */
 
 // Import centralized state management
+import { collectCommands } from '../shared/commandRegistry.js';
 import { 
     getState, 
     subscribe, 
@@ -150,11 +151,22 @@ function acquireGlobalErrorHandlers() {
 
 function createCleanupRegistry() {
     const cleanups = new Set();
+    let isClosed = false;
 
     const add = (cleanup) => {
         if (typeof cleanup !== 'function') {
             return () => {};
         }
+
+        if (isClosed) {
+            try {
+                cleanup();
+            } catch (error) {
+                console.warn('[Sidebar] Late cleanup callback failed:', error);
+            }
+            return () => {};
+        }
+
         cleanups.add(cleanup);
         return () => cleanups.delete(cleanup);
     };
@@ -169,6 +181,11 @@ function createCleanupRegistry() {
     };
 
     const runAll = () => {
+        if (isClosed) {
+            return;
+        }
+        isClosed = true;
+
         cleanups.forEach((cleanup) => {
             try {
                 cleanup();
@@ -184,9 +201,28 @@ function createCleanupRegistry() {
         addInterval,
         addTimeout,
         addObserver,
+        isActive: () => !isClosed,
         runAll,
         cleanup: runAll
     };
+}
+
+const TAB_VISIBILITY_CACHE_KEY = 'sageutils.tabVisibility';
+
+// Last-known visibility avoids a flash of all tabs while settings load.
+function readCachedTabVisibility() {
+    try {
+        const raw = localStorage.getItem(TAB_VISIBILITY_CACHE_KEY);
+        return raw ? normalizeTabVisibilitySettings(JSON.parse(raw)) : null;
+    } catch {
+        return null;
+    }
+}
+
+function writeCachedTabVisibility(visibility) {
+    try {
+        localStorage.setItem(TAB_VISIBILITY_CACHE_KEY, JSON.stringify(visibility));
+    } catch { /* storage unavailable */ }
 }
 
 /**
@@ -295,8 +331,10 @@ function createTabManager(container, tabVisibility = {}, tabContentFactories = {
     
     // Add settings button to the tab header
     const settingsButton = document.createElement('button');
-    settingsButton.innerHTML = '⚙️';
+    settingsButton.textContent = '⚙️';
+    settingsButton.type = 'button';
     settingsButton.title = 'Settings';
+    settingsButton.setAttribute('aria-label', 'Sage Utils settings');
     settingsButton.className = 'sidebar-settings-button';
 
     // Click handler
@@ -310,46 +348,52 @@ function createTabManager(container, tabVisibility = {}, tabContentFactories = {
         }
     });
 
-    tabManager.tabHeader.appendChild(settingsButton);
-
-    // Check if settings button overlaps with tabs and hide it if necessary
-    const checkSettingsButtonVisibility = () => {
-        const header = tabManager.tabHeader;
-        const tabs = header.querySelectorAll('.tab-button');
-        
-        if (tabs.length === 0) return;
-        
-        // Calculate total width needed for tabs
-        let tabsWidth = 0;
-        tabs.forEach(tab => {
-            tabsWidth += tab.offsetWidth;
-        });
-        
-        // Add padding and gap spacing
-        const headerPadding = 20; // 10px on each side
-        const tabGaps = (tabs.length - 1) * 2; // 2px gap between tabs
-        const settingsButtonWidth = 50; // Approximate width of settings button
-        const requiredWidth = tabsWidth + tabGaps + headerPadding + settingsButtonWidth;
-        
-        // Hide button if there's not enough space
-        if (header.offsetWidth < requiredWidth) {
-            settingsButton.classList.add('sidebar-settings-button--hidden');
-        } else {
-            settingsButton.classList.remove('sidebar-settings-button--hidden');
+    const openSettings = async () => {
+        try {
+            const { showSettingsDialog } = await import('../dialogs/settingsDialog.js');
+            showSettingsDialog();
+        } catch (error) {
+            console.error('Failed to open settings dialog:', error);
+            handleError(error, 'Settings Dialog Error');
         }
     };
 
-    // Check visibility on load and resize
-    const settingsVisibilityTimeoutId = setTimeout(checkSettingsButtonVisibility, 100);
-    tabManager.registerCleanup(() => clearTimeout(settingsVisibilityTimeoutId));
-    
-    // Use ResizeObserver to dynamically check when header size changes
-    const resizeObserver = new ResizeObserver(() => {
-        checkSettingsButtonVisibility();
+    const showPalette = async () => {
+        const { openCommandPalette } = await import('../components/commandPalette.js');
+        const commands = tabManager.getVisibleTabIds().map(id => ({
+            id: `tab-${id}`,
+            label: `Go to ${tabManager.tabs.get(id).label}`,
+            run: () => tabManager.switchTab(id)
+        }));
+        commands.push({ id: 'settings', label: 'Open Settings', run: openSettings });
+        collectCommands().forEach((cmd) => commands.push({
+            ...cmd,
+            run: () => {
+                if (cmd.tab) tabManager.switchTab(cmd.tab);
+                cmd.run();
+            }
+        }));
+        openCommandPalette(commands);
+    };
+
+    const paletteButton = document.createElement('button');
+    paletteButton.type = 'button';
+    paletteButton.textContent = '\u2318';
+    paletteButton.title = 'Command palette (Ctrl+Shift+K)';
+    paletteButton.setAttribute('aria-label', 'Open command palette');
+    paletteButton.className = 'sidebar-settings-button';
+    paletteButton.addEventListener('click', showPalette);
+    tabManager.tabHeader.appendChild(paletteButton);
+
+    tabManager.container?.addEventListener('keydown', (e) => {
+        if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'k') {
+            e.preventDefault();
+            showPalette();
+        }
     });
-    resizeObserver.observe(tabManager.tabHeader);
-    tabManager.registerCleanup(() => resizeObserver.disconnect());
-    
+
+    tabManager.tabHeader.appendChild(settingsButton);
+
     return tabManager;
 }
 
@@ -415,6 +459,10 @@ async function initializeSidebarData(lifecycle) {
                     fetchCacheHash(),
                     fetchCacheInfo()
                 ]);
+
+                if (!lifecycle.isActive()) {
+                    return;
+                }
                 
                 // Store in cache for future use
                 DataCache.set(CacheKeys.CACHE_HASH, hashData);
@@ -436,6 +484,9 @@ async function initializeSidebarData(lifecycle) {
         // Initialize API connection status check
         try {
             const response = await fetch('/sage_cache/stats');
+            if (!lifecycle.isActive()) {
+                return;
+            }
             if (response.ok) {
                 logSidebarDebug('Cache API connection verified');
             } else {
@@ -455,6 +506,10 @@ async function initializeSidebarData(lifecycle) {
                         fetchCacheHash(),
                         fetchCacheInfo()
                     ]);
+
+                    if (!lifecycle.isActive()) {
+                        return;
+                    }
                     
                     // Update cache
                     DataCache.set(CacheKeys.CACHE_HASH, hashData);
@@ -471,10 +526,14 @@ async function initializeSidebarData(lifecycle) {
         lifecycle.addInterval(refreshIntervalId);
         
     } catch (error) {
-        console.error('Failed to initialize sidebar data:', error);
-        handleError(error, 'Sidebar Initialization Error');
+        if (lifecycle.isActive()) {
+            console.error('Failed to initialize sidebar data:', error);
+            handleError(error, 'Sidebar Initialization Error');
+        }
     } finally {
-        actions.setModelsLoading(false);
+        if (lifecycle.isActive()) {
+            actions.setModelsLoading(false);
+        }
     }
 }
 
@@ -510,7 +569,7 @@ export function createCacheSidebar(el) {
     
     // Start with safe defaults (all tabs visible) to avoid blank UI on slow startup
     const defaultVisibility = { ...DEFAULT_TAB_VISIBILITY_SETTINGS };
-    let tabVisibility = defaultVisibility;
+    let tabVisibility = readCachedTabVisibility() || defaultVisibility;
     let isDestroyed = false;
     const pendingTimeouts = new Set();
     let backgroundTabPreload = null;
@@ -582,6 +641,7 @@ export function createCacheSidebar(el) {
     const settingsIndicator = document.createElement('div');
     settingsIndicator.textContent = 'Loading settings…';
     settingsIndicator.className = 'sidebar-settings-indicator';
+    settingsIndicator.setAttribute('role', 'status');
     // The tabHeader exists post-init inside TabManager
     try { tabManager.tabHeader.appendChild(settingsIndicator); } catch { /* no-op */ }
 
@@ -608,6 +668,7 @@ export function createCacheSidebar(el) {
 
         try {
             tabVisibility = normalizeTabVisibilitySettings(settings || defaultVisibility);
+            writeCachedTabVisibility(tabVisibility);
             const mapStart = performance.now();
             const visibilityMap = toTabVisibilityMap(tabVisibility, {
                 ensureOneVisible: true,
@@ -820,40 +881,52 @@ export function createCacheSidebar(el) {
         return result;
     };
 
+    let sidebarInstance;
+    const destroySidebar = () => {
+        if (isDestroyed) {
+            return;
+        }
+
+        isDestroyed = true;
+        if (sidebarInstance) {
+            sidebarInstance.isDestroyed = true;
+        }
+        galleryPreloadToken += 1;
+        cancelBackgroundTabPreload();
+
+        pendingTimeouts.forEach((timeoutId) => clearTimeout(timeoutId));
+        pendingTimeouts.clear();
+
+        if (crossTabUnsubscribe) {
+            try {
+                crossTabUnsubscribe();
+            } catch (error) {
+                console.warn('[Sidebar] Error unsubscribing from cross-tab messaging:', error);
+            }
+            crossTabUnsubscribe = null;
+        }
+
+        lifecycle.runAll();
+        tabManager.destroy();
+
+        if (mainContainer.parentNode) {
+            mainContainer.parentNode.removeChild(mainContainer);
+        }
+        if (currentSidebarInstance === sidebarInstance) {
+            currentSidebarInstance = null;
+        }
+    };
+
     el._sidebarData = {
         tabManager,
         switchTab: (tabId) => tabManager.switchTab(tabId),
         initializedTabs: tabManager.initializedTabs,
         getRegressionSnapshot,
         runRegressionChecks,
-        cleanup: () => {
-            isDestroyed = true;
-            galleryPreloadToken += 1;
-            cancelBackgroundTabPreload();
-
-            pendingTimeouts.forEach((timeoutId) => {
-                clearTimeout(timeoutId);
-            });
-            pendingTimeouts.clear();
-
-            // Cleanup cross-tab subscription
-            if (crossTabUnsubscribe) {
-                try {
-                    crossTabUnsubscribe();
-                    crossTabUnsubscribe = null;
-                } catch (err) {
-                    console.warn('[Sidebar] Error unsubscribing from cross-tab messaging:', err);
-                }
-            }
-
-            lifecycle.cleanup();
-
-            // Destroy tab manager
-            tabManager.destroy();
-        }
+        cleanup: destroySidebar
     };
 
-    currentSidebarInstance = {
+    sidebarInstance = {
         sidebarRoot: mainContainer,
         tabManager,
         lifecycle,
@@ -862,16 +935,12 @@ export function createCacheSidebar(el) {
         hide: () => {
             if (mainContainer) {
                 mainContainer.classList.add('sageutils-sidebar-hidden');
-                currentSidebarInstance.isHidden = true;
+                sidebarInstance.isHidden = true;
             }
         },
-        destroy: () => {
-            if (mainContainer && mainContainer.parentNode) {
-                mainContainer.parentNode.removeChild(mainContainer);
-            }
-            currentSidebarInstance = null;
-        }
+        destroy: destroySidebar
     };
+    currentSidebarInstance = sidebarInstance;
 
     if (typeof window !== 'undefined') {
         window.SageUtilsSidebarRegression = {

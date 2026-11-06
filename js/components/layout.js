@@ -518,7 +518,7 @@ export function createResponsiveGrid(options = {}) {
     } = options;
 
     return createGrid({
-        columns: `repeat(auto-fill, minmax(${minItemWidth}px, ${maxItemWidth}))`,
+        columns: `repeat(auto-fill, minmax(min(100%, ${minItemWidth}px), ${maxItemWidth}))`,
         gap,
         padding,
         background,

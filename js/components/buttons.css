@@ -1,9 +1,9 @@
 .sage-button {
   color: white;
   border: none;
-  border-radius: 4px;
+  border-radius: var(--sage-radius, 4px);
   cursor: pointer;
-  transition: opacity 0.2s;
+  transition: opacity var(--sage-motion, 0.2s ease);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -52,15 +52,15 @@
 }
 
 .sage-button--success {
-  background: #4CAF50;
+  background: var(--sage-success, #2e7d32);
 }
 
 .sage-button--warning {
-  background: #FF9800;
+  background: var(--sage-warning, #9a5b00);
 }
 
 .sage-button--danger {
-  background: #f44336;
+  background: var(--sage-error, #c62828);
 }
 
 .sage-button--info {

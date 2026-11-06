@@ -6,6 +6,7 @@
 import { api } from "../../../../scripts/api.js";
 import { FILE_BROWSER_CONFIGS } from './fileBrowser.js';
 import { renderMarkdown, ensureMarkdownStyles } from "../shared/markdown.js";
+import { loadComponentStyles } from '../components/styleLoader.js';
 import { copyTextToSelectedNode } from '../utils/textCopyUtils.js';
 import { app } from '../../../scripts/app.js';
 
@@ -36,15 +37,11 @@ export class GenericFilePreview {
      * @returns {Object} - Object containing references to created elements
      */
     render(parentContainer) {
+        loadComponentStyles('filePreview');
+
         // Create main container
         this.container = document.createElement('div');
         this.container.className = 'generic-file-preview';
-        this.container.style.cssText = `
-            padding: 15px;
-            background: #2a2a2a;
-            border-radius: 6px;
-            border: 1px solid #444;
-        `;
 
         // Create header
         const header = this.createHeader();
@@ -53,17 +50,6 @@ export class GenericFilePreview {
         // Create preview container
         this.previewContainer = document.createElement('div');
         this.previewContainer.className = 'preview-container';
-        this.previewContainer.style.cssText = `
-            min-height: 200px;
-            background: #333;
-            border: 1px solid #555;
-            border-radius: 4px;
-            padding: 15px;
-            color: #e0e0e0;
-            font-family: 'Segoe UI', sans-serif;
-            line-height: 1.6;
-            overflow: auto;
-        `;
         
         this.showEmptyState();
         this.container.appendChild(this.previewContainer);
@@ -86,45 +72,22 @@ export class GenericFilePreview {
      */
     createHeader() {
         const headerContainer = document.createElement('div');
-        headerContainer.style.cssText = `
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 10px;
-        `;
+        headerContainer.className = 'file-preview-toolbar';
         
         const header = document.createElement('h4');
-        header.className = 'file-preview-header';
-        header.style.cssText = `
-            margin: 0;
-            color: #4CAF50;
-            font-size: 14px;
-        `;
+        header.className = 'file-preview-header file-preview-title';
         header.textContent = 'Preview';
         
         // Create button container
         const buttonContainer = document.createElement('div');
-        buttonContainer.style.cssText = `
-            display: flex;
-            gap: 8px;
-        `;
+        buttonContainer.className = 'file-preview-actions';
         
         // Create copy to LLM prompt button
         this.copyToLLMPromptBtn = document.createElement('button');
-        this.copyToLLMPromptBtn.className = 'copy-to-llm-prompt-btn';
+        this.copyToLLMPromptBtn.className = 'file-preview-action file-preview-action--prompt copy-to-llm-prompt-btn';
         this.copyToLLMPromptBtn.innerHTML = '💬 To Prompt';
-        this.copyToLLMPromptBtn.style.cssText = `
-            padding: 6px 12px;
-            background: #4a9eff;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            font-size: 12px;
-            cursor: pointer;
-            transition: background-color 0.2s, opacity 0.2s;
-            opacity: 0.5;
-            pointer-events: none;
-        `;
+        this.copyToLLMPromptBtn.type = 'button';
+        this.copyToLLMPromptBtn.disabled = true;
         this.copyToLLMPromptBtn.title = 'Copy file content to LLM tab main prompt';
         
         this.copyToLLMPromptBtn.addEventListener('click', () => {
@@ -133,20 +96,10 @@ export class GenericFilePreview {
         
         // Create copy to LLM system prompt button
         this.copyToLLMSystemBtn = document.createElement('button');
-        this.copyToLLMSystemBtn.className = 'copy-to-llm-system-btn';
+        this.copyToLLMSystemBtn.className = 'file-preview-action file-preview-action--system copy-to-llm-system-btn';
         this.copyToLLMSystemBtn.innerHTML = '🤖 To System';
-        this.copyToLLMSystemBtn.style.cssText = `
-            padding: 6px 12px;
-            background: #6bcf7f;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            font-size: 12px;
-            cursor: pointer;
-            transition: background-color 0.2s, opacity 0.2s;
-            opacity: 0.5;
-            pointer-events: none;
-        `;
+        this.copyToLLMSystemBtn.type = 'button';
+        this.copyToLLMSystemBtn.disabled = true;
         this.copyToLLMSystemBtn.title = 'Copy file content to LLM tab system prompt';
         
         this.copyToLLMSystemBtn.addEventListener('click', () => {
@@ -159,20 +112,10 @@ export class GenericFilePreview {
         
         // Create copy to node button
         this.copyToNodeBtn = document.createElement('button');
-        this.copyToNodeBtn.className = 'copy-to-node-btn';
+        this.copyToNodeBtn.className = 'file-preview-action file-preview-action--node copy-to-node-btn';
         this.copyToNodeBtn.innerHTML = '📤 To Node';
-        this.copyToNodeBtn.style.cssText = `
-            padding: 6px 12px;
-            background: #9c27b0;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            font-size: 12px;
-            cursor: pointer;
-            transition: background-color 0.2s, opacity 0.2s;
-            opacity: 0.5;
-            pointer-events: none;
-        `;
+        this.copyToNodeBtn.type = 'button';
+        this.copyToNodeBtn.disabled = true;
         this.copyToNodeBtn.title = 'Copy file content to selected node';
         
         this.copyToNodeBtn.addEventListener('click', () => {
@@ -200,25 +143,30 @@ export class GenericFilePreview {
         
         const success = copyTextToSelectedNode(app, this.currentContent);
         
-        if (success) {
-            // Show success feedback
-            const originalText = this.copyToNodeBtn.innerHTML;
-            this.copyToNodeBtn.innerHTML = '✓ Copied!';
-            this.copyToNodeBtn.style.background = '#4caf50';
-            setTimeout(() => {
-                this.copyToNodeBtn.innerHTML = originalText;
-                this.copyToNodeBtn.style.background = '#9c27b0';
-            }, 2000);
+        this.flashButton(this.copyToNodeBtn, success, success ? '✓ Copied!' : '❌ Select Node');
+    }
+
+    /**
+     * Temporarily show success/error feedback on a button
+     * @param {HTMLElement} button
+     * @param {boolean} success
+     * @param {string} text
+     */
+    flashButton(button, success, text) {
+        if (!button) return;
+        if (button._flashTimeout) {
+            clearTimeout(button._flashTimeout);
         } else {
-            // Show error feedback
-            const originalText = this.copyToNodeBtn.innerHTML;
-            this.copyToNodeBtn.innerHTML = '❌ Select Node';
-            this.copyToNodeBtn.style.background = '#f44336';
-            setTimeout(() => {
-                this.copyToNodeBtn.innerHTML = originalText;
-                this.copyToNodeBtn.style.background = '#9c27b0';
-            }, 2000);
+            button._originalHtml = button.innerHTML;
         }
+        button.textContent = text;
+        button.classList.toggle('file-preview-action--success', success);
+        button.classList.toggle('file-preview-action--error', !success);
+        button._flashTimeout = setTimeout(() => {
+            button.innerHTML = button._originalHtml;
+            button.classList.remove('file-preview-action--success', 'file-preview-action--error');
+            button._flashTimeout = null;
+        }, 2000);
     }
     
     /**
@@ -276,23 +224,7 @@ export class GenericFilePreview {
      */
     showCopyFeedback(target, success) {
         const button = target === 'prompt' ? this.copyToLLMPromptBtn : this.copyToLLMSystemBtn;
-        if (!button) return;
-        
-        const originalText = button.innerHTML;
-        const originalBg = button.style.background;
-        
-        if (success) {
-            button.innerHTML = '✓ Copied!';
-            button.style.background = '#4CAF50';
-        } else {
-            button.innerHTML = '✗ Failed';
-            button.style.background = '#f44336';
-        }
-        
-        setTimeout(() => {
-            button.innerHTML = originalText;
-            button.style.background = originalBg;
-        }, 2000);
+        this.flashButton(button, success, success ? '✓ Copied!' : '✗ Failed');
     }
     
     /**
@@ -303,13 +235,7 @@ export class GenericFilePreview {
         const buttons = [this.copyToLLMPromptBtn, this.copyToLLMSystemBtn, this.copyToNodeBtn];
         buttons.forEach(button => {
             if (button) {
-                if (enabled) {
-                    button.style.opacity = '1';
-                    button.style.pointerEvents = 'auto';
-                } else {
-                    button.style.opacity = '0.5';
-                    button.style.pointerEvents = 'none';
-                }
+                button.disabled = !enabled;
             }
         });
     }
@@ -320,7 +246,7 @@ export class GenericFilePreview {
     showEmptyState() {
         this.currentContent = null;
         this.updateCopyButtonState(false);
-        this.previewContainer.innerHTML = '<em style="color: #999;">Select a file to preview...</em>';
+        this.previewContainer.innerHTML = '<em class="file-preview-empty">Select a file to preview...</em>';
         this.previewContainer.className = 'preview-container';
     }
 
@@ -370,8 +296,8 @@ export class GenericFilePreview {
     showLoadingState() {
         this.previewContainer.className = 'preview-container';
         this.previewContainer.innerHTML = `
-            <div style="text-align: center; color: #888; padding: 20px;">
-                <div style="margin-bottom: 10px;">🔄</div>
+            <div class="file-preview-status" role="status">
+                <div class="file-preview-status-icon">🔄</div>
                 <div>Loading preview...</div>
             </div>
         `;
@@ -405,19 +331,8 @@ export class GenericFilePreview {
             const formatted = JSON.stringify(parsed, null, 2);
             
             this.previewContainer.innerHTML = `
-                <div style="margin-bottom: 10px; color: #4CAF50; font-weight: bold;">📋 JSON Preview</div>
-                <pre style="
-                    white-space: pre-wrap; 
-                    word-wrap: break-word; 
-                    font-family: 'Courier New', monospace; 
-                    font-size: 12px; 
-                    line-height: 1.4;
-                    background: #2a2a2a;
-                    padding: 10px;
-                    border-radius: 4px;
-                    border: 1px solid #444;
-                    color: #e0e0e0;
-                "><code>${this.escapeHtml(formatted)}</code></pre>
+                <div class="file-preview-label">📋 JSON Preview</div>
+                <pre class="file-preview-code"><code>${this.escapeHtml(formatted)}</code></pre>
             `;
             
         } catch (error) {
@@ -434,19 +349,8 @@ export class GenericFilePreview {
         this.previewContainer.className = 'preview-container';
         
         this.previewContainer.innerHTML = `
-            <div style="margin-bottom: 10px; color: #4CAF50; font-weight: bold;">📋 YAML Preview</div>
-            <pre style="
-                white-space: pre-wrap; 
-                word-wrap: break-word; 
-                font-family: 'Courier New', monospace; 
-                font-size: 12px; 
-                line-height: 1.4;
-                background: #2a2a2a;
-                padding: 10px;
-                border-radius: 4px;
-                border: 1px solid #444;
-                color: #e0e0e0;
-            "><code>${this.escapeHtml(content || '')}</code></pre>
+            <div class="file-preview-label">📋 YAML Preview</div>
+            <pre class="file-preview-code"><code>${this.escapeHtml(content || '')}</code></pre>
         `;
     }
 
@@ -458,17 +362,11 @@ export class GenericFilePreview {
     renderTextPreview(content, prefix = '') {
         this.previewContainer.className = 'preview-container';
         
-        const prefixHtml = prefix ? `<div style="margin-bottom: 10px; color: #FF9800;">${this.escapeHtml(prefix)}</div>` : '';
+        const prefixHtml = prefix ? `<div class="file-preview-label file-preview-label--warning">${this.escapeHtml(prefix)}</div>` : '';
         
         this.previewContainer.innerHTML = `
             ${prefixHtml}
-            <pre style="
-                white-space: pre-wrap; 
-                word-wrap: break-word; 
-                font-family: 'Courier New', monospace; 
-                font-size: 12px; 
-                line-height: 1.4;
-            ">${this.escapeHtml(content || '')}</pre>
+            <pre class="file-preview-code">${this.escapeHtml(content || '')}</pre>
         `;
     }
 
@@ -481,16 +379,7 @@ export class GenericFilePreview {
         
         // Create image element
         const img = document.createElement('img');
-        img.style.cssText = `
-            max-width: 100%;
-            max-height: 100%;
-            width: auto;
-            height: auto;
-            display: block;
-            margin: 0 auto;
-            border-radius: 4px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-        `;
+        img.className = 'file-preview-media';
         
         // Set image source based on config
         img.src = this.getFileUrl(filename);
@@ -507,7 +396,7 @@ export class GenericFilePreview {
         
         // Show loading state
         this.previewContainer.innerHTML = `
-            <div style="text-align: center; color: #888; padding: 20px;">
+            <div class="file-preview-status" role="status">
                 <p>🖼️ Loading image...</p>
             </div>
         `;
@@ -522,16 +411,7 @@ export class GenericFilePreview {
         
         // Create video element
         const video = document.createElement('video');
-        video.style.cssText = `
-            max-width: 100%;
-            max-height: 400px;
-            width: auto;
-            height: auto;
-            display: block;
-            margin: 0 auto;
-            border-radius: 4px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-        `;
+        video.className = 'file-preview-media file-preview-media--video';
         video.controls = true;
         video.preload = 'metadata';
         
@@ -545,13 +425,7 @@ export class GenericFilePreview {
             
             // Add video info
             const infoDiv = document.createElement('div');
-            infoDiv.style.cssText = `
-                text-align: center;
-                color: #888;
-                font-size: 11px;
-                margin-top: 8px;
-                padding: 5px;
-            `;
+            infoDiv.className = 'file-preview-media-info';
             
             const duration = video.duration;
             const minutes = Math.floor(duration / 60);
@@ -572,7 +446,7 @@ export class GenericFilePreview {
         
         // Show loading state
         this.previewContainer.innerHTML = `
-            <div style="text-align: center; color: #888; padding: 20px;">
+            <div class="file-preview-status" role="status">
                 <p>🎬 Loading video...</p>
             </div>
         `;
@@ -585,7 +459,7 @@ export class GenericFilePreview {
     renderErrorPreview(message) {
         this.previewContainer.className = 'preview-container';
         this.previewContainer.innerHTML = `
-            <div style="text-align: center; color: #f44336; padding: 20px;">
+            <div class="file-preview-status file-preview-status--error" role="alert">
                 <p>❌ ${this.escapeHtml(message)}</p>
             </div>
         `;
@@ -676,7 +550,7 @@ export class GenericFilePreview {
         // Clear current preview
         this.currentFile = null;
         if (this.previewContainer) {
-            this.previewContainer.innerHTML = '<em style="color: #999;">Select a file to preview...</em>';
+            this.previewContainer.innerHTML = '<em class="file-preview-empty">Select a file to preview...</em>';
         }
     }
 

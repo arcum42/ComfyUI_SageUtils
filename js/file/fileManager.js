@@ -3,6 +3,7 @@
  * Combines file browser, editor, and preview into a cohesive file management interface
  */
 
+import { loadComponentStyles } from '../components/styleLoader.js';
 import { GenericFileBrowser } from './fileBrowser.js';
 import { GenericFileEditor } from './fileEditor.js';
 import { GenericFilePreview } from './filePreview.js';
@@ -38,14 +39,12 @@ export class GenericFileManager {
      * @returns {Object} - Object containing references to all components
      */
     render(parentContainer) {
+        loadComponentStyles('fileManager');
+
         // Create main container
         this.container = document.createElement('div');
         this.container.className = 'generic-file-manager';
-        this.container.style.cssText = `
-            display: flex;
-            flex-direction: ${this.options.layout === 'horizontal' ? 'row' : 'column'};
-            gap: 15px;
-        `;
+        this.container.classList.toggle('generic-file-manager--horizontal', this.options.layout === 'horizontal');
 
         // Create file browser
         this.fileBrowser = new GenericFileBrowser(this.configKey, {
@@ -58,12 +57,6 @@ export class GenericFileManager {
 
         const browserContainer = document.createElement('div');
         browserContainer.className = 'file-manager-browser';
-        if (this.options.layout === 'horizontal') {
-            browserContainer.style.cssText = `
-                flex: 0 0 300px;
-                min-width: 300px;
-            `;
-        }
         
         this.fileBrowser.render(browserContainer);
         this.container.appendChild(browserContainer);
@@ -71,12 +64,6 @@ export class GenericFileManager {
         // Create content container for editor and preview
         const contentContainer = document.createElement('div');
         contentContainer.className = 'file-manager-content';
-        contentContainer.style.cssText = `
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-            flex: 1;
-        `;
 
         // Create file editor if enabled
         if (this.options.showEditor) {
@@ -160,51 +147,24 @@ export class GenericFileManager {
         // Create tab container
         const tabbedContainer = document.createElement('div');
         tabbedContainer.className = 'file-manager-tabbed';
-        tabbedContainer.style.cssText = `
-            display: flex;
-            flex-direction: column;
-            flex: 1;
-        `;
 
         // Create tab header
         const tabHeader = document.createElement('div');
-        tabHeader.className = 'tab-header';
-        tabHeader.style.cssText = `
-            display: flex;
-            border-bottom: 2px solid #4CAF50;
-            margin-bottom: 10px;
-            background: #1a1a1a;
-        `;
+        tabHeader.className = 'file-manager-tabbed-header';
+        tabHeader.setAttribute('role', 'tablist');
 
         // Create tab buttons
         const previewTab = document.createElement('button');
         previewTab.textContent = 'Preview';
-        previewTab.className = 'tab-button preview-tab';
-        previewTab.style.cssText = `
-            padding: 10px 20px;
-            border: none;
-            background: #2a2a2a;
-            color: #ccc;
-            cursor: pointer;
-            border-top-left-radius: 4px;
-            border-top-right-radius: 4px;
-            margin-right: 2px;
-            transition: all 0.2s ease;
-        `;
+        previewTab.className = 'file-manager-tab-button preview-tab';
+        previewTab.type = 'button';
+        previewTab.setAttribute('role', 'tab');
 
         const editorTab = document.createElement('button');
         editorTab.textContent = 'Editor';
-        editorTab.className = 'tab-button editor-tab';
-        editorTab.style.cssText = `
-            padding: 10px 20px;
-            border: none;
-            background: #2a2a2a;
-            color: #ccc;
-            cursor: pointer;
-            border-top-left-radius: 4px;
-            border-top-right-radius: 4px;
-            transition: all 0.2s ease;
-        `;
+        editorTab.className = 'file-manager-tab-button editor-tab';
+        editorTab.type = 'button';
+        editorTab.setAttribute('role', 'tab');
 
         // Add tabs to header
         tabHeader.appendChild(previewTab);
@@ -212,24 +172,16 @@ export class GenericFileManager {
 
         // Create content area
         const tabContent = document.createElement('div');
-        tabContent.className = 'tab-content';
-        tabContent.style.cssText = `
-            flex: 1;
-            position: relative;
-        `;
+        tabContent.className = 'file-manager-tabbed-content';
 
         // Create containers for each tab
         const previewContainer = document.createElement('div');
         previewContainer.className = 'file-manager-preview tab-panel';
-        previewContainer.style.cssText = `
-            display: ${this.options.defaultTab === 'preview' ? 'block' : 'none'};
-        `;
+        previewContainer.classList.toggle('active', this.options.defaultTab === 'preview');
 
         const editorContainer = document.createElement('div');
         editorContainer.className = 'file-manager-editor tab-panel';
-        editorContainer.style.cssText = `
-            display: ${this.options.defaultTab === 'editor' ? 'block' : 'none'};
-        `;
+        editorContainer.classList.toggle('active', this.options.defaultTab === 'editor');
 
         // Render components into their containers
         if (this.filePreview) {
@@ -245,31 +197,16 @@ export class GenericFileManager {
         tabContent.appendChild(editorContainer);
 
         // Set up tab switching
-        const switchToPreview = () => {
-            previewTab.style.background = '#4CAF50';
-            previewTab.style.color = 'white';
-            previewTab.style.fontWeight = 'bold';
-            
-            editorTab.style.background = '#2a2a2a';
-            editorTab.style.color = '#ccc';
-            editorTab.style.fontWeight = 'normal';
-            
-            previewContainer.style.display = 'block';
-            editorContainer.style.display = 'none';
+        const showPane = (activeTab, inactiveTab, activePane, inactivePane) => {
+            activeTab.classList.add('active');
+            inactiveTab.classList.remove('active');
+            activeTab.setAttribute('aria-selected', 'true');
+            inactiveTab.setAttribute('aria-selected', 'false');
+            activePane.classList.add('active');
+            inactivePane.classList.remove('active');
         };
-
-        const switchToEditor = () => {
-            editorTab.style.background = '#4CAF50';
-            editorTab.style.color = 'white';
-            editorTab.style.fontWeight = 'bold';
-            
-            previewTab.style.background = '#2a2a2a';
-            previewTab.style.color = '#ccc';
-            previewTab.style.fontWeight = 'normal';
-            
-            editorContainer.style.display = 'block';
-            previewContainer.style.display = 'none';
-        };
+        const switchToPreview = () => showPane(previewTab, editorTab, previewContainer, editorContainer);
+        const switchToEditor = () => showPane(editorTab, previewTab, editorContainer, previewContainer);
 
         // Add event listeners
         previewTab.addEventListener('click', switchToPreview);
@@ -585,7 +522,7 @@ export class GenericFileManager {
      */
     togglePreview(show) {
         if (this.filePreview && this.filePreview.container) {
-            this.filePreview.container.style.display = show ? 'block' : 'none';
+            this.filePreview.container.hidden = !show;
         }
     }
 
@@ -595,7 +532,7 @@ export class GenericFileManager {
      */
     toggleEditor(show) {
         if (this.fileEditor && this.fileEditor.container) {
-            this.fileEditor.container.style.display = show ? 'block' : 'none';
+            this.fileEditor.container.hidden = !show;
         }
     }
 

@@ -206,12 +206,12 @@ app.registerExtension({
       // Preload sidebar styles and HTML templates early so tab renderers are warmed.
       const sidebarAssets = [
         { id: 'sageutils-sidebar-shell-styles', href: 'sidebar/sidebar.css' },
-        { id: 'sageutils-civitai-search-styles', href: 'sidebar/civitaiSearchTab.css' },
-        { id: 'sageutils-files-tab-styles', href: 'sidebar/filesTab.css' },
-        { id: 'sageutils-gallery-tab-styles', href: 'sidebar/imageGalleryTab.css' },
-        { id: 'sageutils-models-tab-styles', href: 'sidebar/modelsTabV2.css' },
-        { id: 'sageutils-prompt-builder-tab-styles', href: 'sidebar/promptBuilder.css' },
-        { id: 'sageutils-llm-tab-styles', href: 'sidebar/llmTab/styles/llmStyles.css' }
+        { id: 'civitai-search-styles', href: 'sidebar/civitaiSearchTab.css' },
+        { id: 'files-tab-styles', href: 'sidebar/filesTab.css' },
+        { id: 'image-gallery-tab-styles', href: 'sidebar/imageGalleryTab.css' },
+        { id: 'models-v2-styles', href: 'sidebar/modelsTabV2.css' },
+        { id: 'prompt-builder-styles', href: 'sidebar/promptBuilder.css' },
+        { id: 'llm-tab-styles', href: 'sidebar/llmTab/styles/llmStyles.css' }
       ];
       sidebarAssets.forEach(({ id, href }) => loadSidebarStyle(id, href));
 

@@ -4,8 +4,8 @@
             height: 100%;
             display: flex;
             flex-direction: column;
-            background: var(--bg-color, #1a1a1a);
-            color: var(--fg-color, #ffffff);
+            background: var(--sage-surface-0);
+            color: var(--sage-text);
             font-family: var(--font-family, 'Segoe UI', sans-serif);
         }
 
@@ -19,37 +19,37 @@
         /* Header */
         .llm-header {
             padding: 16px;
-            border-bottom: 1px solid var(--border-color, #444);
-            background: var(--bg-color-secondary, #2a2a2a);
+            border-bottom: 1px solid var(--sage-border);
+            background: var(--sage-surface-1);
         }
 
         .llm-title {
             margin: 0 0 8px 0;
             font-size: 20px;
             font-weight: 600;
-            color: var(--primary-color, #4a9eff);
+            color: var(--sage-accent);
         }
 
         .llm-description {
             margin: 0;
             font-size: 14px;
-            color: var(--text-secondary, #cccccc);
+            color: var(--sage-text-muted);
             line-height: 1.4;
         }
 
         /* Model selection */
         .llm-model-selection {
             padding: 12px;
-            border-bottom: 1px solid var(--border-color, #444);
-            background: var(--bg-color-tertiary, #1e1e1e);
+            border-bottom: 1px solid var(--sage-border);
+            background: var(--sage-surface-0);
         }
 
         .llm-subtab-nav {
             display: flex;
             gap: 8px;
             padding: 10px 12px;
-            border-bottom: 1px solid var(--border-color, #444);
-            background: var(--bg-color-secondary, #242424);
+            border-bottom: 1px solid var(--sage-border);
+            background: var(--sage-surface-1);
             overflow-x: auto;
         }
 
@@ -57,27 +57,30 @@
             flex: 1;
             min-width: 0;
             padding: 8px 12px;
-            border: 1px solid var(--border-color, #444);
+            border: 1px solid var(--sage-border);
             border-radius: 999px;
-            background: var(--bg-color, #1a1a1a);
-            color: var(--text-secondary, #cccccc);
+            background: var(--sage-surface-0);
+            color: var(--sage-text-muted);
             font-size: 11px;
             font-weight: 600;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
             cursor: pointer;
             transition: border-color 0.2s, background-color 0.2s, color 0.2s, box-shadow 0.2s;
             white-space: nowrap;
         }
 
         .llm-subtab-btn:hover {
-            border-color: var(--primary-color, #4a9eff);
-            color: var(--fg-color, #ffffff);
+            border-color: var(--sage-accent);
+            color: var(--sage-text);
         }
 
         .llm-subtab-btn.active {
-            background: rgba(74, 158, 255, 0.14);
-            border-color: rgba(74, 158, 255, 0.45);
-            color: #7db9ff;
-            box-shadow: inset 0 0 0 1px rgba(74, 158, 255, 0.18);
+            background: color-mix(in srgb, var(--sage-accent) 14%, transparent);
+            border-color: color-mix(in srgb, var(--sage-accent) 45%, transparent);
+            color: var(--sage-info-fg);
+            box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--sage-accent) 18%, transparent);
         }
 
         .llm-subtab-content-host {
@@ -94,7 +97,7 @@
             display: flex;
             flex-direction: column;
             overflow-y: auto;
-            background: var(--bg-color, #1a1a1a);
+            background: var(--sage-surface-0);
         }
 
         .llm-subtab-intro {
@@ -105,18 +108,19 @@
             margin: 0 0 4px 0;
             font-size: 13px;
             font-weight: 600;
-            color: var(--fg-color, #ffffff);
+            color: var(--sage-text);
         }
 
         .llm-subtab-description {
             margin: 0;
             font-size: 11px;
             line-height: 1.5;
-            color: var(--text-secondary, #aaaaaa);
+            color: var(--sage-text-muted);
         }
 
         .llm-selection-row {
             display: flex;
+            flex-wrap: wrap;
             gap: 8px;
             align-items: center;
             margin-bottom: 8px;
@@ -144,15 +148,15 @@
         .llm-label {
             font-size: 11px;
             font-weight: 500;
-            color: var(--text-secondary, #cccccc);
+            color: var(--sage-text-muted);
         }
 
         .llm-select {
             padding: 5px 10px;
-            background: var(--bg-color, #1a1a1a);
-            border: 1px solid var(--border-color, #444);
+            background: var(--sage-surface-0);
+            border: 1px solid var(--sage-border);
             border-radius: 4px;
-            color: var(--fg-color, #ffffff);
+            color: var(--sage-text);
             font-size: 11px;
             cursor: pointer;
             transition: border-color 0.2s, box-shadow 0.2s;
@@ -161,13 +165,13 @@
         }
 
         .llm-select:hover {
-            border-color: var(--primary-color, #4a9eff);
+            border-color: var(--sage-accent);
         }
 
         .llm-select:focus {
             outline: none;
-            border-color: var(--primary-color, #4a9eff);
-            box-shadow: 0 0 0 2px rgba(74, 158, 255, 0.2);
+            border-color: var(--sage-accent);
+            box-shadow: 0 0 0 2px color-mix(in srgb, var(--sage-accent) 20%, transparent);
         }
 
         .llm-select:disabled {
@@ -181,7 +185,7 @@
             align-items: center;
             gap: 8px;
             font-size: 11px;
-            color: var(--text-secondary, #cccccc);
+            color: var(--sage-text-muted);
         }
 
         .status-dot {
@@ -192,26 +196,26 @@
         }
 
         .status-dot.status-online {
-            background: #6bcf7f;
-            box-shadow: 0 0 8px rgba(107, 207, 127, 0.5);
+            background: var(--sage-success);
+            box-shadow: 0 0 8px color-mix(in srgb, var(--sage-success) 50%, transparent);
         }
 
         .status-dot.status-offline {
-            background: #888;
+            background: var(--sage-text-muted);
         }
 
         .status-dot.status-error {
-            background: #f44336;
-            box-shadow: 0 0 8px rgba(244, 67, 54, 0.5);
+            background: var(--sage-error);
+            box-shadow: 0 0 8px color-mix(in srgb, var(--sage-error) 50%, transparent);
         }
 
         .status-dot.status-loading {
-            background: #4a9eff;
+            background: var(--sage-accent);
             animation: pulse 1s ease-in-out infinite;
         }
 
         .status-dot.status-disabled {
-            background: #666;
+            background: var(--sage-border);
         }
 
         .llm-hidden {
@@ -232,27 +236,27 @@
         }
 
         .llm-dialog-content {
-            background: #2a2a2a;
-            border: 1px solid #4a9eff;
+            background: var(--sage-surface-1);
+            border: 1px solid var(--sage-accent);
             border-radius: 8px;
             padding: 24px;
             max-width: 500px;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
-            color: #ffffff;
+            color: var(--sage-text);
             font-family: 'Segoe UI', sans-serif;
         }
 
         .llm-dialog-title {
             margin: 0 0 12px 0;
             font-size: 18px;
-            color: #4a9eff;
+            color: var(--sage-info-fg);
         }
 
         .llm-dialog-message {
             margin: 0 0 20px 0;
             font-size: 14px;
             line-height: 1.5;
-            color: #cccccc;
+            color: var(--sage-text);
         }
 
         .llm-dialog-button-container {
@@ -270,8 +274,8 @@
             font-size: 14px;
             font-weight: 500;
             transition: background-color 0.2s, opacity 0.2s;
-            background: #444;
-            color: #fff;
+            background: var(--sage-border);
+            color: var(--sage-text);
         }
 
         .llm-dialog-button:hover {
@@ -279,8 +283,8 @@
         }
 
         .llm-dialog-button--primary {
-            background: #4a9eff;
-            color: #000;
+            background: var(--sage-accent);
+            color: var(--sage-accent-text);
         }
 
         @keyframes pulse {
@@ -291,8 +295,8 @@
         /* Vision section */
         .llm-vision-section {
             padding: 16px;
-            border-bottom: 1px solid var(--border-color, #444);
-            background: var(--bg-color-secondary, #2a2a2a);
+            border-bottom: 1px solid var(--sage-border);
+            background: var(--sage-surface-1);
         }
 
         .llm-vision-header {
@@ -304,7 +308,7 @@
 
         .llm-image-count {
             font-size: 11px;
-            color: var(--text-secondary, #cccccc);
+            color: var(--sage-text-muted);
             margin-left: auto;
             margin-right: 12px;
         }
@@ -316,23 +320,23 @@
 
         /* Upload zone */
         .llm-upload-zone {
-            border: 2px dashed var(--border-color, #444);
+            border: 2px dashed var(--sage-border);
             border-radius: 8px;
             padding: 32px 16px;
             text-align: center;
             cursor: pointer;
-            background: var(--bg-color, #1a1a1a);
+            background: var(--sage-surface-0);
             transition: border-color 0.2s, background-color 0.2s;
         }
 
         .llm-upload-zone:hover {
-            border-color: var(--primary-color, #4a9eff);
-            background: var(--bg-color-tertiary, #222);
+            border-color: var(--sage-accent);
+            background: var(--sage-surface-0);
         }
 
         .llm-upload-zone.drag-over {
-            border-color: var(--primary-color, #4a9eff);
-            background: rgba(74, 158, 255, 0.1);
+            border-color: var(--sage-accent);
+            background: color-mix(in srgb, var(--sage-accent) 10%, transparent);
         }
 
         .llm-upload-icon {
@@ -341,19 +345,19 @@
         }
 
         .llm-upload-text {
-            color: var(--text-secondary, #cccccc);
+            color: var(--sage-text-muted);
         }
 
         .llm-upload-text strong {
             display: block;
-            color: var(--fg-color, #ffffff);
+            color: var(--sage-text);
             margin-bottom: 8px;
             font-size: 12px;
         }
 
         .llm-upload-text span {
             font-size: 11px;
-            color: var(--text-tertiary, #999);
+            color: var(--text-tertiary, var(--sage-text-muted));
         }
 
         .llm-file-input {
@@ -371,15 +375,15 @@
             aspect-ratio: 1;
             border-radius: 8px;
             overflow: hidden;
-            background: var(--bg-color, #1a1a1a);
-            border: 1px solid var(--border-color, #444);
+            background: var(--sage-surface-0);
+            border: 1px solid var(--sage-border);
             cursor: pointer;
             transition: transform 0.2s ease, border-color 0.2s ease;
         }
 
         .llm-image-preview-item:hover {
             transform: translateY(-2px);
-            border-color: var(--primary-color, #4a9eff);
+            border-color: var(--sage-accent);
         }
 
         .llm-image-source-badge {
@@ -387,7 +391,7 @@
             top: 6px;
             left: 6px;
             background: rgba(0, 0, 0, 0.7);
-            color: #fff;
+            color: var(--sage-text);
             font-size: 10px;
             padding: 2px 6px;
             border-radius: 999px;
@@ -421,14 +425,14 @@
         }
 
         .llm-remove-image-btn:hover {
-            background: rgba(244, 67, 54, 0.9);
+            background: color-mix(in srgb, var(--sage-error) 90%, transparent);
         }
 
         /* Input section */
         .llm-input-section {
             padding: 12px;
-            border-bottom: 1px solid var(--border-color, #444);
-            background: var(--bg-color-secondary, #2a2a2a);
+            border-bottom: 1px solid var(--sage-border);
+            background: var(--sage-surface-1);
         }
 
         .llm-input-header {
@@ -442,7 +446,7 @@
             margin: 0;
             font-size: 12px;
             font-weight: 500;
-            color: var(--fg-color, #ffffff);
+            color: var(--sage-text);
         }
 
         .llm-input-readonly {
@@ -455,16 +459,16 @@
 
         .llm-char-counter {
             font-size: 11px;
-            color: var(--text-secondary, #888);
+            color: var(--sage-text-muted);
         }
 
         .llm-textarea {
             width: 100%;
             padding: 10px;
-            background: var(--bg-color, #1a1a1a);
-            border: 1px solid var(--border-color, #444);
+            background: var(--sage-surface-0);
+            border: 1px solid var(--sage-border);
             border-radius: 4px;
-            color: var(--fg-color, #ffffff);
+            color: var(--sage-text);
             font-size: 12px;
             font-family: var(--font-family, 'Segoe UI', sans-serif);
             resize: vertical;
@@ -474,12 +478,12 @@
 
         .llm-textarea:focus {
             outline: none;
-            border-color: var(--primary-color, #4a9eff);
-            box-shadow: 0 0 0 2px rgba(74, 158, 255, 0.2);
+            border-color: var(--sage-accent);
+            box-shadow: 0 0 0 2px color-mix(in srgb, var(--sage-accent) 20%, transparent);
         }
 
         .llm-textarea::placeholder {
-            color: var(--text-secondary, #666);
+            color: var(--sage-text-muted);
         }
 
         .llm-action-buttons {
@@ -498,13 +502,13 @@
 
         .llm-skip-save-label {
             font-size: 11px;
-            color: var(--text-secondary, #999);
+            color: var(--sage-text-muted);
         }
 
         /* Compose template section */
         .llm-compose-template-section {
             margin: 12px 0;
-            border-top: 1px solid var(--border-color, #444);
+            border-top: 1px solid var(--sage-border);
         }
 
         .llm-compose-template-content {
@@ -519,8 +523,8 @@
 
         /* Advanced options section */
         .llm-advanced-section {
-            border-bottom: 1px solid var(--border-color, #444);
-            background: var(--bg-color-tertiary, #1e1e1e);
+            border-bottom: 1px solid var(--sage-border);
+            background: var(--sage-surface-0);
         }
 
         .llm-advanced-header {
@@ -529,12 +533,12 @@
             justify-content: space-between;
             align-items: center;
             cursor: pointer;
-            background: var(--bg-color-secondary, #2a2a2a);
+            background: var(--sage-surface-1);
             transition: background-color 0.2s;
         }
 
         .llm-advanced-header:hover {
-            background: var(--bg-color-tertiary, #333);
+            background: var(--sage-surface-0);
         }
         
         .llm-header-actions {
@@ -556,7 +560,7 @@
         .llm-collapse-btn {
             background: none;
             border: none;
-            color: var(--fg-color, #ffffff);
+            color: var(--sage-text);
             font-size: 11px;
             cursor: pointer;
             padding: 4px 8px;
@@ -570,30 +574,30 @@
         .llm-settings-overview {
             margin: 12px;
             padding: 12px;
-            border: 1px solid var(--border-color, #444);
+            border: 1px solid var(--sage-border);
             border-radius: 8px;
-            background: var(--bg-color-secondary, #232323);
+            background: var(--sage-surface-1);
         }
 
         .llm-settings-overview-title {
             margin: 0 0 4px 0;
             font-size: 13px;
             font-weight: 600;
-            color: var(--fg-color, #ffffff);
+            color: var(--sage-text);
         }
 
         .llm-settings-overview-description {
             margin: 0;
             font-size: 11px;
             line-height: 1.5;
-            color: var(--text-secondary, #aaaaaa);
+            color: var(--sage-text-muted);
         }
 
         .llm-settings-group {
             margin: 12px;
-            border: 1px solid var(--border-color, #444);
+            border: 1px solid var(--sage-border);
             border-radius: 8px;
-            background: var(--bg-color-secondary, #202020);
+            background: var(--sage-surface-1);
             overflow: hidden;
         }
 
@@ -607,7 +611,7 @@
             margin: 0 0 4px 0;
             font-size: 12px;
             font-weight: 600;
-            color: var(--primary-color, #4a9eff);
+            color: var(--sage-accent);
             text-transform: uppercase;
             letter-spacing: 0.04em;
         }
@@ -616,7 +620,7 @@
             margin: 0;
             font-size: 11px;
             line-height: 1.5;
-            color: var(--text-secondary, #999999);
+            color: var(--sage-text-muted);
         }
 
         .llm-settings-group-content {
@@ -627,15 +631,15 @@
             margin: 4px 0 0 0;
             font-size: 12px;
             font-style: italic;
-            color: var(--text-secondary, #999999);
+            color: var(--sage-text-muted);
         }
 
         .llm-provider-section-toggle-row {
             margin: 0 0 10px 0;
             padding: 8px;
-            border: 1px solid var(--border-color, #444);
+            border: 1px solid var(--sage-border);
             border-radius: 6px;
-            background: var(--bg-color, #1a1a1a);
+            background: var(--sage-surface-0);
         }
 
         .llm-provider-section-toggle-label,
@@ -644,15 +648,15 @@
             align-items: center;
             gap: 8px;
             font-size: 11px;
-            color: var(--text-secondary, #cccccc);
+            color: var(--sage-text-muted);
         }
 
         .llm-provider-option-control {
             margin-bottom: 10px;
             padding: 8px;
-            border: 1px solid var(--border-color, #3f3f3f);
+            border: 1px solid var(--sage-border);
             border-radius: 6px;
-            background: var(--bg-color, #202020);
+            background: var(--sage-surface-0);
         }
 
         .llm-provider-option-control.disabled {
@@ -682,8 +686,8 @@
             align-items: center;
             gap: 4px;
             padding: 6px 10px;
-            border-bottom: 1px solid var(--border-color, #444);
-            background: var(--bg-color-secondary, #2a2a2a);
+            border-bottom: 1px solid var(--sage-border);
+            background: var(--sage-surface-1);
             flex-shrink: 0;
         }
 
@@ -691,7 +695,7 @@
             flex: 1;
             font-size: 12px;
             font-weight: 500;
-            color: var(--fg-color, #ffffff);
+            color: var(--sage-text);
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
@@ -714,8 +718,8 @@
             flex-direction: column;
             gap: 4px;
             padding: 6px 10px;
-            border-bottom: 1px solid var(--border-color, #444);
-            background: var(--bg-color-tertiary, #1e1e1e);
+            border-bottom: 1px solid var(--sage-border);
+            background: var(--sage-surface-0);
         }
 
         /* Transcript (grows to fill space) */
@@ -730,7 +734,7 @@
         }
 
         .llm-history-empty {
-            color: var(--text-secondary, #666);
+            color: var(--sage-text-muted);
             font-style: italic;
             text-align: center;
             font-size: 12px;
@@ -760,19 +764,19 @@
         }
 
         .llm-history-user .llm-chat-bubble {
-            background: rgba(74, 158, 255, 0.18);
-            border: 1px solid rgba(74, 158, 255, 0.3);
+            background: color-mix(in srgb, var(--sage-accent) 18%, transparent);
+            border: 1px solid color-mix(in srgb, var(--sage-accent) 30%, transparent);
             border-bottom-right-radius: 4px;
         }
 
         .llm-history-assistant .llm-chat-bubble {
-            background: var(--bg-color-secondary, #2a2a2a);
-            border: 1px solid var(--border-color, #444);
+            background: var(--sage-surface-1);
+            border: 1px solid var(--sage-border);
             border-bottom-left-radius: 4px;
         }
 
         .llm-history-content {
-            color: var(--fg-color, #ffffff);
+            color: var(--sage-text);
             white-space: pre-wrap;
             word-wrap: break-word;
         }
@@ -787,7 +791,7 @@
 
         .llm-history-timestamp {
             font-size: 10px;
-            color: var(--text-secondary, #777);
+            color: var(--sage-text-muted);
         }
 
         .llm-history-images {
@@ -801,13 +805,13 @@
             max-width: 140px;
             max-height: 140px;
             border-radius: 6px;
-            border: 1px solid var(--border-color, #444);
+            border: 1px solid var(--sage-border);
         }
 
         .llm-history-delete {
             background: transparent;
             border: none;
-            color: #f44336;
+            color: var(--sage-error-fg);
             cursor: pointer;
             font-size: 14px;
             padding: 0 2px;
@@ -821,14 +825,14 @@
         }
 
         .llm-history-delete:hover {
-            color: #ff5252;
+            color: var(--sage-error-fg);
         }
 
         /* Thread list items */
         .llm-conversation-item {
             padding: 8px 10px;
-            background: var(--bg-color, #1a1a1a);
-            border: 1px solid var(--border-color, #444);
+            background: var(--sage-surface-0);
+            border: 1px solid var(--sage-border);
             border-radius: 4px;
             cursor: pointer;
             transition: border-color 0.2s, background-color 0.2s;
@@ -836,12 +840,12 @@
         }
 
         .llm-conversation-item:hover {
-            border-color: var(--primary-color, #4a9eff);
+            border-color: var(--sage-accent);
         }
 
         .llm-conversation-item.active {
-            border-color: var(--primary-color, #4a9eff);
-            background: rgba(74, 158, 255, 0.1);
+            border-color: var(--sage-accent);
+            background: color-mix(in srgb, var(--sage-accent) 10%, transparent);
         }
 
         .llm-conversation-item-header {
@@ -854,7 +858,7 @@
         .llm-conversation-item-title {
             font-size: 12px;
             font-weight: 500;
-            color: var(--fg-color, #ffffff);
+            color: var(--sage-text);
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
@@ -875,7 +879,7 @@
 
         .llm-conversation-item-meta {
             font-size: 10px;
-            color: var(--text-secondary, #999);
+            color: var(--sage-text-muted);
             margin-top: 3px;
         }
 
@@ -884,9 +888,9 @@
         .llm-expansion-scaffold {
             margin: 8px 10px;
             padding: 10px 14px;
-            border: 1px dashed rgba(74, 158, 255, 0.35);
+            border: 1px dashed color-mix(in srgb, var(--sage-accent) 35%, transparent);
             border-radius: 6px;
-            background: rgba(74, 158, 255, 0.04);
+            background: color-mix(in srgb, var(--sage-accent) 4%, transparent);
             flex-shrink: 0;
         }
 
@@ -900,7 +904,7 @@
         .llm-expansion-scaffold-title {
             font-size: 12px;
             font-weight: 600;
-            color: var(--fg-color, #ffffff);
+            color: var(--sage-text);
         }
 
         .llm-expansion-scaffold-badge {
@@ -910,15 +914,15 @@
             letter-spacing: 0.05em;
             padding: 2px 6px;
             border-radius: 999px;
-            background: rgba(74, 158, 255, 0.18);
-            color: #7db9ff;
-            border: 1px solid rgba(74, 158, 255, 0.3);
+            background: color-mix(in srgb, var(--sage-accent) 18%, transparent);
+            color: var(--sage-info-fg);
+            border: 1px solid color-mix(in srgb, var(--sage-accent) 30%, transparent);
         }
 
         .llm-expansion-scaffold-body {
             margin: 0;
             font-size: 11px;
-            color: var(--text-secondary, #999);
+            color: var(--sage-text-muted);
             line-height: 1.4;
         }
 
@@ -938,8 +942,8 @@
             margin: 12px 0 8px 0 !important;
             font-size: 12px !important;
             font-weight: 500;
-            color: var(--primary-color, #4a9eff);
-            border-bottom: 1px solid var(--border-color, #444);
+            color: var(--sage-accent);
+            border-bottom: 1px solid var(--sage-border);
             padding-bottom: 4px !important;
         }
 
@@ -969,20 +973,20 @@
         }
 
         .llm-btn-success-flash {
-            background: var(--success-color, #4caf50) !important;
-            color: #ffffff !important;
+            background: var(--success-color, var(--sage-accent)) !important;
+            color: var(--sage-text) !important;
         }
 
         .llm-ollama-settings {
             margin-top: 12px;
             padding-top: 12px;
-            border-top: 1px solid var(--border-color, #444);
+            border-top: 1px solid var(--sage-border);
         }
 
         .llm-lmstudio-settings {
             margin-top: 12px;
             padding-top: 12px;
-            border-top: 1px solid var(--border-color, #444);
+            border-top: 1px solid var(--sage-border);
         }
         
         /* Shared collapsible section styling */
@@ -1059,8 +1063,8 @@
             align-items: center;
             gap: 8px;
             padding: 8px 12px;
-            background: var(--bg-color, #1a1a1a);
-            border: 1px solid var(--border-color, #444);
+            background: var(--sage-surface-0);
+            border: 1px solid var(--sage-border);
             border-radius: 4px;
             cursor: pointer;
             transition: background-color 0.2s, border-color 0.2s;
@@ -1069,8 +1073,8 @@
         }
 
         .checkbox-container.llm-extra-checkbox:hover {
-            background: var(--bg-color-tertiary, #222);
-            border-color: var(--primary-color, #4a9eff);
+            background: var(--sage-surface-0);
+            border-color: var(--sage-accent);
         }
 
         /* Style the actual checkbox input inside */
@@ -1084,7 +1088,7 @@
         /* Style the label text inside */
         .checkbox-container.llm-extra-checkbox label {
             font-size: 13px;
-            color: var(--fg-color, #ffffff);
+            color: var(--sage-text);
             user-select: none;
             cursor: pointer;
             margin: 0;
@@ -1112,7 +1116,7 @@
         .slider-container.llm-slider-container label {
             font-size: 11px !important;
             margin-bottom: 0 !important;
-            color: var(--fg-color, #ffffff);
+            color: var(--sage-text);
         }
 
         .llm-slider,
@@ -1137,8 +1141,8 @@
             width: 10px;
             height: 10px;
             border-radius: 50%;
-            background: var(--bg-color, #1a1a1a);
-            border: 2px solid var(--primary-color, #4a9eff);
+            background: var(--sage-surface-0);
+            border: 2px solid var(--sage-accent);
             cursor: pointer;
             transition: border-color 0.2s, transform 0.1s, background-color 0.2s;
             margin-top: 0;
@@ -1146,8 +1150,8 @@
 
         .llm-slider::-webkit-slider-thumb:hover,
         input[type="range"].llm-slider::-webkit-slider-thumb:hover {
-            border-color: var(--primary-light, #5ba9ff);
-            background: var(--bg-color-secondary, #222);
+            border-color: var(--primary-light, var(--sage-accent));
+            background: var(--sage-surface-1);
             transform: scale(1.2);
         }
 
@@ -1156,16 +1160,16 @@
             width: 10px;
             height: 10px;
             border-radius: 50%;
-            background: var(--bg-color, #1a1a1a);
-            border: 2px solid var(--primary-color, #4a9eff);
+            background: var(--sage-surface-0);
+            border: 2px solid var(--sage-accent);
             cursor: pointer;
             transition: border-color 0.2s, transform 0.1s, background-color 0.2s;
         }
 
         .llm-slider::-moz-range-thumb:hover,
         input[type="range"].llm-slider::-moz-range-thumb:hover {
-            border-color: var(--primary-light, #5ba9ff);
-            background: var(--bg-color-secondary, #222);
+            border-color: var(--primary-light, var(--sage-accent));
+            background: var(--sage-surface-1);
             transform: scale(1.2);
         }
         
@@ -1174,7 +1178,7 @@
         input[type="range"].llm-slider::-moz-range-track {
             width: 100%;
             height: 2px;
-            background: var(--primary-color, #4a9eff);
+            background: var(--sage-accent);
             border: none;
             border-radius: 0;
         }
@@ -1184,7 +1188,7 @@
         input[type="range"].llm-slider::-webkit-slider-runnable-track {
             width: 100%;
             height: 2px;
-            background: var(--primary-color, #4a9eff);
+            background: var(--sage-accent);
             border: none;
             border-radius: 0;
         }
@@ -1195,25 +1199,25 @@
             text-align: right;
             font-size: 10px !important;
             font-weight: 500;
-            color: var(--primary-color, #4a9eff);
+            color: var(--sage-accent);
         }
 
         /* Number inputs */
         .llm-input {
             width: 100%;
             padding: 8px 12px;
-            background: var(--bg-color, #1a1a1a);
-            border: 1px solid var(--border-color, #444);
+            background: var(--sage-surface-0);
+            border: 1px solid var(--sage-border);
             border-radius: 4px;
-            color: var(--fg-color, #ffffff);
+            color: var(--sage-text);
             font-size: 14px;
             transition: border-color 0.2s, box-shadow 0.2s;
         }
 
         .llm-input:focus {
             outline: none;
-            border-color: var(--primary-color, #4a9eff);
-            box-shadow: 0 0 0 2px rgba(74, 158, 255, 0.2);
+            border-color: var(--sage-accent);
+            box-shadow: 0 0 0 2px color-mix(in srgb, var(--sage-accent) 20%, transparent);
         }
 
         /* Seed input container */
@@ -1303,42 +1307,42 @@
         .llm-phase-idle {
             background: rgba(153, 153, 153, 0.12);
             border-color: rgba(153, 153, 153, 0.35);
-            color: #aaaaaa;
+            color: var(--sage-text-muted);
         }
 
         .llm-phase-loading-model,
         .llm-phase-processing-prompt,
         .llm-phase-generating {
-            background: rgba(74, 158, 255, 0.15);
-            border-color: rgba(74, 158, 255, 0.35);
-            color: #6db1ff;
+            background: color-mix(in srgb, var(--sage-accent) 15%, transparent);
+            border-color: color-mix(in srgb, var(--sage-accent) 35%, transparent);
+            color: var(--sage-info-fg);
         }
 
         .llm-phase-complete {
-            background: rgba(107, 207, 127, 0.15);
-            border-color: rgba(107, 207, 127, 0.35);
-            color: #6bcf7f;
+            background: color-mix(in srgb, var(--sage-success) 15%, transparent);
+            border-color: color-mix(in srgb, var(--sage-success) 35%, transparent);
+            color: var(--sage-accent-fg);
         }
 
         .llm-phase-stopped {
-            background: rgba(255, 167, 38, 0.15);
-            border-color: rgba(255, 167, 38, 0.35);
-            color: #ffb74d;
+            background: color-mix(in srgb, var(--sage-warning) 15%, transparent);
+            border-color: color-mix(in srgb, var(--sage-warning) 35%, transparent);
+            color: var(--sage-warning-fg);
         }
 
         .llm-phase-error {
-            background: rgba(244, 67, 54, 0.15);
-            border-color: rgba(244, 67, 54, 0.35);
-            color: #f44336;
+            background: color-mix(in srgb, var(--sage-error) 15%, transparent);
+            border-color: color-mix(in srgb, var(--sage-error) 35%, transparent);
+            color: var(--sage-error-fg);
         }
 
         .llm-response-display {
             flex: 1;
             padding: 10px;
-            background: var(--bg-color-tertiary, #1e1e1e);
-            border: 1px solid var(--border-color, #444);
+            background: var(--sage-surface-0);
+            border: 1px solid var(--sage-border);
             border-radius: 4px;
-            color: var(--fg-color, #ffffff);
+            color: var(--sage-text);
             font-size: 12px;
             font-family: var(--font-family-mono, 'Consolas', monospace);
             line-height: 1.5;
@@ -1362,9 +1366,9 @@
 
         .llm-reasoning-panel {
             padding: 10px;
-            border: 1px solid rgba(107, 207, 127, 0.28);
+            border: 1px solid color-mix(in srgb, var(--sage-success) 28%, transparent);
             border-radius: 6px;
-            background: rgba(107, 207, 127, 0.08);
+            background: color-mix(in srgb, var(--sage-success) 8%, transparent);
         }
 
         .llm-reasoning-panel[hidden] {
@@ -1383,7 +1387,7 @@
             font-weight: 700;
             letter-spacing: 0.08em;
             text-transform: uppercase;
-            color: #8ee39f;
+            color: var(--sage-accent-fg);
         }
 
         .llm-reasoning-badge {
@@ -1391,13 +1395,13 @@
             font-weight: 700;
             padding: 2px 8px;
             border-radius: 999px;
-            color: #d6f8dd;
-            background: rgba(107, 207, 127, 0.16);
-            border: 1px solid rgba(107, 207, 127, 0.28);
+            color: var(--sage-text);
+            background: color-mix(in srgb, var(--sage-success) 16%, transparent);
+            border: 1px solid color-mix(in srgb, var(--sage-success) 28%, transparent);
         }
 
         .llm-reasoning-content {
-            color: #cdeed2;
+            color: var(--sage-text);
             white-space: pre-wrap;
             word-break: break-word;
             line-height: 1.55;
@@ -1412,15 +1416,15 @@
         }
 
         .llm-response-answer {
-            color: var(--fg-color, #ffffff);
+            color: var(--sage-text);
             white-space: pre-wrap;
             word-break: break-word;
             line-height: 1.55;
         }
 
         .llm-response-display.generating {
-            border-color: var(--primary-color, #4a9eff);
-            box-shadow: 0 0 0 2px rgba(74, 158, 255, 0.1);
+            border-color: var(--sage-accent);
+            box-shadow: 0 0 0 2px color-mix(in srgb, var(--sage-accent) 10%, transparent);
         }
 
         /* Model-loading overlay shown inside the response display */
@@ -1431,15 +1435,15 @@
             justify-content: center;
             gap: 10px;
             padding: 24px 12px;
-            color: var(--text-secondary, #aaa);
+            color: var(--sage-text-muted);
             font-size: 12px;
         }
 
         .llm-loading-spinner {
             width: 28px;
             height: 28px;
-            border: 3px solid rgba(74, 158, 255, 0.2);
-            border-top-color: #4a9eff;
+            border: 3px solid color-mix(in srgb, var(--sage-accent) 20%, transparent);
+            border-top-color: var(--sage-accent);
             border-radius: 50%;
             animation: llm-spin 0.8s linear infinite;
         }
@@ -1449,12 +1453,12 @@
         }
 
         .llm-loading-label {
-            color: #4a9eff;
+            color: var(--sage-info-fg);
             font-weight: 500;
         }
 
         .llm-placeholder {
-            color: var(--text-secondary, #666);
+            color: var(--sage-text-muted);
             font-style: italic;
             text-align: center;
             margin-top: 12px;
@@ -1494,39 +1498,39 @@
         }
 
         .llm-btn:focus {
-            outline: 2px solid var(--primary-color, #4a9eff);
+            outline: 2px solid var(--sage-accent);
             outline-offset: 2px;
         }
 
         .llm-btn-primary {
-            background: linear-gradient(135deg, #4a9eff 0%, #357abd 100%);
+            background: var(--sage-accent);
             color: white;
         }
 
         .llm-btn-primary:hover:not(:disabled) {
-            background: linear-gradient(135deg, #5ba9ff 0%, #4686c9 100%);
-            box-shadow: 0 2px 6px rgba(74, 158, 255, 0.4);
+            background: var(--sage-accent);
+            box-shadow: 0 2px 6px color-mix(in srgb, var(--sage-accent) 40%, transparent);
         }
 
         .llm-btn-secondary {
-            background: var(--bg-color-secondary, #2a2a2a);
-            color: var(--fg-color, #ffffff);
-            border: 1px solid var(--border-color, #444);
+            background: var(--sage-surface-1);
+            color: var(--sage-text);
+            border: 1px solid var(--sage-border);
         }
 
         .llm-btn-secondary:hover:not(:disabled) {
-            background: var(--bg-color-tertiary, #333);
+            background: var(--sage-surface-0);
             box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
         }
 
         .llm-btn-danger {
-            background: linear-gradient(135deg, #f44336 0%, #d32f2f 100%);
+            background: var(--sage-error);
             color: white;
         }
 
         .llm-btn-danger:hover:not(:disabled) {
-            background: linear-gradient(135deg, #f55549 0%, #e13f38 100%);
-            box-shadow: 0 2px 6px rgba(244, 67, 54, 0.4);
+            background: var(--sage-error);
+            box-shadow: 0 2px 6px color-mix(in srgb, var(--sage-error) 40%, transparent);
         }
 
         .llm-btn-small {
@@ -1551,35 +1555,35 @@
         }
 
         .llm-status-info {
-            background: rgba(74, 158, 255, 0.15);
-            border: 1px solid rgba(74, 158, 255, 0.3);
-            color: #4a9eff;
+            background: color-mix(in srgb, var(--sage-accent) 15%, transparent);
+            border: 1px solid color-mix(in srgb, var(--sage-accent) 30%, transparent);
+            color: var(--sage-info-fg);
         }
 
         .llm-status-success {
-            background: rgba(107, 207, 127, 0.15);
-            border: 1px solid rgba(107, 207, 127, 0.3);
-            color: #6bcf7f;
+            background: color-mix(in srgb, var(--sage-success) 15%, transparent);
+            border: 1px solid color-mix(in srgb, var(--sage-success) 30%, transparent);
+            color: var(--sage-accent-fg);
         }
 
         .llm-status-warning {
-            background: rgba(255, 167, 38, 0.15);
-            border: 1px solid rgba(255, 167, 38, 0.3);
-            color: #ffa726;
+            background: color-mix(in srgb, var(--sage-warning) 15%, transparent);
+            border: 1px solid color-mix(in srgb, var(--sage-warning) 30%, transparent);
+            color: var(--sage-warning-fg);
         }
 
         .llm-status-error {
-            background: rgba(244, 67, 54, 0.15);
-            border: 1px solid rgba(244, 67, 54, 0.3);
-            color: #f44336;
+            background: color-mix(in srgb, var(--sage-error) 15%, transparent);
+            border: 1px solid color-mix(in srgb, var(--sage-error) 30%, transparent);
+            color: var(--sage-error-fg);
         }
 
         /* Progress bar */
         .llm-progress-bar-container {
             margin-top: 8px;
             height: 4px;
-            background: rgba(74, 158, 255, 0.1);
-            border: 1px solid rgba(74, 158, 255, 0.25);
+            background: color-mix(in srgb, var(--sage-accent) 10%, transparent);
+            border: 1px solid color-mix(in srgb, var(--sage-accent) 25%, transparent);
             border-radius: 2px;
             overflow: hidden;
             display: none;
@@ -1588,14 +1592,14 @@
         .llm-progress-bar-fill {
             height: 100%;
             width: 0%;
-            background: linear-gradient(90deg, #4a9eff 0%, #6db1ff 100%);
+            background: var(--sage-accent);
             transition: width 0.3s ease;
-            box-shadow: 0 0 8px rgba(74, 158, 255, 0.5);
+            box-shadow: 0 0 8px color-mix(in srgb, var(--sage-accent) 50%, transparent);
         }
 
         .llm-export-menu {
-            background: var(--bg-color-secondary, #2a2a2a);
-            border: 1px solid var(--border-color, #444);
+            background: var(--sage-surface-1);
+            border: 1px solid var(--sage-border);
             border-radius: 4px;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
             z-index: 1000;
@@ -1612,7 +1616,7 @@
             padding: 10px 14px;
             background: transparent;
             border: none;
-            color: var(--fg-color, #ffffff);
+            color: var(--sage-text);
             font-size: 13px;
             text-align: left;
             cursor: pointer;
@@ -1620,7 +1624,7 @@
         }
 
         .llm-export-menu-item:hover {
-            background: var(--bg-color-tertiary, #333);
+            background: var(--sage-surface-0);
         }
 
         .llm-export-menu-item:first-child {
@@ -1656,8 +1660,8 @@
         }
 
         .llm-modal-content {
-            background: var(--bg-color-secondary, #2a2a2a);
-            border: 1px solid var(--border-color, #444);
+            background: var(--sage-surface-1);
+            border: 1px solid var(--sage-border);
             border-radius: 8px;
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
             max-width: 500px;
@@ -1676,7 +1680,7 @@
             margin: 0 0 20px 0;
             font-size: 18px;
             font-weight: 600;
-            color: var(--fg-color, #ffffff);
+            color: var(--sage-text);
         }
 
         .llm-modal-close {
@@ -1685,7 +1689,7 @@
             right: 16px;
             background: transparent;
             border: none;
-            color: var(--text-secondary, #999);
+            color: var(--sage-text-muted);
             font-size: 28px;
             line-height: 1;
             cursor: pointer;
@@ -1700,8 +1704,8 @@
         }
 
         .llm-modal-close:hover {
-            background: var(--bg-color-tertiary, #333);
-            color: var(--fg-color, #ffffff);
+            background: var(--sage-surface-0);
+            color: var(--sage-text);
         }
 
         .llm-modal-buttons {
@@ -1724,14 +1728,14 @@
             display: flex;
             gap: 8px;
             margin-bottom: 20px;
-            border-bottom: 1px solid var(--border-color, #444);
+            border-bottom: 1px solid var(--sage-border);
             padding-bottom: 8px;
         }
 
         .llm-tab-btn {
             background: transparent;
             border: none;
-            color: var(--text-secondary, #999);
+            color: var(--sage-text-muted);
             font-size: 14px;
             font-weight: 500;
             cursor: pointer;
@@ -1741,14 +1745,14 @@
         }
 
         .llm-tab-btn:hover {
-            background: var(--bg-color-tertiary, #333);
-            color: var(--fg-color, #ffffff);
+            background: var(--sage-surface-0);
+            color: var(--sage-text);
         }
 
         .llm-tab-btn.active {
-            background: var(--bg-color-tertiary, #333);
-            color: var(--primary-color, #4a9eff);
-            border-bottom: 2px solid var(--primary-color, #4a9eff);
+            background: var(--sage-surface-0);
+            color: var(--sage-accent);
+            border-bottom: 2px solid var(--sage-accent);
         }
 
         .llm-tab-content {
@@ -1770,15 +1774,15 @@
             display: flex;
             gap: 12px;
             padding: 16px;
-            background: var(--bg-color, #1a1a1a);
-            border: 1px solid var(--border-color, #444);
+            background: var(--sage-surface-0);
+            border: 1px solid var(--sage-border);
             border-radius: 6px;
             transition: border-color 0.2s;
         }
 
         .llm-preset-item:hover,
         .llm-system-prompt-item:hover {
-            border-color: var(--primary-color, #4a9eff);
+            border-color: var(--sage-accent);
         }
 
         .llm-preset-info,
@@ -1790,7 +1794,7 @@
         .llm-system-prompt-item-name {
             font-size: 15px;
             font-weight: 500;
-            color: var(--fg-color, #ffffff);
+            color: var(--sage-text);
             margin-bottom: 4px;
             display: flex;
             align-items: center;
@@ -1799,8 +1803,8 @@
 
         .llm-builtin-badge {
             display: inline-block;
-            background: rgba(74, 158, 255, 0.2);
-            color: var(--primary-color, #4a9eff);
+            background: color-mix(in srgb, var(--sage-accent) 20%, transparent);
+            color: var(--sage-accent);
             font-size: 11px;
             font-weight: 600;
             padding: 2px 8px;
@@ -1811,12 +1815,12 @@
 
         .llm-override-badge {
             background: rgba(255, 193, 7, 0.2);
-            color: var(--warning-color, #ffc107);
+            color: var(--sage-warning-fg);
         }
 
         .llm-info-message {
-            background: rgba(74, 158, 255, 0.1);
-            border-left: 3px solid var(--primary-color, #4a9eff);
+            background: color-mix(in srgb, var(--sage-accent) 10%, transparent);
+            border-left: 3px solid var(--sage-accent);
             padding: 12px;
             margin: 12px 0;
             border-radius: 4px;
@@ -1825,13 +1829,13 @@
         }
 
         .llm-info-message strong {
-            color: var(--primary-color, #4a9eff);
+            color: var(--sage-accent);
         }
 
         .llm-preset-item-desc,
         .llm-system-prompt-item-desc {
             font-size: 13px;
-            color: var(--text-secondary, #999);
+            color: var(--sage-text-muted);
             line-height: 1.4;
         }
 
@@ -1853,3 +1857,10 @@
                 width: 100%;
             }
         }
+
+.llm-subtab-btn:focus-visible,
+.llm-btn:focus-visible,
+.llm-dialog-button:focus-visible {
+    outline: 2px solid var(--sage-focus);
+    outline-offset: 2px;
+}

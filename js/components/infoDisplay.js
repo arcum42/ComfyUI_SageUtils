@@ -282,6 +282,9 @@ function toggleImageExpand(img) {
         // Expand the image
         const backdrop = document.createElement('div');
         backdrop.className = 'sage-backdrop';
+        backdrop.setAttribute('role', 'dialog');
+        backdrop.setAttribute('aria-modal', 'true');
+        backdrop.setAttribute('aria-label', 'Expanded image (press Escape to close)');
         
         const expandedImg = document.createElement('img');
         expandedImg.src = img.src;
@@ -295,6 +298,7 @@ function toggleImageExpand(img) {
                 document.body.removeChild(backdrop);
                 img.expanded = false;
                 delete img.backdrop;
+                document.removeEventListener('keydown', handleEsc);
             }
         });
         
