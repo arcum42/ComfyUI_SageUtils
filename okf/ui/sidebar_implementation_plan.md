@@ -337,7 +337,7 @@ Each increment should include relevant documentation updates and a short before/
 - No known regressions remain in tab visibility settings, saved data, dialogs, feature actions, or cross-tab handoffs.
 
 ### Phase 5 status: command palette
-Done: `openCommandPalette(commands)` (listbox, arrow keys, Enter, Escape via modalA11y), opened by a header button or Ctrl+Shift+K inside the sidebar. Lists tab navigation and Open Settings. Browser-verified. Not done: recents/favorites entries, per-tab action registration, Files/Gallery/prompts recents, taskStatus adoption in remaining flows.
+Done: `openCommandPalette(commands)` (listbox, arrow keys, Enter, Escape via modalA11y), opened by a header button or Ctrl+Shift+K inside the sidebar. Lists tab navigation and Open Settings. Browser-verified. The items this once listed as not done (recents entries, per-tab registration, prompts/Gallery recents, task status adoption) are covered in the later Phase 5 sections below.
 
 ### Phase 5 status: task status adoption
 - Scan dialog: failures now show `createTaskStatus` fail state with Retry; browser-verified with a stubbed 500.
