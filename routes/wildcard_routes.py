@@ -262,7 +262,7 @@ def register_routes(routes_instance):
 
     @routes_instance.post('/sage_utils/wildcard/file/save')
     @route_error_handler
-    @validate_json_body('filename', 'content')
+    @validate_json_body('filename')
     async def save_wildcard_file(request):
         """
         Saves content to a wildcard file.
@@ -280,7 +280,9 @@ def register_routes(routes_instance):
             
             data = request.json_data
             filename = data.get('filename', '')
-            content = data.get('content', '')
+            content = data.get('content')
+            if not isinstance(content, str):
+                return error_response("Content must be text", status=400)
             
             if not filename:
                 return error_response("Filename is required", status=400)

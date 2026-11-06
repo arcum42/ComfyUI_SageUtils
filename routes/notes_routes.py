@@ -219,7 +219,7 @@ def register_routes(routes_instance):
 
     @routes_instance.post('/sage_utils/save_note')
     @route_error_handler
-    @validate_json_body('filename', 'content')
+    @validate_json_body('filename')
     async def save_note(request):
         """
         Saves content to a notes file.
@@ -237,7 +237,9 @@ def register_routes(routes_instance):
             
             data = request.json_data
             filename = data.get('filename', '').strip()
-            content = data.get('content', '')
+            content = data.get('content')
+            if not isinstance(content, str):
+                return error_response("Content must be text", status=400)
             
             # Validate the file path
             is_valid, notes_file_path, error_msg = _validate_notes_path(path_manager, filename)

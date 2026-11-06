@@ -136,6 +136,11 @@
   overflow: auto;
 }
 
+.generic-file-preview .preview-container.markdown-overlay {
+  position: static;
+  z-index: auto;
+}
+
 .file-preview-empty { color: var(--sage-text-muted); }
 
 .file-preview-status {

@@ -127,6 +127,9 @@ const saveBtn = createConfigButton('save', {
 });
 ```
 
+The click handler is attached even when a button starts disabled, so it works
+when the button is later enabled.
+
 ## Icon Buttons
 
 ```javascript

@@ -114,7 +114,7 @@ export function createButton(text, options = {}) {
     Object.assign(button.style, style);
     
     // Add click handler
-    if (onClick && !disabled) {
+    if (onClick) {
         button.addEventListener('click', onClick);
     }
     

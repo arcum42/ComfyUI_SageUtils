@@ -35,7 +35,7 @@ The components system includes two main categories:
 - `createButton(text, options)`: Main button creation function with extensive customization
   - **Parameters**: Button text, options object (variant, size, icon, onClick, etc.)
   - **Returns**: Configured button element
-  - **Features**: Variants, sizes, icons, tooltips, disabled state, custom styles
+  - **Features**: Variants, sizes, icons, tooltips, disabled state, custom styles. Click handlers remain attached when an initially disabled button is enabled.
   
 - `createIconButton(icon, options)`: Icon-only buttons for compact UI
   - **Parameters**: Icon character/emoji, options object
