@@ -1,3 +1,56 @@
+.files-chooser {
+    padding: 10px 12px;
+    background: var(--sage-surface-1);
+    border: 1px solid var(--sage-border);
+    border-radius: var(--sage-radius-lg);
+}
+
+.files-chooser > summary {
+    color: var(--sage-accent-fg);
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.files-chooser > summary:focus-visible,
+.markdown-toolbar-button:focus-visible {
+    outline: 2px solid var(--sage-focus);
+    outline-offset: 2px;
+}
+
+.files-chooser[open] > summary {
+    margin-bottom: 10px;
+}
+
+.markdown-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-bottom: 8px;
+}
+
+.markdown-toolbar[hidden] {
+    display: none;
+}
+
+.markdown-toolbar-button {
+    min-width: 32px;
+    min-height: 32px;
+    padding: 4px 6px;
+    background: var(--sage-surface-2);
+    color: var(--sage-text);
+    border: 1px solid var(--sage-border);
+    border-radius: var(--sage-radius);
+    cursor: pointer;
+}
+
+.markdown-toolbar-button:hover {
+    background: var(--sage-surface-0);
+}
+
+.markdown-toolbar-button--bold { font-weight: bold; }
+.markdown-toolbar-button--italic { font-style: italic; }
+.markdown-toolbar-button--strike { text-decoration: line-through; }
+
 .folder-selector {
     padding: 10px 12px;
     background: var(--sage-surface-1);

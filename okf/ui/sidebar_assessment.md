@@ -40,7 +40,7 @@ The six registered tabs are:
 | Tab | Current responsibility |
 |---|---|
 | Models | Browse and select models; filter, scan, refresh, review metadata, and run model-related actions. Implemented in [`js/sidebar/modelsTabV2.js`](../../js/sidebar/modelsTabV2.js) and [`js/file/modelBrowser.js`](../../js/file/modelBrowser.js). |
-| Files | Browse and edit files in the Notes and Wildcards folders, with preview and editor views. Implemented in [`js/sidebar/filesTab.js`](../../js/sidebar/filesTab.js) and [`js/file/fileManager.js`](../../js/file/fileManager.js). |
+| Files | Browse and edit files in the Notes and Wildcards folders, with preview and editor views. The file chooser is expanded by default and can be collapsed; Markdown files have a formatting toolbar in the editor. Implemented in [`js/sidebar/filesTab.js`](../../js/sidebar/filesTab.js), [`js/sidebar/markdownToolbar.js`](../../js/sidebar/markdownToolbar.js), and [`js/file/fileManager.js`](../../js/file/fileManager.js). |
 | Search | Search Civitai models, filter results, paginate, and download model files. Implemented in [`js/sidebar/civitaiSearchTab.js`](../../js/sidebar/civitaiSearchTab.js). |
 | Gallery | Browse image folders, view metadata, edit dataset text, and perform batch text operations. Implemented in [`js/sidebar/imageGalleryTab.js`](../../js/sidebar/imageGalleryTab.js). |
 | Prompts | Generate prompts, use wildcard/tag libraries, and manage saved prompts. Implemented in [`js/sidebar/promptBuilderTab.js`](../../js/sidebar/promptBuilderTab.js). |

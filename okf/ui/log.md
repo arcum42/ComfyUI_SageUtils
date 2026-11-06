@@ -14,6 +14,7 @@ timestamp: 2026-07-01T00:00:00Z
 - Migrated all `BUTTON_COMPONENT_GUIDE.md` content into OKF and redirected the legacy doc to the OKF guide.
 
 ## 2026-11-06
+- Added an expanded-by-default collapsible Files chooser and a Markdown editor formatting toolbar. Discarded stale editor loads when switching files or folders.
 - Added a code-based assessment of the sidebar GUI architecture, current issues, and visual and functional improvement opportunities.
 - Added a phased implementation plan for sidebar lifecycle, accessibility, visual consistency, workflow improvements, and performance validation.
 - Recorded Phase 0 live UI, theme, responsive-width, resource-ownership, and JavaScript test baseline findings in the sidebar modernization plan; expanded the assessment with cleanup risks found during the inventory.

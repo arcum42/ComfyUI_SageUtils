@@ -32,6 +32,7 @@ export class GenericFileEditor {
         };
         
         this.currentFile = null;
+        this.loadGeneration = 0;
         this.isModified = false;
         this.container = null;
         this.textEditor = null;
@@ -232,11 +233,13 @@ export class GenericFileEditor {
      * Loads a file for editing
      * @param {string} filename - Name of the file to load
      * @param {string} apiEndpoint - API endpoint to load the file from
+     * @returns {Promise<boolean>} Whether this load completed and is still current
      */
     async loadFile(filename, apiEndpoint = null) {
+        const generation = ++this.loadGeneration;
         if (!filename) {
             this.clearEditor();
-            return;
+            return false;
         }
 
         try {
@@ -251,7 +254,7 @@ export class GenericFileEditor {
                 this.updateFileDisplay(filename);
                 this.setModified(false);
                 this.callbacks.onLoad(filename, '');
-                return;
+                return true;
             }
 
             // Load file content
@@ -273,6 +276,9 @@ export class GenericFileEditor {
             }
 
             const result = await response.json();
+            if (generation !== this.loadGeneration) {
+                return false;
+            }
             
             // Update editor
             this.currentFile = filename;
@@ -286,10 +292,15 @@ export class GenericFileEditor {
             this.autoResize(this.textEditor);
             
             this.callbacks.onLoad(filename, result.content || '');
+            return true;
             
         } catch (error) {
-            this.callbacks.onError(error);
+            if (generation !== this.loadGeneration) {
+                return false;
+            }
             this.clearEditor();
+            this.callbacks.onError(error);
+            return false;
         }
     }
 
@@ -525,6 +536,7 @@ export class GenericFileEditor {
      * Clears the editor and resets state
      */
     clearEditor() {
+        this.loadGeneration++;
         this.currentFile = null;
         this.textEditor.value = '';
         this.textEditor.placeholder = 'Select a file to edit or create a new one...';
@@ -539,6 +551,7 @@ export class GenericFileEditor {
      */
     createNewFile(filename) {
         console.log('FileEditor: Creating new file:', filename);
+        this.loadGeneration++;
         this.currentFile = filename;
         
         // Set a minimal default content to avoid empty string validation issues
@@ -591,6 +604,7 @@ export class GenericFileEditor {
      * @param {string} newConfigKey - New configuration key
      */
     changeConfiguration(newConfigKey) {
+        this.loadGeneration++;
         this.configKey = newConfigKey;
         this.config = FILE_BROWSER_CONFIGS[newConfigKey];
         if (!this.config) {
@@ -617,6 +631,7 @@ export class GenericFileEditor {
      * Destroys the editor and cleans up
      */
     destroy() {
+        this.loadGeneration++;
         if (this.container && this.container.parentNode) {
             this.container.parentNode.removeChild(this.container);
         }

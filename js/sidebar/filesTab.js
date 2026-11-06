@@ -7,6 +7,7 @@ import { registerCommandProvider } from '../shared/commandRegistry.js';
 import { GenericFileManager } from "../file/fileManager.js";
 import { createSelect } from "../components/formElements.js";
 import { loadSidebarStyle } from './sidebarStyles.js';
+import { createMarkdownToolbar } from './markdownToolbar.js';
 
 /**
  * Creates a folder selector for the Files tab
@@ -143,6 +144,7 @@ export function createFilesTab(container) {
     const status = createStatusDisplay();
 
     // Create file manager with notes configuration
+    let markdownToolbar;
     const fileManager = new GenericFileManager('notes', {
         showPreview: true,
         showEditor: true,
@@ -151,25 +153,30 @@ export function createFilesTab(container) {
         defaultTab: 'preview',
         callbacks: {
             onFileSelect: (filename) => {
+                markdownToolbar.update(fileManager.fileEditor.getCurrentFile() === filename ? filename : null);
                 status.setStatus(`Loaded: ${filename}`);
             },
             onFileCreate: (filename) => {
+                markdownToolbar.update(filename);
                 status.setStatus(`Creating new file: ${filename}`);
             },
             onFileSave: (filename, content) => {
                 if (content !== null) {
                     status.setStatus(`Saved: ${filename}`);
                 } else {
+                    markdownToolbar.update(null);
                     status.setStatus(`Deleted: ${filename}`);
                 }
             },
             onFileCancel: () => {
+                markdownToolbar.update(null);
                 status.setStatus('Edit cancelled');
             },
             onContentChange: (content) => {
                 // Optional: Could show character count or other stats
             },
             onFileLoad: (filename, content) => {
+                markdownToolbar.update(filename);
                 if (content === '') {
                     status.setStatus(`New file: ${filename}`);
                 } else {
@@ -177,10 +184,13 @@ export function createFilesTab(container) {
                 }
             },
             onError: (error, source) => {
+                const editor = fileManager.fileEditor;
+                markdownToolbar.update(editor.textEditor.disabled ? null : editor.getCurrentFile());
                 status.setStatus(`Error in ${source}: ${error.message}`, true);
                 console.error(`Notes Tab ${source} Error:`, error);
             },
             onConfigChange: (newConfigKey) => {
+                markdownToolbar.update(null);
                 status.setStatus(`Switched to ${newConfigKey} folder`);
             },
             browser: {
@@ -202,11 +212,18 @@ export function createFilesTab(container) {
         status.setStatus(`Switched to ${folderKey} folder`);
     });
     
-    // Add folder selector to container
-    container.appendChild(folderSelector.container);
-
     // Render the file manager
     const fileManagerComponents = fileManager.render(container);
+    const chooser = document.createElement('details');
+    chooser.className = 'files-chooser';
+    chooser.open = true;
+    const chooserSummary = document.createElement('summary');
+    chooserSummary.textContent = 'Choose a file';
+    chooser.appendChild(chooserSummary);
+    chooser.appendChild(folderSelector.container);
+    chooser.appendChild(fileManager.fileBrowser.container.parentElement);
+    fileManagerComponents.container.prepend(chooser);
+    markdownToolbar = createMarkdownToolbar(fileManager.fileEditor);
 
     // Add status bar at the end
     container.appendChild(status.container);

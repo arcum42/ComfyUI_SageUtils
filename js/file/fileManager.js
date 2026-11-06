@@ -248,7 +248,10 @@ export class GenericFileManager {
         try {
             // Load file in editor if available
             if (this.fileEditor) {
-                await this.fileEditor.loadFile(filename);
+                const loaded = await this.fileEditor.loadFile(filename);
+                if (!loaded) {
+                    return;
+                }
             }
 
             // Update preview if available
