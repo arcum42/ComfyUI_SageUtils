@@ -314,6 +314,15 @@ Measured in the running ComfyUI page with a 400 px host, headless Chromium via C
 - Hidden-tab policy: document-level listeners must act only when their tab is displayed and must be removed in `destroy`. The LLM paste handler now ignores pastes when its vision section is not displayed; the dead `setupClipboardPasteHandler` was removed; the history export menu closes on Escape and cleans up its listeners.
 - Browser-verified: dialog focus trap, Escape, focus restore, and overlay helper auto-release. Still manual: Settings-UI tab visibility reload and Search lightbox close.
 
+## Leftover cleanup status
+
+- Dialogs: `confirmDialog`, `alertDialog` and `promptDialog` render messages as plain text (no HTML interpolation); verified an `<img onerror>` message stays inert.
+- Handoff: if the destination tab is disabled, the pending text is discarded and a warning toast says to enable the tab (`discardPendingForTab` on the bus). Not browser-tested end to end.
+- 240 px: Prompt Builder tag-library buttons wrap, seed input has padding, Models info block wraps; no unintended clips at 240 px or 200 px.
+- Performance: `updateState` uses structural sharing instead of four deep JSON clones. Warm-cache long tasks in the first 6 s dropped from about 1.5 s to about 0.7 s; a cold run still shows one task of about 950 ms.
+- Palette: Gallery (reload, Notes/Input/Output, recent folders), Files (Notes/Wildcards), Prompts and LLM (focus prompt) contribute commands; providers unregister on tab destroy.
+- Not done: offline and slow-provider scenarios, and the manual checks (Settings-UI tab visibility, Search lightbox close).
+
 ## Release increments
 
 Keep the work reviewable in these increments:

@@ -201,6 +201,18 @@ export function createDialog(options = {}) {
 }
 
 /**
+ * Build a dialog message as plain text (never HTML), so remote or user data cannot inject markup
+ * @param {string} message
+ * @returns {HTMLParagraphElement}
+ */
+function createMessageElement(message) {
+    const p = document.createElement('p');
+    p.className = 'dialog-message';
+    p.textContent = String(message ?? '');
+    return p;
+}
+
+/**
  * Show a confirmation dialog
  * @param {string} message - Confirmation message
  * @param {string} title - Dialog title
@@ -210,7 +222,7 @@ export function confirmDialog(message, title = 'Confirm') {
     return new Promise((resolve) => {
         const dialog = createDialog({
             title,
-            content: `<p class="dialog-message">${message}</p>`,
+            content: createMessageElement(message),
             width: '400px',
             onClose: () => resolve(false)
         });
@@ -239,7 +251,7 @@ export function alertDialog(message, title = 'Alert') {
     return new Promise((resolve) => {
         const dialog = createDialog({
             title,
-            content: `<p class="dialog-message">${message}</p>`,
+            content: createMessageElement(message),
             width: '400px',
             onClose: () => resolve()
         });
@@ -268,7 +280,7 @@ export function promptDialog(message, defaultValue = '', title = 'Input') {
         input.className = 'dialog-input';
         
         const content = document.createElement('div');
-        content.innerHTML = `<p class="dialog-message">${message}</p>`;
+        content.appendChild(createMessageElement(message));
         content.appendChild(input);
         
         const dialog = createDialog({

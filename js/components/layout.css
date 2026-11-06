@@ -192,6 +192,8 @@
 
 .sage-info-block {
   margin-bottom: 12px;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .sage-info-label {

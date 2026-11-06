@@ -89,6 +89,21 @@ class CrossTabMessaging {
         }, 0);
     }
 
+    /**
+     * Drop held handoffs for a destination tab that cannot be shown (e.g. disabled in settings)
+     * @param {string} tabId - Destination tab id as used in PENDING_SWITCH_TARGETS values
+     * @returns {number} How many held messages were discarded
+     */
+    discardPendingForTab(tabId) {
+        let dropped = 0;
+        Object.entries(PENDING_SWITCH_TARGETS).forEach(([messageType, target]) => {
+            if (target !== tabId) return;
+            dropped += (this.pending.get(messageType) || []).length;
+            this.pending.delete(messageType);
+        });
+        return dropped;
+    }
+
     setDebug(enabled) { this.debug = enabled; }
     getHistory(count = 10) { return this.messageQueue.slice(-count); }
     clearAll() { this.listeners.clear(); }

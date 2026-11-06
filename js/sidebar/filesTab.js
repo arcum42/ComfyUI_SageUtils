@@ -3,6 +3,7 @@
  * Handles file editing, viewing, and management using generic components with folder navigation
  */
 
+import { registerCommandProvider } from '../shared/commandRegistry.js';
 import { GenericFileManager } from "../file/fileManager.js";
 import { createSelect } from "../components/formElements.js";
 import { loadSidebarStyle } from './sidebarStyles.js';
@@ -238,12 +239,22 @@ export function createFilesTab(container) {
     };
     document.addEventListener('keydown', handleKeydown);
 
+    const openFolder = (folderKey) => {
+        folderSelector.setFolder(folderKey);
+        folderSelector.dropdown.dispatchEvent(new Event('change'));
+    };
+    const unregisterCommands = registerCommandProvider(() => [
+        { id: 'files-notes', tab: 'notes', label: 'Files: Open Notes folder', run: () => openFolder('notes') },
+        { id: 'files-wildcards', tab: 'notes', label: 'Files: Open Wildcards folder', run: () => openFolder('wildcards') }
+    ]);
+
     let isDestroyed = false;
     const destroy = () => {
         if (isDestroyed) {
             return;
         }
         isDestroyed = true;
+        unregisterCommands();
         document.removeEventListener('keydown', handleKeydown);
         status.destroy();
         fileManager.destroy();

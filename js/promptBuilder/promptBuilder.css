@@ -88,6 +88,7 @@
   flex: 1 1 0;
   min-width: 0;
   width: auto;
+  padding-inline: 8px;
 }
 
 .prompt-builder-content {
@@ -511,8 +512,9 @@
 }
 
 .tag-library-actions .btn {
-  white-space: nowrap;
+  white-space: normal;
   min-width: 0;
+  max-width: 100%;
 }
 
 .category-tabs-wrapper {

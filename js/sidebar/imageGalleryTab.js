@@ -2,6 +2,7 @@
  * Image Gallery Tab - Handles image browsing, viewing, and management for multiple folders
  */
 
+import { registerCommandProvider } from '../shared/commandRegistry.js';
 import { getCollection } from '../shared/recents.js';
 import { api } from "../../../../scripts/api.js";
 
@@ -1327,12 +1328,36 @@ export async function createImageGalleryTab(container) {
         }
     }, 200);
 
+    const selectFolder = (value) => {
+        folderAndControls.folderDropdown.value = value;
+        folderAndControls.folderDropdown.dispatchEvent(new Event('change'));
+    };
+    const unregisterCommands = registerCommandProvider(() => {
+        const commands = [
+            { id: 'gallery-reload', tab: 'gallery', label: 'Gallery: Reload folder', run: () => grid.refreshButton.click() },
+            { id: 'gallery-notes', tab: 'gallery', label: 'Gallery: Open Notes folder', run: () => selectFolder('notes') },
+            { id: 'gallery-input', tab: 'gallery', label: 'Gallery: Open Input folder', run: () => selectFolder('input') },
+            { id: 'gallery-output', tab: 'gallery', label: 'Gallery: Open Output folder', run: () => selectFolder('output') }
+        ];
+        getCollection('galleryfolder').getRecents().slice(0, 5).forEach((entry) => commands.push({
+            id: `gallery-recent-${entry.id}`,
+            tab: 'gallery',
+            label: `Gallery: Open recent folder ${entry.name || entry.id}`,
+            run: () => {
+                populateFolderDropdown(folderAndControls.folderDropdown, entry.id);
+                selectFolder(`custom:${entry.id}`);
+            }
+        }));
+        return commands;
+    });
+
     let isDestroyed = false;
     return () => {
         if (isDestroyed) {
             return;
         }
         isDestroyed = true;
+        unregisterCommands();
         clearTimeout(autoLoadTimeoutId);
         eventHandlers.destroy();
     };

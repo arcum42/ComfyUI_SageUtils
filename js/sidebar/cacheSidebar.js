@@ -49,6 +49,8 @@ import {
 } from "../components/cacheUI.js";
 import { loadSidebarStyle } from './sidebarStyles.js';
 
+import { notifications } from '../shared/notifications.js';
+
 // Import TabManager
 import { TabManager } from "../components/tabs.js";
 
@@ -1025,7 +1027,16 @@ export function createCacheSidebar(el) {
                 
                 // Switch to the requested tab using TabManager
                 try {
-                    tabManager.switchTab(tabKey);
+                    if (!tabManager.switchTab(tabKey)) {
+                        const dropped = bus.discardPendingForTab(tabId);
+                        if (dropped > 0) {
+                            notifications.warning(
+                                `Could not send text: the ${tabId === 'llm' ? 'LLM' : 'Prompts'} tab is turned off. Enable it in Sage Utils settings and try again.`,
+                                6000
+                            );
+                        }
+                        return;
+                    }
                     bus.publish(MessageTypes.TAB_SWITCHED, { tabId: tabKey, source: 'sidebar' });
                     logSidebarDebug(`[Sidebar] Successfully switched to tab: ${tabKey}`);
                 } catch (error) {

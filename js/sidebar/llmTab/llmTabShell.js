@@ -4,6 +4,7 @@
  */
 
 // External dependencies
+import { registerCommandProvider } from '../../shared/commandRegistry.js';
 import { app } from '../../../../scripts/app.js';
 import { api } from '../../../../scripts/api.js';
 import { showNotification } from '../../shared/crossTabMessaging.js';
@@ -854,12 +855,22 @@ async function createLLMTabVanilla(container) {
     });
     
     // Return tab utilities
+    const unregisterCommands = registerCommandProvider(() => [
+        {
+            id: 'llm-focus',
+            tab: 'llm',
+            label: 'LLM: Focus prompt',
+            run: () => wrapper.querySelector('.llm-main-prompt')?.focus()
+        }
+    ]);
+
     let isDestroyed = false;
     const destroyTab = () => {
             if (isDestroyed) {
                 return;
             }
             isDestroyed = true;
+            unregisterCommands();
 
             logLlmDebug('[LLM Tab] Destroying tab...');
             

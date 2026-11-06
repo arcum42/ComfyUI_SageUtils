@@ -320,17 +320,19 @@ export function updateState(path, value, action = 'update') {
         return;
     }
     
-    // Create new state with immutable update
-    const newState = JSON.parse(JSON.stringify(currentState));
+    // Copy only the objects along the path (structural sharing); everything else is reused.
+    // Large untouched branches (images, models, history) are no longer deep-cloned per update.
     const keys = path.split('.');
+    const newState = { ...currentState };
     let target = newState;
     
     // Navigate to the parent object
     for (let i = 0; i < keys.length - 1; i++) {
         const key = keys[i];
-        if (!target[key] || typeof target[key] !== 'object') {
-            target[key] = {};
-        }
+        const existing = target[key];
+        target[key] = existing && typeof existing === 'object'
+            ? (Array.isArray(existing) ? [...existing] : { ...existing })
+            : {};
         target = target[key];
     }
     
@@ -355,8 +357,8 @@ export function updateState(path, value, action = 'update') {
         oldValue,
         newValue: value,
         action,
-        previousState: JSON.parse(JSON.stringify(previousState)),
-        currentState: getState()
+        previousState,
+        currentState: newState
     });
 }
 

@@ -2,6 +2,7 @@
  * Prompt Builder Tab - Main tab component for prompt generation and management
  */
 
+import { registerCommandProvider } from '../shared/commandRegistry.js';
 import { promptGenerationComponent } from '../promptBuilder/promptGeneration.js';
 import { tagLibraryComponent } from '../promptBuilder/tagLibrary.js';
 import { savedPromptsComponent } from '../promptBuilder/savedPrompts.js';
@@ -50,6 +51,15 @@ export function createPromptBuilderTab(container) {
     // Load external prompt builder styles
     loadSidebarStyle('prompt-builder-styles', 'sidebar/promptBuilder.css');
     
+    const unregisterCommands = registerCommandProvider(() => [
+        {
+            id: 'prompts-focus',
+            tab: 'promptBuilder',
+            label: 'Prompts: Focus positive prompt',
+            run: () => wrapper.querySelector('.positive-prompt')?.focus()
+        }
+    ]);
+
     // Return utility object like other tabs
     return {
         wrapper,
@@ -57,6 +67,7 @@ export function createPromptBuilderTab(container) {
         tagLibrarySection,
         savedPromptsSection,
         destroy: () => {
+            unregisterCommands();
             destroyPromptBuilderTab(container);
         }
     };

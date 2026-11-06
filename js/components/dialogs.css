@@ -126,6 +126,8 @@
 
 .dialog-message {
   margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
   font-size: 14px;
   line-height: 1.5;
 }
