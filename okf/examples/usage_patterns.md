@@ -46,5 +46,5 @@ This concept documents common Sage Utils usage patterns, including the most effe
 
 ## Links
 
-- [ComfyUI Sage Utils README](../README.md)
+- [ComfyUI Sage Utils README](../../README.md)
 - [Workflow gallery](workflow_gallery.md)

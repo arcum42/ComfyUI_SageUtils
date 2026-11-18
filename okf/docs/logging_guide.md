@@ -527,5 +527,3 @@ for level_name, level_value in [
 - **Include context** in your messages
 - **Test at different levels** to ensure your logging is appropriate
 - **Set SAGEUTILS_LOG_LEVEL** environment variable to control verbosity
-
-For more information, see the [Logging Improvement Plan](LOGGING_IMPROVEMENT_PLAN.md).

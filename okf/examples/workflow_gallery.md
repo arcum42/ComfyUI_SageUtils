@@ -43,4 +43,4 @@ The example workflows are intended as starting points for:
 ## Links
 
 - `example_workflows/` directory
-- [ComfyUI Sage Utils README](../README.md)
+- [ComfyUI Sage Utils README](../../README.md)

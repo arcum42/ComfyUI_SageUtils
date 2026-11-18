@@ -1063,10 +1063,10 @@ parent.appendChild(splitPane);
 
 ## Related Documentation
 
-- [Button Component Guide](BUTTON_COMPONENT_GUIDE.md)
-- [Form Elements Guide](FORM_ELEMENTS_GUIDE.md)
-- [Tab Manager Guide](TAB_MANAGER_GUIDE.md)
-- [Component System README](../js/components/README.md)
+- [Button Component Guide](button_guide.md)
+- [Form Elements Guide](form_guide.md)
+- [Tab Manager Guide](../docs/tab_manager_guide.md)
+- [Component System README](../../js/components/README.md)
 
 ---
 

@@ -993,6 +993,4 @@ const input = createInput({
 
 ## See Also
 
-- [Button Component Guide](BUTTON_COMPONENT_GUIDE.md)
-- [Component Duplication Analysis](COMPONENT_DUPLICATION_ANALYSIS.md)
-- [Refactoring Progress](REFACTORING_PROGRESS.md)
+- [Button Component Guide](../okf/ui/button_guide.md)

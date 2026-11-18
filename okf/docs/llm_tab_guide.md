@@ -580,7 +580,7 @@ Avoid: "Make a cyberpunk scene"
 If you encounter issues not covered here:
 
 1. Check [GitHub Issues](https://github.com/arcum42/ComfyUI_SageUtils/issues)
-2. Review [API Documentation](API.md) for technical details
+2. Review [API Documentation](../architecture/api.md) for technical details
 3. Open a new issue with:
    - Provider and model being used
    - Error message (exact text)
@@ -591,10 +591,10 @@ If you encounter issues not covered here:
 
 ## What's Next?
 
-- Explore the [Prompt Builder Guide](PROMPT_BUILDER_GUIDE.md)
-- Learn about [Cross-Tab Integration](README.md#cross-tab-integration)
-- Review [API Documentation](API.md) for custom integrations
-- Check out [Architecture](ARCHITECTURE.md) for technical details
+- Explore the [Prompt Builder Guide](prompt_builder_guide.md)
+- Learn about [Cross-Tab Integration](../../README.md)
+- Review [API Documentation](../architecture/api.md) for custom integrations
+- Check out [Architecture](../architecture/architecture.md) for technical details
 
 ---
 

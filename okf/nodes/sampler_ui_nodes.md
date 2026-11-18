@@ -54,4 +54,4 @@ These nodes are intended to keep UI-friendly workflows readable and maintainable
 
 ## Links
 
-- [ComfyUI Sage Utils README](../README.md)
+- [ComfyUI Sage Utils README](../../README.md)

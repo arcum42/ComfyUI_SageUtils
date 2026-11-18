@@ -39,4 +39,4 @@ This ensures metadata accurately reflects the generation context.
 
 ## Links
 
-- [ComfyUI Sage Utils README](../README.md)
+- [ComfyUI Sage Utils README](../../README.md)

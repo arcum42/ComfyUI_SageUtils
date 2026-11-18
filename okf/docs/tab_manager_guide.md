@@ -688,10 +688,9 @@ tabManager.activateFirstTab(); // Only 'tab1' content is created
 
 ## Related Documentation
 
-- [Component System README](../js/components/README.md)
-- [Button Component Guide](BUTTON_COMPONENT_GUIDE.md)
-- [Form Elements Guide](FORM_ELEMENTS_GUIDE.md)
-- [Component Duplication Analysis](COMPONENT_DUPLICATION_ANALYSIS.md)
+- [Component System README](../../js/components/README.md)
+- [Button Component Guide](../ui/button_guide.md)
+- [Form Elements Guide](../ui/form_guide.md)
 
 ## Support
 

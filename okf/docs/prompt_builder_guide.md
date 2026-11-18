@@ -920,9 +920,9 @@ Better: "## Troubleshooting
 
 **Check Documentation**:
 1. This guide for prompt building
-2. [LLM Tab Guide](LLM_TAB_GUIDE.md) for LLM features  
-3. [API Documentation](API.md) for technical details
-4. [Architecture](ARCHITECTURE.md) for system design
+2. [LLM Tab Guide](llm_tab_guide.md) for LLM features  
+3. [API Documentation](../architecture/api.md) for technical details
+4. [Architecture](../architecture/architecture.md) for system design
 
 **Debug Steps**:
 1. Open browser console (F12)
@@ -940,9 +940,9 @@ Better: "## Troubleshooting
 ---
 
 **Related Documentation**:
-- [LLM Tab Guide](LLM_TAB_GUIDE.md) - AI enhancement features
-- [Architecture](ARCHITECTURE.md) - Technical system design
-- [API Documentation](API.md) - Backend endpoints and integration"
+- [LLM Tab Guide](llm_tab_guide.md) - AI enhancement features
+- [Architecture](../architecture/architecture.md) - Technical system design
+- [API Documentation](../architecture/api.md) - Backend endpoints and integration"
 ```
 
 ❌ **Conflicting Tags**:
