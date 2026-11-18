@@ -34,4 +34,4 @@ Loader nodes are a key source of provenance data. Their outputs should flow into
 
 ## Links
 
-- [ComfyUI Sage Utils README](../README.md)
+- [ComfyUI Sage Utils README](../../README.md)

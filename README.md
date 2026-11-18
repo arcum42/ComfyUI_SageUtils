@@ -25,7 +25,7 @@ Access AI language models directly within ComfyUI for prompt generation, refinem
 - **Keyboard Shortcuts**: Ctrl+Enter to send, Escape to blur textareas
 - **Accessibility**: Full screen reader support with ARIA labels
 
-📖 **[Complete LLM Tab Guide](docs/LLM_TAB_GUIDE.md)**
+📖 **[Complete LLM Tab Guide](okf/docs/llm_tab_guide.md)**
 
 ### Prompt Builder Tab
 Wildcard and tag-based system for constructing complex prompts with LLM enhancement:
@@ -40,7 +40,7 @@ Wildcard and tag-based system for constructing complex prompts with LLM enhancem
 - **Keyboard Shortcuts**: Ctrl+Enter to generate, Escape to blur fields
 - **Performance Optimized**: Debounced updates and rate-limited cross-tab messaging
 
-📖 **[Complete Prompt Builder Guide](docs/PROMPT_BUILDER_GUIDE.md)**
+📖 **[Complete Prompt Builder Guide](okf/docs/prompt_builder_guide.md)**
 
 ### Cross-Tab Integration
 Seamless data flow between all components:
@@ -138,7 +138,7 @@ Seamless data flow between all components:
 4. **Select a model** from the available models list
 5. **Start chatting** or use vision features by uploading images
 
-See the [LLM Tab Guide](docs/LLM_TAB_GUIDE.md) for detailed setup instructions for each provider.
+See the [LLM Tab Guide](okf/docs/llm_tab_guide.md) for detailed setup instructions for each provider.
 
 ### Using Prompt Builder
 
@@ -149,7 +149,7 @@ See the [LLM Tab Guide](docs/LLM_TAB_GUIDE.md) for detailed setup instructions f
 5. **Optional**: Send to LLM for creative enhancement
 6. **Use in workflows** - copy to clipboard or send to nodes
 
-See the [Prompt Builder Guide](docs/PROMPT_BUILDER_GUIDE.md) for advanced usage and best practices.
+See the [Prompt Builder Guide](okf/docs/prompt_builder_guide.md) for advanced usage and best practices.
 
 ## How to Use and Connect the Nodes
 
@@ -229,14 +229,14 @@ Available log levels: `DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL`
 
 All SageUtils logs are prefixed with `[SageUtils.*]` for easy identification.
 
-For developers, see the [Logging Guide](docs/LOGGING.md) for information on using the logger in your code.
+For developers, see the [Logging Guide](okf/docs/logging_guide.md) for information on using the logger in your code.
 
 ## Documentation
 
-- 📖 [LLM Tab Guide](docs/LLM_TAB_GUIDE.md) - Complete guide to using the LLM chat interface
-- 📖 [Prompt Builder Guide](docs/PROMPT_BUILDER_GUIDE.md) - Tag-based prompt construction
-- 📖 [API Documentation](docs/API.md) - Backend API endpoints and integration
-- 📖 [Architecture](docs/ARCHITECTURE.md) - System design and technical details
+- 📖 [LLM Tab Guide](okf/docs/llm_tab_guide.md) - Complete guide to using the LLM chat interface
+- 📖 [Prompt Builder Guide](okf/docs/prompt_builder_guide.md) - Tag-based prompt construction
+- 📖 [API Documentation](okf/architecture/api.md) - Backend API endpoints and integration
+- 📖 [Architecture](okf/architecture/architecture.md) - System design and technical details
 
 ## Features & Capabilities
 
